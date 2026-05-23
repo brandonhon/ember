@@ -25,9 +25,16 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
     -ldflags="-s -w -X main.version=${VERSION}" \
     -o /out/ember ./cmd/ember
 
+# Stage a /data directory owned by the distroless nonroot UID (65532). When a
+# named volume is mounted at /data, Docker initializes its permissions from
+# this pre-existing directory — without this, the volume is root-owned and
+# the nonroot user can't write ember.db.
+RUN mkdir -p /out/data && chown 65532:65532 /out/data
+
 # Final image: distroless (no shell, no package manager).
 FROM gcr.io/distroless/static-debian12:nonroot AS final
 COPY --from=build /out/ember /ember
+COPY --from=build --chown=nonroot:nonroot /out/data /data
 EXPOSE 8080
 USER nonroot:nonroot
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
