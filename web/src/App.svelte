@@ -134,50 +134,114 @@
 
 <style>
   :global(:root) {
-    --bg: #fdfaf6;
-    --surface: #ffffff;
-    --text: #1f2937;
-    --muted: #6b7280;
-    --border: #e5e7eb;
-    --hover: #f3f4f6;
-    --accent: #c2410c;
-    --accent-bg: #fff7ed;
-    --badge-bg: #f3f4f6;
+    /* Mockup palette — paper + ink + ember accents. */
+    --paper: #f6f2e9;
+    --paper-2: #efe9dc;
+    --card: #fffdf8;
+    --ink: #211d18;
+    --ink-soft: #5b5347;
+    --ink-faint: #8c8273;
+    --line: #e2dac9;
+    --line-soft: #ece5d6;
+    --ember: #c2451d;
+    --ember-soft: #e8643a;
+    --ember-wash: #f6e2d8;
+    --gold: #b07d1a;
+    --green: #4f7a3d;
+    --rail-w: 272px;
+    --list-w: 380px;
+    --topbar-h: 56px;
+    --font-display: "Fraunces", Georgia, serif;
+    --font-read: "Newsreader", Georgia, serif;
+    --font-ui: "Bricolage Grotesque", system-ui, sans-serif;
+    --shadow-card: 0 1px 2px rgba(33, 29, 24, 0.04), 0 8px 24px -16px rgba(33, 29, 24, 0.35);
+    --shadow-pane: 0 0 0 1px var(--line), 0 24px 60px -32px rgba(33, 29, 24, 0.4);
+
+    /* Legacy aliases — kept while components migrate. */
+    --bg: var(--paper);
+    --surface: var(--paper-2);
+    --text: var(--ink);
+    --muted: var(--ink-faint);
+    --border: var(--line);
+    --hover: var(--line-soft);
+    --accent: var(--ember);
+    --accent-bg: var(--ember-wash);
+    --badge-bg: var(--line-soft);
   }
   :global(:root[data-theme="dark"]) {
-    --bg: #0b0f17;
-    --surface: #121821;
-    --text: #e5e7eb;
-    --muted: #9ca3af;
-    --border: #1f2937;
-    --hover: #1f2937;
-    --accent: #fb923c;
-    --accent-bg: rgba(251, 146, 60, 0.1);
-    --badge-bg: #1f2937;
+    --paper: #15130f;
+    --paper-2: #1c1915;
+    --card: #211d18;
+    --ink: #f0e9da;
+    --ink-soft: #b8ac98;
+    --ink-faint: #847a68;
+    --line: #322c23;
+    --line-soft: #2a2620;
+    --ember: #e8643a;
+    --ember-soft: #f0855f;
+    --ember-wash: #2e1d15;
+    --gold: #d2a23f;
+    --green: #7fa766;
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px -16px rgba(0, 0, 0, 0.8);
+    --shadow-pane: 0 0 0 1px var(--line), 0 24px 60px -32px rgba(0, 0, 0, 0.9);
   }
+  :global(*),
+  :global(*::before),
+  :global(*::after) {
+    box-sizing: border-box;
+  }
+  :global(html),
+  :global(body) { height: 100%; }
   :global(body) {
     margin: 0;
-    background: var(--bg);
-    color: var(--text);
-    font-family:
-      "Inter",
-      system-ui,
-      -apple-system,
-      sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-ui);
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+    font-size: 14px;
+    line-height: 1.45;
   }
+  :global(button) {
+    font-family: inherit;
+    cursor: pointer;
+    border: none;
+    background: none;
+    color: inherit;
+    padding: 0;
+  }
+  :global(::selection) {
+    background: var(--ember-wash);
+    color: var(--ember);
+  }
+  :global(::-webkit-scrollbar) { width: 10px; height: 10px; }
+  :global(::-webkit-scrollbar-thumb) {
+    background: var(--line);
+    border-radius: 10px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  :global(::-webkit-scrollbar-thumb:hover) {
+    background: var(--ink-faint);
+    background-clip: content-box;
+  }
+
   .shell {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-rows: var(--topbar-h) 1fr;
     height: 100vh;
   }
   .panes {
-    display: flex;
-    flex: 1;
+    display: grid;
+    grid-template-columns: var(--rail-w) var(--list-w) 1fr;
+    min-height: 0;
     overflow: hidden;
   }
   .boot {
     text-align: center;
     margin-top: 4rem;
-    color: var(--muted);
+    color: var(--ink-faint);
+    font-family: var(--font-display);
+    font-size: 18px;
   }
 </style>
