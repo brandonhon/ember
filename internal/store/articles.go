@@ -166,6 +166,12 @@ type ListArticlesQuery struct {
 	// first page.
 	PublishedBefore int64
 	IDBefore        int64
+	// OnlySummarized restricts results to articles the summarizer has already
+	// processed (success or 'skipped' marker). The SPA passes true so users
+	// never see a story before the LLM has had a chance to look at it.
+	// Defaults to false — tests, admin tools, and the Fever shim get
+	// everything by default.
+	OnlySummarized bool
 }
 
 // ListArticles returns articles for the user under the given filters using
@@ -239,6 +245,9 @@ JOIN boards b ON b.id = ba.board_id AND b.user_id = ? AND b.id = ?`
 		conds = append(conds, "(IFNULL(a.published_at,0) < ? OR (IFNULL(a.published_at,0) = ? AND a.id < ?))")
 		args = append(args, q.PublishedBefore, q.PublishedBefore, q.IDBefore)
 	}
+	if q.OnlySummarized {
+		conds = append(conds, "a.summary_model IS NOT NULL AND a.summary_model <> ''")
+	}
 
 	where := ""
 	if len(conds) > 0 {
@@ -282,8 +291,21 @@ LIMIT ?`, from, where)
 }
 
 // CountUnread returns the user's unread count, optionally scoped to a feed or
-// category. Pass 0 to skip a filter.
+// category. Pass 0 to skip a filter. Counts every article, including those
+// not yet processed by the summarizer — use CountUnreadVisible for the
+// user-facing badge that matches the list view.
 func (s *Store) CountUnread(ctx context.Context, userID, feedID, categoryID int64) (int, error) {
+	return s.countUnread(ctx, userID, feedID, categoryID, false)
+}
+
+// CountUnreadVisible is the same as CountUnread but only counts articles the
+// summarizer has finished (success or 'skipped' marker). This is what drives
+// the sidebar badges in the SPA.
+func (s *Store) CountUnreadVisible(ctx context.Context, userID, feedID, categoryID int64) (int, error) {
+	return s.countUnread(ctx, userID, feedID, categoryID, true)
+}
+
+func (s *Store) countUnread(ctx context.Context, userID, feedID, categoryID int64, onlySummarized bool) (int, error) {
 	q := `
 SELECT COUNT(*)
 FROM articles a
@@ -291,6 +313,9 @@ JOIN subscriptions s ON s.feed_id = a.feed_id AND s.user_id = ?
 LEFT JOIN article_state st ON st.article_id = a.id AND st.user_id = ?
 WHERE IFNULL(st.is_read,0) = 0`
 	args := []any{userID, userID}
+	if onlySummarized {
+		q += " AND a.summary_model IS NOT NULL AND a.summary_model <> ''"
+	}
 	if feedID > 0 {
 		q += " AND a.feed_id = ?"
 		args = append(args, feedID)

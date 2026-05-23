@@ -179,6 +179,59 @@ func TestArticles_UpdateSummary(t *testing.T) {
 	}
 }
 
+func TestArticles_HiddenUntilSummarized(t *testing.T) {
+	s := NewTest(t)
+	ctx := context.Background()
+	userID, feedID := seedUserAndFeed(t, s, "alice")
+
+	// Insert two articles; only one gets a summary_model.
+	_, _, _ = s.UpsertArticle(ctx, mkArticle(feedID, "g1", "Pending LLM", "h1", 1000))
+	a2, _, _ := s.UpsertArticle(ctx, mkArticle(feedID, "g2", "Already summarized", "h2", 2000))
+	if err := s.UpdateSummary(ctx, a2.ID, "• bullet", "noop"); err != nil {
+		t.Fatal(err)
+	}
+
+	// Default list returns both (CountUnread is admin-perspective).
+	all, _ := s.ListArticles(ctx, userID, ListArticlesQuery{})
+	if len(all) != 2 {
+		t.Errorf("default list returns both, got %d", len(all))
+	}
+
+	// OnlySummarized=true hides the pending one — what the SPA passes.
+	list, _ := s.ListArticles(ctx, userID, ListArticlesQuery{OnlySummarized: true})
+	if len(list) != 1 || list[0].ID != a2.ID {
+		t.Errorf("OnlySummarized list should only show summarized article, got %+v", list)
+	}
+
+	// CountUnreadVisible matches that view.
+	if n, _ := s.CountUnreadVisible(ctx, userID, 0, 0); n != 1 {
+		t.Errorf("CountUnreadVisible should skip unsummarized, got %d", n)
+	}
+	// CountUnread (admin) sees both.
+	if n, _ := s.CountUnread(ctx, userID, 0, 0); n != 2 {
+		t.Errorf("CountUnread should see both, got %d", n)
+	}
+}
+
+func TestArticles_SkippedMarkerStillVisible(t *testing.T) {
+	s := NewTest(t)
+	ctx := context.Background()
+	userID, feedID := seedUserAndFeed(t, s, "alice")
+	a, _, _ := s.UpsertArticle(ctx, mkArticle(feedID, "g1", "T", "h1", 1000))
+	// The poller writes 'skipped' when the LLM fails. The article must still
+	// be visible in the list.
+	if err := s.UpdateSummary(ctx, a.ID, "", "skipped"); err != nil {
+		t.Fatal(err)
+	}
+	list, _ := s.ListArticles(ctx, userID, ListArticlesQuery{OnlySummarized: true})
+	if len(list) != 1 {
+		t.Errorf("skipped article should be visible, got %d", len(list))
+	}
+	if list[0].Summary != "" {
+		t.Errorf("skipped article should have no summary text, got %q", list[0].Summary)
+	}
+}
+
 func TestArticles_FixedClock(t *testing.T) {
 	s := NewTest(t)
 	fixed := time.Unix(1_700_000_000, 0)

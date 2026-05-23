@@ -54,6 +54,10 @@ func (d *Dependencies) handleListArticles(w http.ResponseWriter, r *http.Request
 		Limit:           limit,
 		PublishedBefore: atoi("cursor_pub"),
 		IDBefore:        atoi("cursor_id"),
+		// Hide articles the LLM hasn't touched yet — they appear once the
+		// poller stamps a summary_model (success or 'skipped'). Admin/debug
+		// callers can pass ?all=1 to bypass.
+		OnlySummarized: !atoB("all"),
 	}
 	articles, err := d.Store.ListArticles(r.Context(), u.ID, query)
 	if mapStoreError(w, err) {

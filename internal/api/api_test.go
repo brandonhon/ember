@@ -300,7 +300,8 @@ func TestArticles_StateAndCrossUser(t *testing.T) {
 	_, _ = h.store.Subscribe(context.Background(), models.Subscription{UserID: alice.ID, FeedID: f.ID})
 	_, _ = h.store.Subscribe(context.Background(), models.Subscription{UserID: bob.ID, FeedID: f.ID})
 	a, _, _ := h.store.UpsertArticle(context.Background(), models.Article{
-		FeedID: f.ID, GUID: "g1", Title: "Hello", ContentText: "world", ContentHash: "h1", PublishedAt: time.Now().Unix(),
+		FeedID: f.ID, GUID: "g1", Title: "Hello", ContentText: "world", ContentHash: "h1",
+		PublishedAt: time.Now().Unix(), SummaryModel: "noop",
 	})
 
 	// Alice stars it.
@@ -350,11 +351,11 @@ func TestArticles_FreshView(t *testing.T) {
 	now := time.Now()
 	_, _, _ = h.store.UpsertArticle(context.Background(), models.Article{
 		FeedID: f.ID, GUID: "old", Title: "Old", ContentHash: "h1",
-		PublishedAt: now.Add(-48 * time.Hour).Unix(),
+		PublishedAt: now.Add(-48 * time.Hour).Unix(), SummaryModel: "noop",
 	})
 	_, _, _ = h.store.UpsertArticle(context.Background(), models.Article{
 		FeedID: f.ID, GUID: "new", Title: "New", ContentHash: "h2",
-		PublishedAt: now.Add(-1 * time.Hour).Unix(),
+		PublishedAt: now.Add(-1 * time.Hour).Unix(), SummaryModel: "noop",
 	})
 
 	var resp struct {
@@ -378,7 +379,7 @@ func TestShares_FlowAndIsolation(t *testing.T) {
 	f, _ := h.store.UpsertFeed(context.Background(), models.Feed{URL: "https://x.test/feed", Title: "X"})
 	_, _ = h.store.Subscribe(context.Background(), models.Subscription{UserID: alice.ID, FeedID: f.ID})
 	a, _, _ := h.store.UpsertArticle(context.Background(), models.Article{
-		FeedID: f.ID, GUID: "g1", Title: "T", ContentHash: "h1", PublishedAt: time.Now().Unix(),
+		FeedID: f.ID, GUID: "g1", Title: "T", ContentHash: "h1", PublishedAt: time.Now().Unix(), SummaryModel: "noop",
 	})
 
 	// Alice shares to Bob.
