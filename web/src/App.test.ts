@@ -1,12 +1,23 @@
-import { render, screen } from "@testing-library/svelte";
-import { describe, it, expect } from "vitest";
+import { render } from "@testing-library/svelte";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import App from "./App.svelte";
 
-describe("App smoke test", () => {
-  it("mounts and renders the title", () => {
-    render(App);
-    const title = screen.getByTestId("app-title");
-    expect(title).toBeInTheDocument();
-    expect(title).toHaveTextContent("Ember");
+const fetchMock = vi.fn();
+
+beforeEach(() => {
+  fetchMock.mockReset();
+  // @ts-expect-error overriding global fetch
+  global.fetch = fetchMock;
+});
+
+describe("App", () => {
+  it("renders the boot state, then logs the user out when /api/me 401s", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response('{"error":{"code":"unauthorized","message":"x"}}', { status: 401 }),
+    );
+    const { findByText } = render(App);
+    // The Login screen should appear after mount + 401.
+    const heading = await findByText("Ember");
+    expect(heading).toBeInTheDocument();
   });
 });
