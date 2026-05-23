@@ -9,7 +9,8 @@ COPY web/ ./
 RUN npm run build
 
 # Build the Go binary (CGO_ENABLED=0 — modernc.org/sqlite is pure Go).
-FROM golang:1.23-alpine AS build
+# The image's Go version must satisfy go.mod's `go` directive.
+FROM golang:1.26-alpine AS build
 WORKDIR /src
 RUN apk add --no-cache git ca-certificates
 COPY go.mod go.sum ./
