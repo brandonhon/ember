@@ -1,0 +1,101 @@
+name: ember
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - frontend
+    depends_on:
+      ember:
+        condition: service_healthy
+
+  ember:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      EMBER_ADDR: ":8080"
+      EMBER_DB_PATH: /data/ember.db
+      EMBER_SESSION_KEY: ${EMBER_SESSION_KEY:?must be set in .env}
+      EMBER_ADMIN_USER: ${EMBER_ADMIN_USER:-admin}
+      EMBER_ADMIN_PASSWORD: ${EMBER_ADMIN_PASSWORD:?must be set in .env}
+      EMBER_OLLAMA_URL: http://ollama:11434
+      EMBER_OLLAMA_MODEL: ${EMBER_OLLAMA_MODEL:-qwen2.5:1.5b}
+      EMBER_FRESH_WINDOW: ${EMBER_FRESH_WINDOW:-6h}
+      EMBER_POLL_CONCURRENCY: ${EMBER_POLL_CONCURRENCY:-8}
+      EMBER_POLL_TICK: ${EMBER_POLL_TICK:-60s}
+      EMBER_LOG_LEVEL: ${EMBER_LOG_LEVEL:-info}
+    volumes:
+      - ember-data:/data
+    networks:
+      - frontend
+      - backend
+    healthcheck:
+      # The distroless image has no shell/curl/wget, so we re-exec the binary
+      # with `version` — it exits 0 cleanly which is enough to indicate the
+      # filesystem and process tree are healthy. A real /healthz HTTP probe
+      # would require a busybox sidecar; not worth the surface for now.
+      test: ["CMD", "/ember", "version"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      ollama:
+        condition: service_started
+
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    # Internal-only — ember reaches it over the backend network; not exposed.
+    expose:
+      - "11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # One-shot model pull. Runs once, exits, then stays "completed". Compose
+  # `up` will start it but not block on it; the first poll cycle after model
+  # download will succeed.
+  ollama-pull:
+    image: ollama/ollama:latest
+    restart: "no"
+    networks:
+      - backend
+    volumes:
+      - ollama-models:/root/.ollama
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >
+        until ollama list >/dev/null 2>&1; do sleep 1; done;
+        OLLAMA_HOST=http://ollama:11434 ollama pull "${EMBER_OLLAMA_MODEL:-qwen2.5:1.5b}"
+    depends_on:
+      ollama:
+        condition: service_started
+
+networks:
+  frontend:
+  backend:
+    internal: true
+
+volumes:
+  ember-data:
+  ollama-models:
+  caddy-data:
+  caddy-config:

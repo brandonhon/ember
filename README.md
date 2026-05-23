@@ -1,24 +1,44 @@
 # Ember
 
-Self-hosted RSS/Atom reader. Single Go binary that embeds a Svelte SPA, serves a JSON API, runs a background poller, stores everything in SQLite (FTS5), and summarizes articles with a small local LLM via Ollama. Everything runs in containers.
+Self-hosted RSS/Atom reader. A single Go binary serving an embedded Svelte SPA, a JSON API + Fever shim, and a background poller that ingests feeds into SQLite (FTS5) and summarizes articles with a small local LLM via Ollama. Everything runs in containers.
 
 See `EMBER_BUILD_PLAN.md` for the full implementation specification.
 
-## Status
-
-Phase 0 — bootstrap complete. CI green. Subsequent phases add the database, auth, feed pipeline, summarizer, poller, HTTP API, Svelte UI, and containerization.
-
-## Quickstart (dev)
+## Quickstart (Docker)
 
 ```
-make test          # go tests
-make web-install   # install web deps (first time)
-make web-test      # vitest
-make build         # build ./bin/ember
-EMBER_TEST_MODE=1 ./bin/ember
+cd deploy
+cp .env.example .env
+# Edit .env — set EMBER_SESSION_KEY (32+ random bytes) and EMBER_ADMIN_PASSWORD
+docker compose up -d
 ```
 
-Full Compose stack arrives in Phase 9 (`deploy/docker-compose.yml`).
+Then open `https://localhost` (Caddy serves the SPA + reverse-proxies the API). Log in with the admin credentials you set in `.env`.
+
+On first boot:
+1. The `ollama-pull` container fetches the configured model (default `qwen2.5:1.5b`).
+2. The `ember` container creates the admin user from `EMBER_ADMIN_USER` / `EMBER_ADMIN_PASSWORD`.
+3. The poller starts on a 60s tick (configurable via `EMBER_POLL_TICK`).
+
+To verify the stack end-to-end, `deploy/smoke_test.sh` brings the stack up, logs in, hits a few endpoints, and tears down. CI runs this.
+
+## Local development
+
+```
+make web-install     # one-time
+make test            # go tests
+make web-test        # vitest
+make embed           # build SPA + copy to internal/web/dist
+make build           # produce ./bin/ember
+EMBER_TEST_MODE=1 ./bin/ember   # listens on :8080 with the noop summarizer
+```
+
+Hot reload for the SPA:
+```
+cd web && npm run dev      # vite dev server, proxies /api → :8080
+EMBER_TEST_MODE=1 ./bin/ember   # in another terminal
+# visit http://localhost:5173
+```
 
 ## Environment
 
@@ -36,3 +56,29 @@ Full Compose stack arrives in Phase 9 (`deploy/docker-compose.yml`).
 | `EMBER_POLL_TICK` | `60s` | scheduler tick |
 | `EMBER_LOG_LEVEL` | `info` | slog level |
 | `EMBER_TEST_MODE` | `0` | enables fake fetcher/summarizer for e2e |
+
+## Mobile
+
+Reeder, FeedMe, and other Fever-compatible clients can connect via the Fever shim at `/fever`. The `api_key` is `md5("<username>:<user_id>")` — see `/api/me` for your user_id. (We can't use the canonical `md5("user:pass")` because passwords are stored only as argon2id hashes.)
+
+## Status
+
+| Phase | Status |
+|---|---|
+| 0. Bootstrap + CI | ✅ |
+| 1. DB + store | ✅ (≥85% coverage) |
+| 2. Auth (argon2id + sessions) | ✅ |
+| 3. Feed pipeline (discover/fetch/parse/readability) | ✅ |
+| 4. Summarizer (Ollama + noop) | ✅ |
+| 5. Poller (adaptive, async summaries) | ✅ |
+| 6. HTTP API + Fever + OPML | ✅ |
+| 7. Svelte SPA (three-pane + scroll-to-read + search) | ✅ minimum viable, no PWA yet |
+| 8. Embed single-binary | ✅ |
+| 9. Docker + Compose + Caddy | ✅ |
+| 10. Hardening (CSRF, rate limit, health, a11y) | in progress |
+
+### Deferred to a follow-up
+- Playwright e2e specs (the harness is configured; specs not yet written).
+- Service worker / PWA offline shell.
+- Filters engine UI (the schema and store-side query exist; UI is a TODO).
+- Manage Users / Share modals; OPML upload UI (the API endpoint exists).

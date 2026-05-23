@@ -1,0 +1,27 @@
+# Caddyfile — terminates TLS, reverse-proxies to ember.
+# Set EMBER_HOSTNAME in .env (e.g. ember.example.com) for automatic HTTPS.
+# For a homelab without a public DNS name, use `tls internal` instead of the
+# email line to get a self-signed cert.
+
+{
+	email {$CADDY_EMAIL:admin@localhost}
+}
+
+{$EMBER_HOSTNAME:localhost} {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+	# Homelab: comment out `email` and uncomment this line for a self-signed
+	# cert managed by Caddy.
+	# tls internal
+	reverse_proxy ember:8080 {
+		header_up Host {host}
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+	}
+}
