@@ -125,7 +125,10 @@ func get(t *testing.T, c *http.Client, url string, dst any) int {
 func post(t *testing.T, c *http.Client, url string, body any, dst any) int {
 	t.Helper()
 	buf, _ := json.Marshal(body)
-	resp, err := c.Post(url, "application/json", bytes.NewReader(buf))
+	req, _ := http.NewRequest(http.MethodPost, url, bytes.NewReader(buf))
+	req.Header.Set("Content-Type", "application/json")
+	echoCSRF(c, url, req)
+	resp, err := c.Do(req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,12 +142,32 @@ func post(t *testing.T, c *http.Client, url string, body any, dst any) int {
 func del(t *testing.T, c *http.Client, url string) int {
 	t.Helper()
 	req, _ := http.NewRequest(http.MethodDelete, url, nil)
+	echoCSRF(c, url, req)
 	resp, err := c.Do(req)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer resp.Body.Close()
 	return resp.StatusCode
+}
+
+// echoCSRF reads the ember_csrf cookie from the client's jar (if present) and
+// echoes it back as the X-Ember-CSRF header. No-op when no cookie is set
+// (e.g. before login).
+func echoCSRF(c *http.Client, rawURL string, req *http.Request) {
+	if c.Jar == nil {
+		return
+	}
+	u, err := neturlParse(rawURL)
+	if err != nil {
+		return
+	}
+	for _, ck := range c.Jar.Cookies(u) {
+		if ck.Name == CSRFCookieName {
+			req.Header.Set(CSRFHeaderName, ck.Value)
+			return
+		}
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -463,7 +486,10 @@ func TestOPMLRoundtrip(t *testing.T) {
   <outline type="rss" title="Y Blog" xmlUrl="https://y.test/feed"/>
 </body></opml>`
 	body, ct := makeMultipart("file", "subs.opml", []byte(opmlBody))
-	resp, err := c.Post(h.srv.URL+"/api/feeds/import", ct, bytes.NewReader(body))
+	req, _ := http.NewRequest(http.MethodPost, h.srv.URL+"/api/feeds/import", bytes.NewReader(body))
+	req.Header.Set("Content-Type", ct)
+	echoCSRF(c, h.srv.URL+"/api/feeds/import", req)
+	resp, err := c.Do(req)
 	if err != nil {
 		t.Fatal(err)
 	}
