@@ -1,0 +1,296 @@
+package poller
+
+import (
+	"context"
+	"log/slog"
+	"sync"
+	"sync/atomic"
+	"time"
+
+	"github.com/brandonhon/ember/internal/feed"
+	"github.com/brandonhon/ember/internal/models"
+	"github.com/brandonhon/ember/internal/store"
+	"github.com/brandonhon/ember/internal/summarize"
+)
+
+// Fetcher is the subset of *feed.Fetcher the poller depends on. Defined
+// locally so tests can inject a fake.
+type Fetcher interface {
+	Fetch(ctx context.Context, url, etag, lastModified string) (feed.FetchResult, error)
+}
+
+// Config controls poller runtime.
+type Config struct {
+	Tick          time.Duration
+	Concurrency   int
+	SummaryQueue  int
+	BatchLimit    int
+	Now           func() time.Time
+	SummaryWorker bool // if false, no async summary worker (tests)
+}
+
+// Metrics is an in-memory snapshot for observability/tests.
+type Metrics struct {
+	TicksTotal       atomic.Int64
+	FetchesTotal     atomic.Int64
+	FetchesErrored   atomic.Int64
+	NewArticlesTotal atomic.Int64
+	SummariesTotal   atomic.Int64
+	SummariesErrored atomic.Int64
+}
+
+// Poller drives feed fetching.
+type Poller struct {
+	Store      *store.Store
+	Fetcher    Fetcher
+	Summarizer summarize.Summarizer
+	Logger     *slog.Logger
+	Config     Config
+	Metrics    *Metrics
+
+	summaryCh chan int64 // article IDs awaiting summary
+}
+
+// New constructs a Poller.
+func New(st *store.Store, f Fetcher, s summarize.Summarizer, cfg Config, lg *slog.Logger) *Poller {
+	if cfg.Tick <= 0 {
+		cfg.Tick = 60 * time.Second
+	}
+	if cfg.Concurrency <= 0 {
+		cfg.Concurrency = 8
+	}
+	if cfg.SummaryQueue <= 0 {
+		cfg.SummaryQueue = 256
+	}
+	if cfg.BatchLimit <= 0 {
+		cfg.BatchLimit = 50
+	}
+	if cfg.Now == nil {
+		cfg.Now = time.Now
+	}
+	if lg == nil {
+		lg = slog.Default()
+	}
+	return &Poller{
+		Store:      st,
+		Fetcher:    f,
+		Summarizer: s,
+		Logger:     lg,
+		Config:     cfg,
+		Metrics:    &Metrics{},
+		summaryCh:  make(chan int64, cfg.SummaryQueue),
+	}
+}
+
+// Run starts the poller scheduler and worker pool. Returns when ctx is done.
+func (p *Poller) Run(ctx context.Context) {
+	var wg sync.WaitGroup
+
+	if p.Config.SummaryWorker && p.Summarizer != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			p.summaryWorker(ctx)
+		}()
+	}
+
+	ticker := time.NewTicker(p.Config.Tick)
+	defer ticker.Stop()
+
+	// Tick once immediately.
+	p.Tick(ctx)
+	for {
+		select {
+		case <-ctx.Done():
+			close(p.summaryCh)
+			wg.Wait()
+			return
+		case <-ticker.C:
+			p.Tick(ctx)
+		}
+	}
+}
+
+// Tick runs one scheduling pass. Selects due feeds and dispatches them on the
+// worker pool, waits for them to complete.
+func (p *Poller) Tick(ctx context.Context) {
+	p.Metrics.TicksTotal.Add(1)
+	cutoff := p.Config.Now().Unix()
+	due, err := p.Store.FeedsDue(ctx, cutoff, p.Config.BatchLimit)
+	if err != nil {
+		p.Logger.Error("poller: feeds due query failed", "err", err)
+		return
+	}
+	if len(due) == 0 {
+		return
+	}
+	jobs := make(chan models.Feed, len(due))
+	var wg sync.WaitGroup
+	for range p.Config.Concurrency {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for f := range jobs {
+				p.fetchAndStore(ctx, f)
+			}
+		}()
+	}
+	for _, f := range due {
+		jobs <- f
+	}
+	close(jobs)
+	wg.Wait()
+}
+
+// RefreshFeed forces an immediate fetch of a single feed.
+func (p *Poller) RefreshFeed(ctx context.Context, feedID int64) error {
+	f, err := p.Store.GetFeed(ctx, feedID)
+	if err != nil {
+		return err
+	}
+	p.fetchAndStore(ctx, f)
+	return nil
+}
+
+func (p *Poller) fetchAndStore(ctx context.Context, f models.Feed) {
+	p.Metrics.FetchesTotal.Add(1)
+	res, err := p.Fetcher.Fetch(ctx, f.URL, f.ETag, f.LastModified)
+	now := p.Config.Now()
+	if err != nil {
+		p.Metrics.FetchesErrored.Add(1)
+		errCount := f.ErrorCount + 1
+		next := now.Add(AdaptiveInterval(IntervalInputs{
+			HadError: true, ErrorCount: errCount,
+			Current: time.Duration(f.FetchInterval) * time.Second,
+		}))
+		_ = p.Store.UpdateFeedFetch(ctx, f.ID, store.UpdateFeedFetchPatch{
+			LastFetched: now.Unix(),
+			NextFetch:   next.Unix(),
+			ErrorCount:  errCount,
+			LastError:   err.Error(),
+		})
+		p.Logger.Warn("poller: fetch failed", "feed_id", f.ID, "url", f.URL, "err", err)
+		return
+	}
+
+	// 304 — nothing new.
+	if !res.Changed {
+		next := now.Add(AdaptiveInterval(IntervalInputs{
+			NewArticles: 0,
+			Current:     time.Duration(f.FetchInterval) * time.Second,
+		}))
+		_ = p.Store.UpdateFeedFetch(ctx, f.ID, store.UpdateFeedFetchPatch{
+			LastFetched: now.Unix(),
+			NextFetch:   next.Unix(),
+			ErrorCount:  0,
+		})
+		return
+	}
+
+	parsed, err := feed.Parse(ctx, f.ID, res.Body, f.URL)
+	if err != nil {
+		p.Metrics.FetchesErrored.Add(1)
+		_ = p.Store.UpdateFeedFetch(ctx, f.ID, store.UpdateFeedFetchPatch{
+			LastFetched: now.Unix(),
+			NextFetch:   now.Add(MinInterval).Unix(),
+			ErrorCount:  f.ErrorCount + 1,
+			LastError:   err.Error(),
+		})
+		p.Logger.Warn("poller: parse failed", "feed_id", f.ID, "err", err)
+		return
+	}
+
+	var newCount int
+	for _, a := range parsed.Articles {
+		stored, inserted, err := p.Store.UpsertArticle(ctx, a)
+		if err != nil {
+			p.Logger.Warn("poller: upsert article failed", "feed_id", f.ID, "guid", a.GUID, "err", err)
+			continue
+		}
+		if inserted {
+			newCount++
+			// Enqueue for summarization (best-effort; drop if queue full).
+			if p.Summarizer != nil {
+				select {
+				case p.summaryCh <- stored.ID:
+				default:
+				}
+			}
+		}
+	}
+	p.Metrics.NewArticlesTotal.Add(int64(newCount))
+
+	// Title/site_url enrichment on first successful fetch.
+	patch := store.UpdateFeedFetchPatch{
+		LastFetched: now.Unix(),
+		NextFetch: now.Add(AdaptiveInterval(IntervalInputs{
+			NewArticles: newCount,
+			Current:     time.Duration(f.FetchInterval) * time.Second,
+		})).Unix(),
+		ErrorCount: 0,
+	}
+	if res.ETag != "" {
+		patch.ETag = ptr(res.ETag)
+	}
+	if res.LastModified != "" {
+		patch.LastModified = ptr(res.LastModified)
+	}
+	if parsed.Title != "" && f.Title != parsed.Title {
+		patch.Title = ptr(parsed.Title)
+	}
+	if parsed.SiteURL != "" {
+		patch.SiteURL = ptr(parsed.SiteURL)
+	}
+	_ = p.Store.UpdateFeedFetch(ctx, f.ID, patch)
+}
+
+func (p *Poller) summaryWorker(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case id, ok := <-p.summaryCh:
+			if !ok {
+				return
+			}
+			p.summarizeOne(ctx, id)
+		}
+	}
+}
+
+func (p *Poller) summarizeOne(ctx context.Context, articleID int64) {
+	p.Metrics.SummariesTotal.Add(1)
+	art, err := p.Store.GetArticle(ctx, articleID)
+	if err != nil {
+		p.Metrics.SummariesErrored.Add(1)
+		return
+	}
+	bullets, model, err := p.Summarizer.Summarize(ctx, art.Title, art.ContentText)
+	if err != nil {
+		p.Metrics.SummariesErrored.Add(1)
+		p.Logger.Warn("poller: summarize failed", "article_id", articleID, "err", err)
+		return
+	}
+	joined := joinBullets(bullets)
+	if joined == "" {
+		p.Metrics.SummariesErrored.Add(1)
+		return
+	}
+	if err := p.Store.UpdateSummary(ctx, articleID, joined, model); err != nil {
+		p.Metrics.SummariesErrored.Add(1)
+		p.Logger.Warn("poller: persist summary", "article_id", articleID, "err", err)
+	}
+}
+
+func joinBullets(bs []string) string {
+	out := ""
+	for i, b := range bs {
+		if i > 0 {
+			out += "\n"
+		}
+		out += "• " + b
+	}
+	return out
+}
+
+func ptr[T any](v T) *T { return &v }
