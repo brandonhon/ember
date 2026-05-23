@@ -62,6 +62,23 @@ export interface ArticleView extends Article {
   is_later: boolean;
 }
 
+export interface Filter {
+  id: number;
+  user_id: number;
+  name: string;
+  match_json: string;
+  action: "mark_read" | "star" | "hide";
+  enabled: boolean;
+  created_at: number;
+}
+
+export interface FilterMatch {
+  field: "title" | "content" | "author" | "url";
+  op: "contains" | "equals" | "starts_with" | "matches";
+  value: string;
+  case_sensitive?: boolean;
+}
+
 export interface Board {
   id: number;
   user_id: number;

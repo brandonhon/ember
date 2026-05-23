@@ -1,11 +1,13 @@
 <script lang="ts">
   import { user, logout, theme, refreshSidebar } from "../lib/stores";
   import { api } from "../lib/api";
+  import FilterManager from "./FilterManager.svelte";
 
   let newFeedURL = $state("");
   let searchQ = $state("");
   let searchResults = $state<{ id: number; title: string; url?: string }[]>([]);
   let busy = $state(false);
+  let showFilters = $state(false);
 
   async function onAdd(e: Event) {
     e.preventDefault();
@@ -69,6 +71,9 @@
     </div>
   {/if}
   <div class="user-actions">
+    <button on:click={() => (showFilters = true)} aria-label="Manage filters" data-testid="open-filters">
+      Filters
+    </button>
     <button on:click={toggleTheme} aria-label="Toggle theme">
       {$theme === "dark" ? "☀" : "☾"}
     </button>
@@ -78,6 +83,10 @@
     <button on:click={logout} data-testid="logout">Sign out</button>
   </div>
 </header>
+
+{#if showFilters}
+  <FilterManager onClose={() => (showFilters = false)} />
+{/if}
 
 <style>
   .topbar {

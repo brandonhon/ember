@@ -109,6 +109,12 @@ func NewRouter(d Dependencies) http.Handler {
 		r.With(d.Auth.RequireAuth).Get("/shares/inbox", d.handleListInbox)
 		r.With(d.Auth.RequireAuth).Post("/shares/{id}/seen", d.handleMarkShareSeen)
 
+		// Filters
+		r.With(d.Auth.RequireAuth).Get("/filters", d.handleListFilters)
+		r.With(d.Auth.RequireAuth).Post("/filters", d.handleCreateFilter)
+		r.With(d.Auth.RequireAuth).Patch("/filters/{id}", d.handleUpdateFilter)
+		r.With(d.Auth.RequireAuth).Delete("/filters/{id}", d.handleDeleteFilter)
+
 		// Search
 		r.With(d.Auth.RequireAuth).Get("/search", d.handleSearch)
 

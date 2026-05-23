@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/brandonhon/ember/internal/feed"
+	"github.com/brandonhon/ember/internal/filters"
 	"github.com/brandonhon/ember/internal/models"
 	"github.com/brandonhon/ember/internal/store"
 	"github.com/brandonhon/ember/internal/summarize"
@@ -200,6 +201,12 @@ func (p *Poller) fetchAndStore(ctx context.Context, f models.Feed) {
 		return
 	}
 
+	// Resolve subscribers once per feed; reused for filter application below.
+	subs, subErr := p.Store.ListSubscriberIDs(ctx, f.ID)
+	if subErr != nil {
+		p.Logger.Warn("poller: list subscribers", "feed_id", f.ID, "err", subErr)
+	}
+
 	var newCount int
 	for _, a := range parsed.Articles {
 		stored, inserted, err := p.Store.UpsertArticle(ctx, a)
@@ -207,14 +214,19 @@ func (p *Poller) fetchAndStore(ctx context.Context, f models.Feed) {
 			p.Logger.Warn("poller: upsert article failed", "feed_id", f.ID, "guid", a.GUID, "err", err)
 			continue
 		}
-		if inserted {
-			newCount++
-			// Enqueue for summarization (best-effort; drop if queue full).
-			if p.Summarizer != nil {
-				select {
-				case p.summaryCh <- stored.ID:
-				default:
-				}
+		if !inserted {
+			continue
+		}
+		newCount++
+		// Apply each subscriber's filters to the new article.
+		for _, userID := range subs {
+			p.applyFiltersForUser(ctx, userID, stored)
+		}
+		// Enqueue for summarization (best-effort; drop if queue full).
+		if p.Summarizer != nil {
+			select {
+			case p.summaryCh <- stored.ID:
+			default:
 			}
 		}
 	}
@@ -242,6 +254,33 @@ func (p *Poller) fetchAndStore(ctx context.Context, f models.Feed) {
 		patch.SiteURL = ptr(parsed.SiteURL)
 	}
 	_ = p.Store.UpdateFeedFetch(ctx, f.ID, patch)
+}
+
+// applyFiltersForUser fetches a user's enabled filters and applies them to the
+// just-ingested article. Errors are logged but never fail ingest.
+func (p *Poller) applyFiltersForUser(ctx context.Context, userID int64, a models.Article) {
+	fs, err := p.Store.ListActiveFilters(ctx, userID)
+	if err != nil {
+		p.Logger.Warn("poller: list filters", "user_id", userID, "err", err)
+		return
+	}
+	if len(fs) == 0 {
+		return
+	}
+	out := filters.Apply(fs, a)
+	if !out.Any() {
+		return
+	}
+	if out.MarkRead {
+		if err := p.Store.SetRead(ctx, userID, []int64{a.ID}, true); err != nil {
+			p.Logger.Warn("poller: filter mark_read", "user_id", userID, "article_id", a.ID, "err", err)
+		}
+	}
+	if out.Star {
+		if err := p.Store.SetStarred(ctx, userID, a.ID, true); err != nil {
+			p.Logger.Warn("poller: filter star", "user_id", userID, "article_id", a.ID, "err", err)
+		}
+	}
 }
 
 func (p *Poller) summaryWorker(ctx context.Context) {

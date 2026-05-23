@@ -176,6 +176,43 @@ func TestPoller_RunGracefulShutdown(t *testing.T) {
 	}
 }
 
+func TestPoller_FiltersApplyAtIngest(t *testing.T) {
+	body, err := os.ReadFile("../feed/testdata/sample.rss")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ff := &fakeFetcher{body: body}
+	p := mkPoller(t, ff)
+
+	// Two users subscribed to the same feed; only Alice has a filter that
+	// marks "Hello"-titled articles read.
+	alice, _ := p.Store.CreateUser(context.Background(), models.User{Username: "alice", PasswordHash: "h"})
+	bob, _ := p.Store.CreateUser(context.Background(), models.User{Username: "bob", PasswordHash: "h"})
+	f := seedFeed(t, p.Store)
+	_, _ = p.Store.Subscribe(context.Background(), models.Subscription{UserID: alice.ID, FeedID: f.ID})
+	_, _ = p.Store.Subscribe(context.Background(), models.Subscription{UserID: bob.ID, FeedID: f.ID})
+
+	_, err = p.Store.CreateFilter(context.Background(), models.Filter{
+		UserID: alice.ID, Name: "mark Hello read", Action: "mark_read",
+		MatchJSON: `{"field":"title","op":"contains","value":"Hello"}`,
+		Enabled:   true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	p.Tick(context.Background())
+
+	// The sample.rss has an article titled "Hello world from RSS" — Alice's
+	// state row should be is_read=1; Bob's should be untouched.
+	aliceUnread, _ := p.Store.CountUnread(context.Background(), alice.ID, 0, 0)
+	bobUnread, _ := p.Store.CountUnread(context.Background(), bob.ID, 0, 0)
+	if aliceUnread >= bobUnread {
+		t.Errorf("expected alice's filter to drop her unread below bob's; alice=%d bob=%d",
+			aliceUnread, bobUnread)
+	}
+}
+
 func TestPoller_SummaryWorkerPersistsSummary(t *testing.T) {
 	body, _ := os.ReadFile("../feed/testdata/sample.rss")
 	ff := &fakeFetcher{body: body}

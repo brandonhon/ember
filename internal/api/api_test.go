@@ -568,6 +568,86 @@ func TestFever_Auth(t *testing.T) {
 	}
 }
 
+func TestFilters_CRUDAndIsolation(t *testing.T) {
+	h := newHarness(t)
+	h.seedUser(t, "alice", "p", false)
+	h.seedUser(t, "bob", "p", false)
+	cA := h.login(t, "alice", "p")
+	cB := h.login(t, "bob", "p")
+
+	// Alice creates a filter.
+	var created struct {
+		Data models.Filter `json:"data"`
+	}
+	body := map[string]any{
+		"name":       "hide crypto",
+		"match_json": `{"field":"title","op":"contains","value":"crypto"}`,
+		"action":     "hide",
+	}
+	if code := post(t, cA, h.srv.URL+"/api/filters", body, &created); code != http.StatusCreated {
+		t.Fatalf("create filter = %d", code)
+	}
+
+	// Validation: invalid match shape → 400.
+	bad := map[string]any{
+		"name": "x", "match_json": `{"field":"bogus","op":"contains","value":"y"}`, "action": "mark_read",
+	}
+	if code := post(t, cA, h.srv.URL+"/api/filters", bad, nil); code != http.StatusBadRequest {
+		t.Errorf("invalid filter = %d, want 400", code)
+	}
+	// Validation: invalid action.
+	bad2 := map[string]any{
+		"name": "y", "match_json": `{"field":"title","op":"contains","value":"z"}`, "action": "delete_everything",
+	}
+	if code := post(t, cA, h.srv.URL+"/api/filters", bad2, nil); code != http.StatusBadRequest {
+		t.Errorf("invalid action = %d, want 400", code)
+	}
+
+	// Alice lists.
+	var aList struct {
+		Data []models.Filter `json:"data"`
+	}
+	get(t, cA, h.srv.URL+"/api/filters", &aList)
+	if len(aList.Data) != 1 {
+		t.Errorf("alice's filters = %d", len(aList.Data))
+	}
+
+	// Bob's list is empty (cross-user isolation).
+	var bList struct {
+		Data []models.Filter `json:"data"`
+	}
+	get(t, cB, h.srv.URL+"/api/filters", &bList)
+	if len(bList.Data) != 0 {
+		t.Errorf("bob sees alice's filters: %+v", bList.Data)
+	}
+
+	// Bob cannot patch or delete Alice's filter.
+	if code := del(t, cB, fmt.Sprintf("%s/api/filters/%d", h.srv.URL, created.Data.ID)); code != http.StatusNotFound {
+		t.Errorf("cross-user delete = %d", code)
+	}
+
+	// Alice patches enabled=false.
+	disabled := false
+	patchBody, _ := json.Marshal(map[string]any{"enabled": disabled})
+	req, _ := http.NewRequest(http.MethodPatch,
+		fmt.Sprintf("%s/api/filters/%d", h.srv.URL, created.Data.ID), bytes.NewReader(patchBody))
+	req.Header.Set("Content-Type", "application/json")
+	echoCSRF(cA, h.srv.URL, req)
+	resp, err := cA.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("patch filter = %d", resp.StatusCode)
+	}
+
+	// Alice deletes.
+	if code := del(t, cA, fmt.Sprintf("%s/api/filters/%d", h.srv.URL, created.Data.ID)); code != http.StatusOK {
+		t.Errorf("delete filter = %d", code)
+	}
+}
+
 func TestStaticFallback(t *testing.T) {
 	st := store.NewTest(t)
 	a, _ := auth.New(st, "0123456789abcdef0123456789abcdef")
