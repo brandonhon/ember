@@ -5,6 +5,7 @@ import type {
   Board,
   Category,
   FeedWithCounts,
+  Filter,
   ListArticlesQuery,
   SearchResult,
   Share,
@@ -130,6 +131,20 @@ export const api = {
     call<unknown>("POST", "/api/articles/later", { id, value }),
   markAllRead: (req: { feed_id?: number; category_id?: number; view?: string }) =>
     call<{ count: number }>("POST", "/api/articles/mark-all-read", req),
+
+  // Filters -----------------------------------------------------------
+  listFilters: () => call<Filter[]>("GET", "/api/filters"),
+  createFilter: (req: {
+    name: string;
+    match_json: string;
+    action: "mark_read" | "star" | "hide";
+    enabled?: boolean;
+  }) => call<Filter>("POST", "/api/filters", req),
+  updateFilter: (
+    id: number,
+    req: { name?: string; match_json?: string; action?: string; enabled?: boolean },
+  ) => call<unknown>("PATCH", `/api/filters/${id}`, req),
+  deleteFilter: (id: number) => call<unknown>("DELETE", `/api/filters/${id}`),
 
   // Boards ------------------------------------------------------------
   listBoards: () => call<Board[]>("GET", "/api/boards"),

@@ -265,6 +265,26 @@ func (s *Store) Unsubscribe(ctx context.Context, userID, subID int64) error {
 	return tx.Commit()
 }
 
+// ListSubscriberIDs returns the user_ids subscribed to the given feed. Used
+// by the poller to fan out filter application across users.
+func (s *Store) ListSubscriberIDs(ctx context.Context, feedID int64) ([]int64, error) {
+	rows, err := s.DB.QueryContext(ctx,
+		`SELECT user_id FROM subscriptions WHERE feed_id = ?`, feedID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
+}
+
 // ListFeedsForUser returns the user's subscriptions joined with feed metadata
 // and unread counts.
 func (s *Store) ListFeedsForUser(ctx context.Context, userID int64) ([]models.FeedWithCounts, error) {

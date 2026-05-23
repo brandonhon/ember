@@ -77,6 +77,7 @@ Reeder, FeedMe, and other Fever-compatible clients can connect via the Fever shi
 | 9. Docker + Compose + Caddy | ✅ |
 | 10. Hardening (CSRF, rate limit, health, a11y) | ✅ |
 | 11. Playwright e2e (auth, feeds, reading + scroll-to-read, search) | ✅ |
+| 12. Filters engine + UI (apply at ingest, manage via modal) | ✅ |
 
 ## E2E
 
@@ -92,5 +93,5 @@ spec has known data to assert against. CI runs the suite on every push.
 
 ### Deferred to a follow-up
 - Service worker / PWA offline shell.
-- Filters engine UI (the schema and store-side query exist; UI is a TODO).
-- Manage Users / Share modals; OPML upload UI (the API endpoint exists).
+- Manage Users / Share modals; OPML upload UI (the API endpoints exist).
+- Shortcut help overlay (`?` key).
