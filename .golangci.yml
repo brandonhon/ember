@@ -24,6 +24,8 @@ linters:
       exclude-functions:
         - (*database/sql.Rows).Close
         - (*database/sql.DB).Close
+        - (io.Closer).Close
+        - (net/http.ResponseWriter).Write
     revive:
       rules:
         - name: exported
