@@ -72,12 +72,14 @@ Reeder, FeedMe, and other Fever-compatible clients can connect via the Fever shi
 | 4. Summarizer (Ollama + noop) | ✅ |
 | 5. Poller (adaptive, async summaries) | ✅ |
 | 6. HTTP API + Fever + OPML | ✅ |
-| 7. Svelte SPA (three-pane + scroll-to-read + search) | ✅ minimum viable, no PWA yet |
+| 7. Svelte SPA (three-pane + scroll-to-read + search) | ✅ |
 | 8. Embed single-binary | ✅ |
 | 9. Docker + Compose + Caddy | ✅ |
 | 10. Hardening (CSRF, rate limit, health, a11y) | ✅ |
 | 11. Playwright e2e (auth, feeds, reading + scroll-to-read, search) | ✅ |
 | 12. Filters engine + UI (apply at ingest, manage via modal) | ✅ |
+| 13. Polish: shortcut help, OPML import/export, Share + Manage Users modals | ✅ |
+| 14. PWA: manifest + service worker (cache-first assets, network-first /api) | ✅ |
 
 ## E2E
 
@@ -89,9 +91,4 @@ npx playwright test           # spawns the binary in test mode against a temp DB
 
 In test mode (`EMBER_TEST_MODE=1`) the binary seeds a deterministic admin
 (`admin` / `admintest`) plus 12 fixture articles and a single feed, so every
-spec has known data to assert against. CI runs the suite on every push.
-
-### Deferred to a follow-up
-- Service worker / PWA offline shell.
-- Manage Users / Share modals; OPML upload UI (the API endpoints exist).
-- Shortcut help overlay (`?` key).
+spec has known data to assert against.

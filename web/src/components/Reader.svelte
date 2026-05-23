@@ -1,11 +1,14 @@
 <script lang="ts">
   import { articles, selectedArticleId, toggleStar, toggleLater } from "../lib/stores";
+  import ShareModal from "./ShareModal.svelte";
 
   const selected = $derived(
     $selectedArticleId === null
       ? null
       : ($articles.items.find((a) => a.id === $selectedArticleId) ?? null),
   );
+
+  let showShare = $state(false);
 </script>
 
 <section class="reader">
@@ -21,6 +24,9 @@
         </button>
         <button on:click={() => toggleLater(selected.id, !selected.is_later)} class:active={selected.is_later}>
           {selected.is_later ? "✓ Saved for later" : "Save for later"}
+        </button>
+        <button on:click={() => (showShare = true)} data-testid="reader-share">
+          Share
         </button>
         {#if selected.url}
           <a href={selected.url} target="_blank" rel="noopener noreferrer">Open original</a>
@@ -43,6 +49,14 @@
         <p>{selected.content_text}</p>
       {/if}
     </article>
+
+    {#if showShare}
+      <ShareModal
+        articleId={selected.id}
+        articleTitle={selected.title}
+        onClose={() => (showShare = false)}
+      />
+    {/if}
   {/if}
 </section>
 

@@ -110,6 +110,30 @@ export const api = {
   deleteFeed: (id: number) => call<unknown>("DELETE", `/api/feeds/${id}`),
   refreshFeed: (id: number) => call<unknown>("POST", `/api/feeds/${id}/refresh`),
   exportOPML: () => fetch("/api/feeds/export", { credentials: "include" }),
+  importOPML: async (file: File): Promise<{ data: { imported: number } }> => {
+    const form = new FormData();
+    form.append("file", file);
+    const headers: Record<string, string> = {};
+    const tok = readCSRFCookie();
+    if (tok) headers["X-Ember-CSRF"] = tok;
+    const res = await fetch("/api/feeds/import", {
+      method: "POST",
+      credentials: "include",
+      headers,
+      body: form,
+    });
+    if (!res.ok) {
+      let msg = res.statusText;
+      try {
+        const j = (await res.json()) as { error?: { message?: string } };
+        if (j?.error?.message) msg = j.error.message;
+      } catch {
+        /* keep statusText */
+      }
+      throw new ApiError(res.status, "http_" + res.status, msg);
+    }
+    return res.json();
+  },
 
   // Articles ----------------------------------------------------------
   listArticles: (q: ListArticlesQuery = {}) => {

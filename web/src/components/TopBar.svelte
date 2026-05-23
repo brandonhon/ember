@@ -1,13 +1,17 @@
 <script lang="ts">
   import { user, logout, theme, refreshSidebar } from "../lib/stores";
-  import { api } from "../lib/api";
+  import { api, ApiError } from "../lib/api";
   import FilterManager from "./FilterManager.svelte";
+  import ManageUsers from "./ManageUsers.svelte";
 
   let newFeedURL = $state("");
   let searchQ = $state("");
   let searchResults = $state<{ id: number; title: string; url?: string }[]>([]);
   let busy = $state(false);
   let showFilters = $state(false);
+  let showUsers = $state(false);
+  let opmlInput: HTMLInputElement | undefined = $state();
+  let importMsg = $state("");
 
   async function onAdd(e: Event) {
     e.preventDefault();
@@ -38,6 +42,29 @@
 
   function toggleTheme() {
     theme.update((t) => (t === "light" ? "dark" : "light"));
+  }
+
+  async function onOPMLPick(e: Event) {
+    const input = e.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    importMsg = "Importing…";
+    try {
+      const res = await api.importOPML(file);
+      importMsg = `Imported ${res.data.imported} subscriptions`;
+      await refreshSidebar();
+    } catch (err) {
+      importMsg = err instanceof ApiError ? err.message : String(err);
+    } finally {
+      input.value = "";
+      setTimeout(() => (importMsg = ""), 4000);
+    }
+  }
+
+  function downloadOPML() {
+    // Use the export endpoint directly so the browser triggers the
+    // attachment download per the server's Content-Disposition header.
+    window.location.href = "/api/feeds/export";
   }
 </script>
 
@@ -71,9 +98,28 @@
     </div>
   {/if}
   <div class="user-actions">
+    <input
+      type="file"
+      accept=".opml,.xml,application/xml,text/xml"
+      bind:this={opmlInput}
+      on:change={onOPMLPick}
+      style="display:none"
+      data-testid="opml-input"
+    />
+    <button on:click={() => opmlInput?.click()} aria-label="Import OPML" data-testid="open-opml-import">
+      Import OPML
+    </button>
+    <button on:click={downloadOPML} aria-label="Export OPML">
+      Export
+    </button>
     <button on:click={() => (showFilters = true)} aria-label="Manage filters" data-testid="open-filters">
       Filters
     </button>
+    {#if $user?.is_admin}
+      <button on:click={() => (showUsers = true)} aria-label="Manage users" data-testid="open-users">
+        Users
+      </button>
+    {/if}
     <button on:click={toggleTheme} aria-label="Toggle theme">
       {$theme === "dark" ? "☀" : "☾"}
     </button>
@@ -82,10 +128,16 @@
     {/if}
     <button on:click={logout} data-testid="logout">Sign out</button>
   </div>
+  {#if importMsg}
+    <p class="import-msg" data-testid="opml-msg">{importMsg}</p>
+  {/if}
 </header>
 
 {#if showFilters}
   <FilterManager onClose={() => (showFilters = false)} />
+{/if}
+{#if showUsers}
+  <ManageUsers onClose={() => (showUsers = false)} />
 {/if}
 
 <style>
@@ -149,4 +201,17 @@
     border-radius: 4px;
   }
   .search-results a:hover { background: var(--hover); }
+  .import-msg {
+    position: absolute;
+    top: 100%;
+    right: 1rem;
+    background: var(--accent-bg);
+    color: var(--accent);
+    padding: 0.4rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    margin: 0.25rem 0 0;
+    border: 1px solid var(--accent);
+    z-index: 10;
+  }
 </style>
