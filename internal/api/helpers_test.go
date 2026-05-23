@@ -5,6 +5,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/cookiejar"
+	"net/url"
 )
 
 func cookiejarNew() (http.CookieJar, error) {
@@ -13,4 +14,8 @@ func cookiejarNew() (http.CookieJar, error) {
 
 func mwNew(w io.Writer) *multipart.Writer {
 	return multipart.NewWriter(w)
+}
+
+func neturlParse(s string) (*url.URL, error) {
+	return url.Parse(s)
 }

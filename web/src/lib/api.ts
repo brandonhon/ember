@@ -21,6 +21,12 @@ export class ApiError extends Error {
 type Envelope<T> = { data: T; meta?: Record<string, unknown> };
 type ErrorEnvelope = { error: { code: string; message: string } };
 
+function readCSRFCookie(): string | null {
+  if (typeof document === "undefined") return null;
+  const m = document.cookie.match(/(?:^|;\s*)ember_csrf=([^;]+)/);
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
 async function call<T>(
   method: string,
   path: string,
@@ -32,10 +38,17 @@ async function call<T>(
     credentials: "include",
     signal: opts?.signal,
   };
+  const headers: Record<string, string> = {};
   if (body !== undefined) {
-    init.headers = { "Content-Type": "application/json" };
+    headers["Content-Type"] = "application/json";
     init.body = JSON.stringify(body);
   }
+  // CSRF: echo the cookie value as a header for state-changing methods.
+  if (method !== "GET" && method !== "HEAD" && method !== "OPTIONS") {
+    const tok = readCSRFCookie();
+    if (tok) headers["X-Ember-CSRF"] = tok;
+  }
+  init.headers = headers;
   const res = await fetch(path, init);
   if (res.status === 401 && typeof window !== "undefined" && !path.endsWith("/api/auth/login")) {
     // Centralized 401 handling — clear any UI state via a custom event.

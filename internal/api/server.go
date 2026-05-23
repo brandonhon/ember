@@ -40,10 +40,25 @@ func NewRouter(d Dependencies) http.Handler {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Compress(5))
 	r.Use(middleware.Timeout(60 * time.Second))
+	r.Use(SecurityHeaders)
+	r.Use(CSRFIssue)
+
+	// Health endpoints — fast, no auth, no DB hit on /healthz; /readyz pings DB.
+	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	})
+	r.Get("/readyz", d.handleReadyz)
+
+	// Per-IP rate limiter for the login endpoint to slow credential stuffing.
+	loginLimiter := NewRateLimiter(10, time.Minute)
 
 	r.Route("/api", func(r chi.Router) {
-		// Auth
-		r.Post("/auth/login", d.handleLogin)
+		r.Use(CSRFVerify)
+		// Auth — login is the only /api path that bypasses CSRFVerify (no
+		// cookie yet on first call). The wrapping middleware checks for the
+		// login suffix.
+		r.With(loginLimiter.LimitMiddleware).Post("/auth/login", d.handleLogin)
 		r.With(d.Auth.RequireAuth).Post("/auth/logout", d.handleLogout)
 		r.With(d.Auth.RequireAuth).Get("/me", d.handleMe)
 		r.With(d.Auth.RequireAuth).Patch("/me/settings", d.handleUpdateSettings)
