@@ -135,7 +135,7 @@ func TestCSRFIssue_SetsCookieOnce(t *testing.T) {
 	inner := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
-	mw := CSRFIssue(inner)
+	mw := CSRFIssue(true)(inner)
 
 	// First request — no cookie → response sets one.
 	w := httptest.NewRecorder()

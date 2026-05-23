@@ -86,16 +86,25 @@
     keymapCleanup = attach(handleAction);
     window.addEventListener("ember:unauthorized", onUnauthorized);
     await refreshMe();
-    if (get(user)) {
-      await refreshSidebar();
-      await loadArticles(get(activeView));
-    }
     mounted = true;
   });
 
   onDestroy(() => {
     keymapCleanup();
     window.removeEventListener("ember:unauthorized", onUnauthorized);
+  });
+
+  // Whenever a user becomes authenticated (initial mount with valid session
+  // OR after a successful login), populate the sidebar and article list.
+  let loadedForUserId: number | null = $state(null);
+  $effect(() => {
+    if ($user && $user.id !== loadedForUserId) {
+      loadedForUserId = $user.id;
+      void refreshSidebar();
+      void loadArticles(get(activeView));
+    } else if (!$user) {
+      loadedForUserId = null;
+    }
   });
 
   $effect(() => {

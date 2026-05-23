@@ -77,9 +77,18 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("auth: %w", err)
 	}
+	if cfg.TestMode {
+		a.SecureCookies = false
+	}
 
-	// First-run bootstrap.
-	if cfg.AdminUser != "" && cfg.AdminPassword != "" {
+	// Test mode seeds a deterministic admin + feed + articles so the e2e
+	// harness has known data to assert against. In normal mode, do the
+	// usual first-run admin bootstrap.
+	if cfg.TestMode {
+		if err := seedTestData(ctx, st, a, logger); err != nil {
+			logger.Warn("test mode seed failed", "err", err)
+		}
+	} else if cfg.AdminUser != "" && cfg.AdminPassword != "" {
 		u, created, err := a.BootstrapAdmin(ctx, cfg.AdminUser, cfg.AdminPassword)
 		if err != nil {
 			logger.Warn("bootstrap admin failed", "err", err)
@@ -105,8 +114,11 @@ func run() error {
 		SummaryWorker: !cfg.TestMode,
 	}, logger.With("component", "poller"))
 
-	// Background poller.
-	go p.Run(ctx)
+	// Background poller. Skipped in test mode — articles are pre-seeded and
+	// the fake feed URL doesn't resolve.
+	if !cfg.TestMode {
+		go p.Run(ctx)
+	}
 
 	// Embedded static SPA.
 	staticH, err := web.Handler()

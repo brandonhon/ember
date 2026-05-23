@@ -60,6 +60,9 @@ type Auth struct {
 	Cookie *securecookie.SecureCookie
 	Params Params
 	Now    func() time.Time
+	// SecureCookies sets the Secure flag on issued cookies. Defaults to true.
+	// Set to false in test mode where the server runs over plain HTTP.
+	SecureCookies bool
 }
 
 // New constructs an Auth instance. sessionKey must be at least 32 bytes. The
@@ -73,10 +76,11 @@ func New(st *store.Store, sessionKey string) (*Auth, error) {
 	sc := securecookie.New([]byte(sessionKey), nil)
 	sc.MaxAge(int(SessionTTL.Seconds()))
 	return &Auth{
-		Store:  st,
-		Cookie: sc,
-		Params: DefaultParams,
-		Now:    time.Now,
+		Store:         st,
+		Cookie:        sc,
+		Params:        DefaultParams,
+		Now:           time.Now,
+		SecureCookies: true,
 	}, nil
 }
 
@@ -166,7 +170,7 @@ func (a *Auth) CreateSession(ctx context.Context, w http.ResponseWriter, r *http
 		Value:    encoded,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   a.SecureCookies,
 		SameSite: http.SameSiteLaxMode,
 		Expires:  now.Add(SessionTTL),
 		MaxAge:   int(SessionTTL.Seconds()),
@@ -219,7 +223,7 @@ func (a *Auth) DestroySession(ctx context.Context, w http.ResponseWriter, r *htt
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   a.SecureCookies,
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   -1,
 	})

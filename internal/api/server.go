@@ -41,7 +41,7 @@ func NewRouter(d Dependencies) http.Handler {
 	r.Use(middleware.Compress(5))
 	r.Use(middleware.Timeout(60 * time.Second))
 	r.Use(SecurityHeaders)
-	r.Use(CSRFIssue)
+	r.Use(CSRFIssue(!d.TestMode))
 
 	// Health endpoints — fast, no auth, no DB hit on /healthz; /readyz pings DB.
 	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
@@ -51,7 +51,12 @@ func NewRouter(d Dependencies) http.Handler {
 	r.Get("/readyz", d.handleReadyz)
 
 	// Per-IP rate limiter for the login endpoint to slow credential stuffing.
-	loginLimiter := NewRateLimiter(10, time.Minute)
+	// Generously sized in test mode so a full e2e run doesn't trip it.
+	loginBurst := 10
+	if d.TestMode {
+		loginBurst = 1000
+	}
+	loginLimiter := NewRateLimiter(loginBurst, time.Minute)
 
 	r.Route("/api", func(r chi.Router) {
 		r.Use(CSRFVerify)

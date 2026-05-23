@@ -26,6 +26,7 @@ web/dist/
 web/.svelte-kit/
 web/test-results/
 web/playwright-report/
+web/.playwright-data/
 internal/web/dist/
 
 # Env

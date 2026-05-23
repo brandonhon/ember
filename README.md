@@ -75,10 +75,22 @@ Reeder, FeedMe, and other Fever-compatible clients can connect via the Fever shi
 | 7. Svelte SPA (three-pane + scroll-to-read + search) | ✅ minimum viable, no PWA yet |
 | 8. Embed single-binary | ✅ |
 | 9. Docker + Compose + Caddy | ✅ |
-| 10. Hardening (CSRF, rate limit, health, a11y) | in progress |
+| 10. Hardening (CSRF, rate limit, health, a11y) | ✅ |
+| 11. Playwright e2e (auth, feeds, reading + scroll-to-read, search) | ✅ |
+
+## E2E
+
+```
+make embed build              # produce ./bin/ember with the SPA embedded
+cd web && npx playwright install chromium
+npx playwright test           # spawns the binary in test mode against a temp DB
+```
+
+In test mode (`EMBER_TEST_MODE=1`) the binary seeds a deterministic admin
+(`admin` / `admintest`) plus 12 fixture articles and a single feed, so every
+spec has known data to assert against. CI runs the suite on every push.
 
 ### Deferred to a follow-up
-- Playwright e2e specs (the harness is configured; specs not yet written).
 - Service worker / PWA offline shell.
 - Filters engine UI (the schema and store-side query exist; UI is a TODO).
 - Manage Users / Share modals; OPML upload UI (the API endpoint exists).
