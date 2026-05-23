@@ -1,0 +1,37 @@
+# Build artifacts
+/bin/
+/ember
+*.exe
+*.test
+*.out
+coverage.out
+coverage.html
+
+# Local data
+/data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Web build
+web/node_modules/
+web/dist/
+web/.svelte-kit/
+web/test-results/
+web/playwright-report/
+internal/web/dist/
+
+# Env
+.env
+.env.local
+*.env
+
+# Misc
+files.zip

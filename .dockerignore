@@ -1,0 +1,17 @@
+.git
+.github
+**/node_modules
+web/dist
+internal/web/dist
+*.db
+*.db-*
+data
+.env
+.env.*
+coverage.out
+coverage.html
+files.zip
+EMBER_BUILD_PLAN.md
+ember-reader.html
+**/test-results
+**/playwright-report
