@@ -31,6 +31,7 @@ linters:
     gosec:
       excludes:
         - G104  # audited error returns by errcheck already
+        - G115  # int→uint conversions are bounded by self-produced base64 lengths
         - G201  # SQL format string — only used to splice column-name lists, never user input
         - G202  # SQL string concatenation — same as above
   exclusions:
