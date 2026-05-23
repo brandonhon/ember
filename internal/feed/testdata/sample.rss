@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Example Tech Blog</title>
+    <link>https://example.com/</link>
+    <description>Example tech blog feed</description>
+    <language>en-us</language>
+    <item>
+      <title>Hello world from RSS</title>
+      <link>https://example.com/posts/hello</link>
+      <guid isPermaLink="false">post-hello-001</guid>
+      <pubDate>Mon, 04 May 2026 09:00:00 GMT</pubDate>
+      <author>alice@example.com (Alice)</author>
+      <description><![CDATA[<p>This is the <b>first</b> post.</p><img src="/cover.png"/>]]></description>
+    </item>
+    <item>
+      <title>Second post about feeds</title>
+      <link>posts/feeds</link>
+      <guid isPermaLink="false">post-feeds-002</guid>
+      <pubDate>Tue, 05 May 2026 10:30:00 GMT</pubDate>
+      <description>Plain text excerpt with no HTML.</description>
+    </item>
+  </channel>
+</rss>

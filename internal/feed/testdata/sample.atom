@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Example Atom Feed</title>
+  <link href="https://atom.example.com/"/>
+  <link rel="self" href="https://atom.example.com/feed.xml"/>
+  <updated>2026-05-04T09:00:00Z</updated>
+  <id>urn:uuid:atom-example-1</id>
+  <author><name>Bob Builder</name></author>
+  <entry>
+    <title>Atom item one</title>
+    <link href="https://atom.example.com/items/1"/>
+    <id>urn:uuid:atom-item-1</id>
+    <updated>2026-05-04T09:00:00Z</updated>
+    <published>2026-05-04T08:30:00Z</published>
+    <author><name>Bob Builder</name></author>
+    <content type="html">&lt;p&gt;Atom &lt;em&gt;rocks&lt;/em&gt;.&lt;/p&gt;</content>
+  </entry>
+</feed>
