@@ -126,25 +126,27 @@ const CSRFHeaderName = "X-Ember-CSRF"
 // ErrCSRF is returned when the double-submit token check fails.
 var ErrCSRF = errors.New("api: csrf token mismatch")
 
-// CSRFIssue is a chi middleware that lazily sets the CSRF cookie on
-// every state-changing response. It MUST run before any session-mutating
-// handler.
-func CSRFIssue(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if _, err := r.Cookie(CSRFCookieName); err != nil {
-			tok := mustRandHex(16)
-			http.SetCookie(w, &http.Cookie{
-				Name:     CSRFCookieName,
-				Value:    tok,
-				Path:     "/",
-				HttpOnly: false, // must be readable by JS to echo into header
-				Secure:   true,
-				SameSite: http.SameSiteLaxMode,
-				MaxAge:   86400,
-			})
-		}
-		next.ServeHTTP(w, r)
-	})
+// CSRFIssue returns a chi middleware that lazily sets the CSRF cookie on
+// every response that doesn't already carry one. `secure` controls the Secure
+// cookie flag (set to false for plain-HTTP test mode).
+func CSRFIssue(secure bool) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if _, err := r.Cookie(CSRFCookieName); err != nil {
+				tok := mustRandHex(16)
+				http.SetCookie(w, &http.Cookie{
+					Name:     CSRFCookieName,
+					Value:    tok,
+					Path:     "/",
+					HttpOnly: false, // must be readable by JS to echo into header
+					Secure:   secure,
+					SameSite: http.SameSiteLaxMode,
+					MaxAge:   86400,
+				})
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 // CSRFVerify is a middleware that rejects unsafe (POST/PUT/PATCH/DELETE)

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onDestroy } from "svelte";
   import {
     articles,
     selectedArticleId,
@@ -23,20 +23,26 @@
     flushTimer = setTimeout(flush, 350);
   }
 
-  onMount(() => {
+  // Single IO instance, recreated when the container element appears.
+  let io: IntersectionObserver | undefined;
+  // Track which items we've already seen as visible. We only mark "read" the
+  // first time an item transitions from intersecting → not intersecting.
+  const sawVisible = new Set<string>();
+
+  $effect(() => {
     if (!containerEl) return;
-    const io = new IntersectionObserver(
+    io?.disconnect();
+    sawVisible.clear();
+    io = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
-          const idAttr = (entry.target as HTMLElement).dataset.articleId;
-          const isRead = (entry.target as HTMLElement).dataset.isRead === "1";
-          // Once an item scrolls *out* the top of the viewport, mark read.
-          if (
-            !entry.isIntersecting &&
-            entry.boundingClientRect.top < 0 &&
-            idAttr &&
-            !isRead
-          ) {
+          const target = entry.target as HTMLElement;
+          const idAttr = target.dataset.articleId;
+          const isRead = target.dataset.isRead === "1";
+          if (!idAttr) continue;
+          if (entry.isIntersecting) {
+            sawVisible.add(idAttr);
+          } else if (sawVisible.has(idAttr) && !isRead) {
             pendingRead.add(Number(idAttr));
             scheduleFlush();
           }
@@ -44,12 +50,19 @@
       },
       { root: containerEl, threshold: 0 },
     );
-    const els = containerEl.querySelectorAll<HTMLElement>("[data-article-id]");
-    els.forEach((el) => io.observe(el));
-    return () => {
-      flush();
-      io.disconnect();
-    };
+    // Re-observe whenever the items array identity changes.
+    void $articles.items;
+    // Defer to next microtask so the new DOM nodes exist.
+    queueMicrotask(() => {
+      if (!containerEl || !io) return;
+      const els = containerEl.querySelectorAll<HTMLElement>("[data-article-id]");
+      els.forEach((el) => io!.observe(el));
+    });
+  });
+
+  onDestroy(() => {
+    flush();
+    io?.disconnect();
   });
 
   function select(id: number) {
