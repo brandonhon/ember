@@ -297,7 +297,10 @@ func (s *Store) ListFeedsForUser(ctx context.Context, userID int64) ([]models.Fe
 		       (SELECT COUNT(*)
 		          FROM articles a
 		          LEFT JOIN article_state st ON st.article_id = a.id AND st.user_id = s.user_id
-		         WHERE a.feed_id = f.id AND IFNULL(st.is_read,0) = 0) AS unread
+		         WHERE a.feed_id = f.id
+		           AND IFNULL(st.is_read,0) = 0
+		           AND a.summary_model IS NOT NULL AND a.summary_model <> ''
+		           ) AS unread
 		FROM feeds f
 		JOIN subscriptions s ON s.feed_id = f.id
 		WHERE s.user_id = ?

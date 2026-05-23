@@ -297,6 +297,10 @@ func (p *Poller) summaryWorker(ctx context.Context) {
 	}
 }
 
+// summarizeOne attempts to summarize one article. On any failure (LLM down,
+// empty output, persistence error) we still stamp summary_model='skipped' so
+// the article becomes visible in the list — better to show a story without a
+// summary card than to hide it forever.
 func (p *Poller) summarizeOne(ctx context.Context, articleID int64) {
 	p.Metrics.SummariesTotal.Add(1)
 	art, err := p.Store.GetArticle(ctx, articleID)
@@ -304,20 +308,35 @@ func (p *Poller) summarizeOne(ctx context.Context, articleID int64) {
 		p.Metrics.SummariesErrored.Add(1)
 		return
 	}
+	if p.Summarizer == nil {
+		// No summarizer configured — mark skipped so the article still shows.
+		p.markSkipped(ctx, articleID)
+		return
+	}
 	bullets, model, err := p.Summarizer.Summarize(ctx, art.Title, art.ContentText)
 	if err != nil {
 		p.Metrics.SummariesErrored.Add(1)
 		p.Logger.Warn("poller: summarize failed", "article_id", articleID, "err", err)
+		p.markSkipped(ctx, articleID)
 		return
 	}
 	joined := joinBullets(bullets)
 	if joined == "" {
 		p.Metrics.SummariesErrored.Add(1)
+		p.markSkipped(ctx, articleID)
 		return
 	}
 	if err := p.Store.UpdateSummary(ctx, articleID, joined, model); err != nil {
 		p.Metrics.SummariesErrored.Add(1)
 		p.Logger.Warn("poller: persist summary", "article_id", articleID, "err", err)
+	}
+}
+
+// markSkipped writes summary_model='skipped' so the article shows in lists
+// even though we couldn't summarize it.
+func (p *Poller) markSkipped(ctx context.Context, articleID int64) {
+	if err := p.Store.UpdateSummary(ctx, articleID, "", "skipped"); err != nil {
+		p.Logger.Warn("poller: mark skipped", "article_id", articleID, "err", err)
 	}
 }
 
