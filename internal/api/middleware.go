@@ -18,12 +18,14 @@ func SecurityHeaders(next http.Handler) http.Handler {
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("X-Frame-Options", "DENY")
 		h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
-		// CSP — the SPA is fully self-contained; no external scripts.
+		// CSP — locked down to the same origin except for the Google Fonts
+		// stylesheets and webfonts. The mockup's typography is critical to
+		// the design language.
 		h.Set("Content-Security-Policy",
 			"default-src 'self'; "+
 				"img-src 'self' data: https:; "+
-				"style-src 'self' 'unsafe-inline'; "+
-				"font-src 'self' data:; "+
+				"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "+
+				"font-src 'self' data: https://fonts.gstatic.com; "+
 				"connect-src 'self'; "+
 				"frame-ancestors 'none'")
 		next.ServeHTTP(w, r)

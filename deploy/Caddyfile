@@ -10,10 +10,10 @@
 {$EMBER_HOSTNAME:localhost} {
 	encode zstd gzip
 	header {
+		# Caddy only sets the TLS-bound headers; the rest (CSP, frame, nosniff,
+		# referrer) are set by ember itself so they apply equally in dev/test
+		# mode where Caddy isn't in front.
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
-		X-Content-Type-Options nosniff
-		X-Frame-Options DENY
-		Referrer-Policy strict-origin-when-cross-origin
 	}
 	# Homelab: comment out `email` and uncomment this line for a self-signed
 	# cert managed by Caddy.
