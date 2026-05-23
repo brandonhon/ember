@@ -38,6 +38,8 @@ test.describe("authentication", () => {
     await page.getByTestId("login-submit").click();
     await expect(page.getByTestId("article-list")).toBeVisible();
 
+    // Logout is in the user popover.
+    await page.locator('[data-user-chip]').click();
     await page.getByTestId("logout").click();
     await expect(page.getByTestId("username")).toBeVisible();
   });

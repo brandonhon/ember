@@ -20,10 +20,12 @@
   import Reader from "./components/Reader.svelte";
   import TopBar from "./components/TopBar.svelte";
   import ShortcutHelp from "./components/ShortcutHelp.svelte";
+  import Settings from "./components/Settings.svelte";
 
   let keymapCleanup: () => void = () => {};
   let mounted = $state(false);
   let showHelp = $state(false);
+  let showSettings = $state(false);
 
   function moveSelection(delta: number) {
     const items = get(articles).items;
@@ -120,7 +122,7 @@
   <Login />
 {:else}
   <div class="shell" data-theme={$theme}>
-    <TopBar />
+    <TopBar onOpenSettings={() => (showSettings = true)} />
     <div class="panes">
       <Sidebar />
       <ArticleList />
@@ -129,6 +131,9 @@
   </div>
   {#if showHelp}
     <ShortcutHelp onClose={() => (showHelp = false)} />
+  {/if}
+  {#if showSettings}
+    <Settings onClose={() => (showSettings = false)} />
   {/if}
 {/if}
 

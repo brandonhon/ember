@@ -10,12 +10,16 @@ import { api, ApiError } from "./api";
 
 // Auth ----------------------------------------------------------------------
 export const user = writable<User | null>(null);
+export const feverAPIKey = writable<string>("");
+export const appVersion = writable<string>("");
 
 export async function refreshMe(): Promise<User | null> {
   try {
     const res = await api.me();
-    user.set(res.data);
-    return res.data;
+    user.set(res.data.user);
+    feverAPIKey.set(res.data.fever_api_key);
+    appVersion.set(res.data.version);
+    return res.data.user;
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) {
       user.set(null);
@@ -60,8 +64,18 @@ export type ActiveView =
 
 export const activeView = writable<ActiveView>({ kind: "smart", view: "fresh" });
 export const selectedArticleId = writable<number | null>(null);
-export const theme = writable<"light" | "dark">("light");
-export const density = writable<"card" | "compact">("card");
+// Hydrate from localStorage so theme + density persist across reloads. Guard
+// for non-browser test environments (jsdom may define localStorage as a stub).
+function loadPref<T extends string>(key: string, fallback: T): T {
+  try {
+    const v = globalThis.localStorage?.getItem(key);
+    return (v as T) || fallback;
+  } catch {
+    return fallback;
+  }
+}
+export const theme = writable<"light" | "dark">(loadPref("ember:theme", "light"));
+export const density = writable<"card" | "compact">(loadPref("ember:density", "card"));
 
 // Articles list --------------------------------------------------------------
 export interface ArticleListState {

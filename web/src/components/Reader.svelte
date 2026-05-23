@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { articles, selectedArticleId, toggleStar, toggleLater } from "../lib/stores";
+  import { articles, feeds, selectedArticleId, toggleStar, toggleLater } from "../lib/stores";
+  import type { FeedWithCounts } from "../lib/types";
   import ShareModal from "./ShareModal.svelte";
 
   const selected = $derived(
@@ -8,47 +9,112 @@
       : ($articles.items.find((a) => a.id === $selectedArticleId) ?? null),
   );
 
+  const feed = $derived.by(() => {
+    if (!selected) return null as FeedWithCounts | null;
+    return $feeds.find((f) => f.id === selected.feed_id) ?? null;
+  });
+
   let showShare = $state(false);
+
+  const FAV_COLORS = ["#ff6154", "#0a0a0a", "#e63946", "#1d4ed8", "#623ce6", "#ee0000", "#326ce5", "#111", "#cc0000", "#bb1919"];
+  function favColor(feedID: number): string {
+    return FAV_COLORS[feedID % FAV_COLORS.length];
+  }
+  function timeAgo(unix: number | undefined): string {
+    if (!unix) return "";
+    const diff = Date.now() / 1000 - unix;
+    if (diff < 60) return "just now";
+    if (diff < 3600) return `${Math.round(diff / 60)} min ago`;
+    if (diff < 86400) return `${Math.round(diff / 3600)} hr ago`;
+    return `${Math.round(diff / 86400)} d ago`;
+  }
+
+  // Convert the stored bullet text into an array.
+  const summaryLines = $derived.by(() => {
+    if (!selected?.summary) return [] as string[];
+    return selected.summary
+      .split(/\n/)
+      .map((s) => s.replace(/^[•\-\*]\s*/, "").trim())
+      .filter((s) => s.length > 0);
+  });
 </script>
 
-<section class="reader">
+<section class="reader" id="reader">
   {#if !selected}
-    <div class="empty">Select an article to read.</div>
+    <div class="reader-empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+      </svg>
+      <div class="big">Pick a story</div>
+      <div>Scroll the list to mark items read automatically.</div>
+    </div>
   {:else}
-    <header>
-      <h1>{selected.title}</h1>
-      {#if selected.author}<p class="byline">{selected.author}</p>{/if}
-      <div class="actions">
-        <button on:click={() => toggleStar(selected.id, !selected.is_starred)} class:active={selected.is_starred} data-testid="reader-star">
-          {selected.is_starred ? "★ Starred" : "☆ Star"}
+    <div class="reader-inner">
+      <div class="reader-actions">
+        <button
+          class="ra-btn"
+          class:starred={selected.is_starred}
+          on:click={() => toggleStar(selected.id, !selected.is_starred)}
+          data-testid="reader-star"
+        >
+          {#if selected.is_starred}
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.9 21l1.2-6.8-5-4.9 6.9-1z" /></svg>
+            Starred
+          {:else}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.9 21l1.2-6.8-5-4.9 6.9-1z" /></svg>
+            Star
+          {/if}
         </button>
-        <button on:click={() => toggleLater(selected.id, !selected.is_later)} class:active={selected.is_later}>
-          {selected.is_later ? "✓ Saved for later" : "Save for later"}
+        <button class="ra-btn" on:click={() => toggleLater(selected.id, !selected.is_later)} class:starred={selected.is_later}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>
+          {selected.is_later ? "Saved" : "Read later"}
         </button>
-        <button on:click={() => (showShare = true)} data-testid="reader-share">
+        <button class="ra-btn" on:click={() => (showShare = true)} data-testid="reader-share">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" /></svg>
           Share
         </button>
+        <span style="flex:1"></span>
         {#if selected.url}
-          <a href={selected.url} target="_blank" rel="noopener noreferrer">Open original</a>
+          <a class="ra-btn primary" href={selected.url} target="_blank" rel="noopener noreferrer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><path d="M15 3h6v6M10 14L21 3" /></svg>
+            Original
+          </a>
         {/if}
       </div>
-    </header>
 
-    {#if selected.summary}
-      <aside class="summary" data-testid="summary-card">
-        <h2>Summary</h2>
-        <pre>{selected.summary}</pre>
-      </aside>
-    {/if}
+      <div class="article-kicker">
+        <span class="favicon" style="background:{favColor(selected.feed_id)}">
+          {(feed?.title || "?")[0]?.toUpperCase()}
+        </span>
+        <span class="src-name">{feed?.title_override || feed?.title || ""}</span>
+        <span class="src-time">· {timeAgo(selected.published_at)}</span>
+      </div>
 
-    <article>
-      {#if selected.content_html}
-        <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-        {@html selected.content_html}
-      {:else if selected.content_text}
-        <p>{selected.content_text}</p>
+      <h1 class="article-h1">{selected.title}</h1>
+
+      {#if summaryLines.length > 0}
+        <aside class="ai-card" data-testid="summary-card">
+          <div class="ai-head">
+            <svg class="ai-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l1.6 6.4L20 10l-6.4 1.6L12 18l-1.6-6.4L4 10l6.4-1.6z" /></svg>
+            <h4>Summary</h4>
+            {#if selected.summary_model}<span class="model">local · {selected.summary_model}</span>{/if}
+          </div>
+          <ul>
+            {#each summaryLines as p}<li>{p}</li>{/each}
+          </ul>
+        </aside>
       {/if}
-    </article>
+
+      <div class="article-body">
+        {#if selected.content_html}
+          <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+          {@html selected.content_html}
+        {:else if selected.content_text}
+          <p>{selected.content_text}</p>
+        {/if}
+      </div>
+    </div>
 
     {#if showShare}
       <ShareModal
@@ -62,39 +128,200 @@
 
 <style>
   .reader {
-    flex: 2 1 480px;
-    background: var(--surface);
-    padding: 2rem;
     overflow-y: auto;
-    font-family: "Newsreader", serif;
-    line-height: 1.65;
-    color: var(--text);
+    background: var(--paper);
+    min-height: 0;
   }
-  .empty { color: var(--muted); text-align: center; padding: 3rem; }
-  header { margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; }
-  h1 { font-family: "Fraunces", serif; margin: 0 0 0.25rem; }
-  .byline { color: var(--muted); margin: 0 0 0.75rem; }
-  .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-  .actions button, .actions a {
-    background: transparent;
-    border: 1px solid var(--border);
-    padding: 0.3rem 0.7rem;
-    border-radius: 4px;
-    cursor: pointer;
-    font: inherit;
-    color: inherit;
+  .reader-inner {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 36px 52px 120px;
+  }
+  .reader-actions {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(var(--paper) 70%, transparent);
+    padding: 14px 26px;
+    margin: 0 -52px 8px;
+  }
+  .ra-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 12px;
+    border-radius: 9px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    border: 1px solid var(--line);
+    background: var(--card);
+    transition: all 0.13s;
     text-decoration: none;
+    font-family: inherit;
   }
-  .actions button.active { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
-  .summary {
-    background: var(--accent-bg);
-    border-left: 3px solid var(--accent);
-    padding: 1rem;
-    margin: 1rem 0;
+  .ra-btn:hover { border-color: var(--ink-faint); color: var(--ink); }
+  .ra-btn svg { width: 15px; height: 15px; }
+  .ra-btn.starred { color: var(--gold); border-color: var(--gold); }
+  .ra-btn.primary {
+    background: var(--ember);
+    color: #fff;
+    border-color: var(--ember);
+  }
+  .ra-btn.primary:hover { background: var(--ember-soft); border-color: var(--ember-soft); color: #fff; }
+
+  .article-kicker {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .article-kicker .favicon {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+  }
+  .article-kicker .src-name { font-weight: 700; font-size: 13px; color: var(--ink); }
+  .article-kicker .src-time { color: var(--ink-faint); font-size: 12px; }
+
+  .article-h1 {
+    font-family: var(--font-display);
+    font-size: 32px;
+    line-height: 1.08;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    margin: 0 0 12px;
+    color: var(--ink);
+  }
+
+  .ai-card {
+    border: 1px solid var(--line);
+    background: linear-gradient(140deg, var(--ember-wash), var(--card) 70%);
+    border-radius: 16px;
+    padding: 18px 20px;
+    margin: 22px 0 30px;
+    position: relative;
+    overflow: hidden;
+  }
+  :global([data-theme="dark"]) .ai-card {
+    background: linear-gradient(140deg, var(--ember-wash), var(--card) 80%);
+  }
+  .ai-head {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-bottom: 12px;
+  }
+  .ai-spark {
+    width: 20px;
+    height: 20px;
+    color: var(--ember);
+  }
+  .ai-head h4 {
+    font-family: var(--font-ui);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ember);
+    margin: 0;
+  }
+  .ai-head .model {
+    margin-left: auto;
+    font-size: 10.5px;
+    color: var(--ink-faint);
+    font-weight: 600;
+    border: 1px solid var(--line);
+    padding: 2px 8px;
+    border-radius: 6px;
+  }
+  .ai-card ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    margin: 0;
+    padding: 0;
+  }
+  .ai-card li {
+    font-family: var(--font-read);
+    font-size: 14px;
+    line-height: 1.45;
+    color: var(--ink);
+    padding-left: 18px;
+    position: relative;
+  }
+  .ai-card li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 9px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--ember);
+  }
+
+  .article-body {
+    font-family: var(--font-read);
+    font-size: 17px;
+    line-height: 1.6;
+    color: var(--ink);
+  }
+  .article-body :global(p) { margin: 0 0 18px; }
+  .article-body :global(p:first-of-type::first-letter) {
+    font-family: var(--font-display);
+    font-size: 52px;
+    font-weight: 600;
+    float: left;
+    line-height: 0.82;
+    margin: 6px 11px 0 0;
+    color: var(--ember);
+  }
+  .article-body :global(h2) {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 600;
+    margin: 28px 0 10px;
+    letter-spacing: -0.01em;
+  }
+  .article-body :global(blockquote) {
+    border-left: 3px solid var(--ember);
+    padding-left: 16px;
+    margin: 22px 0;
+    font-style: italic;
+    color: var(--ink-soft);
+  }
+  .article-body :global(img) { max-width: 100%; height: auto; border-radius: 6px; margin: 12px 0; }
+  .article-body :global(code) {
+    font-family: ui-monospace, monospace;
+    font-size: 0.9em;
+    background: var(--line-soft);
+    padding: 1px 5px;
     border-radius: 4px;
   }
-  .summary h2 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 0.5rem; }
-  .summary pre { font: inherit; margin: 0; white-space: pre-wrap; }
-  article { max-width: 65ch; }
-  article :global(img) { max-width: 100%; height: auto; }
+
+  .reader-empty {
+    display: grid;
+    place-items: center;
+    height: 100%;
+    text-align: center;
+    color: var(--ink-faint);
+    padding: 40px;
+  }
+  .reader-empty .big {
+    font-family: var(--font-display);
+    font-size: 24px;
+    color: var(--ink-soft);
+    margin: 14px 0 6px;
+  }
+  .reader-empty svg { width: 50px; height: 50px; opacity: 0.4; }
 </style>

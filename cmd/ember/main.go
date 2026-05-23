@@ -49,6 +49,7 @@ func run() error {
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: cfg.LogLevel}))
 	slog.SetDefault(logger)
 
+	api.Version = version
 	logger.Info("ember starting", "version", version, "addr", cfg.Addr, "db", cfg.DBPath, "test_mode", cfg.TestMode)
 
 	// Ensure DB directory exists when not in-memory.

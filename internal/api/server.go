@@ -67,6 +67,7 @@ func NewRouter(d Dependencies) http.Handler {
 		r.With(d.Auth.RequireAuth).Post("/auth/logout", d.handleLogout)
 		r.With(d.Auth.RequireAuth).Get("/me", d.handleMe)
 		r.With(d.Auth.RequireAuth).Patch("/me/settings", d.handleUpdateSettings)
+		r.With(d.Auth.RequireAuth).Post("/me/password", d.handleChangePassword)
 
 		// Users — list/get auth'd; mutation admin-only
 		r.With(d.Auth.RequireAuth).Get("/users", d.handleListUsers)

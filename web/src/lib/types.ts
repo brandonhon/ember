@@ -9,6 +9,14 @@ export interface User {
   created_at: number;
 }
 
+// MeResponse is the envelope /api/me returns: the user plus derived fields
+// the SPA needs (Fever api_key for mobile clients, app version).
+export interface MeResponse {
+  user: User;
+  fever_api_key: string;
+  version: string;
+}
+
 export interface Category {
   id: number;
   user_id: number;
