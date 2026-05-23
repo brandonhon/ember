@@ -117,8 +117,13 @@ func seedTestData(ctx context.Context, st *store.Store, a *auth.Auth, logger *sl
 		if err != nil {
 			return fmt.Errorf("upsert fixture %s: %w", f.guid, err)
 		}
+		// Stamp every fixture so it's visible in the UI (OnlySummarized gate).
+		// Articles with an explicit summary string get a real summary card;
+		// the rest get 'skipped' so they show without one.
 		if f.summary != "" {
 			_ = st.UpdateSummary(ctx, art.ID, f.summary, "noop")
+		} else {
+			_ = st.UpdateSummary(ctx, art.ID, "", "skipped")
 		}
 	}
 	logger.Info("test mode: seeded admin + feed + fixtures",

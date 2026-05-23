@@ -13,11 +13,11 @@ test.describe("feeds", () => {
     expect(n).toBeGreaterThan(0);
   });
 
-  test("adding a feed URL via the top bar adds a row to the sidebar", async ({ page }) => {
+  test("adding a feed URL via the sidebar adds a row", async ({ page }) => {
     await signIn(page);
+    await page.getByTestId("open-add-feed").click();
     await page.getByTestId("add-feed-input").fill("https://added.test/feed");
     await page.getByTestId("add-feed-submit").click();
-    // Wait for sidebar refresh.
     await expect(page.locator("button", { hasText: "added.test" })).toBeVisible({
       timeout: 5_000,
     });
@@ -26,7 +26,7 @@ test.describe("feeds", () => {
   test("clicking the seeded feed scopes the article list to that feed", async ({ page }) => {
     await signIn(page);
     await page.getByTestId("feed-1").click();
-    // The 3 seeded fixtures should each render as a story card.
+    // The seeded fixtures each render as a story card.
     await expect(page.getByTestId("story-1")).toBeVisible();
     await expect(page.getByTestId("story-2")).toBeVisible();
     await expect(page.getByTestId("story-3")).toBeVisible();

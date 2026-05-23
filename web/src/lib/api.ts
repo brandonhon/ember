@@ -7,6 +7,7 @@ import type {
   FeedWithCounts,
   Filter,
   ListArticlesQuery,
+  MeResponse,
   SearchResult,
   Share,
   User,
@@ -77,7 +78,9 @@ export const api = {
   login: (username: string, password: string) =>
     call<User>("POST", "/api/auth/login", { username, password }),
   logout: () => call<unknown>("POST", "/api/auth/logout"),
-  me: () => call<User>("GET", "/api/me"),
+  me: () => call<MeResponse>("GET", "/api/me"),
+  changePassword: (old_password: string, new_password: string) =>
+    call<{ ok: boolean }>("POST", "/api/me/password", { old_password, new_password }),
   updateSettings: (settings_json: string) =>
     call<unknown>("PATCH", "/api/me/settings", { settings_json }),
 
