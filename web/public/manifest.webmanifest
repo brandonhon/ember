@@ -1,0 +1,19 @@
+{
+  "name": "Ember",
+  "short_name": "Ember",
+  "description": "Self-hosted RSS reader",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#fdfaf6",
+  "theme_color": "#c2410c",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

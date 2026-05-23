@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Ember logo">
+  <rect width="512" height="512" rx="96" fill="#fdfaf6"/>
+  <!-- Stylized flame -->
+  <path fill="#c2410c" d="M256 80
+    C220 130 188 156 174 200
+    c-12 38 12 70 38 78
+    c-8-22 4-46 24-54
+    c-4 28 18 46 38 60
+    c34 24 70 56 70 102
+    c0 56-44 96-100 96
+    c-66 0-128-40-128-118
+    c0-58 32-90 72-126
+    c20-18 38-38 50-58
+    c10-16 18-30 22-50z"/>
+  <circle cx="256" cy="356" r="40" fill="#fff7ed"/>
+</svg>

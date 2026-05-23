@@ -19,9 +19,11 @@
   import ArticleList from "./components/ArticleList.svelte";
   import Reader from "./components/Reader.svelte";
   import TopBar from "./components/TopBar.svelte";
+  import ShortcutHelp from "./components/ShortcutHelp.svelte";
 
   let keymapCleanup: () => void = () => {};
   let mounted = $state(false);
+  let showHelp = $state(false);
 
   function moveSelection(delta: number) {
     const items = get(articles).items;
@@ -73,7 +75,7 @@
         return;
       }
       case "show-help":
-        // TODO: shortcut overlay
+        showHelp = true;
         return;
     }
   }
@@ -125,6 +127,9 @@
       <Reader />
     </div>
   </div>
+  {#if showHelp}
+    <ShortcutHelp onClose={() => (showHelp = false)} />
+  {/if}
 {/if}
 
 <style>

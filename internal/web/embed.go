@@ -34,6 +34,16 @@ func Handler() (http.Handler, error) {
 		if strings.HasPrefix(r.URL.Path, "/assets/") {
 			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 		}
+		// MIME overrides Go's default mime.TypeByExtension lookup, which
+		// doesn't know about .webmanifest.
+		switch {
+		case strings.HasSuffix(r.URL.Path, ".webmanifest"):
+			w.Header().Set("Content-Type", "application/manifest+json")
+		case strings.HasSuffix(r.URL.Path, "/sw.js"):
+			// Service workers must be served without aggressive caching so
+			// updates roll out on next page load.
+			w.Header().Set("Cache-Control", "no-cache")
+		}
 		// SPA history fallback: if the path has no extension and the file
 		// doesn't exist, serve index.html.
 		if !strings.HasPrefix(r.URL.Path, "/assets/") && !strings.Contains(r.URL.Path, ".") {
