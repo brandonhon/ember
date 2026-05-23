@@ -1,0 +1,19 @@
+# docker-compose.dev.yml — dev overlay. Use:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+# This bind-mounts the source tree and exposes ports for direct access.
+
+services:
+  ember:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        VERSION: dev
+    environment:
+      EMBER_LOG_LEVEL: debug
+    ports:
+      - "8080:8080"
+
+  caddy:
+    ports:
+      - "8443:443"

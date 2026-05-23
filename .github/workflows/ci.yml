@@ -64,6 +64,5 @@ jobs:
           context: .
           push: false
           tags: ember:ci
-        # Dockerfile is added in Phase 9; this step is intentionally allowed to
-        # be a no-op until then.
-        continue-on-error: true
+          build-args: |
+            VERSION=ci
