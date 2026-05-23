@@ -3,6 +3,7 @@ module github.com/brandonhon/ember
 go 1.26.1
 
 require (
+	github.com/go-chi/chi/v5 v5.3.0
 	github.com/go-shiori/go-readability v0.0.0-20251205110129-5db1dc9836f0
 	github.com/gorilla/securecookie v1.1.2
 	github.com/mmcdole/gofeed v1.3.0
