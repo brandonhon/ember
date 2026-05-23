@@ -18,13 +18,27 @@ linters:
     - gosec
     - bodyclose
   settings:
+    errcheck:
+      # SQL row/db Close errors are not actionable — silencing across the
+      # codebase rather than littering `_ = rows.Close()` everywhere.
+      exclude-functions:
+        - (*database/sql.Rows).Close
+        - (*database/sql.DB).Close
     revive:
       rules:
         - name: exported
           disabled: true
     gosec:
       excludes:
-        - G104 # audited error returns by errcheck already
+        - G104  # audited error returns by errcheck already
+        - G201  # SQL format string — only used to splice column-name lists, never user input
+        - G202  # SQL string concatenation — same as above
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - gosec
+          - gocritic
 
 issues:
   max-issues-per-linter: 0

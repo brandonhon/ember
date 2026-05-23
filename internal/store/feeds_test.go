@@ -1,0 +1,176 @@
+package store
+
+import (
+	"context"
+	"errors"
+	"testing"
+	"time"
+
+	"github.com/brandonhon/ember/internal/models"
+)
+
+func TestFeeds_UpsertDedupByURL(t *testing.T) {
+	s := NewTest(t)
+	ctx := context.Background()
+	f1, err := s.UpsertFeed(ctx, models.Feed{URL: "https://x.test/feed", Title: "First"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f1.ID == 0 {
+		t.Fatal("no id assigned")
+	}
+	f2, err := s.UpsertFeed(ctx, models.Feed{URL: "https://x.test/feed", Title: "Second"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f2.ID != f1.ID {
+		t.Errorf("upsert should reuse row, got %d != %d", f2.ID, f1.ID)
+	}
+	// Existing title preserved (we don't overwrite via upsert).
+	if f2.Title != "First" {
+		t.Errorf("title = %q, want First", f2.Title)
+	}
+}
+
+func TestFeeds_SubscriptionPerUser(t *testing.T) {
+	s := NewTest(t)
+	ctx := context.Background()
+	a, _ := s.CreateUser(ctx, models.User{Username: "a", PasswordHash: "h"})
+	b, _ := s.CreateUser(ctx, models.User{Username: "b", PasswordHash: "h"})
+	f, _ := s.UpsertFeed(ctx, models.Feed{URL: "https://x.test/feed", Title: "X"})
+
+	subA, err := s.Subscribe(ctx, models.Subscription{UserID: a.ID, FeedID: f.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	subB, err := s.Subscribe(ctx, models.Subscription{UserID: b.ID, FeedID: f.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if subA.ID == subB.ID {
+		t.Error("each user should get its own subscription row")
+	}
+
+	// Subscribing again is idempotent.
+	subAagain, _ := s.Subscribe(ctx, models.Subscription{UserID: a.ID, FeedID: f.ID})
+	if subAagain.ID != subA.ID {
+		t.Errorf("idempotent re-subscribe should return same row")
+	}
+
+	// Each user sees only their own feed list.
+	listA, _ := s.ListFeedsForUser(ctx, a.ID)
+	if len(listA) != 1 || listA[0].SubscriptionID != subA.ID {
+		t.Errorf("A's list wrong: %+v", listA)
+	}
+	listB, _ := s.ListFeedsForUser(ctx, b.ID)
+	if len(listB) != 1 || listB[0].SubscriptionID != subB.ID {
+		t.Errorf("B's list wrong: %+v", listB)
+	}
+}
+
+func TestFeeds_UnsubscribeKeepsFeedWhenOthersSubscribed(t *testing.T) {
+	s := NewTest(t)
+	ctx := context.Background()
+	a, _ := s.CreateUser(ctx, models.User{Username: "a", PasswordHash: "h"})
+	b, _ := s.CreateUser(ctx, models.User{Username: "b", PasswordHash: "h"})
+	f, _ := s.UpsertFeed(ctx, models.Feed{URL: "https://x.test/feed", Title: "X"})
+	subA, _ := s.Subscribe(ctx, models.Subscription{UserID: a.ID, FeedID: f.ID})
+	_, _ = s.Subscribe(ctx, models.Subscription{UserID: b.ID, FeedID: f.ID})
+
+	if err := s.Unsubscribe(ctx, a.ID, subA.ID); err != nil {
+		t.Fatal(err)
+	}
+	// Feed should still exist.
+	if _, err := s.GetFeed(ctx, f.ID); err != nil {
+		t.Errorf("feed should survive: %v", err)
+	}
+}
+
+func TestFeeds_UnsubscribeDropsFeedWhenLast(t *testing.T) {
+	s := NewTest(t)
+	ctx := context.Background()
+	a, _ := s.CreateUser(ctx, models.User{Username: "a", PasswordHash: "h"})
+	f, _ := s.UpsertFeed(ctx, models.Feed{URL: "https://x.test/feed", Title: "X"})
+	subA, _ := s.Subscribe(ctx, models.Subscription{UserID: a.ID, FeedID: f.ID})
+
+	if err := s.Unsubscribe(ctx, a.ID, subA.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.GetFeed(ctx, f.ID); !errors.Is(err, ErrNotFound) {
+		t.Errorf("feed should be deleted, got %v", err)
+	}
+}
+
+func TestFeeds_UnsubscribeCrossUserForbidden(t *testing.T) {
+	s := NewTest(t)
+	ctx := context.Background()
+	a, _ := s.CreateUser(ctx, models.User{Username: "a", PasswordHash: "h"})
+	b, _ := s.CreateUser(ctx, models.User{Username: "b", PasswordHash: "h"})
+	f, _ := s.UpsertFeed(ctx, models.Feed{URL: "https://x.test/feed", Title: "X"})
+	subA, _ := s.Subscribe(ctx, models.Subscription{UserID: a.ID, FeedID: f.ID})
+
+	// B tries to unsubscribe A's subscription by ID.
+	if err := s.Unsubscribe(ctx, b.ID, subA.ID); !errors.Is(err, ErrNotFound) {
+		t.Errorf("cross-user unsubscribe should be ErrNotFound, got %v", err)
+	}
+}
+
+func TestFeeds_UpdateSubscriptionCategory(t *testing.T) {
+	s := NewTest(t)
+	ctx := context.Background()
+	u, _ := s.CreateUser(ctx, models.User{Username: "u", PasswordHash: "h"})
+	c, _ := s.CreateCategory(ctx, models.Category{UserID: u.ID, Name: "C"})
+	f, _ := s.UpsertFeed(ctx, models.Feed{URL: "https://x.test/feed", Title: "X"})
+	sub, _ := s.Subscribe(ctx, models.Subscription{UserID: u.ID, FeedID: f.ID})
+
+	if err := s.UpdateSubscription(ctx, u.ID, sub.ID, UpdateSubscriptionPatch{CategoryID: &c.ID}); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := s.GetSubscriptionByID(ctx, u.ID, sub.ID)
+	if got.CategoryID == nil || *got.CategoryID != c.ID {
+		t.Errorf("category not set: %+v", got)
+	}
+
+	if err := s.UpdateSubscription(ctx, u.ID, sub.ID, UpdateSubscriptionPatch{ClearCategory: true}); err != nil {
+		t.Fatal(err)
+	}
+	got, _ = s.GetSubscriptionByID(ctx, u.ID, sub.ID)
+	if got.CategoryID != nil {
+		t.Errorf("category should be cleared")
+	}
+}
+
+func TestFeeds_DueAndFetchUpdate(t *testing.T) {
+	s := NewTest(t)
+	ctx := context.Background()
+	f, _ := s.UpsertFeed(ctx, models.Feed{URL: "https://x.test/feed", Title: "X"})
+
+	// Never-fetched feed counts as due.
+	due, err := s.FeedsDue(ctx, time.Now().Unix(), 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(due) != 1 || due[0].ID != f.ID {
+		t.Errorf("expected feed due, got %d", len(due))
+	}
+
+	now := time.Now().Unix()
+	next := now + 3600
+	etag := `"abc"`
+	if err := s.UpdateFeedFetch(ctx, f.ID, UpdateFeedFetchPatch{
+		LastFetched: now, NextFetch: next, ErrorCount: 0, ETag: &etag,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	// No longer due.
+	due, _ = s.FeedsDue(ctx, now, 10)
+	if len(due) != 0 {
+		t.Errorf("expected 0 due, got %d", len(due))
+	}
+
+	got, _ := s.GetFeed(ctx, f.ID)
+	if got.ETag != `"abc"` || got.NextFetch != next {
+		t.Errorf("fetch update lost: %+v", got)
+	}
+}
