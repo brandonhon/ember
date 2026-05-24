@@ -156,6 +156,26 @@ func (d *Dependencies) handleResummarizeFeed(w http.ResponseWriter, r *http.Requ
 	writeData(w, http.StatusOK, map[string]int{"reset": len(ids), "enqueued": enqueued}, nil)
 }
 
+// handleResummarizeAll clears summary_model on every article in the database
+// and re-enqueues them. Used after a prompt or model change so stale-format
+// summaries get replaced. Admin-only because it's a heavy operation.
+func (d *Dependencies) handleResummarizeAll(w http.ResponseWriter, r *http.Request) {
+	ids, err := d.Store.ClearAllSummaries(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal", err.Error())
+		return
+	}
+	enqueued := 0
+	if d.Poller != nil {
+		for _, aid := range ids {
+			if d.Poller.EnqueueSummary(aid) {
+				enqueued++
+			}
+		}
+	}
+	writeData(w, http.StatusOK, map[string]int{"reset": len(ids), "enqueued": enqueued}, nil)
+}
+
 func (d *Dependencies) handleOPMLImport(w http.ResponseWriter, r *http.Request) {
 	u, _ := auth.FromContext(r.Context())
 	if err := r.ParseMultipartForm(8 << 20); err != nil {

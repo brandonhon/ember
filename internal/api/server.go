@@ -87,18 +87,25 @@ func NewRouter(d Dependencies) http.Handler {
 		// Categories
 		r.With(d.Auth.RequireAuth).Get("/categories", d.handleListCategories)
 		r.With(d.Auth.RequireAuth).Post("/categories", d.handleCreateCategory)
+		r.With(d.Auth.RequireAuth).Post("/categories/reorder", d.handleReorderCategories)
 		r.With(d.Auth.RequireAuth).Patch("/categories/{id}", d.handleUpdateCategory)
 		r.With(d.Auth.RequireAuth).Delete("/categories/{id}", d.handleDeleteCategory)
 
 		// Feeds / subscriptions
 		r.With(d.Auth.RequireAuth).Get("/feeds", d.handleListFeeds)
 		r.With(d.Auth.RequireAuth).Post("/feeds", d.handleAddFeed)
+		r.With(d.Auth.RequireAuth).Post("/feeds/reorder", d.handleReorderFeeds)
 		r.With(d.Auth.RequireAuth).Patch("/feeds/{id}", d.handleUpdateFeed)
 		r.With(d.Auth.RequireAuth).Delete("/feeds/{id}", d.handleDeleteFeed)
 		r.With(d.Auth.RequireAuth).Post("/feeds/{id}/refresh", d.handleRefreshFeed)
 		r.With(d.Auth.RequireAuth).Post("/feeds/{id}/resummarize", d.handleResummarizeFeed)
+		r.With(d.Auth.RequireAdmin).Post("/feeds/resummarize-all", d.handleResummarizeAll)
 		r.With(d.Auth.RequireAuth).Post("/feeds/import", d.handleOPMLImport)
 		r.With(d.Auth.RequireAuth).Get("/feeds/export", d.handleOPMLExport)
+
+		// Starter packs
+		r.With(d.Auth.RequireAuth).Get("/starter-packs", d.handleListStarterPacks)
+		r.With(d.Auth.RequireAuth).Post("/starter-packs/{slug}", d.handleImportStarterPack)
 
 		// Articles
 		r.With(d.Auth.RequireAuth).Get("/articles", d.handleListArticles)

@@ -29,7 +29,7 @@ services:
       EMBER_ADMIN_USER: ${EMBER_ADMIN_USER:-admin}
       EMBER_ADMIN_PASSWORD: ${EMBER_ADMIN_PASSWORD:?must be set in .env}
       EMBER_OLLAMA_URL: http://ollama:11434
-      EMBER_OLLAMA_MODEL: ${EMBER_OLLAMA_MODEL:-qwen2.5:1.5b}
+      EMBER_OLLAMA_MODEL: ${EMBER_OLLAMA_MODEL:-qwen2.5:0.5b}
       EMBER_FRESH_WINDOW: ${EMBER_FRESH_WINDOW:-6h}
       EMBER_POLL_CONCURRENCY: ${EMBER_POLL_CONCURRENCY:-8}
       EMBER_POLL_TICK: ${EMBER_POLL_TICK:-60s}
@@ -93,7 +93,7 @@ services:
     command:
       - >
         until ollama list >/dev/null 2>&1; do sleep 1; done;
-        ollama pull "${EMBER_OLLAMA_MODEL:-qwen2.5:1.5b}"
+        ollama pull "${EMBER_OLLAMA_MODEL:-qwen2.5:0.5b}"
     depends_on:
       ollama:
         condition: service_started

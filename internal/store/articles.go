@@ -136,6 +136,63 @@ func (s *Store) GetArticleForUser(ctx context.Context, userID, articleID int64) 
 	return v, nil
 }
 
+// ClearAllSummaries clears summary_model on every article (admin-only). Used
+// after a summarizer prompt change to force re-processing of existing rows.
+// Returns the affected article IDs so the caller can enqueue them.
+func (s *Store) ClearAllSummaries(ctx context.Context) ([]int64, error) {
+	rows, err := s.DB.QueryContext(ctx,
+		`SELECT id FROM articles WHERE IFNULL(summary_model,'') <> ''`)
+	if err != nil {
+		return nil, err
+	}
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	if _, err := s.DB.ExecContext(ctx,
+		`UPDATE articles SET summary_model = NULL, summary = '' WHERE IFNULL(summary_model,'') <> ''`); err != nil {
+		return nil, err
+	}
+	return ids, nil
+}
+
+// ListUnsummarizedIDs returns articles that have not yet been processed by
+// the summarizer (summary_model is NULL or empty). Used at poller startup to
+// backfill the in-memory summary queue after a restart.
+func (s *Store) ListUnsummarizedIDs(ctx context.Context, limit int) ([]int64, error) {
+	if limit <= 0 {
+		limit = 256
+	}
+	rows, err := s.DB.QueryContext(ctx,
+		`SELECT id FROM articles WHERE IFNULL(summary_model,'') = '' ORDER BY id DESC LIMIT ?`,
+		limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
 // ResetSummariesByFeed clears summary_model on every article in the feed
 // where it currently equals 'skipped'. Returns the affected article IDs so
 // the poller can re-enqueue them for a fresh summarize attempt.
@@ -287,6 +344,22 @@ JOIN boards b ON b.id = ba.board_id AND b.user_id = ? AND b.id = ?`
 	// a different join.
 	if q.View != "shared" && q.FeedID == 0 {
 		conds = append(conds, "s.muted = 0")
+	}
+
+	// Cross-feed dedup: when two feeds the user subscribes to publish the same
+	// article (matched by URL), only the lowest-id row wins. Skipped for the
+	// per-feed view (the user explicitly opened that feed and wants to see its
+	// contents verbatim), the shared view (explicit one-off share), and board
+	// views (explicit curation by the user). Empty-URL rows always pass.
+	if q.View != "shared" && q.FeedID == 0 && q.BoardID == 0 {
+		conds = append(conds, `(
+			IFNULL(a.url,'') = '' OR NOT EXISTS (
+				SELECT 1 FROM articles a3
+				JOIN subscriptions s3 ON s3.feed_id = a3.feed_id AND s3.user_id = ?
+				WHERE a3.url = a.url AND IFNULL(a3.url,'') <> '' AND s3.muted = 0 AND a3.id < a.id
+			)
+		)`)
+		args = append(args, userID)
 	}
 
 	where := ""

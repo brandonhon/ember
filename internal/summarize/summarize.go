@@ -5,10 +5,19 @@ package summarize
 
 import "context"
 
-// Summarizer produces bullet-point article summaries.
+// Result is the structured summary returned by a Summarizer.
+type Result struct {
+	// Paragraph is a 1-2 paragraph editorial lead. May be empty if the model
+	// only produced bullets.
+	Paragraph string
+	// Bullets are 3-5 short factual points.
+	Bullets []string
+}
+
+// Summarizer produces editorial article summaries (lead paragraph + bullets).
 type Summarizer interface {
-	// Summarize returns 3–5 concise bullet strings and the model name that
-	// produced them. Implementations should respect ctx for cancellation and
-	// must not panic on malformed model output.
-	Summarize(ctx context.Context, title, text string) (bullets []string, model string, err error)
+	// Summarize returns a paragraph + bullets and the model name that produced
+	// them. Implementations should respect ctx for cancellation and must not
+	// panic on malformed model output.
+	Summarize(ctx context.Context, title, text string) (Result, string, error)
 }
