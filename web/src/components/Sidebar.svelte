@@ -72,6 +72,17 @@
     }
   }
 
+  async function markFeedRead(f: FeedWithCounts) {
+    menuFor = null;
+    try {
+      await api.markAllRead({ feed_id: f.id });
+      // Reload the current view's list and refresh the sidebar badges.
+      await Promise.all([loadArticles($activeView), refreshSidebar()]);
+    } catch (err) {
+      console.error("markFeedRead", err);
+    }
+  }
+
   const grouped = $derived.by(() => {
     const byCat = new Map<number, FeedWithCounts[]>();
     const uncat: FeedWithCounts[] = [];
@@ -226,6 +237,9 @@
     </button>
     {#if menuFor === f.id}
       <div class="feed-menu" data-feed-menu-for={f.id}>
+        <button on:click={() => markFeedRead(f)} data-testid="feed-mark-read-{f.id}">
+          Mark feed read
+        </button>
         <button on:click={() => toggleMute(f)} data-testid="feed-mute-{f.id}">
           {f.muted ? "Unmute" : "Mute"}
         </button>
