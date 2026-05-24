@@ -232,10 +232,14 @@
     background: var(--paper);
     min-height: 0;
   }
+  /* Reader column grows with the pane (and gains width when the sidebar
+     is collapsed), but caps for readability on very wide displays. Side
+     padding scales with viewport: tight on narrow windows, more generous
+     when there's room. */
   .reader-inner {
-    max-width: 720px;
+    max-width: min(1100px, 100%);
     margin: 0 auto;
-    padding: 36px 52px 120px;
+    padding: 28px clamp(20px, 3vw, 56px) 120px;
   }
   .reader-actions {
     position: sticky;
@@ -245,8 +249,10 @@
     align-items: center;
     gap: 6px;
     background: linear-gradient(var(--paper) 70%, transparent);
-    padding: 14px 26px;
-    margin: 0 -52px 8px;
+    /* Negative margin matches the parent's horizontal padding so the
+       sticky bar bleeds edge-to-edge. */
+    padding: 14px clamp(20px, 3vw, 56px);
+    margin: 0 calc(-1 * clamp(20px, 3vw, 56px)) 8px;
   }
   .ra-btn {
     display: inline-flex;
