@@ -59,12 +59,12 @@ func (s *Store) UpsertArticle(ctx context.Context, a models.Article) (models.Art
 	res, err := tx.ExecContext(ctx, `
 		INSERT INTO articles (feed_id, guid, url, title, author, content_html,
 			content_text, summary, summary_model, image_url, published_at,
-			fetched_at, content_hash)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			fetched_at, content_hash, tags)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		a.FeedID, a.GUID, nullable(a.URL), a.Title, nullable(a.Author),
 		nullable(a.ContentHTML), nullable(a.ContentText), nullable(a.Summary),
 		nullable(a.SummaryModel), nullable(a.ImageURL),
-		nullableInt(a.PublishedAt), a.FetchedAt, a.ContentHash)
+		nullableInt(a.PublishedAt), a.FetchedAt, a.ContentHash, a.Tags)
 	if err != nil {
 		if isUniqueViolation(err) {
 			// Race: someone else inserted between our check and write. Fetch and
@@ -99,7 +99,7 @@ func (s *Store) GetArticle(ctx context.Context, id int64) (models.Article, error
 		       IFNULL(content_html,''), IFNULL(content_text,''),
 		       IFNULL(summary,''), IFNULL(summary_model,''),
 		       IFNULL(image_url,''), IFNULL(published_at,0),
-		       fetched_at, content_hash
+		       fetched_at, content_hash, IFNULL(tags,'')
 		FROM articles WHERE id = ?`, id)
 	return scanArticle(row)
 }
@@ -112,7 +112,7 @@ func (s *Store) GetArticleForUser(ctx context.Context, userID, articleID int64) 
 		       IFNULL(a.content_html,''), IFNULL(a.content_text,''),
 		       IFNULL(a.summary,''), IFNULL(a.summary_model,''),
 		       IFNULL(a.image_url,''), IFNULL(a.published_at,0),
-		       a.fetched_at, a.content_hash,
+		       a.fetched_at, a.content_hash, IFNULL(a.tags,''),
 		       IFNULL(st.is_read,0), IFNULL(st.is_starred,0), IFNULL(st.is_later,0)
 		FROM articles a
 		JOIN subscriptions s ON s.feed_id = a.feed_id AND s.user_id = ?
@@ -122,7 +122,7 @@ func (s *Store) GetArticleForUser(ctx context.Context, userID, articleID int64) 
 	var ir, is, il int
 	err := row.Scan(&v.ID, &v.FeedID, &v.GUID, &v.URL, &v.Title, &v.Author,
 		&v.ContentHTML, &v.ContentText, &v.Summary, &v.SummaryModel,
-		&v.ImageURL, &v.PublishedAt, &v.FetchedAt, &v.ContentHash,
+		&v.ImageURL, &v.PublishedAt, &v.FetchedAt, &v.ContentHash, &v.Tags,
 		&ir, &is, &il)
 	if errors.Is(err, sql.ErrNoRows) {
 		return models.ArticleView{}, ErrNotFound
@@ -299,7 +299,7 @@ SELECT a.id, a.feed_id, a.guid, IFNULL(a.url,''), a.title, IFNULL(a.author,''),
        IFNULL(a.content_html,''), IFNULL(a.content_text,''),
        IFNULL(a.summary,''), IFNULL(a.summary_model,''),
        IFNULL(a.image_url,''), IFNULL(a.published_at,0),
-       a.fetched_at, a.content_hash,
+       a.fetched_at, a.content_hash, IFNULL(a.tags,''),
        IFNULL(st.is_read,0), IFNULL(st.is_starred,0), IFNULL(st.is_later,0)
 %s
 %s
@@ -318,7 +318,7 @@ LIMIT ?`, from, where)
 		var ir, is, il int
 		if err := rows.Scan(&v.ID, &v.FeedID, &v.GUID, &v.URL, &v.Title, &v.Author,
 			&v.ContentHTML, &v.ContentText, &v.Summary, &v.SummaryModel,
-			&v.ImageURL, &v.PublishedAt, &v.FetchedAt, &v.ContentHash,
+			&v.ImageURL, &v.PublishedAt, &v.FetchedAt, &v.ContentHash, &v.Tags,
 			&ir, &is, &il); err != nil {
 			return nil, err
 		}
@@ -378,7 +378,7 @@ func scanArticle(row scannable) (models.Article, error) {
 	var a models.Article
 	err := row.Scan(&a.ID, &a.FeedID, &a.GUID, &a.URL, &a.Title, &a.Author,
 		&a.ContentHTML, &a.ContentText, &a.Summary, &a.SummaryModel,
-		&a.ImageURL, &a.PublishedAt, &a.FetchedAt, &a.ContentHash)
+		&a.ImageURL, &a.PublishedAt, &a.FetchedAt, &a.ContentHash, &a.Tags)
 	if errors.Is(err, sql.ErrNoRows) {
 		return models.Article{}, ErrNotFound
 	}

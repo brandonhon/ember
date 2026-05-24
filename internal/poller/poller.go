@@ -150,6 +150,20 @@ func (p *Poller) Tick(ctx context.Context) {
 	wg.Wait()
 }
 
+// MetricsSnapshot returns a copy of the poller's atomic counters keyed by
+// snake-case names suitable for emission as Prometheus metrics.
+func (p *Poller) MetricsSnapshot() map[string]int64 {
+	return map[string]int64{
+		"ticks_total":         p.Metrics.TicksTotal.Load(),
+		"fetches_total":       p.Metrics.FetchesTotal.Load(),
+		"fetches_errored":     p.Metrics.FetchesErrored.Load(),
+		"new_articles_total":  p.Metrics.NewArticlesTotal.Load(),
+		"summaries_total":     p.Metrics.SummariesTotal.Load(),
+		"summaries_errored":   p.Metrics.SummariesErrored.Load(),
+		"summary_queue_depth": int64(len(p.summaryCh)),
+	}
+}
+
 // EnqueueSummary best-effort places an article id on the summary queue.
 // Returns true if the id was enqueued, false if the queue is full or no
 // summarizer is configured.

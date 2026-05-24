@@ -228,6 +228,9 @@
             {srcName(a)}
           </span>
           <span class="src-meta">· {timeAgo(a.published_at)}</span>
+          {#if a.tags}
+            <span class="tag-badge">{a.tags.split(",")[0].trim()}</span>
+          {/if}
           {#if isFresh(a.published_at)}<span class="fresh-tag">Fresh</span>{/if}
         </div>
         {#if a.image_url}
@@ -422,6 +425,20 @@
     padding: 2px 7px;
     border-radius: 5px;
     text-transform: uppercase;
+  }
+  .tag-badge {
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    color: var(--ink-soft);
+    background: var(--line-soft);
+    padding: 2px 7px;
+    border-radius: 5px;
+    text-transform: uppercase;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .story-title {
     font-family: var(--font-display);
