@@ -248,6 +248,13 @@ JOIN boards b ON b.id = ba.board_id AND b.user_id = ? AND b.id = ?`
 	if q.OnlySummarized {
 		conds = append(conds, "a.summary_model IS NOT NULL AND a.summary_model <> ''")
 	}
+	// Muted feeds: excluded from smart views (fresh/today/unread/starred/later)
+	// and category views; still visible when the user explicitly clicks the
+	// feed (FeedID > 0). The 'shared' view is also unaffected since it uses
+	// a different join.
+	if q.View != "shared" && q.FeedID == 0 {
+		conds = append(conds, "s.muted = 0")
+	}
 
 	where := ""
 	if len(conds) > 0 {
@@ -316,9 +323,14 @@ WHERE IFNULL(st.is_read,0) = 0`
 	if onlySummarized {
 		q += " AND a.summary_model IS NOT NULL AND a.summary_model <> ''"
 	}
+	// When scoped to a single feed the caller is asking for that feed
+	// specifically (e.g., the sidebar feed-row badge); honor it even if muted.
+	// For aggregate counts (across feeds), muted subscriptions don't count.
 	if feedID > 0 {
 		q += " AND a.feed_id = ?"
 		args = append(args, feedID)
+	} else {
+		q += " AND s.muted = 0"
 	}
 	if categoryID > 0 {
 		q += " AND s.category_id = ?"

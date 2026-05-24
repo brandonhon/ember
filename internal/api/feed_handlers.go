@@ -20,6 +20,7 @@ type updateFeedReq struct {
 	TitleOverride *string `json:"title_override,omitempty"`
 	CategoryID    *int64  `json:"category_id,omitempty"`
 	ClearCategory bool    `json:"clear_category,omitempty"`
+	Muted         *bool   `json:"muted,omitempty"`
 }
 
 func (d *Dependencies) handleListFeeds(w http.ResponseWriter, r *http.Request) {
@@ -75,6 +76,7 @@ func (d *Dependencies) handleUpdateFeed(w http.ResponseWriter, r *http.Request) 
 		TitleOverride: req.TitleOverride,
 		CategoryID:    req.CategoryID,
 		ClearCategory: req.ClearCategory,
+		Muted:         req.Muted,
 	}
 	if mapStoreError(w, d.Store.UpdateSubscription(r.Context(), u.ID, id, patch)) {
 		return

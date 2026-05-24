@@ -232,6 +232,60 @@ func TestArticles_SkippedMarkerStillVisible(t *testing.T) {
 	}
 }
 
+func TestArticles_MutedFeedHiddenFromSmartViews(t *testing.T) {
+	s := NewTest(t)
+	ctx := context.Background()
+	u, _ := s.CreateUser(ctx, models.User{Username: "u", PasswordHash: "h"})
+	loud, _ := s.UpsertFeed(ctx, models.Feed{URL: "https://loud.test/feed", Title: "Loud"})
+	quiet, _ := s.UpsertFeed(ctx, models.Feed{URL: "https://quiet.test/feed", Title: "Quiet"})
+	subLoud, _ := s.Subscribe(ctx, models.Subscription{UserID: u.ID, FeedID: loud.ID})
+	subQuiet, _ := s.Subscribe(ctx, models.Subscription{UserID: u.ID, FeedID: quiet.ID})
+
+	// One summarized article from each feed.
+	a1, _, _ := s.UpsertArticle(ctx, mkArticle(loud.ID, "l1", "Loud one", "h-l1", 2000))
+	a2, _, _ := s.UpsertArticle(ctx, mkArticle(quiet.ID, "q1", "Quiet one", "h-q1", 2000))
+	_ = s.UpdateSummary(ctx, a1.ID, "• loud", "noop")
+	_ = s.UpdateSummary(ctx, a2.ID, "• quiet", "noop")
+
+	// Mute the quiet feed.
+	muted := true
+	if err := s.UpdateSubscription(ctx, u.ID, subQuiet.ID, UpdateSubscriptionPatch{Muted: &muted}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Smart view (unread) excludes muted feeds.
+	smart, _ := s.ListArticles(ctx, u.ID, ListArticlesQuery{View: "unread", OnlySummarized: true})
+	if len(smart) != 1 || smart[0].FeedID != loud.ID {
+		t.Errorf("smart view should hide muted; got %+v", smart)
+	}
+
+	// Aggregate unread count drops to 1.
+	if n, _ := s.CountUnreadVisible(ctx, u.ID, 0, 0); n != 1 {
+		t.Errorf("aggregate unread = %d, want 1", n)
+	}
+
+	// Per-feed listing still works (user clicked the muted feed directly).
+	direct, _ := s.ListArticles(ctx, u.ID, ListArticlesQuery{FeedID: quiet.ID, OnlySummarized: true})
+	if len(direct) != 1 || direct[0].FeedID != quiet.ID {
+		t.Errorf("muted feed still accessible by FeedID; got %+v", direct)
+	}
+
+	// Per-feed badge count for the muted feed is still computed.
+	if n, _ := s.CountUnreadVisible(ctx, u.ID, quiet.ID, 0); n != 1 {
+		t.Errorf("per-feed unread for muted feed = %d, want 1", n)
+	}
+
+	// Unmute and the smart view shows both.
+	unmute := false
+	_ = s.UpdateSubscription(ctx, u.ID, subQuiet.ID, UpdateSubscriptionPatch{Muted: &unmute})
+	smart, _ = s.ListArticles(ctx, u.ID, ListArticlesQuery{View: "unread", OnlySummarized: true})
+	if len(smart) != 2 {
+		t.Errorf("after unmute smart view has %d, want 2", len(smart))
+	}
+
+	_ = subLoud
+}
+
 func TestArticles_FixedClock(t *testing.T) {
 	s := NewTest(t)
 	fixed := time.Unix(1_700_000_000, 0)
