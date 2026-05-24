@@ -147,13 +147,13 @@
     --paper-2: #efe9dc;
     --card: #fffdf8;
     --ink: #211d18;
-    --ink-soft: #5b5347;
-    --ink-faint: #8c8273;
+    --ink-soft: #3f3930;
+    --ink-faint: #6a604f;
     --line: #e2dac9;
     --line-soft: #ece5d6;
-    --ember: #c2451d;
+    --ember: #a93b16;
     --ember-soft: #e8643a;
-    --ember-wash: #f6e2d8;
+    --ember-wash: #fbeae0;
     --gold: #b07d1a;
     --green: #4f7a3d;
     --rail-w: 272px;
