@@ -24,12 +24,27 @@
   let creatingBoard = $state(false);
   // Which feed row's action menu is open (by feed id). Null = none.
   let menuFor = $state<number | null>(null);
+  // Per-category UI state: open menu, inline rename input, color popover.
+  let categoryMenuFor = $state<number | null>(null);
+  let renamingCategoryID = $state<number | null>(null);
+  let renameValue = $state("");
+  let colorPickerFor = $state<number | null>(null);
+
+  const CAT_PALETTE = ["#3b82c4", "#4f7a3d", "#b07d1a", "#a93b16", "#7a3d8b", "#1d4ed8", "#7c4a2a", "#5b6770"];
 
   function onDocClick(e: MouseEvent) {
-    if (menuFor === null) return;
     const t = e.target as HTMLElement;
-    if (!t.closest(`[data-feed-menu-for]`) && !t.closest(`[data-feed-actions-trigger]`)) {
+    if (menuFor !== null && !t.closest(`[data-feed-menu-for]`) && !t.closest(`[data-feed-actions-trigger]`)) {
       menuFor = null;
+    }
+    if (
+      categoryMenuFor !== null &&
+      !t.closest(`[data-cat-menu-for]`) &&
+      !t.closest(`[data-cat-actions-trigger]`) &&
+      !t.closest(`[data-cat-color-for]`)
+    ) {
+      categoryMenuFor = null;
+      colorPickerFor = null;
     }
   }
   onMount(() => document.addEventListener("click", onDocClick));
@@ -136,6 +151,53 @@
   }
   function toggleCategory(catID: number) {
     collapsedCategories[catID] = !collapsedCategories[catID];
+  }
+
+  function startRenameCategory(catID: number, current: string) {
+    categoryMenuFor = null;
+    renamingCategoryID = catID;
+    renameValue = current;
+  }
+
+  async function commitRename(catID: number) {
+    const name = renameValue.trim();
+    renamingCategoryID = null;
+    if (!name) return;
+    try {
+      await api.updateCategory(catID, { name });
+      await refreshSidebar();
+    } catch (err) {
+      console.error("rename category", err);
+    }
+  }
+
+  function cancelRename() {
+    renamingCategoryID = null;
+  }
+
+  async function pickCategoryColor(catID: number, color: string) {
+    colorPickerFor = null;
+    categoryMenuFor = null;
+    try {
+      await api.updateCategory(catID, { color });
+      await refreshSidebar();
+    } catch (err) {
+      console.error("color category", err);
+    }
+  }
+
+  async function deleteCategory(catID: number, name: string) {
+    categoryMenuFor = null;
+    if (!confirm(`Delete folder "${name}"? Feeds in it become uncategorized.`)) return;
+    try {
+      await api.deleteCategory(catID);
+      await refreshSidebar();
+      if ($activeView.kind === "category" && $activeView.id === catID) {
+        pickSmart("fresh");
+      }
+    } catch (err) {
+      console.error("delete category", err);
+    }
   }
 
   async function submitNewBoard(e: Event) {
@@ -307,15 +369,64 @@
             <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6" /></svg>
           </button>
           <span class="dot" style="background:{cat.color || dotColor(cat.id)}"></span>
-          <button
-            class="folder-name"
-            class:active={isActiveCategory(cat.id)}
-            on:click={() => pickCategory(cat.id)}
-          >
-            {cat.name}
-          </button>
-          {#if unreadInCategory(cat.id) > 0}
+          {#if renamingCategoryID === cat.id}
+            <input
+              class="folder-rename"
+              bind:value={renameValue}
+              on:keydown={(e) => {
+                if (e.key === "Enter") commitRename(cat.id);
+                if (e.key === "Escape") cancelRename();
+              }}
+              on:blur={() => commitRename(cat.id)}
+              autofocus
+              data-testid="folder-rename-{cat.id}"
+            />
+          {:else}
+            <button
+              class="folder-name"
+              class:active={isActiveCategory(cat.id)}
+              on:click={() => pickCategory(cat.id)}
+              on:dblclick={() => startRenameCategory(cat.id, cat.name)}
+              data-testid="folder-name-{cat.id}"
+            >
+              {cat.name}
+            </button>
+          {/if}
+          {#if unreadInCategory(cat.id) > 0 && renamingCategoryID !== cat.id}
             <span class="badge">{unreadInCategory(cat.id)}</span>
+          {/if}
+          <button
+            class="folder-actions-trigger"
+            data-cat-actions-trigger
+            data-testid="folder-actions-{cat.id}"
+            on:click={(e) => {
+              e.stopPropagation();
+              categoryMenuFor = categoryMenuFor === cat.id ? null : cat.id;
+              colorPickerFor = null;
+            }}
+            aria-label="Folder actions"
+          >
+            <svg viewBox="0 0 24 24" width="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="12" cy="19" r="1" /></svg>
+          </button>
+          {#if categoryMenuFor === cat.id}
+            <div class="folder-menu" data-cat-menu-for={cat.id}>
+              <button on:click={() => startRenameCategory(cat.id, cat.name)} data-testid="folder-rename-action-{cat.id}">Rename</button>
+              <button on:click={() => { colorPickerFor = cat.id; categoryMenuFor = null; }} data-testid="folder-color-action-{cat.id}">Color…</button>
+              <button class="danger" on:click={() => deleteCategory(cat.id, cat.name)} data-testid="folder-delete-action-{cat.id}">Delete</button>
+            </div>
+          {/if}
+          {#if colorPickerFor === cat.id}
+            <div class="folder-color-picker" data-cat-color-for={cat.id}>
+              {#each CAT_PALETTE as c (c)}
+                <button
+                  class="swatch"
+                  style="background:{c}"
+                  on:click={() => pickCategoryColor(cat.id, c)}
+                  aria-label={`Pick color ${c}`}
+                  data-testid="folder-swatch-{cat.id}-{c}"
+                ></button>
+              {/each}
+            </div>
           {/if}
         </div>
         <div class="feed-list">
@@ -505,8 +616,88 @@
     padding: 6px 10px;
     border-radius: 9px;
     transition: background 0.12s;
+    position: relative;
   }
   .folder-head:hover { background: var(--line-soft); }
+  .folder-head:hover .folder-actions-trigger { opacity: 1; }
+  .folder-rename {
+    flex: 1;
+    padding: 3px 7px;
+    border: 1px solid var(--ember);
+    border-radius: 5px;
+    font: inherit;
+    font-size: 12.5px;
+    background: var(--card);
+    color: var(--ink);
+    outline: none;
+  }
+  .folder-actions-trigger {
+    width: 20px;
+    height: 20px;
+    border-radius: 5px;
+    display: grid;
+    place-items: center;
+    color: var(--ink-faint);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.12s, background 0.12s;
+    margin-left: auto;
+  }
+  .folder-actions-trigger:hover { background: var(--line); color: var(--ink); }
+  .folder-actions-trigger:focus-visible { opacity: 1; outline: none; }
+  .folder-menu {
+    position: absolute;
+    right: 4px;
+    top: calc(100% + 2px);
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: var(--shadow-pane);
+    padding: 4px;
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 120px;
+  }
+  .folder-menu button {
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--ink);
+    text-align: left;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+  }
+  .folder-menu button:hover { background: var(--line-soft); }
+  .folder-menu button.danger { color: #b91c1c; }
+  .folder-menu button.danger:hover { background: #fef2f2; }
+  .folder-color-picker {
+    position: absolute;
+    right: 4px;
+    top: calc(100% + 2px);
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: var(--shadow-pane);
+    padding: 6px;
+    z-index: 30;
+    display: grid;
+    grid-template-columns: repeat(4, 22px);
+    gap: 4px;
+  }
+  .folder-color-picker .swatch {
+    width: 22px;
+    height: 22px;
+    border-radius: 5px;
+    border: 1px solid var(--line);
+    cursor: pointer;
+    padding: 0;
+  }
+  .folder-color-picker .swatch:hover { transform: scale(1.1); }
   .chev-btn {
     width: 14px;
     height: 14px;
