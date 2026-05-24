@@ -9,6 +9,7 @@
     selectedArticleId,
     activeView,
     theme,
+    sidebarCollapsed,
     toggleStar,
     setRead,
   } from "./lib/stores";
@@ -123,8 +124,10 @@
 {:else}
   <div class="shell" data-theme={$theme}>
     <TopBar onOpenSettings={() => (showSettings = true)} />
-    <div class="panes">
-      <Sidebar />
+    <div class="panes" class:sidebar-collapsed={$sidebarCollapsed}>
+      {#if !$sidebarCollapsed}
+        <Sidebar />
+      {/if}
       <ArticleList />
       <Reader />
     </div>
@@ -242,6 +245,7 @@
     min-height: 0;
     overflow: hidden;
   }
+  .panes.sidebar-collapsed { grid-template-columns: var(--list-w) 1fr; }
   .boot {
     text-align: center;
     margin-top: 4rem;

@@ -108,7 +108,12 @@ export const api = {
     }),
   updateFeed: (
     id: number,
-    req: { title_override?: string; category_id?: number; clear_category?: boolean },
+    req: {
+      title_override?: string;
+      category_id?: number;
+      clear_category?: boolean;
+      muted?: boolean;
+    },
   ) => call<unknown>("PATCH", `/api/feeds/${id}`, req),
   deleteFeed: (id: number) => call<unknown>("DELETE", `/api/feeds/${id}`),
   refreshFeed: (id: number) => call<unknown>("POST", `/api/feeds/${id}/refresh`),
