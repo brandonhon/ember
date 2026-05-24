@@ -63,6 +63,7 @@ export interface Article {
   published_at?: number;
   fetched_at: number;
   content_hash: string;
+  tags?: string;
 }
 
 export interface ArticleView extends Article {

@@ -26,7 +26,7 @@ func (s *Store) Search(ctx context.Context, userID int64, query string, limit in
 		       IFNULL(a.content_html,''), IFNULL(a.content_text,''),
 		       IFNULL(a.summary,''), IFNULL(a.summary_model,''),
 		       IFNULL(a.image_url,''), IFNULL(a.published_at,0),
-		       a.fetched_at, a.content_hash,
+		       a.fetched_at, a.content_hash, IFNULL(a.tags,''),
 		       IFNULL(st.is_read,0), IFNULL(st.is_starred,0), IFNULL(st.is_later,0),
 		       bm25(articles_fts) AS rank
 		FROM articles_fts
@@ -46,7 +46,7 @@ func (s *Store) Search(ctx context.Context, userID int64, query string, limit in
 		var ir, is, il int
 		if err := rows.Scan(&r.ID, &r.FeedID, &r.GUID, &r.URL, &r.Title, &r.Author,
 			&r.ContentHTML, &r.ContentText, &r.Summary, &r.SummaryModel,
-			&r.ImageURL, &r.PublishedAt, &r.FetchedAt, &r.ContentHash,
+			&r.ImageURL, &r.PublishedAt, &r.FetchedAt, &r.ContentHash, &r.Tags,
 			&ir, &is, &il, &r.Rank); err != nil {
 			return nil, err
 		}

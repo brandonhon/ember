@@ -129,7 +129,7 @@ func run() error {
 	}
 
 	router := api.NewRouter(api.Dependencies{
-		Store: st, Auth: a, Poller: p, OPML: op,
+		Store: st, Auth: a, Poller: p, Metrics: p, OPML: op,
 		StaticH: staticH, TestMode: cfg.TestMode,
 	})
 

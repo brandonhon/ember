@@ -103,6 +103,22 @@ func normalizeItem(it *gofeed.Item, feedID int64, base *url.URL) models.Article 
 	}
 	a.ImageURL = resolveLink(base, a.ImageURL)
 
+	// Tags: keep up to 3 of gofeed's per-item categories, comma-joined.
+	if len(it.Categories) > 0 {
+		n := len(it.Categories)
+		if n > 3 {
+			n = 3
+		}
+		parts := make([]string, 0, n)
+		for _, c := range it.Categories[:n] {
+			c = strings.TrimSpace(c)
+			if c != "" {
+				parts = append(parts, c)
+			}
+		}
+		a.Tags = strings.Join(parts, ", ")
+	}
+
 	a.ContentHash = ContentHash(a.URL, a.Title, a.ContentText)
 	return a
 }

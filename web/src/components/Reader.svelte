@@ -142,6 +142,9 @@
           {(feed?.title || "?")[0]?.toUpperCase()}
         </span>
         <span class="src-name">{feed?.title_override || feed?.title || ""}</span>
+        {#if selected.tags}
+          <span class="source-badge">{selected.tags.split(",")[0].trim()}</span>
+        {/if}
         <span class="src-time">· {timeAgo(selected.published_at)}</span>
       </div>
 
@@ -290,6 +293,16 @@
   }
   .article-kicker .src-name { font-weight: 700; font-size: 13px; color: var(--ink); }
   .article-kicker .src-time { color: var(--ink-faint); font-size: 12px; }
+  .source-badge {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 5px;
+    background: var(--line-soft);
+    color: var(--ink-soft);
+  }
 
   .article-h1 {
     font-family: var(--font-display);

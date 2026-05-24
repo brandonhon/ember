@@ -76,6 +76,7 @@ type Article struct {
 	PublishedAt  int64  `json:"published_at,omitempty"`
 	FetchedAt    int64  `json:"fetched_at"`
 	ContentHash  string `json:"content_hash"`
+	Tags         string `json:"tags,omitempty"` // comma-joined gofeed categories; first one used as a badge.
 }
 
 // ArticleState is per-user read/star/later state for an article.

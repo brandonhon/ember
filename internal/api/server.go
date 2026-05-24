@@ -20,11 +20,18 @@ type PollerRefresher interface {
 	EnqueueSummary(articleID int64) bool
 }
 
+// MetricsSnapshotter is implemented by the poller; lets /metrics export
+// counters without depending on the poller package directly.
+type MetricsSnapshotter interface {
+	MetricsSnapshot() map[string]int64
+}
+
 // Dependencies wires the API.
 type Dependencies struct {
 	Store   *store.Store
 	Auth    *auth.Auth
 	Poller  PollerRefresher
+	Metrics MetricsSnapshotter
 	OPML    *opml.Service
 	StaticH http.Handler // SPA / embed.FS handler; may be nil in tests
 	// TestMode loosens cookie Secure flag for non-HTTPS tests.
@@ -50,6 +57,7 @@ func NewRouter(d Dependencies) http.Handler {
 		_, _ = w.Write([]byte("ok"))
 	})
 	r.Get("/readyz", d.handleReadyz)
+	r.Get("/metrics", d.handleMetrics)
 
 	// Per-IP rate limiter for the login endpoint to slow credential stuffing.
 	// Generously sized in test mode so a full e2e run doesn't trip it.
