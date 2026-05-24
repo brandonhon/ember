@@ -102,6 +102,32 @@ func (s *Store) UpdateCategory(ctx context.Context, userID, id int64, patch Upda
 	return nil
 }
 
+// ReorderCategories assigns positions 0..N-1 to the given category ids in
+// the order supplied. Categories that belong to other users are silently
+// ignored so a client can't reorder another user's folders.
+func (s *Store) ReorderCategories(ctx context.Context, userID int64, ids []int64) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	stmt, err := tx.PrepareContext(ctx,
+		`UPDATE categories SET position = ? WHERE id = ? AND user_id = ?`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	for i, id := range ids {
+		if _, err := stmt.ExecContext(ctx, i, id, userID); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
 // DeleteCategory removes the user's category. Subscriptions filed under it
 // will have their category_id NULLed via ON DELETE SET NULL.
 func (s *Store) DeleteCategory(ctx context.Context, userID, id int64) error {

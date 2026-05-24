@@ -72,6 +72,34 @@ func (d *Dependencies) handleUpdateCategory(w http.ResponseWriter, r *http.Reque
 	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
 }
 
+type reorderReq struct {
+	IDs []int64 `json:"ids"`
+}
+
+func (d *Dependencies) handleReorderCategories(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.FromContext(r.Context())
+	var req reorderReq
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	if mapStoreError(w, d.Store.ReorderCategories(r.Context(), u.ID, req.IDs)) {
+		return
+	}
+	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
+}
+
+func (d *Dependencies) handleReorderFeeds(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.FromContext(r.Context())
+	var req reorderReq
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	if mapStoreError(w, d.Store.ReorderSubscriptions(r.Context(), u.ID, req.IDs)) {
+		return
+	}
+	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
+}
+
 func (d *Dependencies) handleDeleteCategory(w http.ResponseWriter, r *http.Request) {
 	u, _ := auth.FromContext(r.Context())
 	id, ok := paramInt(w, r, "id")

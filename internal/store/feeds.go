@@ -177,7 +177,7 @@ func (s *Store) Subscribe(ctx context.Context, sub models.Subscription) (models.
 // GetSubscription returns the user's subscription to a feed.
 func (s *Store) GetSubscription(ctx context.Context, userID, feedID int64) (models.Subscription, error) {
 	row := s.DB.QueryRowContext(ctx, `
-		SELECT id, user_id, feed_id, category_id, IFNULL(title_override,''), muted, created_at
+		SELECT id, user_id, feed_id, category_id, IFNULL(title_override,''), muted, position, created_at
 		FROM subscriptions WHERE user_id = ? AND feed_id = ?`, userID, feedID)
 	return scanSubscription(row)
 }
@@ -186,7 +186,7 @@ func (s *Store) GetSubscription(ctx context.Context, userID, feedID int64) (mode
 // the user (returns ErrNotFound on cross-user access).
 func (s *Store) GetSubscriptionByID(ctx context.Context, userID, subID int64) (models.Subscription, error) {
 	row := s.DB.QueryRowContext(ctx, `
-		SELECT id, user_id, feed_id, category_id, IFNULL(title_override,''), muted, created_at
+		SELECT id, user_id, feed_id, category_id, IFNULL(title_override,''), muted, position, created_at
 		FROM subscriptions WHERE id = ? AND user_id = ?`, subID, userID)
 	return scanSubscription(row)
 }
@@ -270,6 +270,32 @@ func (s *Store) Unsubscribe(ctx context.Context, userID, subID int64) error {
 	return tx.Commit()
 }
 
+// ReorderSubscriptions assigns positions 0..N-1 to the given subscription ids
+// in the order supplied. Subscriptions that belong to other users are
+// silently ignored so a malicious client can't reorder another user's feeds.
+func (s *Store) ReorderSubscriptions(ctx context.Context, userID int64, ids []int64) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	stmt, err := tx.PrepareContext(ctx,
+		`UPDATE subscriptions SET position = ? WHERE id = ? AND user_id = ?`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	for i, id := range ids {
+		if _, err := stmt.ExecContext(ctx, i, id, userID); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
 // ListSubscriberIDs returns the user_ids subscribed to the given feed. Used
 // by the poller to fan out filter application across users.
 func (s *Store) ListSubscriberIDs(ctx context.Context, feedID int64) ([]int64, error) {
@@ -298,7 +324,7 @@ func (s *Store) ListFeedsForUser(ctx context.Context, userID int64) ([]models.Fe
 		       IFNULL(f.etag,''), IFNULL(f.last_modified,''),
 		       IFNULL(f.last_fetched,0), IFNULL(f.next_fetch,0),
 		       f.fetch_interval, f.error_count, IFNULL(f.last_error,''), f.created_at,
-		       s.id AS sub_id, s.category_id, IFNULL(s.title_override,''), s.muted,
+		       s.id AS sub_id, s.category_id, IFNULL(s.title_override,''), s.muted, s.position,
 		       (SELECT COUNT(*)
 		          FROM articles a
 		          LEFT JOIN article_state st ON st.article_id = a.id AND st.user_id = s.user_id
@@ -309,7 +335,7 @@ func (s *Store) ListFeedsForUser(ctx context.Context, userID int64) ([]models.Fe
 		FROM feeds f
 		JOIN subscriptions s ON s.feed_id = f.id
 		WHERE s.user_id = ?
-		ORDER BY LOWER(IFNULL(NULLIF(s.title_override,''), f.title))`, userID)
+		ORDER BY s.position, LOWER(IFNULL(NULLIF(s.title_override,''), f.title))`, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -323,7 +349,7 @@ func (s *Store) ListFeedsForUser(ctx context.Context, userID int64) ([]models.Fe
 			&f.ID, &f.URL, &f.SiteURL, &f.Title, &f.FaviconURL,
 			&f.ETag, &f.LastModified, &f.LastFetched, &f.NextFetch,
 			&f.FetchInterval, &f.ErrorCount, &f.LastError, &f.CreatedAt,
-			&f.SubscriptionID, &catID, &f.TitleOverride, &muted, &f.Unread,
+			&f.SubscriptionID, &catID, &f.TitleOverride, &muted, &f.Position, &f.Unread,
 		)
 		if err != nil {
 			return nil, err
@@ -354,7 +380,7 @@ func scanSubscription(row scannable) (models.Subscription, error) {
 	var s models.Subscription
 	var catID sql.NullInt64
 	var muted int
-	err := row.Scan(&s.ID, &s.UserID, &s.FeedID, &catID, &s.TitleOverride, &muted, &s.CreatedAt)
+	err := row.Scan(&s.ID, &s.UserID, &s.FeedID, &catID, &s.TitleOverride, &muted, &s.Position, &s.CreatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return models.Subscription{}, ErrNotFound
 	}

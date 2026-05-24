@@ -57,6 +57,7 @@ type Subscription struct {
 	CategoryID    *int64 `json:"category_id,omitempty"`
 	TitleOverride string `json:"title_override,omitempty"`
 	Muted         bool   `json:"muted"`
+	Position      int    `json:"position"`
 	CreatedAt     int64  `json:"created_at"`
 }
 
@@ -137,5 +138,6 @@ type FeedWithCounts struct {
 	CategoryID     *int64 `json:"category_id,omitempty"`
 	TitleOverride  string `json:"title_override,omitempty"`
 	Muted          bool   `json:"muted"`
+	Position       int    `json:"position"`
 	Unread         int    `json:"unread"`
 }
