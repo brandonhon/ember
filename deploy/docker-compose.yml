@@ -56,13 +56,16 @@ services:
   ollama:
     image: ollama/ollama:latest
     restart: unless-stopped
-    # Internal-only — ember reaches it over the backend network; not exposed.
     expose:
       - "11434"
     volumes:
       - ollama-models:/root/.ollama
     networks:
+      # backend: ember talks to it. frontend (NOT internal): the daemon
+      # needs egress to registry.ollama.ai to download models. No `ports:`
+      # are mapped, so the daemon is still unreachable from outside the host.
       - backend
+      - frontend
     healthcheck:
       test: ["CMD", "ollama", "list"]
       interval: 30s
@@ -78,13 +81,19 @@ services:
     restart: "no"
     networks:
       - backend
+      - frontend  # needs egress to registry.ollama.ai
+    environment:
+      # Both the wait loop and the pull need to target the sibling container;
+      # without this env, `ollama list` hits 127.0.0.1:11434 inside the pull
+      # container (no daemon there) and the loop spins forever.
+      OLLAMA_HOST: http://ollama:11434
     volumes:
       - ollama-models:/root/.ollama
     entrypoint: ["/bin/sh", "-c"]
     command:
       - >
         until ollama list >/dev/null 2>&1; do sleep 1; done;
-        OLLAMA_HOST=http://ollama:11434 ollama pull "${EMBER_OLLAMA_MODEL:-qwen2.5:1.5b}"
+        ollama pull "${EMBER_OLLAMA_MODEL:-qwen2.5:1.5b}"
     depends_on:
       ollama:
         condition: service_started
