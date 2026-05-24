@@ -204,62 +204,68 @@
     {/if}
 
     {#each filtered as a (a.id)}
-      <div
+      <article
         class="story"
         class:read={a.is_read}
         class:active={$selectedArticleId === a.id}
         data-article-id={a.id}
         data-is-read={a.is_read ? "1" : "0"}
         data-testid="story-{a.id}"
-        role="button"
-        tabindex="0"
-        on:click={() => select(a.id)}
-        on:keydown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            select(a.id);
-          }
-        }}
       >
         <span class="unread-dot" aria-hidden="true"></span>
-        <div class="story-top">
-          <span class="src">
-            <span class="favicon" style="background:{favColor(a.feed_id)}">{srcInitial(a)}</span>
-            {srcName(a)}
-          </span>
-          <span class="src-meta">· {timeAgo(a.published_at)}</span>
-          {#if a.tags}
-            <span class="tag-badge">{a.tags.split(",")[0].trim()}</span>
-          {/if}
-          {#if isFresh(a.published_at)}<span class="fresh-tag">Fresh</span>{/if}
-        </div>
         {#if a.image_url}
           <img class="story-thumb" src={a.image_url} alt="" loading="lazy" on:error={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} />
         {/if}
-        <div class="story-title">{a.title}</div>
-        {#if a.content_text}
-          <div class="story-excerpt">{a.content_text}</div>
-        {/if}
+        <!-- Primary action: clicking the title/excerpt area opens the story.
+             A real <button> here keeps keyboard activation working while
+             avoiding the nested-interactive a11y violation. Foot buttons
+             are siblings below. -->
+        <button
+          class="story-link"
+          on:click={() => select(a.id)}
+          aria-label={`Open article: ${a.title}`}
+        >
+          <span class="story-top">
+            <span class="src">
+              <span class="favicon" style="background:{favColor(a.feed_id)}" aria-hidden="true">{srcInitial(a)}</span>
+              {srcName(a)}
+            </span>
+            <span class="src-meta">· {timeAgo(a.published_at)}</span>
+            {#if a.tags}
+              <span class="tag-badge">{a.tags.split(",")[0].trim()}</span>
+            {/if}
+            {#if isFresh(a.published_at)}<span class="fresh-tag">Fresh</span>{/if}
+          </span>
+          <span class="story-title">{a.title}</span>
+          {#if a.content_text}
+            <span class="story-excerpt">{a.content_text}</span>
+          {/if}
+        </button>
         <div class="story-foot">
           <button
             class:starred={a.is_starred}
-            on:click|stopPropagation={() => toggleStar(a.id, !a.is_starred)}
+            on:click={() => toggleStar(a.id, !a.is_starred)}
             data-testid="star-{a.id}"
+            aria-label={a.is_starred ? "Unstar article" : "Star article"}
           >
             {#if a.is_starred}
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.9 21l1.2-6.8-5-4.9 6.9-1z" /></svg>
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l3 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.9 21l1.2-6.8-5-4.9 6.9-1z" /></svg>
               Starred
             {:else}
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.9 21l1.2-6.8-5-4.9 6.9-1z" /></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2l3 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.9 21l1.2-6.8-5-4.9 6.9-1z" /></svg>
               Star
             {/if}
           </button>
-          <button on:click|stopPropagation={() => toggleLater(a.id, !a.is_later)} class:starred={a.is_later}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>
+          <button
+            on:click={() => toggleLater(a.id, !a.is_later)}
+            class:starred={a.is_later}
+            aria-label={a.is_later ? "Remove from read later" : "Save for read later"}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>
             {a.is_later ? "Saved" : "Later"}
           </button>
         </div>
-      </div>
+      </article>
     {/each}
   </div>
 </section>
@@ -359,7 +365,6 @@
   .story {
     display: block;
     width: 100%;
-    text-align: left;
     background: var(--card);
     border: 1px solid var(--line);
     border-radius: 14px;
@@ -368,7 +373,6 @@
     box-shadow: var(--shadow-card);
     transition: border-color 0.14s;
     position: relative;
-    cursor: pointer;
   }
   .story:hover { border-color: var(--ink-faint); }
   .story.active {
@@ -376,6 +380,22 @@
     box-shadow: 0 0 0 1px var(--ember), var(--shadow-card);
   }
   .story.read .story-title { color: var(--ink-faint); font-weight: 500; }
+  .story-link {
+    display: block;
+    width: 100%;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    text-align: left;
+    cursor: pointer;
+    color: inherit;
+    font: inherit;
+  }
+  .story-link:focus-visible {
+    outline: 2px solid var(--ember);
+    outline-offset: 4px;
+    border-radius: 6px;
+  }
   .story .unread-dot {
     position: absolute;
     left: 6px;
@@ -447,6 +467,7 @@
     font-weight: 600;
     letter-spacing: -0.005em;
     color: var(--ink);
+    display: block;
   }
   .story-excerpt {
     font-family: var(--font-read);
