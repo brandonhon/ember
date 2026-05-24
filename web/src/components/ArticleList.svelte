@@ -7,11 +7,12 @@
     categories,
     density,
     feeds,
+    loadArticles,
+    refreshSidebar,
     selectedArticleId,
     setRead,
     toggleStar,
     toggleLater,
-    loadArticles,
   } from "../lib/stores";
   import { api } from "../lib/api";
   import { get } from "svelte/store";
@@ -144,12 +145,13 @@
   });
 
   async function onMarkAllRead() {
-    let body: { feed_id?: number; category_id?: number; view?: string } = {};
+    let body: { feed_id?: number; category_id?: number; board_id?: number; view?: string } = {};
     if ($activeView.kind === "feed") body = { feed_id: $activeView.id };
     if ($activeView.kind === "category") body = { category_id: $activeView.id };
+    if ($activeView.kind === "board") body = { board_id: $activeView.id };
     if ($activeView.kind === "smart") body = { view: $activeView.view };
     await api.markAllRead(body);
-    await loadArticles(get(activeView));
+    await Promise.all([loadArticles(get(activeView)), refreshSidebar()]);
   }
 </script>
 

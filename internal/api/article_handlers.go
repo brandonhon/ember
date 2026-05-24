@@ -134,6 +134,7 @@ func (d *Dependencies) handleSetLater(w http.ResponseWriter, r *http.Request) {
 type markAllReadReq struct {
 	FeedID     int64  `json:"feed_id,omitempty"`
 	CategoryID int64  `json:"category_id,omitempty"`
+	BoardID    int64  `json:"board_id,omitempty"`
 	View       string `json:"view,omitempty"`
 }
 
@@ -141,6 +142,15 @@ func (d *Dependencies) handleMarkAllRead(w http.ResponseWriter, r *http.Request)
 	u, _ := auth.FromContext(r.Context())
 	var req markAllReadReq
 	if !decodeJSON(w, r, &req) {
+		return
+	}
+	// Boards take a different path — board_articles join, not subscription scope.
+	if req.BoardID > 0 {
+		n, err := d.Store.MarkBoardRead(r.Context(), u.ID, req.BoardID)
+		if mapStoreError(w, err) {
+			return
+		}
+		writeData(w, http.StatusOK, map[string]int64{"count": n}, nil)
 		return
 	}
 	var freshAfter int64

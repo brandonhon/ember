@@ -23,6 +23,27 @@ func (s *Store) SetLater(ctx context.Context, userID, articleID int64, later boo
 	return s.setStateFlag(ctx, userID, []int64{articleID}, "is_later", "", later)
 }
 
+// MarkBoardRead marks every article on the board as read for the user. The
+// board must belong to the user (otherwise this is a no-op).
+func (s *Store) MarkBoardRead(ctx context.Context, userID, boardID int64) (int64, error) {
+	q := `
+INSERT INTO article_state (user_id, article_id, is_read, read_at)
+SELECT ?, a.id, 1, ?
+FROM articles a
+JOIN board_articles ba ON ba.article_id = a.id
+JOIN boards b ON b.id = ba.board_id AND b.user_id = ? AND b.id = ?
+LEFT JOIN article_state st ON st.article_id = a.id AND st.user_id = ?
+WHERE IFNULL(st.is_read,0) = 0
+ON CONFLICT(user_id, article_id) DO UPDATE SET is_read = 1, read_at = excluded.read_at
+WHERE article_state.is_read = 0`
+	res, err := s.DB.ExecContext(ctx, q, userID, s.nowUnix(), userID, boardID, userID)
+	if err != nil {
+		return 0, err
+	}
+	n, _ := res.RowsAffected()
+	return n, nil
+}
+
 // MarkAllRead marks every article in scope as read for the user. Pass 0 to a
 // scope filter to omit it (e.g. category=0, feed=0 means mark-all-read globally).
 // freshAfter limits to articles published at or after that time (used for the
