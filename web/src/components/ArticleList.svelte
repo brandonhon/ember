@@ -3,6 +3,7 @@
   import {
     activeView,
     articles,
+    boards,
     categories,
     density,
     feeds,
@@ -92,6 +93,10 @@
       case "category": {
         const c = $categories.find((x) => x.id === ($activeView as { id: number }).id);
         return c ? c.name : "Folder";
+      }
+      case "board": {
+        const b = $boards.find((x) => x.id === ($activeView as { id: number }).id);
+        return b ? b.name : "Board";
       }
     }
   });

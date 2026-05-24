@@ -1,6 +1,7 @@
 <script lang="ts">
   import {
     activeView,
+    boards,
     categories,
     feeds,
     totalUnread,
@@ -18,6 +19,9 @@
   let addingFeed = $state(false);
   let newFeedURL = $state("");
   let addError = $state("");
+  let newBoardName = $state("");
+  let newBoardFormOpen = $state(false);
+  let creatingBoard = $state(false);
   // Which feed row's action menu is open (by feed id). Null = none.
   let menuFor = $state<number | null>(null);
 
@@ -115,8 +119,46 @@
     activeView.set({ kind: "category", id });
     loadArticles({ kind: "category", id });
   }
+  function pickBoard(id: number) {
+    activeView.set({ kind: "board", id });
+    loadArticles({ kind: "board", id });
+  }
   function toggleCategory(catID: number) {
     collapsedCategories[catID] = !collapsedCategories[catID];
+  }
+
+  async function submitNewBoard(e: Event) {
+    e.preventDefault();
+    if (!newBoardName.trim()) return;
+    creatingBoard = true;
+    try {
+      await api.createBoard(newBoardName.trim());
+      newBoardName = "";
+      newBoardFormOpen = false;
+      await refreshSidebar();
+    } catch (err) {
+      console.error("createBoard", err);
+    } finally {
+      creatingBoard = false;
+    }
+  }
+
+  async function deleteBoard(id: number, name: string) {
+    if (!confirm(`Delete board "${name}"?`)) return;
+    try {
+      await api.deleteBoard(id);
+      await refreshSidebar();
+      if ($activeView.kind === "board" && $activeView.id === id) {
+        activeView.set({ kind: "smart", view: "fresh" });
+        loadArticles({ kind: "smart", view: "fresh" });
+      }
+    } catch (err) {
+      console.error("deleteBoard", err);
+    }
+  }
+
+  function isActiveBoard(id: number): boolean {
+    return $activeView.kind === "board" && $activeView.id === id;
   }
 
   async function submitAddFeed(e: Event) {
@@ -312,6 +354,65 @@
         </form>
       {/if}
     </div>
+  </div>
+
+  <!-- Boards -->
+  <div class="rail-section">
+    <div class="rail-head">
+      <h3>Boards</h3>
+      <button
+        class="head-add"
+        on:click={() => (newBoardFormOpen = !newBoardFormOpen)}
+        aria-label="New board"
+        title="New board"
+        data-testid="open-add-board"
+      >+</button>
+    </div>
+
+    {#if newBoardFormOpen}
+      <form class="add-form add-form-board" on:submit={submitNewBoard}>
+        <input
+          type="text"
+          bind:value={newBoardName}
+          placeholder="Board name"
+          disabled={creatingBoard}
+          data-testid="add-board-input"
+        />
+        <div class="add-form-actions">
+          <button type="button" class="ghost" on:click={() => { newBoardFormOpen = false; newBoardName = ""; }}>
+            Cancel
+          </button>
+          <button type="submit" disabled={creatingBoard || !newBoardName.trim()} data-testid="add-board-submit">
+            {creatingBoard ? "…" : "Add"}
+          </button>
+        </div>
+      </form>
+    {/if}
+
+    {#each $boards as b (b.id)}
+      <div class="feed-row board-row">
+        <button
+          class="nav-item board-item"
+          class:active={isActiveBoard(b.id)}
+          on:click={() => pickBoard(b.id)}
+          data-testid="board-{b.id}"
+        >
+          <span class="ni-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /></svg>
+          </span>
+          <span class="ni-label">{b.name}</span>
+        </button>
+        <button
+          class="board-delete"
+          on:click={() => deleteBoard(b.id, b.name)}
+          aria-label="Delete board"
+          title="Delete board"
+          data-testid="board-delete-{b.id}"
+        >
+          ×
+        </button>
+      </div>
+    {/each}
   </div>
 </aside>
 
@@ -557,4 +658,38 @@
   }
   .add-form-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
   .add-error { color: #b91c1c; font-size: 11px; margin: 0; }
+
+  .head-add {
+    background: transparent;
+    border: none;
+    color: var(--ink-faint);
+    font-size: 18px;
+    line-height: 1;
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .head-add:hover { background: var(--line-soft); color: var(--ember); }
+  .add-form-board { padding: 0 10px 4px; }
+  .board-row { padding-right: 28px; }
+  .board-item { padding-right: 4px; }
+  .board-delete {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    background: transparent;
+    border: none;
+    color: var(--ink-faint);
+    opacity: 0;
+    cursor: pointer;
+    line-height: 1;
+    font-size: 14px;
+  }
+  .board-row:hover .board-delete { opacity: 1; }
+  .board-delete:hover { background: var(--line); color: #b91c1c; }
 </style>

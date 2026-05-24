@@ -1,6 +1,7 @@
 import { writable, derived, get } from "svelte/store";
 import type {
   ArticleView,
+  Board,
   Category,
   FeedWithCounts,
   ListArticlesQuery,
@@ -42,14 +43,16 @@ export async function logout(): Promise<void> {
   }
 }
 
-// Feeds / categories ---------------------------------------------------------
+// Feeds / categories / boards -----------------------------------------------
 export const feeds = writable<FeedWithCounts[]>([]);
 export const categories = writable<Category[]>([]);
+export const boards = writable<Board[]>([]);
 
 export async function refreshSidebar(): Promise<void> {
-  const [f, c] = await Promise.all([api.listFeeds(), api.listCategories()]);
+  const [f, c, b] = await Promise.all([api.listFeeds(), api.listCategories(), api.listBoards()]);
   feeds.set(f.data ?? []);
   categories.set(c.data ?? []);
+  boards.set(b.data ?? []);
 }
 
 export const totalUnread = derived(feeds, ($feeds) =>
@@ -60,7 +63,8 @@ export const totalUnread = derived(feeds, ($feeds) =>
 export type ActiveView =
   | { kind: "smart"; view: "fresh" | "today" | "unread" | "starred" | "later" | "shared" }
   | { kind: "feed"; id: number }
-  | { kind: "category"; id: number };
+  | { kind: "category"; id: number }
+  | { kind: "board"; id: number };
 
 export const activeView = writable<ActiveView>({ kind: "smart", view: "fresh" });
 export const selectedArticleId = writable<number | null>(null);
@@ -96,6 +100,8 @@ function queryForView(view: ActiveView): ListArticlesQuery {
       return { feed_id: view.id };
     case "category":
       return { category_id: view.id };
+    case "board":
+      return { board_id: view.id };
   }
 }
 
