@@ -3,6 +3,9 @@ package poller
 import (
 	"context"
 	"log/slog"
+	"net/http"
+	"regexp"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -28,6 +31,10 @@ type Config struct {
 	BatchLimit    int
 	Now           func() time.Time
 	SummaryWorker bool // if false, no async summary worker (tests)
+	// EnrichOnIngest controls whether anemic article bodies trigger a
+	// readability HTTP fetch against the article URL. Default true in
+	// production; tests set false to keep them fast.
+	EnrichOnIngest bool
 }
 
 // Metrics is an in-memory snapshot for observability/tests.
@@ -209,6 +216,12 @@ func (p *Poller) fetchAndStore(ctx context.Context, f models.Feed) {
 
 	var newCount int
 	for _, a := range parsed.Articles {
+		// If the feed's body is just a link list (HN-style) or too short to
+		// be useful, fetch readability against the article URL to extract real
+		// content + a lead image. Best-effort: never blocks ingest on failure.
+		if p.Config.EnrichOnIngest && p.shouldEnrich(a) {
+			p.enrichWithReadability(ctx, &a)
+		}
 		stored, inserted, err := p.Store.UpsertArticle(ctx, a)
 		if err != nil {
 			p.Logger.Warn("poller: upsert article failed", "feed_id", f.ID, "guid", a.GUID, "err", err)
@@ -254,6 +267,53 @@ func (p *Poller) fetchAndStore(ctx context.Context, f models.Feed) {
 		patch.SiteURL = ptr(parsed.SiteURL)
 	}
 	_ = p.Store.UpdateFeedFetch(ctx, f.ID, patch)
+}
+
+// linkListRE matches "Article URL: ... Comments URL: ..." — the canonical
+// HN-style RSS body that has no actual article text in it.
+var linkListRE = regexp.MustCompile(`(?i)\bcomments\s*url\b|^article\s*url\b`)
+
+// shouldEnrich returns true when the article's parsed body is too thin or
+// looks like a link list — readability against the article URL will usually
+// produce something more useful.
+func (p *Poller) shouldEnrich(a models.Article) bool {
+	if a.URL == "" {
+		return false
+	}
+	text := strings.TrimSpace(a.ContentText)
+	if len(text) < 200 {
+		return true
+	}
+	if linkListRE.MatchString(text) && len(text) < 800 {
+		return true
+	}
+	return false
+}
+
+// enrichWithReadability fetches the article URL through go-readability and
+// replaces the parsed body + image_url with the extracted content. Failures
+// are logged and the original article is left intact. Re-computes the
+// content_hash so dedup works on the enriched body for new articles.
+func (p *Poller) enrichWithReadability(ctx context.Context, a *models.Article) {
+	// Short per-request timeout so a slow site doesn't stall the whole feed.
+	rctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	client := &http.Client{Timeout: 15 * time.Second}
+	r, err := feed.ExtractFromURL(rctx, client, a.URL)
+	if err != nil {
+		p.Logger.Debug("poller: readability failed", "url", a.URL, "err", err)
+		return
+	}
+	if len(strings.TrimSpace(r.Text)) < len(strings.TrimSpace(a.ContentText)) {
+		// Worse than what we already had — keep the original.
+		return
+	}
+	a.ContentHTML = r.HTML
+	a.ContentText = r.Text
+	if a.ImageURL == "" && r.ImageURL != "" {
+		a.ImageURL = r.ImageURL
+	}
+	a.ContentHash = feed.ContentHash(a.URL, a.Title, a.ContentText)
 }
 
 // applyFiltersForUser fetches a user's enabled filters and applies them to the

@@ -223,6 +223,9 @@
           <span class="src-meta">· {timeAgo(a.published_at)}</span>
           {#if isFresh(a.published_at)}<span class="fresh-tag">Fresh</span>{/if}
         </div>
+        {#if a.image_url}
+          <img class="story-thumb" src={a.image_url} alt="" loading="lazy" on:error={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} />
+        {/if}
         <div class="story-title">{a.title}</div>
         {#if a.content_text}
           <div class="story-excerpt">{a.content_text}</div>
@@ -432,6 +435,16 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
+  .story-thumb {
+    float: right;
+    width: 76px;
+    height: 76px;
+    border-radius: 10px;
+    margin: 0 0 6px 14px;
+    object-fit: cover;
+    background: var(--line-soft);
+  }
+  .articles.compact .story-thumb { display: none; }
   .story-foot {
     display: flex;
     align-items: center;

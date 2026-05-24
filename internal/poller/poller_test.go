@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -173,6 +174,37 @@ func TestPoller_RunGracefulShutdown(t *testing.T) {
 	}
 	if p.Metrics.TicksTotal.Load() == 0 {
 		t.Error("no ticks ran")
+	}
+}
+
+func TestPoller_ShouldEnrich(t *testing.T) {
+	p := &Poller{}
+	cases := []struct {
+		name string
+		a    models.Article
+		want bool
+	}{
+		{"hn-style link list", models.Article{
+			URL:         "https://example.test/post",
+			ContentText: "Article URL: https://example.test/post Comments URL: https://news.ycombinator.com/item?id=1",
+		}, true},
+		{"too short", models.Article{
+			URL: "https://x.test", ContentText: "Just three words.",
+		}, true},
+		{"empty url skipped", models.Article{
+			URL: "", ContentText: "short",
+		}, false},
+		{"long real body", models.Article{
+			URL:         "https://blog.test/post",
+			ContentText: strings.Repeat("This is real article text with substance. ", 20),
+		}, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := p.shouldEnrich(c.a); got != c.want {
+				t.Errorf("shouldEnrich(%q) = %v, want %v", c.a.ContentText[:min(40, len(c.a.ContentText))], got, c.want)
+			}
+		})
 	}
 }
 

@@ -110,9 +110,10 @@ func run() error {
 
 	fetcher := feed.NewFetcher(30 * time.Second)
 	p := poller.New(st, fetcher, sum, poller.Config{
-		Tick:          cfg.PollTick,
-		Concurrency:   cfg.PollConcurrency,
-		SummaryWorker: !cfg.TestMode,
+		Tick:           cfg.PollTick,
+		Concurrency:    cfg.PollConcurrency,
+		SummaryWorker:  !cfg.TestMode,
+		EnrichOnIngest: !cfg.TestMode,
 	}, logger.With("component", "poller"))
 
 	// Background poller. Skipped in test mode — articles are pre-seeded and
