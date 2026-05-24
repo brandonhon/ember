@@ -23,6 +23,7 @@ import (
 	"github.com/brandonhon/ember/internal/poller"
 	"github.com/brandonhon/ember/internal/store"
 	"github.com/brandonhon/ember/internal/summarize"
+	"github.com/brandonhon/ember/internal/sysinfo"
 	"github.com/brandonhon/ember/internal/web"
 )
 
@@ -30,14 +31,51 @@ import (
 var version = "dev"
 
 func main() {
-	if len(os.Args) > 1 && (os.Args[1] == "-v" || os.Args[1] == "--version" || os.Args[1] == "version") {
-		fmt.Printf("ember %s\n", version)
-		return
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "-v", "--version", "version":
+			fmt.Printf("ember %s\n", version)
+			return
+		case "probe":
+			runProbe()
+			return
+		}
 	}
 	if err := run(); err != nil {
 		fmt.Fprintf(os.Stderr, "ember: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+// runProbe prints detected host specs and a recommended Ollama model. Useful
+// at install time: `docker run --rm ember probe`.
+func runProbe() {
+	s := sysinfo.Detect()
+	rec := sysinfo.Recommend(s)
+	gib := float64(s.RAMBytes) / (1024 * 1024 * 1024)
+	fmt.Printf("System:\n")
+	if s.RAMBytes > 0 {
+		fmt.Printf("  RAM:        %.1f GiB\n", gib)
+	} else {
+		fmt.Printf("  RAM:        unknown (set EMBER_OLLAMA_MODEL manually)\n")
+	}
+	fmt.Printf("  CPUs:       %d\n", s.CPUs)
+	if s.GPU != "" {
+		fmt.Printf("  GPU:        %s\n", s.GPU)
+	} else {
+		fmt.Printf("  GPU:        none detected\n")
+	}
+	fmt.Printf("  OS:         %s\n\n", s.OS)
+	if rec.DisableLLM {
+		fmt.Printf("Recommendation: disable summaries (EMBER_DISABLE_SUMMARIES=1)\n")
+		fmt.Printf("Reason: %s\n", rec.Reason)
+		return
+	}
+	fmt.Printf("Recommended model: %s\n", rec.Model)
+	fmt.Printf("Reason: %s\n\n", rec.Reason)
+	fmt.Printf("To use it:\n")
+	fmt.Printf("  export EMBER_OLLAMA_MODEL=%s\n", rec.Model)
+	fmt.Printf("  (or set it in your compose env file)\n")
 }
 
 func run() error {
@@ -100,8 +138,11 @@ func run() error {
 
 	op := opml.NewService(st)
 
-	// Summarizer: noop in test mode, nil if disabled at install, otherwise Ollama.
+	// Summarizer: noop in test mode, nil if disabled at install, otherwise
+	// Ollama. The active model is the persisted app setting if present, else
+	// the env-var default — so admin model switches survive a restart.
 	var sum summarize.Summarizer
+	var ollamaSum *summarize.Ollama
 	switch {
 	case cfg.DisableSummaries:
 		logger.Info("AI summaries disabled via EMBER_DISABLE_SUMMARIES")
@@ -109,7 +150,13 @@ func run() error {
 	case cfg.TestMode:
 		sum = summarize.Noop{}
 	default:
-		sum = summarize.NewOllama(cfg.OllamaURL, cfg.OllamaModel)
+		model := cfg.OllamaModel
+		if saved, _ := st.GetAppSetting(ctx, "ollama_model"); saved != "" {
+			model = saved
+			logger.Info("loaded saved ollama_model from app_settings", "model", model)
+		}
+		ollamaSum = summarize.NewOllama(cfg.OllamaURL, model)
+		sum = ollamaSum
 	}
 
 	fetcher := feed.NewFetcher(30 * time.Second)
@@ -135,7 +182,7 @@ func run() error {
 
 	router := api.NewRouter(api.Dependencies{
 		Store: st, Auth: a, Poller: p, Metrics: p, OPML: op,
-		StaticH: staticH, TestMode: cfg.TestMode,
+		StaticH: staticH, TestMode: cfg.TestMode, Ollama: ollamaSum,
 	})
 
 	srv := &http.Server{

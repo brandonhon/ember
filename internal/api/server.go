@@ -11,6 +11,7 @@ import (
 	"github.com/brandonhon/ember/internal/auth"
 	"github.com/brandonhon/ember/internal/opml"
 	"github.com/brandonhon/ember/internal/store"
+	"github.com/brandonhon/ember/internal/summarize"
 )
 
 // PollerRefresher is the subset of *poller.Poller the API uses (lets us avoid
@@ -34,6 +35,10 @@ type Dependencies struct {
 	Metrics MetricsSnapshotter
 	OPML    *opml.Service
 	StaticH http.Handler // SPA / embed.FS handler; may be nil in tests
+	// Ollama exposes the live summarizer so the admin LLM endpoints can list
+	// installed models, pull new ones, and swap the active model. Optional —
+	// nil when the summarizer is disabled or the noop (tests) is in use.
+	Ollama *summarize.Ollama
 	// TestMode loosens cookie Secure flag for non-HTTPS tests.
 	TestMode bool
 }
@@ -100,6 +105,11 @@ func NewRouter(d Dependencies) http.Handler {
 		r.With(d.Auth.RequireAuth).Post("/feeds/{id}/refresh", d.handleRefreshFeed)
 		r.With(d.Auth.RequireAuth).Post("/feeds/{id}/resummarize", d.handleResummarizeFeed)
 		r.With(d.Auth.RequireAdmin).Post("/feeds/resummarize-all", d.handleResummarizeAll)
+
+		// LLM admin
+		r.With(d.Auth.RequireAdmin).Get("/admin/llm", d.handleGetLLM)
+		r.With(d.Auth.RequireAdmin).Post("/admin/llm/model", d.handleSetLLMModel)
+		r.With(d.Auth.RequireAdmin).Post("/admin/llm/pull", d.handlePullLLMModel)
 		r.With(d.Auth.RequireAuth).Post("/feeds/import", d.handleOPMLImport)
 		r.With(d.Auth.RequireAuth).Get("/feeds/export", d.handleOPMLExport)
 

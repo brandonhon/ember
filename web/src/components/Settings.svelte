@@ -9,7 +9,7 @@
     showSummary,
     showImages,
   } from "../lib/stores";
-  import { api, ApiError, type StarterPack, type StarterImportResult } from "../lib/api";
+  import { api, ApiError, type StarterPack, type StarterImportResult, type LLMStatus } from "../lib/api";
   import { onMount } from "svelte";
   import { refreshSidebar } from "../lib/stores";
   import FilterManager from "./FilterManager.svelte";
@@ -17,7 +17,7 @@
 
   let { onClose }: { onClose: () => void } = $props();
 
-  type Section = "profile" | "preferences" | "mobile" | "filters" | "users" | "starter" | "about";
+  type Section = "profile" | "preferences" | "mobile" | "filters" | "users" | "starter" | "llm" | "about";
   let section = $state<Section>("profile");
 
   // Starter pack state ------------------------------------------------
@@ -59,8 +59,72 @@
     }
   }
 
+  // LLM admin state ---------------------------------------------------
+  let llm = $state<LLMStatus | null>(null);
+  let llmErr = $state<string>("");
+  let llmMsg = $state<string>("");
+  let llmBusy = $state<string>(""); // active action: "switch:<model>", "pull:<model>", etc.
+  let pullInput = $state<string>("");
+
+  async function loadLLM() {
+    llmErr = "";
+    try {
+      const res = await api.getLLMStatus();
+      llm = res.data;
+      if (!pullInput && llm?.recommended?.model) {
+        pullInput = llm.recommended.model;
+      }
+    } catch (e) {
+      llmErr = e instanceof ApiError ? e.message : String(e);
+    }
+  }
+
+  async function switchModel(name: string) {
+    llmBusy = "switch:" + name;
+    llmMsg = "";
+    llmErr = "";
+    try {
+      await api.setLLMModel(name);
+      llmMsg = `Now using ${name}`;
+      await loadLLM();
+    } catch (e) {
+      llmErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      llmBusy = "";
+      setTimeout(() => (llmMsg = ""), 3000);
+    }
+  }
+
+  async function pullModel() {
+    const name = pullInput.trim();
+    if (!name) return;
+    llmBusy = "pull:" + name;
+    llmMsg = "";
+    llmErr = "";
+    try {
+      await api.pullLLMModel(name);
+      llmMsg = `Pulled ${name}`;
+      await loadLLM();
+    } catch (e) {
+      llmErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      llmBusy = "";
+      setTimeout(() => (llmMsg = ""), 4000);
+    }
+  }
+
+  function gib(bytes: number): string {
+    if (!bytes) return "—";
+    return (bytes / (1024 * 1024 * 1024)).toFixed(1) + " GiB";
+  }
+  function mib(bytes: number): string {
+    if (!bytes) return "—";
+    return (bytes / (1024 * 1024)).toFixed(0) + " MiB";
+  }
+
   $effect(() => {
     if (section === "starter") void loadStarterPacks();
+    if (section === "llm" && $user?.is_admin) void loadLLM();
   });
 
   onMount(() => {
@@ -151,6 +215,7 @@
         <button class:active={section === "filters"} on:click={() => (section = "filters")}>Filters</button>
         <button class:active={section === "starter"} on:click={() => (section = "starter")} data-testid="settings-starter">Starter packs</button>
         {#if $user?.is_admin}
+          <button class:active={section === "llm"} on:click={() => (section = "llm")} data-testid="settings-llm">Language model</button>
           <button class:active={section === "users"} on:click={() => (section = "users")} data-testid="settings-users">Users</button>
         {/if}
         <button class:active={section === "about"} on:click={() => (section = "about")}>About</button>
@@ -294,6 +359,100 @@
               </div>
             {/each}
           </div>
+        {/if}
+
+        {#if section === "llm" && $user?.is_admin}
+          <h3>Language model</h3>
+          <p class="hint">Switch models or pull new ones from Ollama. The recommendation matches what fits your host.</p>
+          {#if llmErr}<p class="error" data-testid="llm-error">{llmErr}</p>{/if}
+          {#if llmMsg}<p class="ok" data-testid="llm-msg">{llmMsg}</p>{/if}
+          {#if !llm}
+            <p class="muted">Loading…</p>
+          {:else if !llm.enabled}
+            <p class="muted">Summaries are disabled on this server (EMBER_DISABLE_SUMMARIES=1).</p>
+          {:else}
+            <h4>This host</h4>
+            <dl class="kv">
+              <dt>RAM</dt><dd>{gib(llm.system.ram_bytes)}</dd>
+              <dt>CPUs</dt><dd>{llm.system.cpus}</dd>
+              <dt>GPU</dt><dd>{llm.system.gpu || "none detected"}</dd>
+              <dt>OS</dt><dd>{llm.system.os}</dd>
+            </dl>
+            <h4>Recommendation</h4>
+            <div class="rec-row">
+              <div>
+                <div class="pref-label">{llm.recommended.disable_llm ? "Disable summaries" : llm.recommended.model}</div>
+                <div class="pref-hint">{llm.recommended.reason}</div>
+              </div>
+              {#if !llm.recommended.disable_llm && llm.recommended.model !== llm.current_model}
+                <button
+                  class="pack-btn"
+                  on:click={() => switchModel(llm!.recommended.model)}
+                  disabled={llmBusy.startsWith("switch:") || llmBusy.startsWith("pull:")}
+                  data-testid="llm-use-recommended"
+                >
+                  Use this
+                </button>
+              {/if}
+            </div>
+
+            <h4>Active model</h4>
+            <p data-testid="llm-current"><strong>{llm.current_model || "(none)"}</strong></p>
+
+            <h4>Installed</h4>
+            {#if llm.installed_err}
+              <p class="error">Couldn't list installed models: {llm.installed_err}</p>
+            {:else if !llm.installed || llm.installed.length === 0}
+              <p class="muted">No models installed yet. Pull one below.</p>
+            {:else}
+              <table class="llm-table">
+                <thead>
+                  <tr><th>Name</th><th>Size</th><th></th></tr>
+                </thead>
+                <tbody>
+                  {#each llm.installed as m (m.name)}
+                    <tr>
+                      <td><code>{m.name}</code></td>
+                      <td>{mib(m.size_bytes)}</td>
+                      <td>
+                        {#if m.name === llm.current_model}
+                          <span class="muted">active</span>
+                        {:else}
+                          <button
+                            class="pack-btn"
+                            on:click={() => switchModel(m.name)}
+                            disabled={llmBusy !== ""}
+                            data-testid="llm-switch-{m.name}"
+                          >
+                            {llmBusy === "switch:" + m.name ? "Switching…" : "Use"}
+                          </button>
+                        {/if}
+                      </td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            {/if}
+
+            <h4>Pull a new model</h4>
+            <p class="hint">e.g. <code>qwen2.5:0.5b</code>, <code>qwen2.5:1.5b</code>, <code>llama3.2:1b</code>. Downloads can take several minutes.</p>
+            <div class="rec-row">
+              <input
+                type="text"
+                bind:value={pullInput}
+                placeholder="qwen2.5:0.5b"
+                data-testid="llm-pull-input"
+              />
+              <button
+                class="pack-btn"
+                on:click={pullModel}
+                disabled={!pullInput.trim() || llmBusy.startsWith("pull:")}
+                data-testid="llm-pull-submit"
+              >
+                {llmBusy.startsWith("pull:") ? "Pulling…" : "Pull"}
+              </button>
+            </div>
+          {/if}
         {/if}
 
         {#if section === "users" && $user?.is_admin}
@@ -550,4 +709,51 @@
   }
   .pack-btn:hover:not(:disabled) { background: var(--ember-soft); }
   .pack-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .rec-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    background: var(--card);
+    border-radius: 10px;
+    margin-bottom: 10px;
+  }
+  .rec-row input[type="text"] {
+    flex: 1;
+    padding: 7px 10px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    font: inherit;
+    font-size: 13px;
+    background: var(--paper);
+    color: var(--ink);
+  }
+  .llm-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 6px 0 16px;
+    font-size: 13px;
+  }
+  .llm-table th, .llm-table td {
+    text-align: left;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .llm-table th {
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ink-faint);
+    font-weight: 700;
+  }
+  .llm-table code {
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    background: var(--line-soft);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
 </style>

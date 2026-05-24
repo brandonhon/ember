@@ -208,7 +208,40 @@ export const api = {
     call<StarterPack[]>("GET", "/api/starter-packs"),
   importStarterPack: (slug: string) =>
     call<StarterImportResult>("POST", `/api/starter-packs/${slug}`),
+
+  // LLM admin --------------------------------------------------------
+  getLLMStatus: () => call<LLMStatus>("GET", "/api/admin/llm"),
+  setLLMModel: (model: string) =>
+    call<{ model: string }>("POST", "/api/admin/llm/model", { model }),
+  pullLLMModel: (model: string) =>
+    call<{ model: string }>("POST", "/api/admin/llm/pull", { model }),
 };
+
+export interface LLMSystemInfo {
+  ram_bytes: number;
+  cpus: number;
+  gpu: string;
+  os: string;
+}
+export interface LLMRecommendation {
+  model: string;
+  reason: string;
+  disable_llm: boolean;
+}
+export interface LLMInstalledModel {
+  name: string;
+  size_bytes: number;
+  modified_at: string;
+}
+export interface LLMStatus {
+  current_model: string;
+  base_url: string;
+  enabled: boolean;
+  system: LLMSystemInfo;
+  recommended: LLMRecommendation;
+  installed?: LLMInstalledModel[];
+  installed_err?: string;
+}
 
 export interface StarterPack {
   slug: string;
