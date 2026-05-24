@@ -177,7 +177,7 @@ func (s *Store) Subscribe(ctx context.Context, sub models.Subscription) (models.
 // GetSubscription returns the user's subscription to a feed.
 func (s *Store) GetSubscription(ctx context.Context, userID, feedID int64) (models.Subscription, error) {
 	row := s.DB.QueryRowContext(ctx, `
-		SELECT id, user_id, feed_id, category_id, IFNULL(title_override,''), created_at
+		SELECT id, user_id, feed_id, category_id, IFNULL(title_override,''), muted, created_at
 		FROM subscriptions WHERE user_id = ? AND feed_id = ?`, userID, feedID)
 	return scanSubscription(row)
 }
@@ -186,7 +186,7 @@ func (s *Store) GetSubscription(ctx context.Context, userID, feedID int64) (mode
 // the user (returns ErrNotFound on cross-user access).
 func (s *Store) GetSubscriptionByID(ctx context.Context, userID, subID int64) (models.Subscription, error) {
 	row := s.DB.QueryRowContext(ctx, `
-		SELECT id, user_id, feed_id, category_id, IFNULL(title_override,''), created_at
+		SELECT id, user_id, feed_id, category_id, IFNULL(title_override,''), muted, created_at
 		FROM subscriptions WHERE id = ? AND user_id = ?`, subID, userID)
 	return scanSubscription(row)
 }
@@ -196,6 +196,7 @@ type UpdateSubscriptionPatch struct {
 	CategoryID    *int64 // pointer-to-pointer trick: nil = leave alone, *p=0 → set NULL, *p>0 → set
 	ClearCategory bool
 	TitleOverride *string
+	Muted         *bool
 }
 
 // UpdateSubscription updates a subscription's category or title override.
@@ -212,6 +213,10 @@ func (s *Store) UpdateSubscription(ctx context.Context, userID, subID int64, p U
 	if p.TitleOverride != nil {
 		sets = append(sets, "title_override = ?")
 		args = append(args, nullable(*p.TitleOverride))
+	}
+	if p.Muted != nil {
+		sets = append(sets, "muted = ?")
+		args = append(args, boolToInt(*p.Muted))
 	}
 	if len(sets) == 0 {
 		return nil
@@ -293,7 +298,7 @@ func (s *Store) ListFeedsForUser(ctx context.Context, userID int64) ([]models.Fe
 		       IFNULL(f.etag,''), IFNULL(f.last_modified,''),
 		       IFNULL(f.last_fetched,0), IFNULL(f.next_fetch,0),
 		       f.fetch_interval, f.error_count, IFNULL(f.last_error,''), f.created_at,
-		       s.id AS sub_id, s.category_id, IFNULL(s.title_override,''),
+		       s.id AS sub_id, s.category_id, IFNULL(s.title_override,''), s.muted,
 		       (SELECT COUNT(*)
 		          FROM articles a
 		          LEFT JOIN article_state st ON st.article_id = a.id AND st.user_id = s.user_id
@@ -313,11 +318,12 @@ func (s *Store) ListFeedsForUser(ctx context.Context, userID int64) ([]models.Fe
 	for rows.Next() {
 		var f models.FeedWithCounts
 		var catID sql.NullInt64
+		var muted int
 		err := rows.Scan(
 			&f.ID, &f.URL, &f.SiteURL, &f.Title, &f.FaviconURL,
 			&f.ETag, &f.LastModified, &f.LastFetched, &f.NextFetch,
 			&f.FetchInterval, &f.ErrorCount, &f.LastError, &f.CreatedAt,
-			&f.SubscriptionID, &catID, &f.TitleOverride, &f.Unread,
+			&f.SubscriptionID, &catID, &f.TitleOverride, &muted, &f.Unread,
 		)
 		if err != nil {
 			return nil, err
@@ -326,6 +332,7 @@ func (s *Store) ListFeedsForUser(ctx context.Context, userID int64) ([]models.Fe
 			v := catID.Int64
 			f.CategoryID = &v
 		}
+		f.Muted = muted == 1
 		out = append(out, f)
 	}
 	return out, rows.Err()
@@ -346,7 +353,8 @@ func scanFeed(row scannable) (models.Feed, error) {
 func scanSubscription(row scannable) (models.Subscription, error) {
 	var s models.Subscription
 	var catID sql.NullInt64
-	err := row.Scan(&s.ID, &s.UserID, &s.FeedID, &catID, &s.TitleOverride, &s.CreatedAt)
+	var muted int
+	err := row.Scan(&s.ID, &s.UserID, &s.FeedID, &catID, &s.TitleOverride, &muted, &s.CreatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return models.Subscription{}, ErrNotFound
 	}
@@ -357,6 +365,7 @@ func scanSubscription(row scannable) (models.Subscription, error) {
 		v := catID.Int64
 		s.CategoryID = &v
 	}
+	s.Muted = muted == 1
 	return s, nil
 }
 
