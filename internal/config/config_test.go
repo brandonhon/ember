@@ -18,7 +18,7 @@ func TestDefaults(t *testing.T) {
 	if d.OllamaURL != "http://ollama:11434" {
 		t.Errorf("default OllamaURL = %q", d.OllamaURL)
 	}
-	if d.OllamaModel != "qwen2.5:1.5b" {
+	if d.OllamaModel != "qwen2.5:0.5b" {
 		t.Errorf("default OllamaModel = %q", d.OllamaModel)
 	}
 	if d.FreshWindow != 6*time.Hour {
@@ -45,7 +45,7 @@ func TestLoad_DefaultsWithSessionKey(t *testing.T) {
 	if cfg.Addr != ":8080" {
 		t.Errorf("Addr = %q, want default :8080", cfg.Addr)
 	}
-	if cfg.OllamaModel != "qwen2.5:1.5b" {
+	if cfg.OllamaModel != "qwen2.5:0.5b" {
 		t.Errorf("OllamaModel = %q, want default", cfg.OllamaModel)
 	}
 }

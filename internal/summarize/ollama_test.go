@@ -33,18 +33,18 @@ func TestOllama_SuccessfulJSONArray(t *testing.T) {
 	o := NewOllama(srv.URL, "qwen2.5:1.5b")
 	o.HTTPClient = srv.Client()
 
-	bullets, model, err := o.Summarize(context.Background(), "Hello", "World body content")
+	res, model, err := o.Summarize(context.Background(), "Hello", "World body content")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if model != "qwen2.5:1.5b" {
 		t.Errorf("model = %q", model)
 	}
-	if len(bullets) != 3 {
-		t.Fatalf("bullets = %d", len(bullets))
+	if len(res.Bullets) != 3 {
+		t.Fatalf("bullets = %d", len(res.Bullets))
 	}
-	if !strings.HasPrefix(bullets[0], "First") {
-		t.Errorf("first bullet = %q", bullets[0])
+	if !strings.HasPrefix(res.Bullets[0], "First") {
+		t.Errorf("first bullet = %q", res.Bullets[0])
 	}
 	if saw.Model != "qwen2.5:1.5b" {
 		t.Errorf("model not sent: %q", saw.Model)
@@ -67,15 +67,122 @@ func TestOllama_FallbackToLineParsing(t *testing.T) {
 	defer srv.Close()
 	o := NewOllama(srv.URL, "m")
 	o.HTTPClient = srv.Client()
-	bullets, _, err := o.Summarize(context.Background(), "T", "x")
+	res, _, err := o.Summarize(context.Background(), "T", "x")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(bullets) != 3 {
-		t.Errorf("got %d bullets: %+v", len(bullets), bullets)
+	if len(res.Bullets) != 3 {
+		t.Errorf("got %d bullets: %+v", len(res.Bullets), res.Bullets)
 	}
-	if bullets[0] != "bullet 1" {
-		t.Errorf("stripped bullet wrong: %q", bullets[0])
+	if res.Bullets[0] != "bullet 1" {
+		t.Errorf("stripped bullet wrong: %q", res.Bullets[0])
+	}
+}
+
+func TestOllama_StripsInlineMarkdownAndQuotes(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"response": `SUMMARY: "A neutral lead."
+
+POINTS:
+- **Commit History**: Shows who modified each file
+- ` + "`code`" + ` runs fast
+- ### Features of Git`,
+			"done": true,
+		})
+	}))
+	defer srv.Close()
+	o := NewOllama(srv.URL, "m")
+	o.HTTPClient = srv.Client()
+	res, _, err := o.Summarize(context.Background(), "T", "x")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Paragraph != "A neutral lead." {
+		t.Errorf("paragraph quoted: %q", res.Paragraph)
+	}
+	if len(res.Bullets) < 2 {
+		t.Fatalf("expected at least 2 bullets, got %+v", res.Bullets)
+	}
+	if !strings.Contains(res.Bullets[0], "Commit History: Shows") {
+		t.Errorf("bold not flattened in first bullet: %q", res.Bullets[0])
+	}
+	if strings.Contains(res.Bullets[1], "`") {
+		t.Errorf("backtick code not flattened: %q", res.Bullets[1])
+	}
+}
+
+func TestOllama_LabeledFormStripsBoldAndPromptEcho(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			// Realistic qwen2.5:0.5b output: bolded paragraph and a stray
+			// "TITLE:**" bullet echoed back from the prompt.
+			"response": "**SUMMARY:** **A neutral lead.**\n\nPOINTS:\n- First point\n- Second point\n- TITLE:**\n- Third point",
+			"done":     true,
+		})
+	}))
+	defer srv.Close()
+	o := NewOllama(srv.URL, "m")
+	o.HTTPClient = srv.Client()
+	res, _, err := o.Summarize(context.Background(), "T", "x")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Paragraph != "A neutral lead." {
+		t.Errorf("paragraph not stripped of bold: %q", res.Paragraph)
+	}
+	wantBullets := []string{"First point", "Second point", "Third point"}
+	if len(res.Bullets) != len(wantBullets) {
+		t.Fatalf("bullets = %+v, want %v", res.Bullets, wantBullets)
+	}
+	for i, w := range wantBullets {
+		if res.Bullets[i] != w {
+			t.Errorf("bullets[%d] = %q, want %q", i, res.Bullets[i], w)
+		}
+	}
+}
+
+func TestOllama_LabeledForm(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"response": "SUMMARY: A short editorial lead about belugas.\n\nPOINTS:\n- Belugas pass the mirror test\n- The test indicates self-awareness\n- Only a few species pass it",
+			"done":     true,
+		})
+	}))
+	defer srv.Close()
+	o := NewOllama(srv.URL, "m")
+	o.HTTPClient = srv.Client()
+	res, _, err := o.Summarize(context.Background(), "T", "x")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Paragraph != "A short editorial lead about belugas." {
+		t.Errorf("paragraph = %q", res.Paragraph)
+	}
+	if len(res.Bullets) != 3 || res.Bullets[0] != "Belugas pass the mirror test" {
+		t.Errorf("bullets = %+v", res.Bullets)
+	}
+}
+
+func TestOllama_ObjectForm(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"response": `{"paragraph": "A neutral lead.", "bullets": ["one", "two", "three"]}`,
+			"done":     true,
+		})
+	}))
+	defer srv.Close()
+	o := NewOllama(srv.URL, "m")
+	o.HTTPClient = srv.Client()
+	res, _, err := o.Summarize(context.Background(), "T", "x")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Paragraph != "A neutral lead." {
+		t.Errorf("paragraph = %q", res.Paragraph)
+	}
+	if len(res.Bullets) != 3 || res.Bullets[0] != "one" {
+		t.Errorf("bullets = %+v", res.Bullets)
 	}
 }
 
@@ -164,28 +271,31 @@ func TestOllama_MissingConfig(t *testing.T) {
 
 func TestNoop_Deterministic(t *testing.T) {
 	n := Noop{}
-	b1, m1, err := n.Summarize(context.Background(), "Title", "First sentence. Second sentence! Third? More.")
+	r1, m1, err := n.Summarize(context.Background(), "Title", "First sentence. Second sentence! Third? More.")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if m1 != "noop" {
 		t.Errorf("model = %q", m1)
 	}
-	if len(b1) != 3 {
-		t.Fatalf("bullets = %d", len(b1))
+	if len(r1.Bullets) != 3 {
+		t.Fatalf("bullets = %d", len(r1.Bullets))
 	}
-	b2, _, _ := n.Summarize(context.Background(), "Title", "First sentence. Second sentence! Third? More.")
-	for i := range b1 {
-		if b1[i] != b2[i] {
-			t.Errorf("non-deterministic: %q vs %q", b1[i], b2[i])
+	r2, _, _ := n.Summarize(context.Background(), "Title", "First sentence. Second sentence! Third? More.")
+	for i := range r1.Bullets {
+		if r1.Bullets[i] != r2.Bullets[i] {
+			t.Errorf("non-deterministic: %q vs %q", r1.Bullets[i], r2.Bullets[i])
 		}
+	}
+	if r1.Paragraph == "" {
+		t.Error("expected non-empty paragraph from noop")
 	}
 }
 
 func TestNoop_FallsBackToTitle(t *testing.T) {
 	n := Noop{}
-	b, _, _ := n.Summarize(context.Background(), "Title only", "")
-	if len(b) != 3 {
-		t.Fatalf("bullets = %d", len(b))
+	r, _, _ := n.Summarize(context.Background(), "Title only", "")
+	if len(r.Bullets) != 3 {
+		t.Fatalf("bullets = %d", len(r.Bullets))
 	}
 }

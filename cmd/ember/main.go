@@ -100,11 +100,15 @@ func run() error {
 
 	op := opml.NewService(st)
 
-	// Summarizer: noop in test mode, otherwise Ollama.
+	// Summarizer: noop in test mode, nil if disabled at install, otherwise Ollama.
 	var sum summarize.Summarizer
-	if cfg.TestMode {
+	switch {
+	case cfg.DisableSummaries:
+		logger.Info("AI summaries disabled via EMBER_DISABLE_SUMMARIES")
+		sum = nil
+	case cfg.TestMode:
 		sum = summarize.Noop{}
-	} else {
+	default:
 		sum = summarize.NewOllama(cfg.OllamaURL, cfg.OllamaModel)
 	}
 
@@ -112,8 +116,9 @@ func run() error {
 	p := poller.New(st, fetcher, sum, poller.Config{
 		Tick:           cfg.PollTick,
 		Concurrency:    cfg.PollConcurrency,
-		SummaryWorker:  !cfg.TestMode,
+		SummaryWorker:  !cfg.TestMode && !cfg.DisableSummaries,
 		EnrichOnIngest: !cfg.TestMode,
+		DisableImages:  cfg.DisableImages,
 	}, logger.With("component", "poller"))
 
 	// Background poller. Skipped in test mode — articles are pre-seeded and

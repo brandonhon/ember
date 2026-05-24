@@ -35,6 +35,9 @@ type Config struct {
 	// readability HTTP fetch against the article URL. Default true in
 	// production; tests set false to keep them fast.
 	EnrichOnIngest bool
+	// DisableImages drops image_url at ingest so the article hero image is
+	// never stored. Set via EMBER_DISABLE_IMAGES at install.
+	DisableImages bool
 }
 
 // Metrics is an in-memory snapshot for observability/tests.
@@ -100,6 +103,10 @@ func (p *Poller) Run(ctx context.Context) {
 			defer wg.Done()
 			p.summaryWorker(ctx)
 		}()
+		// Backfill: enqueue any article that doesn't yet have a summary so a
+		// restart picks up where the previous process left off. Runs once at
+		// startup; the channel buffer caps how many we queue eagerly.
+		go p.enqueuePendingSummaries(ctx)
 	}
 
 	ticker := time.NewTicker(p.Config.Tick)
@@ -251,6 +258,9 @@ func (p *Poller) fetchAndStore(ctx context.Context, f models.Feed) {
 		if p.Config.EnrichOnIngest && p.shouldEnrich(a) {
 			p.enrichWithReadability(ctx, &a)
 		}
+		if p.Config.DisableImages {
+			a.ImageURL = ""
+		}
 		stored, inserted, err := p.Store.UpsertArticle(ctx, a)
 		if err != nil {
 			p.Logger.Warn("poller: upsert article failed", "feed_id", f.ID, "guid", a.GUID, "err", err)
@@ -386,6 +396,30 @@ func (p *Poller) summaryWorker(ctx context.Context) {
 	}
 }
 
+// enqueuePendingSummaries reads articles with no summary_model from the store
+// and pushes them onto the summary worker channel. Bounded by the channel
+// buffer; runs in its own goroutine so it never blocks startup.
+func (p *Poller) enqueuePendingSummaries(ctx context.Context) {
+	ids, err := p.Store.ListUnsummarizedIDs(ctx, p.Config.SummaryQueue)
+	if err != nil {
+		p.Logger.Warn("poller: backfill summary queue", "err", err)
+		return
+	}
+	if len(ids) == 0 {
+		return
+	}
+	p.Logger.Info("poller: backfilling summary queue", "pending", len(ids))
+	for _, id := range ids {
+		select {
+		case <-ctx.Done():
+			return
+		case p.summaryCh <- id:
+		default:
+			return
+		}
+	}
+}
+
 // summarizeOne attempts to summarize one article. On any failure (LLM down,
 // empty output, persistence error) we still stamp summary_model='skipped' so
 // the article becomes visible in the list — better to show a story without a
@@ -402,14 +436,14 @@ func (p *Poller) summarizeOne(ctx context.Context, articleID int64) {
 		p.markSkipped(ctx, articleID)
 		return
 	}
-	bullets, model, err := p.Summarizer.Summarize(ctx, art.Title, art.ContentText)
+	res, model, err := p.Summarizer.Summarize(ctx, art.Title, art.ContentText)
 	if err != nil {
 		p.Metrics.SummariesErrored.Add(1)
 		p.Logger.Warn("poller: summarize failed", "article_id", articleID, "err", err)
 		p.markSkipped(ctx, articleID)
 		return
 	}
-	joined := joinBullets(bullets)
+	joined := joinResult(res)
 	if joined == "" {
 		p.Metrics.SummariesErrored.Add(1)
 		p.markSkipped(ctx, articleID)
@@ -429,15 +463,28 @@ func (p *Poller) markSkipped(ctx context.Context, articleID int64) {
 	}
 }
 
-func joinBullets(bs []string) string {
-	out := ""
-	for i, b := range bs {
-		if i > 0 {
-			out += "\n"
-		}
-		out += "• " + b
+// joinResult flattens a summarize.Result into the stored summary text:
+// the paragraph followed by a blank line followed by one "• " bullet per line.
+// The reader splits on the first "• " line to recover the structure.
+func joinResult(r summarize.Result) string {
+	var b strings.Builder
+	para := strings.TrimSpace(r.Paragraph)
+	if para != "" {
+		b.WriteString(para)
 	}
-	return out
+	if len(r.Bullets) > 0 {
+		if para != "" {
+			b.WriteString("\n\n")
+		}
+		for i, bullet := range r.Bullets {
+			if i > 0 {
+				b.WriteByte('\n')
+			}
+			b.WriteString("• ")
+			b.WriteString(bullet)
+		}
+	}
+	return b.String()
 }
 
 func ptr[T any](v T) *T { return &v }

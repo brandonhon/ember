@@ -286,6 +286,40 @@ func TestArticles_MutedFeedHiddenFromSmartViews(t *testing.T) {
 	_ = subLoud
 }
 
+func TestArticles_CrossFeedDedup(t *testing.T) {
+	s := NewTest(t)
+	ctx := context.Background()
+	u, _ := s.CreateUser(ctx, models.User{Username: "u", PasswordHash: "h"})
+	hn, _ := s.UpsertFeed(ctx, models.Feed{URL: "https://hn.test/feed", Title: "HN"})
+	tc, _ := s.UpsertFeed(ctx, models.Feed{URL: "https://tc.test/feed", Title: "TC"})
+	_, _ = s.Subscribe(ctx, models.Subscription{UserID: u.ID, FeedID: hn.ID})
+	_, _ = s.Subscribe(ctx, models.Subscription{UserID: u.ID, FeedID: tc.ID})
+
+	// Both feeds publish the same article URL (HN linked to a TC story).
+	shared := "https://example.com/big-story"
+	a1 := models.Article{FeedID: hn.ID, GUID: "hn-1", URL: shared, Title: "HN's take", ContentText: "x", ContentHash: "h-hn", PublishedAt: 2000}
+	a2 := models.Article{FeedID: tc.ID, GUID: "tc-1", URL: shared, Title: "TC original", ContentText: "x", ContentHash: "h-tc", PublishedAt: 2001}
+	r1, _, _ := s.UpsertArticle(ctx, a1)
+	r2, _, _ := s.UpsertArticle(ctx, a2)
+	_ = s.UpdateSummary(ctx, r1.ID, "• one", "noop")
+	_ = s.UpdateSummary(ctx, r2.ID, "• two", "noop")
+
+	// Smart view: only the earlier-id row appears (the HN one in this case).
+	list, _ := s.ListArticles(ctx, u.ID, ListArticlesQuery{View: "fresh", FreshAfter: 1, OnlySummarized: true})
+	if len(list) != 1 {
+		t.Fatalf("smart view should dedup by url; got %d rows: %+v", len(list), list)
+	}
+	if list[0].ID != r1.ID {
+		t.Errorf("dedup should keep lowest id (r1=%d), got %d", r1.ID, list[0].ID)
+	}
+
+	// Per-feed view still shows the article from that specific feed.
+	direct, _ := s.ListArticles(ctx, u.ID, ListArticlesQuery{FeedID: tc.ID, OnlySummarized: true})
+	if len(direct) != 1 || direct[0].ID != r2.ID {
+		t.Errorf("per-feed view should show its own row; got %+v", direct)
+	}
+}
+
 func TestArticles_ResetSummariesByFeed(t *testing.T) {
 	s := NewTest(t)
 	ctx := context.Background()

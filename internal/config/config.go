@@ -25,6 +25,12 @@ type Config struct {
 	PollTick        time.Duration
 	LogLevel        slog.Level
 	TestMode        bool
+	// DisableSummaries skips the LLM summarizer entirely. Articles still show
+	// in lists; the UI renders the article body without a summary card.
+	DisableSummaries bool
+	// DisableImages drops image_url at ingest, so no main image gets stored or
+	// shown. Per-user UI prefs further hide images at display time.
+	DisableImages bool
 }
 
 // Defaults returns a Config populated with safe defaults. SessionKey and
@@ -36,7 +42,7 @@ func Defaults() Config {
 		DBPath:          "/data/ember.db",
 		AdminUser:       "admin",
 		OllamaURL:       "http://ollama:11434",
-		OllamaModel:     "qwen2.5:1.5b",
+		OllamaModel:     "qwen2.5:0.5b",
 		FreshWindow:     6 * time.Hour,
 		PollConcurrency: 8,
 		PollTick:        60 * time.Second,
@@ -128,6 +134,22 @@ func loadFrom(get func(string) string) (Config, error) {
 			errs = append(errs, fmt.Sprintf("EMBER_TEST_MODE invalid: %q", v))
 		}
 	}
+	if v := get("EMBER_DISABLE_SUMMARIES"); v != "" {
+		on, err := parseBool(v)
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("EMBER_DISABLE_SUMMARIES %v", err))
+		} else {
+			cfg.DisableSummaries = on
+		}
+	}
+	if v := get("EMBER_DISABLE_IMAGES"); v != "" {
+		on, err := parseBool(v)
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("EMBER_DISABLE_IMAGES %v", err))
+		} else {
+			cfg.DisableImages = on
+		}
+	}
 
 	if !cfg.TestMode && cfg.SessionKey == "" {
 		errs = append(errs, "EMBER_SESSION_KEY is required (32+ bytes)")
@@ -140,6 +162,17 @@ func loadFrom(get func(string) string) (Config, error) {
 		return cfg, errors.New(strings.Join(errs, "; "))
 	}
 	return cfg, nil
+}
+
+func parseBool(v string) (bool, error) {
+	switch strings.ToLower(v) {
+	case "1", "true", "yes", "on":
+		return true, nil
+	case "0", "false", "no", "off":
+		return false, nil
+	default:
+		return false, fmt.Errorf("invalid bool %q", v)
+	}
 }
 
 func parseLogLevel(v string) (slog.Level, error) {
