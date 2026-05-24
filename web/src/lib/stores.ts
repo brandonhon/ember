@@ -80,7 +80,28 @@ function loadPref<T extends string>(key: string, fallback: T): T {
 }
 export const theme = writable<"light" | "dark">(loadPref("ember:theme", "light"));
 export const density = writable<"card" | "compact">(loadPref("ember:density", "card"));
-export const sidebarCollapsed = writable<boolean>(loadPref("ember:sidebar", "open") === "closed");
+export const sidebarCollapsed = writable<boolean>(loadPref<string>("ember:sidebar", "open") === "closed");
+
+// Display preferences: AI summary card on/off, hero/inline images on/off,
+// and summary-card collapsed state. Persisted in localStorage so the choice
+// survives reloads. The server-side EMBER_DISABLE_SUMMARIES flag short-
+// circuits summary generation in the poller; these UI prefs just hide the
+// already-stored value for the current user.
+export const showSummary = writable<boolean>(loadPref<string>("ember:show-summary", "on") !== "off");
+export const showImages = writable<boolean>(loadPref<string>("ember:show-images", "on") !== "off");
+export const summaryCollapsed = writable<boolean>(loadPref<string>("ember:summary-collapsed", "open") === "closed");
+function persistBool(key: string, store: { subscribe: (cb: (v: boolean) => void) => () => void }, on: string, off: string) {
+  store.subscribe((v) => {
+    try {
+      globalThis.localStorage?.setItem(key, v ? on : off);
+    } catch {
+      /* ignore */
+    }
+  });
+}
+persistBool("ember:show-summary", showSummary, "on", "off");
+persistBool("ember:show-images", showImages, "on", "off");
+persistBool("ember:summary-collapsed", summaryCollapsed, "closed", "open");
 
 // Articles list --------------------------------------------------------------
 export interface ArticleListState {

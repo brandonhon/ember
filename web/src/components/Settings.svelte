@@ -1,13 +1,74 @@
 <script lang="ts">
-  import { user, feverAPIKey, appVersion, theme, density, refreshMe } from "../lib/stores";
-  import { api, ApiError } from "../lib/api";
+  import {
+    user,
+    feverAPIKey,
+    appVersion,
+    theme,
+    density,
+    refreshMe,
+    showSummary,
+    showImages,
+  } from "../lib/stores";
+  import { api, ApiError, type StarterPack, type StarterImportResult } from "../lib/api";
+  import { onMount } from "svelte";
+  import { refreshSidebar } from "../lib/stores";
   import FilterManager from "./FilterManager.svelte";
   import ManageUsers from "./ManageUsers.svelte";
 
   let { onClose }: { onClose: () => void } = $props();
 
-  type Section = "profile" | "preferences" | "mobile" | "filters" | "users" | "about";
+  type Section = "profile" | "preferences" | "mobile" | "filters" | "users" | "starter" | "about";
   let section = $state<Section>("profile");
+
+  // Starter pack state ------------------------------------------------
+  let starterPacks = $state<StarterPack[]>([]);
+  let starterBusy = $state<string>("");
+  let starterMsg = $state<string>("");
+  let starterErr = $state<string>("");
+  let starterLoaded = false;
+
+  async function loadStarterPacks() {
+    if (starterLoaded) return;
+    try {
+      const res = await api.listStarterPacks();
+      starterPacks = res.data ?? [];
+      starterLoaded = true;
+    } catch (e) {
+      starterErr = e instanceof ApiError ? e.message : String(e);
+    }
+  }
+
+  async function importStarter(slug: string) {
+    starterBusy = slug;
+    starterMsg = "";
+    starterErr = "";
+    try {
+      const res = await api.importStarterPack(slug);
+      const r: StarterImportResult = res.data;
+      const parts: string[] = [];
+      if (r.feeds_added) parts.push(`${r.feeds_added} added`);
+      if (r.already_had) parts.push(`${r.already_had} already subscribed`);
+      if (r.failed_urls?.length) parts.push(`${r.failed_urls.length} failed`);
+      starterMsg = parts.join(" · ") || "Nothing to add";
+      await refreshSidebar();
+    } catch (e) {
+      starterErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      starterBusy = "";
+      setTimeout(() => (starterMsg = ""), 4000);
+    }
+  }
+
+  $effect(() => {
+    if (section === "starter") void loadStarterPacks();
+  });
+
+  onMount(() => {
+    // Allow opening Settings directly to the starter pack section via hash.
+    if (typeof location !== "undefined" && location.hash === "#starter") {
+      section = "starter";
+    }
+  });
 
   // Password change state.
   let oldPassword = $state("");
@@ -88,6 +149,7 @@
         <button class:active={section === "preferences"} on:click={() => (section = "preferences")}>Preferences</button>
         <button class:active={section === "mobile"} on:click={() => (section = "mobile")}>Mobile clients</button>
         <button class:active={section === "filters"} on:click={() => (section = "filters")}>Filters</button>
+        <button class:active={section === "starter"} on:click={() => (section = "starter")} data-testid="settings-starter">Starter packs</button>
         {#if $user?.is_admin}
           <button class:active={section === "users"} on:click={() => (section = "users")} data-testid="settings-users">Users</button>
         {/if}
@@ -153,6 +215,26 @@
               <button class:on={$density === "compact"} on:click={() => density.set("compact")}>Compact</button>
             </div>
           </div>
+          <div class="pref-row">
+            <div>
+              <div class="pref-label">AI summary card</div>
+              <div class="pref-hint">When off, the article body is shown directly with no summary card.</div>
+            </div>
+            <div class="seg">
+              <button class:on={$showSummary} on:click={() => showSummary.set(true)} data-testid="pref-summary-on">On</button>
+              <button class:on={!$showSummary} on:click={() => showSummary.set(false)} data-testid="pref-summary-off">Off</button>
+            </div>
+          </div>
+          <div class="pref-row">
+            <div>
+              <div class="pref-label">Article images</div>
+              <div class="pref-hint">Show the main image inline. Images inside article body are kept regardless.</div>
+            </div>
+            <div class="seg">
+              <button class:on={$showImages} on:click={() => showImages.set(true)} data-testid="pref-images-on">On</button>
+              <button class:on={!$showImages} on:click={() => showImages.set(false)} data-testid="pref-images-off">Off</button>
+            </div>
+          </div>
         {/if}
 
         {#if section === "mobile"}
@@ -183,6 +265,34 @@
           </p>
           <div class="actions">
             <button on:click={() => (showFilters = true)} data-testid="open-filters">Open filter editor</button>
+          </div>
+        {/if}
+
+        {#if section === "starter"}
+          <h3>Starter packs</h3>
+          <p class="hint">Curated bundles of feeds. Click a pack to create the folder and subscribe — already-subscribed feeds are skipped.</p>
+          {#if starterErr}<p class="error">{starterErr}</p>{/if}
+          {#if starterMsg}<p class="ok" data-testid="starter-msg">{starterMsg}</p>{/if}
+          <div class="pack-list">
+            {#each starterPacks as p (p.slug)}
+              <div class="pack">
+                <div>
+                  <div class="pack-name">
+                    <span class="pack-dot" style="background:{p.color}"></span>
+                    {p.name}
+                  </div>
+                  <div class="pack-hint">{p.feed_urls.length} feeds</div>
+                </div>
+                <button
+                  on:click={() => importStarter(p.slug)}
+                  disabled={starterBusy === p.slug}
+                  data-testid="starter-import-{p.slug}"
+                  class="pack-btn"
+                >
+                  {starterBusy === p.slug ? "Adding…" : "Add pack"}
+                </button>
+              </div>
+            {/each}
           </div>
         {/if}
 
@@ -402,4 +512,42 @@
   .kv dd { margin: 0; color: var(--ink); }
   .kv a { color: var(--ember); text-decoration: none; }
   .kv a:hover { text-decoration: underline; }
+
+  .pack-list { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+  .pack {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    background: var(--card);
+    border-radius: 10px;
+  }
+  .pack-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+  }
+  .pack-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    display: inline-block;
+  }
+  .pack-hint { color: var(--ink-faint); font-size: 12px; margin-top: 3px; }
+  .pack-btn {
+    background: var(--ember);
+    color: #fff;
+    border: 0;
+    padding: 6px 12px;
+    border-radius: 7px;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .pack-btn:hover:not(:disabled) { background: var(--ember-soft); }
+  .pack-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>

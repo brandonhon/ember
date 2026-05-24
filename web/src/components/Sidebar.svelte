@@ -113,6 +113,123 @@
     return { byCat, uncat };
   });
 
+  // Drag-and-drop reorder ----------------------------------------------
+  // Folders and feeds can be reordered by dragging. State is local to the
+  // sidebar; we mutate the categories/feeds stores optimistically on drop and
+  // POST the new ordering to the server. A failure refreshes from server.
+  type DragRef =
+    | { kind: "folder"; id: number }
+    | { kind: "feed"; id: number; cat: number | 0 };
+  let drag = $state<DragRef | null>(null);
+  let dropTarget = $state<DragRef | null>(null);
+
+  function dragKey(r: DragRef): string {
+    return r.kind === "folder" ? `folder:${r.id}` : `feed:${r.id}:${r.cat}`;
+  }
+  function sameDrag(a: DragRef | null, b: DragRef | null): boolean {
+    if (!a || !b) return false;
+    return dragKey(a) === dragKey(b);
+  }
+
+  function onFolderDragStart(e: DragEvent, catID: number) {
+    drag = { kind: "folder", id: catID };
+    e.dataTransfer?.setData("text/x-ember", dragKey(drag));
+    if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
+  }
+  function onFeedDragStart(e: DragEvent, f: FeedWithCounts) {
+    drag = { kind: "feed", id: f.subscription_id, cat: f.category_id ?? 0 };
+    e.dataTransfer?.setData("text/x-ember", dragKey(drag));
+    if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
+  }
+  function onDragOver(e: DragEvent, target: DragRef) {
+    if (!drag || drag.kind !== target.kind) return;
+    if (drag.kind === "feed" && target.kind === "feed" && drag.cat !== target.cat) return;
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+    dropTarget = target;
+  }
+  function onDragEnd() {
+    drag = null;
+    dropTarget = null;
+  }
+  async function onFolderDrop(e: DragEvent, targetID: number) {
+    e.preventDefault();
+    if (!drag || drag.kind !== "folder" || drag.id === targetID) {
+      onDragEnd();
+      return;
+    }
+    const ids = $categories.map((c) => c.id);
+    const from = ids.indexOf(drag.id);
+    const to = ids.indexOf(targetID);
+    if (from < 0 || to < 0) {
+      onDragEnd();
+      return;
+    }
+    const [moved] = ids.splice(from, 1);
+    ids.splice(to, 0, moved);
+    categories.update((cs) => {
+      const map = new Map(cs.map((c) => [c.id, c] as const));
+      return ids.map((id, i) => ({ ...(map.get(id) as typeof cs[number]), position: i }));
+    });
+    onDragEnd();
+    try {
+      await api.reorderCategories(ids);
+    } catch (err) {
+      console.error("reorderCategories", err);
+      await refreshSidebar();
+    }
+  }
+  async function onFeedDrop(e: DragEvent, target: FeedWithCounts) {
+    e.preventDefault();
+    if (!drag || drag.kind !== "feed") {
+      onDragEnd();
+      return;
+    }
+    if (drag.id === target.subscription_id) {
+      onDragEnd();
+      return;
+    }
+    const sameCat = drag.cat === (target.category_id ?? 0);
+    if (!sameCat) {
+      onDragEnd();
+      return;
+    }
+    // Reorder within the affected category. Server takes ids in display order;
+    // we only send the affected slice (feeds in this category), since
+    // ReorderSubscriptions only updates the rows it sees.
+    const list = (target.category_id
+      ? grouped.byCat.get(target.category_id) ?? []
+      : grouped.uncat).slice();
+    const ids = list.map((f) => f.subscription_id);
+    const from = ids.indexOf(drag.id);
+    const to = ids.indexOf(target.subscription_id);
+    if (from < 0 || to < 0) {
+      onDragEnd();
+      return;
+    }
+    const [moved] = ids.splice(from, 1);
+    ids.splice(to, 0, moved);
+    // Mutate the feeds store: reorder within this category.
+    feeds.update((fs) => {
+      const sub2pos = new Map(ids.map((id, i) => [id, i] as const));
+      return fs.slice().sort((a, b) => {
+        const ap = sub2pos.get(a.subscription_id);
+        const bp = sub2pos.get(b.subscription_id);
+        if (ap !== undefined && bp !== undefined) return ap - bp;
+        if (ap !== undefined) return -1;
+        if (bp !== undefined) return 1;
+        return 0;
+      });
+    });
+    onDragEnd();
+    try {
+      await api.reorderFeeds(ids);
+    } catch (err) {
+      console.error("reorderFeeds", err);
+      await refreshSidebar();
+    }
+  }
+
   function unreadInCategory(catID: number): number {
     let sum = 0;
     const list = grouped.byCat.get(catID) ?? [];
@@ -269,7 +386,16 @@
 </script>
 
 {#snippet feedRow(f: FeedWithCounts)}
-  <div class="feed-row" class:muted={f.muted}>
+  <div
+    class="feed-row"
+    class:muted={f.muted}
+    class:drop-target={sameDrag(dropTarget, { kind: "feed", id: f.subscription_id, cat: f.category_id ?? 0 })}
+    draggable="true"
+    on:dragstart={(e) => onFeedDragStart(e, f)}
+    on:dragover={(e) => onDragOver(e, { kind: "feed", id: f.subscription_id, cat: f.category_id ?? 0 })}
+    on:dragleave={() => (dropTarget = null)}
+    on:drop={(e) => onFeedDrop(e, f)}
+    on:dragend={onDragEnd}>
     <button
       class="feed-item"
       class:active={isActiveFeed(f.id)}
@@ -363,8 +489,20 @@
     <div class="rail-head"><h3>Folders</h3></div>
 
     {#each $categories as cat (cat.id)}
-      <div class="folder" class:collapsed={collapsedCategories[cat.id]}>
-        <div class="folder-head">
+      <div
+        class="folder"
+        class:collapsed={collapsedCategories[cat.id]}
+        class:drop-target={sameDrag(dropTarget, { kind: "folder", id: cat.id })}
+      >
+        <div
+          class="folder-head"
+          draggable="true"
+          on:dragstart={(e) => onFolderDragStart(e, cat.id)}
+          on:dragover={(e) => onDragOver(e, { kind: "folder", id: cat.id })}
+          on:dragleave={() => (dropTarget = null)}
+          on:drop={(e) => onFolderDrop(e, cat.id)}
+          on:dragend={onDragEnd}
+        >
           <button class="chev-btn" on:click={() => toggleCategory(cat.id)} aria-label="Toggle folder">
             <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6" /></svg>
           </button>
@@ -609,6 +747,9 @@
   .nav-item.active .badge { background: var(--ember); color: #fff; }
 
   .folder { margin-bottom: 2px; }
+  .folder.drop-target > .folder-head {
+    box-shadow: 0 -2px 0 var(--ember) inset;
+  }
   .folder-head {
     display: flex;
     align-items: center;
@@ -617,7 +758,9 @@
     border-radius: 9px;
     transition: background 0.12s;
     position: relative;
+    cursor: grab;
   }
+  .folder-head:active { cursor: grabbing; }
   .folder-head:hover { background: var(--line-soft); }
   .folder-head:hover .folder-actions-trigger { opacity: 1; }
   .folder-rename {
@@ -730,6 +873,11 @@
     display: flex;
     align-items: center;
     border-radius: 8px;
+    cursor: grab;
+  }
+  .feed-row:active { cursor: grabbing; }
+  .feed-row.drop-target {
+    box-shadow: 0 -2px 0 var(--ember) inset;
   }
   .feed-row.muted .ni-label { color: var(--ink-faint); font-style: italic; }
   .feed-row:hover .feed-actions-trigger { opacity: 1; }

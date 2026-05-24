@@ -1,6 +1,16 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
-  import { articles, boards, feeds, selectedArticleId, toggleStar, toggleLater } from "../lib/stores";
+  import {
+    articles,
+    boards,
+    feeds,
+    selectedArticleId,
+    toggleStar,
+    toggleLater,
+    showSummary,
+    showImages,
+    summaryCollapsed,
+  } from "../lib/stores";
   import type { FeedWithCounts } from "../lib/types";
   import { api, ApiError } from "../lib/api";
   import ShareModal from "./ShareModal.svelte";
@@ -56,14 +66,27 @@
     return `${Math.round(diff / 86400)} d ago`;
   }
 
-  // Convert the stored bullet text into an array.
-  const summaryLines = $derived.by(() => {
-    if (!selected?.summary) return [] as string[];
-    return selected.summary
-      .split(/\n/)
-      .map((s) => s.replace(/^[•\-\*]\s*/, "").trim())
+  // Stored summary format: "{paragraph...}\n\n• bullet 1\n• bullet 2\n• bullet 3"
+  // The reader recovers paragraph + bullets by splitting on the first line that
+  // starts with "• ". Legacy bullet-only summaries yield an empty paragraph.
+  const summary = $derived.by(() => {
+    if (!selected?.summary) return { paragraph: "", bullets: [] as string[] };
+    const lines = selected.summary.split(/\n/);
+    const firstBullet = lines.findIndex((l) => /^[•\-\*]\s+/.test(l.trim()));
+    if (firstBullet < 0) {
+      return { paragraph: selected.summary.trim(), bullets: [] as string[] };
+    }
+    const paragraph = lines.slice(0, firstBullet).join("\n").trim();
+    const bullets = lines
+      .slice(firstBullet)
+      .map((s) => s.replace(/^\s*[•\-\*]\s*/, "").trim())
       .filter((s) => s.length > 0);
+    return { paragraph, bullets };
   });
+
+  function toggleSummary() {
+    summaryCollapsed.update((v) => !v);
+  }
 </script>
 
 <section class="reader" id="reader">
@@ -150,22 +173,36 @@
 
       <h1 class="article-h1">{selected.title}</h1>
 
-      {#if selected.image_url}
-        <figure class="article-hero">
-          <img src={selected.image_url} alt="" loading="lazy" on:error={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} />
-        </figure>
-      {/if}
-
-      {#if summaryLines.length > 0}
+      {#if $showSummary && (summary.paragraph || summary.bullets.length > 0)}
         <aside class="ai-card" data-testid="summary-card">
-          <div class="ai-head">
+          <header class="ai-head">
             <svg class="ai-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l1.6 6.4L20 10l-6.4 1.6L12 18l-1.6-6.4L4 10l6.4-1.6z" /></svg>
             <h4>Summary</h4>
             {#if selected.summary_model}<span class="model">local · {selected.summary_model}</span>{/if}
-          </div>
-          <ul>
-            {#each summaryLines as p}<li>{p}</li>{/each}
-          </ul>
+            <button class="ai-toggle" on:click={toggleSummary} aria-expanded={!$summaryCollapsed} aria-controls="ai-body" data-testid="summary-toggle">
+              {$summaryCollapsed ? "Show" : "Hide"}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class:rot={$summaryCollapsed}><polyline points="6 9 12 15 18 9" /></svg>
+            </button>
+          </header>
+          {#if !$summaryCollapsed}
+            <div class="ai-body" id="ai-body">
+              {#if $showImages && selected.image_url}
+                <img class="ai-thumb" src={selected.image_url} alt="" loading="lazy" on:error={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} />
+              {/if}
+              <div class="ai-text">
+                {#if summary.paragraph}
+                  {#each summary.paragraph.split(/\n{2,}/) as para}
+                    <p class="ai-para">{para}</p>
+                  {/each}
+                {/if}
+                {#if summary.bullets.length > 0}
+                  <ul>
+                    {#each summary.bullets as p}<li>{p}</li>{/each}
+                  </ul>
+                {/if}
+              </div>
+            </div>
+          {/if}
         </aside>
       {/if}
 
@@ -327,10 +364,11 @@
     border: 1px solid var(--line);
     background: linear-gradient(140deg, var(--ember-wash), var(--card) 70%);
     border-radius: 16px;
-    padding: 18px 20px;
-    margin: 22px 0 30px;
+    padding: 22px 26px;
+    margin: 24px 0 32px;
     position: relative;
     overflow: hidden;
+    border-left: 4px solid var(--ember);
   }
   :global([data-theme="dark"]) .ai-card {
     background: linear-gradient(140deg, var(--ember-wash), var(--card) 80%);
@@ -338,25 +376,24 @@
   .ai-head {
     display: flex;
     align-items: center;
-    gap: 9px;
-    margin-bottom: 12px;
+    gap: 10px;
+    margin-bottom: 14px;
   }
   .ai-spark {
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
     color: var(--ember);
   }
   .ai-head h4 {
     font-family: var(--font-ui);
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 800;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--ember);
     margin: 0;
   }
   .ai-head .model {
-    margin-left: auto;
     font-size: 10.5px;
     color: var(--ink-faint);
     font-weight: 600;
@@ -364,31 +401,82 @@
     padding: 2px 8px;
     border-radius: 6px;
   }
-  .ai-card ul {
+  .ai-toggle {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: var(--font-ui);
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    border: 1px solid var(--line);
+    background: var(--card);
+    border-radius: 7px;
+    padding: 4px 9px;
+  }
+  .ai-toggle svg {
+    width: 12px;
+    height: 12px;
+    transition: transform 0.18s ease;
+  }
+  .ai-toggle svg.rot { transform: rotate(-90deg); }
+  .ai-toggle:hover { color: var(--ember); border-color: var(--ember); }
+
+  .ai-body {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .ai-body:has(.ai-thumb) {
+    grid-template-columns: 200px 1fr;
+  }
+  .ai-thumb {
+    width: 100%;
+    height: 100%;
+    max-height: 220px;
+    object-fit: cover;
+    border-radius: 10px;
+    background: var(--line-soft);
+  }
+  .ai-text { min-width: 0; }
+  .ai-para {
+    font-family: var(--font-read);
+    font-size: 16px;
+    line-height: 1.55;
+    color: var(--ink);
+    margin: 0 0 12px;
+  }
+  .ai-para:last-child { margin-bottom: 0; }
+  .ai-text ul {
     list-style: none;
     display: flex;
     flex-direction: column;
-    gap: 9px;
-    margin: 0;
+    gap: 10px;
+    margin: 12px 0 0;
     padding: 0;
   }
-  .ai-card li {
+  .ai-text li {
     font-family: var(--font-read);
-    font-size: 14px;
-    line-height: 1.45;
+    font-size: 15px;
+    line-height: 1.5;
     color: var(--ink);
-    padding-left: 18px;
+    padding-left: 20px;
     position: relative;
   }
-  .ai-card li::before {
+  .ai-text li::before {
     content: "";
     position: absolute;
     left: 0;
     top: 9px;
-    width: 6px;
-    height: 6px;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
     background: var(--ember);
+  }
+  @media (max-width: 720px) {
+    .ai-body:has(.ai-thumb) { grid-template-columns: 1fr; }
+    .ai-thumb { max-height: 180px; }
   }
 
   .article-body {
