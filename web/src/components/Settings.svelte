@@ -226,7 +226,9 @@
   }
   .modal {
     width: min(880px, 100%);
-    max-height: 86vh;
+    /* Fixed height so the modal doesn't jitter as you switch sections
+       with different content lengths. The inner .content scrolls. */
+    height: min(640px, 86vh);
     overflow: hidden;
     background: var(--card);
     border: 1px solid var(--line);
