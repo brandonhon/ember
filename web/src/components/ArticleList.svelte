@@ -213,13 +213,10 @@
         data-testid="story-{a.id}"
       >
         <span class="unread-dot" aria-hidden="true"></span>
-        {#if a.image_url}
-          <img class="story-thumb" src={a.image_url} alt="" loading="lazy" on:error={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} />
-        {/if}
-        <!-- Primary action: clicking the title/excerpt area opens the story.
-             A real <button> here keeps keyboard activation working while
-             avoiding the nested-interactive a11y violation. Foot buttons
-             are siblings below. -->
+        <!-- Primary action: clicking the title/thumb/excerpt area opens the
+             story. A real <button> here keeps keyboard activation working
+             while avoiding the nested-interactive a11y violation. Foot
+             buttons are siblings below. -->
         <button
           class="story-link"
           on:click={() => select(a.id)}
@@ -237,6 +234,9 @@
             {#if isFresh(a.published_at)}<span class="fresh-tag">Fresh</span>{/if}
           </span>
           <span class="story-title">{a.title}</span>
+          {#if a.image_url}
+            <img class="story-thumb" src={a.image_url} alt="" loading="lazy" on:error={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} />
+          {/if}
           {#if a.content_text}
             <span class="story-excerpt">{a.content_text}</span>
           {/if}
@@ -481,11 +481,13 @@
     overflow: hidden;
   }
   .story-thumb {
-    float: right;
-    width: 76px;
-    height: 76px;
+    display: block;
+    width: 100%;
+    max-width: 320px;
+    max-height: 180px;
+    aspect-ratio: 16 / 9;
     border-radius: 10px;
-    margin: 0 0 6px 14px;
+    margin: 10px 0 4px;
     object-fit: cover;
     background: var(--line-soft);
   }

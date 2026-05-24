@@ -98,6 +98,8 @@ export const api = {
     req: { name?: string; color?: string; position?: number },
   ) => call<unknown>("PATCH", `/api/categories/${id}`, req),
   deleteCategory: (id: number) => call<unknown>("DELETE", `/api/categories/${id}`),
+  reorderCategories: (ids: number[]) =>
+    call<unknown>("POST", "/api/categories/reorder", { ids }),
 
   // Feeds -------------------------------------------------------------
   listFeeds: () => call<FeedWithCounts[]>("GET", "/api/feeds"),
@@ -117,6 +119,8 @@ export const api = {
   ) => call<unknown>("PATCH", `/api/feeds/${id}`, req),
   deleteFeed: (id: number) => call<unknown>("DELETE", `/api/feeds/${id}`),
   refreshFeed: (id: number) => call<unknown>("POST", `/api/feeds/${id}/refresh`),
+  reorderFeeds: (ids: number[]) =>
+    call<unknown>("POST", "/api/feeds/reorder", { ids }),
   resummarizeFeed: (id: number) =>
     call<{ reset: number; enqueued: number }>("POST", `/api/feeds/${id}/resummarize`),
   exportOPML: () => fetch("/api/feeds/export", { credentials: "include" }),
@@ -198,4 +202,24 @@ export const api = {
   // Search ------------------------------------------------------------
   search: (q: string, limit = 30) =>
     call<SearchResult[]>("GET", `/api/search?q=${encodeURIComponent(q)}&limit=${limit}`),
+
+  // Starter packs ----------------------------------------------------
+  listStarterPacks: () =>
+    call<StarterPack[]>("GET", "/api/starter-packs"),
+  importStarterPack: (slug: string) =>
+    call<StarterImportResult>("POST", `/api/starter-packs/${slug}`),
 };
+
+export interface StarterPack {
+  slug: string;
+  name: string;
+  color: string;
+  feed_urls: string[];
+}
+export interface StarterImportResult {
+  pack: string;
+  category_id: number;
+  feeds_added: number;
+  already_had: number;
+  failed_urls?: string[];
+}
