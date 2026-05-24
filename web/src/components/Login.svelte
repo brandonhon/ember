@@ -29,9 +29,17 @@
 <div id="login">
   <div class="login-brand">
     <div class="mark">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path d="M12 2L21 11L12 14L9 21L12 2Z" fill="var(--ember-soft)" />
-        <path d="M12 2L3 11L12 14L12 2Z" fill="var(--paper)" opacity=".85" />
+      <svg width="28" height="28" viewBox="0 0 64 64" aria-hidden="true">
+        <defs>
+          <linearGradient id="login-mark-emb" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="var(--ember-soft)" />
+            <stop offset="1" stop-color="var(--ember)" />
+          </linearGradient>
+        </defs>
+        <circle cx="13" cy="15" r="6.5" fill="url(#login-mark-emb)" />
+        <rect x="25" y="11.5" width="31" height="8" rx="4" fill="var(--paper)" />
+        <rect x="8" y="28" width="48" height="8" rx="4" fill="var(--paper)" />
+        <rect x="8" y="44.5" width="34" height="8" rx="4" fill="url(#login-mark-emb)" />
       </svg>
       Ember
     </div>

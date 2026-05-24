@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ember — Logo Concepts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..900;1,9..144,400..600&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f6f2e9; --paper-2:#efe9dc; --card:#fffdf8; --ink:#211d18; --ink-soft:#5b5347;
+    --ink-faint:#8c8273; --line:#e2dac9; --ember:#c2451d; --ember-soft:#e8643a; --gold:#e0992b;
+    --font-display:"Fraunces",Georgia,serif; --font-ui:"Bricolage Grotesque",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--font-ui);background:var(--paper);color:var(--ink);-webkit-font-smoothing:antialiased;padding:48px 32px 80px}
+  .wrap{max-width:1040px;margin:0 auto}
+  header{margin-bottom:14px}
+  .eyebrow{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--ember);font-weight:800}
+  h1{font-family:var(--font-display);font-weight:500;font-size:clamp(30px,4vw,44px);letter-spacing:-.02em;margin:6px 0 10px}
+  .lede{color:var(--ink-soft);max-width:62ch;line-height:1.6;font-size:15px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:22px;margin-top:38px}
+  .concept{background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:0 1px 2px rgba(33,29,24,.04),0 18px 40px -28px rgba(33,29,24,.4)}
+  .c-head{padding:18px 20px 14px;border-bottom:1px solid var(--line)}
+  .c-num{font-size:11px;font-weight:800;letter-spacing:.1em;color:var(--ink-faint);text-transform:uppercase}
+  .c-name{font-family:var(--font-display);font-size:22px;font-weight:600;letter-spacing:-.01em;margin-top:3px}
+  .c-desc{font-size:13px;color:var(--ink-soft);line-height:1.5;margin-top:6px}
+  .showcase{display:grid;grid-template-columns:1fr 1fr}
+  .pane{padding:30px 20px;display:flex;flex-direction:column;align-items:center;gap:16px}
+  .pane.light{background:var(--paper)}
+  .pane.dark{background:#15130f}
+  .pane .mark{width:72px;height:72px}
+  .lockup{display:flex;align-items:center;gap:11px}
+  .lockup .mark{width:34px;height:34px}
+  .lockup .word{font-family:var(--font-display);font-weight:600;font-size:25px;letter-spacing:-.015em}
+  .pane.light .word{color:var(--ink)}
+  .pane.dark .word{color:var(--paper)}
+  .pane .tag{font-size:10px;letter-spacing:.12em;text-transform:uppercase;font-weight:700}
+  .pane.light .tag{color:var(--ink-faint)}
+  .pane.dark .tag{color:#6b6253}
+  .fav-row{display:flex;align-items:flex-end;justify-content:center;gap:18px;padding:16px 20px;background:var(--paper-2);border-top:1px solid var(--line)}
+  .fav{display:flex;flex-direction:column;align-items:center;gap:6px}
+  .fav .chip{background:var(--card);border:1px solid var(--line);border-radius:7px;display:grid;place-items:center}
+  .fav .s48{width:48px;height:48px} .fav .s32{width:32px;height:32px} .fav .s16{width:16px;height:16px}
+  .fav small{font-size:10px;color:var(--ink-faint);font-weight:600}
+  .note{margin-top:44px;padding:22px 24px;background:var(--card);border:1px solid var(--line);border-radius:16px;font-size:14px;line-height:1.65;color:var(--ink-soft)}
+  .note b{color:var(--ink)}
+  .swatches{display:flex;gap:10px;margin-top:30px;flex-wrap:wrap}
+  .sw{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-soft);font-weight:600}
+  .sw i{width:18px;height:18px;border-radius:5px;display:inline-block;border:1px solid rgba(0,0,0,.08)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Brand · Ember Reader</div>
+    <h1>Five marks to choose from</h1>
+    <p class="lede">Each concept uses the Ember newsprint palette and is tested for legibility down to 16px. Every card shows the mark on light and dark, a wordmark lockup, and favicon previews at 48 / 32 / 16px. Pick a number — I'll finalize that one and ship the full favicon set.</p>
+    <div class="swatches">
+      <span class="sw"><i style="background:#c2451d"></i> ember #c2451d</span>
+      <span class="sw"><i style="background:#e8643a"></i> ember-soft #e8643a</span>
+      <span class="sw"><i style="background:#e0992b"></i> gold #e0992b</span>
+      <span class="sw"><i style="background:#211d18"></i> ink #211d18</span>
+      <span class="sw"><i style="background:#f6f2e9"></i> paper #f6f2e9</span>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <!-- ================= 1. IGNITE (spark) ================= -->
+    <div class="concept">
+      <div class="c-head">
+        <div class="c-num">Concept 01</div>
+        <div class="c-name">Ignite</div>
+        <div class="c-desc">A four-point spark — the "summary sparkle" from the reader UI. Ties the brand to the AI-summary feature. Sharpest, most modern, scales tiny without losing identity.</div>
+      </div>
+      <div class="showcase">
+        <div class="pane light">
+          <svg class="mark" id="m1l" viewBox="0 0 64 64"></svg>
+          <div class="lockup"><svg class="mark" viewBox="0 0 64 64" id="m1la"></svg><span class="word">Ember</span></div>
+          <span class="tag">Light</span>
+        </div>
+        <div class="pane dark">
+          <svg class="mark" id="m1d" viewBox="0 0 64 64"></svg>
+          <div class="lockup"><svg class="mark" viewBox="0 0 64 64" id="m1da"></svg><span class="word">Ember</span></div>
+          <span class="tag">Dark</span>
+        </div>
+      </div>
+      <div class="fav-row">
+        <div class="fav"><div class="chip s48"><svg viewBox="0 0 64 64" width="36" height="36" id="m1f1"></svg></div><small>48</small></div>
+        <div class="fav"><div class="chip s32"><svg viewBox="0 0 64 64" width="24" height="24" id="m1f2"></svg></div><small>32</small></div>
+        <div class="fav"><div class="chip s16"><svg viewBox="0 0 64 64" width="13" height="13" id="m1f3"></svg></div><small>16</small></div>
+      </div>
+    </div>
+
+    <!-- ================= 2. KITE ================= -->
+    <div class="concept">
+      <div class="c-head">
+        <div class="c-num">Concept 02</div>
+        <div class="c-name">Kite</div>
+        <div class="c-desc">A nod to kite-public lineage. A diamond kite split into a lit ember half and an ink half, with a small spark tail. Carries provenance while standing on its own.</div>
+      </div>
+      <div class="showcase">
+        <div class="pane light"><svg class="mark" viewBox="0 0 64 64" id="m2l"></svg><div class="lockup"><svg class="mark" viewBox="0 0 64 64" id="m2la"></svg><span class="word">Ember</span></div><span class="tag">Light</span></div>
+        <div class="pane dark"><svg class="mark" viewBox="0 0 64 64" id="m2d"></svg><div class="lockup"><svg class="mark" viewBox="0 0 64 64" id="m2da"></svg><span class="word">Ember</span></div><span class="tag">Dark</span></div>
+      </div>
+      <div class="fav-row">
+        <div class="fav"><div class="chip s48"><svg viewBox="0 0 64 64" width="36" height="36" id="m2f1"></svg></div><small>48</small></div>
+        <div class="fav"><div class="chip s32"><svg viewBox="0 0 64 64" width="24" height="24" id="m2f2"></svg></div><small>32</small></div>
+        <div class="fav"><div class="chip s16"><svg viewBox="0 0 64 64" width="13" height="13" id="m2f3"></svg></div><small>16</small></div>
+      </div>
+    </div>
+
+    <!-- ================= 3. FEEDMARK ================= -->
+    <div class="concept">
+      <div class="c-head">
+        <div class="c-num">Concept 03</div>
+        <div class="c-name">Feedmark</div>
+        <div class="c-desc">Three stacked bars = a feed list, with the classic RSS broadcast dot glowing as an ember at the origin. Reads as both "RSS" and a letter "E". The most literal "reader" mark and superb as a favicon.</div>
+      </div>
+      <div class="showcase">
+        <div class="pane light"><svg class="mark" viewBox="0 0 64 64" id="m3l"></svg><div class="lockup"><svg class="mark" viewBox="0 0 64 64" id="m3la"></svg><span class="word">Ember</span></div><span class="tag">Light</span></div>
+        <div class="pane dark"><svg class="mark" viewBox="0 0 64 64" id="m3d"></svg><div class="lockup"><svg class="mark" viewBox="0 0 64 64" id="m3da"></svg><span class="word">Ember</span></div><span class="tag">Dark</span></div>
+      </div>
+      <div class="fav-row">
+        <div class="fav"><div class="chip s48"><svg viewBox="0 0 64 64" width="36" height="36" id="m3f1"></svg></div><small>48</small></div>
+        <div class="fav"><div class="chip s32"><svg viewBox="0 0 64 64" width="24" height="24" id="m3f2"></svg></div><small>32</small></div>
+        <div class="fav"><div class="chip s16"><svg viewBox="0 0 64 64" width="13" height="13" id="m3f3"></svg></div><small>16</small></div>
+      </div>
+    </div>
+
+    <!-- ================= 4. FLAME ================= -->
+    <div class="concept">
+      <div class="c-head">
+        <div class="c-num">Concept 04</div>
+        <div class="c-name">Flame</div>
+        <div class="c-desc">The literal ember — a geometric flame with a negative-space inner curve that hints at a turning page. Warmest and most expressive. A flame gradient from gold through ember to deep red.</div>
+      </div>
+      <div class="showcase">
+        <div class="pane light"><svg class="mark" viewBox="0 0 64 64" id="m4l"></svg><div class="lockup"><svg class="mark" viewBox="0 0 64 64" id="m4la"></svg><span class="word">Ember</span></div><span class="tag">Light</span></div>
+        <div class="pane dark"><svg class="mark" viewBox="0 0 64 64" id="m4d"></svg><div class="lockup"><svg class="mark" viewBox="0 0 64 64" id="m4da"></svg><span class="word">Ember</span></div><span class="tag">Dark</span></div>
+      </div>
+      <div class="fav-row">
+        <div class="fav"><div class="chip s48"><svg viewBox="0 0 64 64" width="36" height="36" id="m4f1"></svg></div><small>48</small></div>
+        <div class="fav"><div class="chip s32"><svg viewBox="0 0 64 64" width="24" height="24" id="m4f2"></svg></div><small>32</small></div>
+        <div class="fav"><div class="chip s16"><svg viewBox="0 0 64 64" width="13" height="13" id="m4f3"></svg></div><small>16</small></div>
+      </div>
+    </div>
+
+    <!-- ================= 5. COAL TILE ================= -->
+    <div class="concept">
+      <div class="c-head">
+        <div class="c-num">Concept 05</div>
+        <div class="c-name">Coal</div>
+        <div class="c-desc">An app-icon-first mark: a rounded ember tile with a spark struck out of it in negative space. Looks installed and native on a phone home screen or dock. Bold, friendly, instantly recognizable small.</div>
+      </div>
+      <div class="showcase">
+        <div class="pane light"><svg class="mark" viewBox="0 0 64 64" id="m5l"></svg><div class="lockup"><svg class="mark" viewBox="0 0 64 64" id="m5la"></svg><span class="word">Ember</span></div><span class="tag">Light</span></div>
+        <div class="pane dark"><svg class="mark" viewBox="0 0 64 64" id="m5d"></svg><div class="lockup"><svg class="mark" viewBox="0 0 64 64" id="m5da"></svg><span class="word">Ember</span></div><span class="tag">Dark</span></div>
+      </div>
+      <div class="fav-row">
+        <div class="fav"><div class="chip s48"><svg viewBox="0 0 64 64" width="36" height="36" id="m5f1"></svg></div><small>48</small></div>
+        <div class="fav"><div class="chip s32"><svg viewBox="0 0 64 64" width="24" height="24" id="m5f2"></svg></div><small>32</small></div>
+        <div class="fav"><div class="chip s16"><svg viewBox="0 0 64 64" width="13" height="13" id="m5f3"></svg></div><small>16</small></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="note">
+    <b>My recommendation:</b> <b>03 Feedmark</b> for the favicon and app — it's the only one that simultaneously says "RSS," "feed list," and "E," and it stays razor-sharp at 16px. Pair it with <b>04 Flame</b> or <b>01 Ignite</b> as an expressive secondary mark for the login splash and marketing. Tell me your pick (or a hybrid) and I'll generate the full set: <b>favicon.ico</b> (16/32/48), <b>favicon.svg</b>, <b>apple-touch-icon.png</b> (180), <b>icon-512.png</b>, and a PWA <b>maskable</b> variant.
+  </div>
+</div>
+
+<script>
+// ---- shared gradient defs injected into each svg ----
+const DEFS = (id)=>`
+<defs>
+  <linearGradient id="emb${id}" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#e8643a"/><stop offset="1" stop-color="#c2451d"/>
+  </linearGradient>
+  <linearGradient id="flame${id}" x1="0.5" y1="0" x2="0.5" y2="1">
+    <stop offset="0" stop-color="#e0992b"/><stop offset="0.5" stop-color="#e8643a"/><stop offset="1" stop-color="#a8350f"/>
+  </linearGradient>
+</defs>`;
+
+// each concept returns inner SVG markup; `v` = variant: 'light'|'dark'
+const MARKS = {
+  // 1 — IGNITE spark
+  m1:(v,id)=>`${DEFS(id)}
+    <path d="M32 5 Q36.5 27.5 59 32 Q36.5 36.5 32 59 Q27.5 36.5 5 32 Q27.5 27.5 32 5 Z" fill="url(#emb${id})"/>
+    <path d="M49 8 Q50.5 16 58 17.5 Q50.5 19 49 27 Q47.5 19 40 17.5 Q47.5 16 49 8 Z" fill="${v==='dark'?'#e8643a':'#c2451d'}" opacity="${v==='dark'?'.9':'.7'}"/>`,
+
+  // 2 — KITE
+  m2:(v,id)=>{
+    const ink = v==='dark' ? '#f0e9da' : '#211d18';
+    return `${DEFS(id)}
+    <path d="M32 4 L52 28 L32 40 Z" fill="url(#emb${id})"/>
+    <path d="M32 4 L12 28 L32 40 Z" fill="${ink}" opacity="${v==='dark'?'.92':'.88'}"/>
+    <path d="M32 40 L32 4" stroke="${v==='dark'?'#15130f':'#fffdf8'}" stroke-width="1.4" opacity=".5"/>
+    <path d="M12 28 L52 28" stroke="${v==='dark'?'#15130f':'#fffdf8'}" stroke-width="1.4" opacity=".5"/>
+    <path d="M32 40 q5 7 -1 12 q-6 5 -1 11" fill="none" stroke="url(#emb${id})" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="29" cy="62" r="2.6" fill="${v==='dark'?'#e0992b':'#e0992b'}"/>`;
+  },
+
+  // 3 — FEEDMARK (rss bars / E)
+  m3:(v,id)=>{
+    const bar = v==='dark' ? '#f0e9da' : '#211d18';
+    return `${DEFS(id)}
+    <circle cx="13" cy="15" r="6.5" fill="url(#emb${id})"/>
+    <rect x="25" y="11.5" width="31" height="8" rx="4" fill="${bar}"/>
+    <rect x="8"  y="28"   width="48" height="8" rx="4" fill="${bar}"/>
+    <rect x="8"  y="44.5" width="34" height="8" rx="4" fill="url(#emb${id})"/>`;
+  },
+
+  // 4 — FLAME
+  m4:(v,id)=>`${DEFS(id)}
+    <path d="M33 3 C 42 16, 52 24, 47.5 38 C 45 47, 38 53, 33 60 C 28 53, 18.5 47.5, 17.5 36 C 16.7 27.5, 25 22, 27 13 C 28.2 18.5, 31 21, 33 3 Z" fill="url(#flame${id})"/>
+    <path d="M33 30 C 38 35, 40 40, 36.5 46 C 34.8 49, 32 51, 31 53 C 28 49.5, 25 45.5, 27 39.5 C 28 36, 30.5 33.5, 33 30 Z" fill="${v==='dark'?'#15130f':'#f6f2e9'}"/>`,
+
+  // 5 — COAL tile
+  m5:(v,id)=>`${DEFS(id)}
+    <rect x="4" y="4" width="56" height="56" rx="16" fill="url(#flame${id})"/>
+    <path d="M32 17 Q34.5 30 45 32 Q34.5 34 32 47 Q29.5 34 19 32 Q29.5 30 32 17 Z"
+          fill="${v==='dark'?'#15130f':'#f6f2e9'}" opacity=".94"/>`,
+};
+
+// fill every placeholder
+function paint(){
+  let uid = 0;
+  document.querySelectorAll('svg.mark, .chip svg, .lockup svg').forEach(()=>{}); // noop
+  const ids = ['m1','m2','m3','m4','m5'];
+  ids.forEach(key=>{
+    const fn = MARKS[key];
+    // light contexts
+    [`${key}l`,`${key}la`,`${key}f1`,`${key}f2`,`${key}f3`].forEach(t=>{
+      const el=document.getElementById(t); if(el){ el.innerHTML=fn('light', uid++); }
+    });
+    // dark contexts
+    [`${key}d`,`${key}da`].forEach(t=>{
+      const el=document.getElementById(t); if(el){ el.innerHTML=fn('dark', uid++); }
+    });
+  });
+}
+paint();
+</script>
+</body>
+</html>

@@ -76,6 +76,7 @@ function loadPref<T extends string>(key: string, fallback: T): T {
 }
 export const theme = writable<"light" | "dark">(loadPref("ember:theme", "light"));
 export const density = writable<"card" | "compact">(loadPref("ember:density", "card"));
+export const sidebarCollapsed = writable<boolean>(loadPref("ember:sidebar", "open") === "closed");
 
 // Articles list --------------------------------------------------------------
 export interface ArticleListState {

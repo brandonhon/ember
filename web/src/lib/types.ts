@@ -44,6 +44,7 @@ export interface FeedWithCounts extends Feed {
   subscription_id: number;
   category_id?: number;
   title_override?: string;
+  muted: boolean;
   unread: number;
 }
 

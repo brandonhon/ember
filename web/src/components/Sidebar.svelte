@@ -10,12 +10,52 @@
   import { api, ApiError } from "../lib/api";
   import type { FeedWithCounts } from "../lib/types";
 
+  import { onMount, onDestroy } from "svelte";
+
   let collapsedCategories = $state<Record<number, boolean>>({});
   let collapsedUncategorized = $state(false);
   let addFormOpen = $state(false);
   let addingFeed = $state(false);
   let newFeedURL = $state("");
   let addError = $state("");
+  // Which feed row's action menu is open (by feed id). Null = none.
+  let menuFor = $state<number | null>(null);
+
+  function onDocClick(e: MouseEvent) {
+    if (menuFor === null) return;
+    const t = e.target as HTMLElement;
+    if (!t.closest(`[data-feed-menu-for]`) && !t.closest(`[data-feed-actions-trigger]`)) {
+      menuFor = null;
+    }
+  }
+  onMount(() => document.addEventListener("click", onDocClick));
+  onDestroy(() => document.removeEventListener("click", onDocClick));
+
+  async function toggleMute(f: FeedWithCounts) {
+    menuFor = null;
+    try {
+      await api.updateFeed(f.subscription_id, { muted: !f.muted });
+      await refreshSidebar();
+    } catch (err) {
+      console.error("toggleMute", err);
+    }
+  }
+
+  async function deleteFeed(f: FeedWithCounts) {
+    menuFor = null;
+    const name = f.title_override || f.title;
+    if (!confirm(`Unsubscribe from "${name}"? This removes the feed from your list.`)) return;
+    try {
+      await api.deleteFeed(f.subscription_id);
+      await refreshSidebar();
+      // If the deleted feed was the active view, fall back to Fresh.
+      if ($activeView.kind === "feed" && $activeView.id === f.id) {
+        pickSmart("fresh");
+      }
+    } catch (err) {
+      console.error("deleteFeed", err);
+    }
+  }
 
   const grouped = $derived.by(() => {
     const byCat = new Map<number, FeedWithCounts[]>();
@@ -102,6 +142,48 @@
   }
 </script>
 
+{#snippet feedRow(f: FeedWithCounts)}
+  <div class="feed-row" class:muted={f.muted}>
+    <button
+      class="feed-item"
+      class:active={isActiveFeed(f.id)}
+      class:read={f.unread === 0}
+      on:click={() => pickFeed(f.id)}
+      data-testid="feed-{f.id}"
+    >
+      <span class="favicon" style="background:{favColor(f.id)}">{faviconLetter(f.title_override || f.title)}</span>
+      <span class="ni-label">{f.title_override || f.title}</span>
+      {#if f.muted}<span class="muted-tag" aria-label="muted">🔕</span>{/if}
+      {#if f.unread > 0 && !f.muted}<span class="badge">{f.unread}</span>{/if}
+    </button>
+    <button
+      class="feed-actions-trigger"
+      data-feed-actions-trigger
+      data-testid="feed-actions-{f.id}"
+      on:click={(e) => {
+        e.stopPropagation();
+        menuFor = menuFor === f.id ? null : f.id;
+      }}
+      aria-label="Feed actions"
+      title="More"
+    >
+      <svg viewBox="0 0 24 24" width="14" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="5" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="12" cy="19" r="1" />
+      </svg>
+    </button>
+    {#if menuFor === f.id}
+      <div class="feed-menu" data-feed-menu-for={f.id}>
+        <button on:click={() => toggleMute(f)} data-testid="feed-mute-{f.id}">
+          {f.muted ? "Unmute" : "Mute"}
+        </button>
+        <button class="danger" on:click={() => deleteFeed(f)} data-testid="feed-delete-{f.id}">
+          Delete
+        </button>
+      </div>
+    {/if}
+  </div>
+{/snippet}
+
 <aside class="rail">
   <!-- Smart views -->
   <div class="rail-section">
@@ -168,17 +250,7 @@
         </div>
         <div class="feed-list">
           {#each grouped.byCat.get(cat.id) ?? [] as f (f.id)}
-            <button
-              class="feed-item"
-              class:active={isActiveFeed(f.id)}
-              class:read={f.unread === 0}
-              on:click={() => pickFeed(f.id)}
-              data-testid="feed-{f.id}"
-            >
-              <span class="favicon" style="background:{favColor(f.id)}">{faviconLetter(f.title_override || f.title)}</span>
-              <span class="ni-label">{f.title_override || f.title}</span>
-              {#if f.unread > 0}<span class="badge">{f.unread}</span>{/if}
-            </button>
+            {@render feedRow(f)}
           {/each}
         </div>
       </div>
@@ -195,17 +267,7 @@
         </div>
         <div class="feed-list">
           {#each grouped.uncat as f (f.id)}
-            <button
-              class="feed-item"
-              class:active={isActiveFeed(f.id)}
-              class:read={f.unread === 0}
-              on:click={() => pickFeed(f.id)}
-              data-testid="feed-{f.id}"
-            >
-              <span class="favicon" style="background:{favColor(f.id)}">{faviconLetter(f.title_override || f.title)}</span>
-              <span class="ni-label">{f.title_override || f.title}</span>
-              {#if f.unread > 0}<span class="badge">{f.unread}</span>{/if}
-            </button>
+            {@render feedRow(f)}
           {/each}
         </div>
       </div>
@@ -343,11 +405,20 @@
   .folder-name.active { color: var(--ember); }
 
   .feed-list { padding-left: 14px; margin: 2px 0 6px; }
+  .feed-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    border-radius: 8px;
+  }
+  .feed-row.muted .ni-label { color: var(--ink-faint); font-style: italic; }
+  .feed-row:hover .feed-actions-trigger { opacity: 1; }
   .feed-item {
     display: flex;
     align-items: center;
     gap: 10px;
-    width: 100%;
+    flex: 1;
+    min-width: 0;
     text-align: left;
     padding: 5px 10px;
     border-radius: 8px;
@@ -360,6 +431,58 @@
   .feed-item.read .ni-label { color: var(--ink-faint); }
   .feed-item.active .badge { background: var(--ember); color: #fff; }
   .feed-item .badge { background: transparent; }
+  .muted-tag {
+    margin-left: auto;
+    font-size: 12px;
+    opacity: 0.7;
+  }
+  .feed-actions-trigger {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    display: grid;
+    place-items: center;
+    color: var(--ink-faint);
+    opacity: 0;
+    transition: opacity 0.12s, background 0.12s;
+    background: var(--paper-2);
+    border: none;
+    cursor: pointer;
+  }
+  .feed-actions-trigger:hover { background: var(--line); color: var(--ink); }
+  .feed-actions-trigger:focus-visible { opacity: 1; outline: none; }
+  .feed-menu {
+    position: absolute;
+    right: 4px;
+    top: calc(100% + 2px);
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: var(--shadow-pane);
+    padding: 4px;
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 120px;
+  }
+  .feed-menu button {
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--ink);
+    text-align: left;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+  }
+  .feed-menu button:hover { background: var(--line-soft); }
+  .feed-menu button.danger { color: #b91c1c; }
+  .feed-menu button.danger:hover { background: #fef2f2; }
   .favicon {
     width: 18px;
     height: 18px;

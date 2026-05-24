@@ -1,6 +1,14 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
-  import { user, logout, theme, refreshSidebar, activeView, loadArticles } from "../lib/stores";
+  import {
+    user,
+    logout,
+    theme,
+    refreshSidebar,
+    activeView,
+    loadArticles,
+    sidebarCollapsed,
+  } from "../lib/stores";
   import { api, ApiError } from "../lib/api";
   import { get } from "svelte/store";
 
@@ -91,9 +99,17 @@
 <header class="topbar">
   <div class="brand">
     <span class="kite" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none">
-        <path d="M12 2L21 11L12 14L9 21L12 2Z" fill="var(--ember)" />
-        <path d="M12 2L3 11L12 14L12 2Z" fill="var(--ink)" opacity=".8" />
+      <svg viewBox="0 0 64 64">
+        <defs>
+          <linearGradient id="brand-emb" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="var(--ember-soft)" />
+            <stop offset="1" stop-color="var(--ember)" />
+          </linearGradient>
+        </defs>
+        <circle cx="13" cy="15" r="6.5" fill="url(#brand-emb)" />
+        <rect x="25" y="11.5" width="31" height="8" rx="4" fill="var(--ink)" />
+        <rect x="8" y="28" width="48" height="8" rx="4" fill="var(--ink)" />
+        <rect x="8" y="44.5" width="34" height="8" rx="4" fill="url(#brand-emb)" />
       </svg>
     </span>
     Ember
@@ -121,6 +137,28 @@
       style="display:none"
       data-testid="opml-input"
     />
+    <button
+      class="icon-btn"
+      title={$sidebarCollapsed ? "Show sidebar" : "Hide sidebar"}
+      on:click={() => {
+        sidebarCollapsed.update((v) => !v);
+        try { localStorage.setItem("ember:sidebar", $sidebarCollapsed ? "closed" : "open"); } catch {}
+      }}
+      data-testid="toggle-sidebar"
+    >
+      {#if $sidebarCollapsed}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="16" rx="2" />
+          <path d="M9 4v16" />
+          <path d="M14 12l3-3M14 12l3 3" />
+        </svg>
+      {:else}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="16" rx="2" />
+          <path d="M9 4v16" />
+        </svg>
+      {/if}
+    </button>
     <button
       class="icon-btn"
       title="Refresh feeds now"
@@ -236,13 +274,12 @@
     letter-spacing: -0.01em;
   }
   .brand .kite {
-    width: 22px;
-    height: 22px;
+    width: 24px;
+    height: 24px;
     display: grid;
     place-items: center;
-    transform: rotate(8deg);
   }
-  .brand .kite svg { width: 20px; height: 20px; }
+  .brand .kite svg { width: 24px; height: 24px; }
 
   .search {
     display: flex;
