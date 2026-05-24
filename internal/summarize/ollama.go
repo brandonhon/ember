@@ -10,15 +10,18 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
-// Ollama summarizes via Ollama's `/api/generate` endpoint. Output is parsed as
-// a JSON object with `paragraph` and `bullets` fields. Legacy responses (bare
-// JSON arrays, or plain text) are handled by fallback parsers.
+// Ollama summarizes via Ollama's `/api/generate` endpoint. Output is parsed
+// against the labeled "SUMMARY:/POINTS:" template; legacy JSON-object,
+// bare-array, and plain bullet-list shapes are handled as fallbacks. The
+// active model is held in an atomic value so the admin API can swap it at
+// runtime without restarting the process.
 type Ollama struct {
 	BaseURL    string
-	Model      string
+	model      atomic.Value // string
 	HTTPClient *http.Client
 	Timeout    time.Duration
 	// MaxInput caps the text we send (in runes) so we don't blow the context
@@ -28,13 +31,103 @@ type Ollama struct {
 
 // NewOllama constructs an Ollama summarizer. Both URL and model are required.
 func NewOllama(baseURL, model string) *Ollama {
-	return &Ollama{
+	o := &Ollama{
 		BaseURL:    strings.TrimRight(baseURL, "/"),
-		Model:      model,
 		HTTPClient: &http.Client{Timeout: 90 * time.Second},
 		Timeout:    90 * time.Second,
 		MaxInput:   8000,
 	}
+	o.model.Store(model)
+	return o
+}
+
+// Model returns the currently active model name.
+func (o *Ollama) Model() string {
+	if v := o.model.Load(); v != nil {
+		return v.(string)
+	}
+	return ""
+}
+
+// SetModel atomically swaps the active model. Used by the admin API to switch
+// models at runtime. Empty string is allowed (Summarize will then error).
+func (o *Ollama) SetModel(name string) {
+	o.model.Store(name)
+}
+
+// InstalledModel is one entry from Ollama's /api/tags.
+type InstalledModel struct {
+	Name       string `json:"name"`
+	SizeBytes  int64  `json:"size_bytes"`
+	ModifiedAt string `json:"modified_at"`
+}
+
+// ListInstalled queries Ollama's /api/tags and returns the locally-cached
+// models. Used by the admin UI to populate the model picker.
+func (o *Ollama) ListInstalled(ctx context.Context) ([]InstalledModel, error) {
+	if o.BaseURL == "" {
+		return nil, errors.New("summarize: ollama url not configured")
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, o.BaseURL+"/api/tags", nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := o.HTTPClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("summarize: ollama tags status %d", resp.StatusCode)
+	}
+	var body struct {
+		Models []struct {
+			Name       string `json:"name"`
+			Size       int64  `json:"size"`
+			ModifiedAt string `json:"modified_at"`
+		} `json:"models"`
+	}
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&body); err != nil {
+		return nil, err
+	}
+	out := make([]InstalledModel, 0, len(body.Models))
+	for _, m := range body.Models {
+		out = append(out, InstalledModel{Name: m.Name, SizeBytes: m.Size, ModifiedAt: m.ModifiedAt})
+	}
+	return out, nil
+}
+
+// Pull triggers `ollama pull <model>`. Blocks until done (or ctx is cancelled).
+// Returns the response body for diagnostic logging; the caller decides what
+// to surface to the UI.
+func (o *Ollama) Pull(ctx context.Context, name string) error {
+	if o.BaseURL == "" {
+		return errors.New("summarize: ollama url not configured")
+	}
+	body, err := json.Marshal(map[string]any{"name": name, "stream": false})
+	if err != nil {
+		return err
+	}
+	// Long-running operation: don't use the short Summarize timeout.
+	client := &http.Client{Timeout: 30 * time.Minute}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, o.BaseURL+"/api/pull", bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		// Drain a snippet for the error message.
+		raw, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		return fmt.Errorf("summarize: ollama pull status %d: %s", resp.StatusCode, strings.TrimSpace(string(raw)))
+	}
+	// Drain to confirm the pull completed.
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 64*1024))
+	return nil
 }
 
 // promptTemplate asks the model for a labeled plain-text format. Small models
@@ -68,7 +161,8 @@ type generateResponse struct {
 
 // Summarize calls Ollama and parses the response into a Result.
 func (o *Ollama) Summarize(ctx context.Context, title, text string) (Result, string, error) {
-	if o.BaseURL == "" || o.Model == "" {
+	model := o.Model()
+	if o.BaseURL == "" || model == "" {
 		return Result{}, "", errors.New("summarize: ollama url/model not configured")
 	}
 	if o.HTTPClient == nil {
@@ -81,12 +175,12 @@ func (o *Ollama) Summarize(ctx context.Context, title, text string) (Result, str
 	}
 
 	body, err := json.Marshal(generateRequest{
-		Model:  o.Model,
+		Model:  model,
 		Prompt: fmt.Sprintf(promptTemplate, title, input),
 		Stream: false,
 	})
 	if err != nil {
-		return Result{}, o.Model, err
+		return Result{}, model, err
 	}
 
 	// One retry on transient errors.
@@ -94,21 +188,21 @@ func (o *Ollama) Summarize(ctx context.Context, title, text string) (Result, str
 	for attempt := range 2 {
 		res, err := o.tryOnce(ctx, body)
 		if err == nil {
-			return res, o.Model, nil
+			return res, model, nil
 		}
 		lastErr = err
 		if ctx.Err() != nil {
-			return Result{}, o.Model, ctx.Err()
+			return Result{}, model, ctx.Err()
 		}
 		if attempt == 0 {
 			select {
 			case <-time.After(250 * time.Millisecond):
 			case <-ctx.Done():
-				return Result{}, o.Model, ctx.Err()
+				return Result{}, model, ctx.Err()
 			}
 		}
 	}
-	return Result{}, o.Model, lastErr
+	return Result{}, model, lastErr
 }
 
 func (o *Ollama) tryOnce(ctx context.Context, body []byte) (Result, error) {
