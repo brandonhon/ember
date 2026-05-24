@@ -1,6 +1,8 @@
 <script lang="ts">
-  import { articles, feeds, selectedArticleId, toggleStar, toggleLater } from "../lib/stores";
+  import { onMount, onDestroy } from "svelte";
+  import { articles, boards, feeds, selectedArticleId, toggleStar, toggleLater } from "../lib/stores";
   import type { FeedWithCounts } from "../lib/types";
+  import { api, ApiError } from "../lib/api";
   import ShareModal from "./ShareModal.svelte";
 
   const selected = $derived(
@@ -15,6 +17,31 @@
   });
 
   let showShare = $state(false);
+  let showBoardPicker = $state(false);
+  let boardMsg = $state("");
+
+  function onDocClick(e: MouseEvent) {
+    if (!showBoardPicker) return;
+    const t = e.target as HTMLElement;
+    if (!t.closest("[data-board-picker]") && !t.closest("[data-board-trigger]")) {
+      showBoardPicker = false;
+    }
+  }
+  onMount(() => document.addEventListener("click", onDocClick));
+  onDestroy(() => document.removeEventListener("click", onDocClick));
+
+  async function addToBoard(boardID: number, boardName: string) {
+    if (!selected) return;
+    showBoardPicker = false;
+    try {
+      await api.addToBoard(boardID, selected.id);
+      boardMsg = `Added to "${boardName}"`;
+      setTimeout(() => (boardMsg = ""), 2400);
+    } catch (err) {
+      boardMsg = err instanceof ApiError ? err.message : String(err);
+      setTimeout(() => (boardMsg = ""), 4000);
+    }
+  }
 
   const FAV_COLORS = ["#ff6154", "#0a0a0a", "#e63946", "#1d4ed8", "#623ce6", "#ee0000", "#326ce5", "#111", "#cc0000", "#bb1919"];
   function favColor(feedID: number): string {
@@ -74,6 +101,33 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" /></svg>
           Share
         </button>
+        <div class="board-wrap">
+          <button
+            class="ra-btn"
+            on:click={(e) => { e.stopPropagation(); showBoardPicker = !showBoardPicker; }}
+            data-board-trigger
+            data-testid="reader-board"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /></svg>
+            Board
+          </button>
+          {#if showBoardPicker}
+            <div class="board-picker" data-board-picker>
+              {#if $boards.length === 0}
+                <div class="board-picker-empty">No boards yet. Create one in the sidebar.</div>
+              {:else}
+                {#each $boards as b (b.id)}
+                  <button on:click={() => addToBoard(b.id, b.name)} data-testid="picker-board-{b.id}">
+                    {b.name}
+                  </button>
+                {/each}
+              {/if}
+            </div>
+          {/if}
+          {#if boardMsg}
+            <span class="board-msg">{boardMsg}</span>
+          {/if}
+        </div>
         <span style="flex:1"></span>
         {#if selected.url}
           <a class="ra-btn primary" href={selected.url} target="_blank" rel="noopener noreferrer">
@@ -178,6 +232,45 @@
     border-color: var(--ember);
   }
   .ra-btn.primary:hover { background: var(--ember-soft); border-color: var(--ember-soft); color: #fff; }
+  .board-wrap { position: relative; display: inline-flex; align-items: center; gap: 8px; }
+  .board-picker {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: var(--shadow-pane);
+    padding: 4px;
+    min-width: 180px;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .board-picker button {
+    text-align: left;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    color: var(--ink);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+  }
+  .board-picker button:hover { background: var(--line-soft); }
+  .board-picker-empty {
+    color: var(--ink-faint);
+    font-size: 12px;
+    padding: 8px 10px;
+  }
+  .board-msg {
+    color: var(--ember);
+    font-size: 12px;
+    background: var(--ember-wash);
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
 
   .article-kicker {
     display: flex;
