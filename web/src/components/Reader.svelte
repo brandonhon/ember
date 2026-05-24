@@ -93,6 +93,12 @@
 
       <h1 class="article-h1">{selected.title}</h1>
 
+      {#if selected.image_url}
+        <figure class="article-hero">
+          <img src={selected.image_url} alt="" loading="lazy" on:error={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} />
+        </figure>
+      {/if}
+
       {#if summaryLines.length > 0}
         <aside class="ai-card" data-testid="summary-card">
           <div class="ai-head">
@@ -201,6 +207,15 @@
     margin: 0 0 12px;
     color: var(--ink);
   }
+  .article-hero {
+    margin: 18px 0 24px;
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--line-soft);
+    aspect-ratio: 16 / 9;
+    max-height: 360px;
+  }
+  .article-hero img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
   .ai-card {
     border: 1px solid var(--line);
