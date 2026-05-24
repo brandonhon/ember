@@ -136,6 +136,39 @@ func (s *Store) GetArticleForUser(ctx context.Context, userID, articleID int64) 
 	return v, nil
 }
 
+// ResetSummariesByFeed clears summary_model on every article in the feed
+// where it currently equals 'skipped'. Returns the affected article IDs so
+// the poller can re-enqueue them for a fresh summarize attempt.
+func (s *Store) ResetSummariesByFeed(ctx context.Context, feedID int64) ([]int64, error) {
+	rows, err := s.DB.QueryContext(ctx,
+		`SELECT id FROM articles WHERE feed_id = ? AND summary_model = 'skipped'`, feedID)
+	if err != nil {
+		return nil, err
+	}
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	if _, err := s.DB.ExecContext(ctx,
+		`UPDATE articles SET summary_model = NULL, summary = '' WHERE feed_id = ? AND summary_model = 'skipped'`,
+		feedID); err != nil {
+		return nil, err
+	}
+	return ids, nil
+}
+
 // UpdateSummary sets the summary for an article.
 func (s *Store) UpdateSummary(ctx context.Context, articleID int64, summary, model string) error {
 	res, err := s.DB.ExecContext(ctx,

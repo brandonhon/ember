@@ -286,6 +286,40 @@ func TestArticles_MutedFeedHiddenFromSmartViews(t *testing.T) {
 	_ = subLoud
 }
 
+func TestArticles_ResetSummariesByFeed(t *testing.T) {
+	s := NewTest(t)
+	ctx := context.Background()
+	_, feedID := seedUserAndFeed(t, s, "alice")
+
+	a1, _, _ := s.UpsertArticle(ctx, mkArticle(feedID, "g1", "Skipped", "h1", 1000))
+	a2, _, _ := s.UpsertArticle(ctx, mkArticle(feedID, "g2", "Real summary", "h2", 1000))
+	a3, _, _ := s.UpsertArticle(ctx, mkArticle(feedID, "g3", "Still pending", "h3", 1000))
+
+	_ = s.UpdateSummary(ctx, a1.ID, "", "skipped")
+	_ = s.UpdateSummary(ctx, a2.ID, "• real summary", "qwen2.5:1.5b")
+
+	ids, err := s.ResetSummariesByFeed(ctx, feedID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ids) != 1 || ids[0] != a1.ID {
+		t.Errorf("ResetSummariesByFeed returned %v, want [%d]", ids, a1.ID)
+	}
+
+	got, _ := s.GetArticle(ctx, a1.ID)
+	if got.SummaryModel != "" {
+		t.Errorf("a1 summary_model = %q, want empty", got.SummaryModel)
+	}
+	got, _ = s.GetArticle(ctx, a2.ID)
+	if got.SummaryModel != "qwen2.5:1.5b" {
+		t.Errorf("a2 summary_model changed to %q", got.SummaryModel)
+	}
+	got, _ = s.GetArticle(ctx, a3.ID)
+	if got.SummaryModel != "" {
+		t.Errorf("a3 should still be NULL, got %q", got.SummaryModel)
+	}
+}
+
 func TestArticles_FixedClock(t *testing.T) {
 	s := NewTest(t)
 	fixed := time.Unix(1_700_000_000, 0)

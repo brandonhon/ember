@@ -57,6 +57,17 @@
     }
   }
 
+  async function resummarize(f: FeedWithCounts) {
+    menuFor = null;
+    try {
+      const res = await api.resummarizeFeed(f.subscription_id);
+      alert(`Re-enqueued ${res.data.enqueued} of ${res.data.reset} skipped articles for summarization.`);
+      await refreshSidebar();
+    } catch (err) {
+      console.error("resummarize", err);
+    }
+  }
+
   const grouped = $derived.by(() => {
     const byCat = new Map<number, FeedWithCounts[]>();
     const uncat: FeedWithCounts[] = [];
@@ -175,6 +186,9 @@
       <div class="feed-menu" data-feed-menu-for={f.id}>
         <button on:click={() => toggleMute(f)} data-testid="feed-mute-{f.id}">
           {f.muted ? "Unmute" : "Mute"}
+        </button>
+        <button on:click={() => resummarize(f)} data-testid="feed-resummarize-{f.id}">
+          Resummarize
         </button>
         <button class="danger" on:click={() => deleteFeed(f)} data-testid="feed-delete-{f.id}">
           Delete
