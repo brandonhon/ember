@@ -121,6 +121,41 @@ func (d *Dependencies) handleRefreshFeed(w http.ResponseWriter, r *http.Request)
 	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
 }
 
+// handleResummarizeFeed clears the 'skipped' summary marker on every article
+// in the feed and re-enqueues each one for summarization. Used when the
+// summarizer was previously unavailable (Ollama down, model missing) and
+// you want to retry now that it's working.
+func (d *Dependencies) handleResummarizeFeed(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.FromContext(r.Context())
+	id, ok := paramInt(w, r, "id")
+	if !ok {
+		return
+	}
+	sub, err := d.Store.GetSubscriptionByID(r.Context(), u.ID, id)
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "not_found", "feed not found")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal", err.Error())
+		return
+	}
+	ids, err := d.Store.ResetSummariesByFeed(r.Context(), sub.FeedID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal", err.Error())
+		return
+	}
+	enqueued := 0
+	if d.Poller != nil {
+		for _, aid := range ids {
+			if d.Poller.EnqueueSummary(aid) {
+				enqueued++
+			}
+		}
+	}
+	writeData(w, http.StatusOK, map[string]int{"reset": len(ids), "enqueued": enqueued}, nil)
+}
+
 func (d *Dependencies) handleOPMLImport(w http.ResponseWriter, r *http.Request) {
 	u, _ := auth.FromContext(r.Context())
 	if err := r.ParseMultipartForm(8 << 20); err != nil {

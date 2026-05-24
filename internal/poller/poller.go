@@ -150,6 +150,21 @@ func (p *Poller) Tick(ctx context.Context) {
 	wg.Wait()
 }
 
+// EnqueueSummary best-effort places an article id on the summary queue.
+// Returns true if the id was enqueued, false if the queue is full or no
+// summarizer is configured.
+func (p *Poller) EnqueueSummary(articleID int64) bool {
+	if p.Summarizer == nil {
+		return false
+	}
+	select {
+	case p.summaryCh <- articleID:
+		return true
+	default:
+		return false
+	}
+}
+
 // RefreshFeed forces an immediate fetch of a single feed.
 func (p *Poller) RefreshFeed(ctx context.Context, feedID int64) error {
 	f, err := p.Store.GetFeed(ctx, feedID)

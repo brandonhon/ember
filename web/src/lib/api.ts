@@ -117,6 +117,8 @@ export const api = {
   ) => call<unknown>("PATCH", `/api/feeds/${id}`, req),
   deleteFeed: (id: number) => call<unknown>("DELETE", `/api/feeds/${id}`),
   refreshFeed: (id: number) => call<unknown>("POST", `/api/feeds/${id}/refresh`),
+  resummarizeFeed: (id: number) =>
+    call<{ reset: number; enqueued: number }>("POST", `/api/feeds/${id}/resummarize`),
   exportOPML: () => fetch("/api/feeds/export", { credentials: "include" }),
   importOPML: async (file: File): Promise<{ data: { imported: number } }> => {
     const form = new FormData();

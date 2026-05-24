@@ -32,14 +32,20 @@ type harness struct {
 }
 
 type fakePoller struct {
-	calls int
-	feeds []int64
+	calls       int
+	feeds       []int64
+	enqueuedIDs []int64
 }
 
 func (f *fakePoller) RefreshFeed(_ context.Context, id int64) error {
 	f.calls++
 	f.feeds = append(f.feeds, id)
 	return nil
+}
+
+func (f *fakePoller) EnqueueSummary(id int64) bool {
+	f.enqueuedIDs = append(f.enqueuedIDs, id)
+	return true
 }
 
 func newHarness(t *testing.T) *harness {

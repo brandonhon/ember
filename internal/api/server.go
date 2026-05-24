@@ -17,6 +17,7 @@ import (
 // importing poller here to keep dependencies one-directional).
 type PollerRefresher interface {
 	RefreshFeed(ctx context.Context, feedID int64) error
+	EnqueueSummary(articleID int64) bool
 }
 
 // Dependencies wires the API.
@@ -87,6 +88,7 @@ func NewRouter(d Dependencies) http.Handler {
 		r.With(d.Auth.RequireAuth).Patch("/feeds/{id}", d.handleUpdateFeed)
 		r.With(d.Auth.RequireAuth).Delete("/feeds/{id}", d.handleDeleteFeed)
 		r.With(d.Auth.RequireAuth).Post("/feeds/{id}/refresh", d.handleRefreshFeed)
+		r.With(d.Auth.RequireAuth).Post("/feeds/{id}/resummarize", d.handleResummarizeFeed)
 		r.With(d.Auth.RequireAuth).Post("/feeds/import", d.handleOPMLImport)
 		r.With(d.Auth.RequireAuth).Get("/feeds/export", d.handleOPMLExport)
 
