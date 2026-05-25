@@ -23,6 +23,7 @@ type dbStatus struct {
 	BackupKeepCount  int                `json:"backup_keep_count"` // how many to retain
 	CleanupSchedule  string             `json:"cleanup_schedule"`  // "off" | "weekly" | "monthly"
 	CleanupOlderDays int                `json:"cleanup_older_days"`
+	OPMLSchedule     string             `json:"opml_schedule"` // "off" | "weekly" | "monthly"
 }
 
 const (
@@ -48,6 +49,7 @@ func (d *Dependencies) handleGetDB(w http.ResponseWriter, r *http.Request) {
 		BackupKeepCount:  getIntSettingOr(r, d, keyBackupKeep, 7),
 		CleanupSchedule:  getSettingOr(r, d, keyCleanupSchedule, "off"),
 		CleanupOlderDays: getIntSettingOr(r, d, keyCleanupOlderDays, 90),
+		OPMLSchedule:     getSettingOr(r, d, "opml_schedule", "off"),
 	}
 	writeData(w, http.StatusOK, resp, nil)
 }
@@ -86,6 +88,7 @@ type scheduleReq struct {
 	BackupKeepCount  int    `json:"backup_keep_count"`
 	CleanupSchedule  string `json:"cleanup_schedule"`
 	CleanupOlderDays int    `json:"cleanup_older_days"`
+	OPMLSchedule     string `json:"opml_schedule"`
 }
 
 func (d *Dependencies) handleDBSchedule(w http.ResponseWriter, r *http.Request) {
@@ -99,6 +102,10 @@ func (d *Dependencies) handleDBSchedule(w http.ResponseWriter, r *http.Request) 
 	}
 	if !validSchedule(req.CleanupSchedule, "off", "weekly", "monthly") {
 		writeError(w, http.StatusBadRequest, "bad_request", "cleanup_schedule must be off|weekly|monthly")
+		return
+	}
+	if req.OPMLSchedule != "" && !validSchedule(req.OPMLSchedule, "off", "weekly", "monthly") {
+		writeError(w, http.StatusBadRequest, "bad_request", "opml_schedule must be off|weekly|monthly")
 		return
 	}
 	if req.BackupKeepCount < 1 {
@@ -123,6 +130,12 @@ func (d *Dependencies) handleDBSchedule(w http.ResponseWriter, r *http.Request) 
 	if err := d.Store.PutAppSetting(ctx, keyCleanupOlderDays, strconv.Itoa(req.CleanupOlderDays)); err != nil {
 		writeError(w, http.StatusInternalServerError, "internal", err.Error())
 		return
+	}
+	if req.OPMLSchedule != "" {
+		if err := d.Store.PutAppSetting(ctx, "opml_schedule", req.OPMLSchedule); err != nil {
+			writeError(w, http.StatusInternalServerError, "internal", err.Error())
+			return
+		}
 	}
 	writeData(w, http.StatusOK, map[string]string{"ok": "saved"}, nil)
 }

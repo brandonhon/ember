@@ -104,6 +104,16 @@ type Board struct {
 	CreatedAt int64  `json:"created_at"`
 }
 
+// SavedSearch is a persisted FTS query that the user can re-run from the
+// sidebar. Acts like a smart view backed by /api/search.
+type SavedSearch struct {
+	ID        int64  `json:"id"`
+	UserID    int64  `json:"user_id"`
+	Name      string `json:"name"`
+	Query     string `json:"query"`
+	CreatedAt int64  `json:"created_at"`
+}
+
 // Filter is a user rule applied to incoming articles.
 type Filter struct {
 	ID        int64  `json:"id"`

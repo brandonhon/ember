@@ -138,6 +138,13 @@ func NewRouter(d Dependencies) http.Handler {
 		r.With(d.Auth.RequireAuth).Post("/articles/later", d.handleSetLater)
 		r.With(d.Auth.RequireAuth).Post("/articles/mark-all-read", d.handleMarkAllRead)
 
+		// Per-article user tags
+		r.With(d.Auth.RequireAuth).Get("/articles/{id}/tags", d.handleListArticleTags)
+		r.With(d.Auth.RequireAuth).Post("/articles/{id}/tags", d.handleAddArticleTag)
+		r.With(d.Auth.RequireAuth).Delete("/articles/{id}/tags", d.handleRemoveArticleTag)
+		r.With(d.Auth.RequireAuth).Get("/tags", d.handleListUserTags)
+		r.With(d.Auth.RequireAuth).Get("/me/stats", d.handleGetStats)
+
 		// Boards
 		r.With(d.Auth.RequireAuth).Get("/boards", d.handleListBoards)
 		r.With(d.Auth.RequireAuth).Post("/boards", d.handleCreateBoard)
@@ -158,6 +165,9 @@ func NewRouter(d Dependencies) http.Handler {
 
 		// Search
 		r.With(d.Auth.RequireAuth).Get("/search", d.handleSearch)
+		r.With(d.Auth.RequireAuth).Get("/saved-searches", d.handleListSavedSearches)
+		r.With(d.Auth.RequireAuth).Post("/saved-searches", d.handleCreateSavedSearch)
+		r.With(d.Auth.RequireAuth).Delete("/saved-searches/{id}", d.handleDeleteSavedSearch)
 
 		// Catch-all under /api/ → 404 JSON
 		r.NotFound(func(w http.ResponseWriter, _ *http.Request) {
