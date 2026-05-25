@@ -781,12 +781,12 @@
               </button>
             </div>
 
-            {#if dbState.backups.length > 0}
+            {#if (dbState.backups?.length ?? 0) > 0}
               <h4>Recent backups</h4>
               <table class="llm-table">
                 <thead><tr><th>File</th><th>Size</th><th>Created</th></tr></thead>
                 <tbody>
-                  {#each dbState.backups.slice(0, 8) as b (b.path)}
+                  {#each (dbState.backups ?? []).slice(0, 8) as b (b.path)}
                     <tr>
                       <td><code>{b.path.split("/").slice(-1)[0]}</code></td>
                       <td>{gibBytes(b.size_bytes)}</td>
