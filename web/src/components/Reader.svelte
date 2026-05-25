@@ -168,6 +168,11 @@
         {#if selected.tags}
           <span class="source-badge">{selected.tags.split(",")[0].trim()}</span>
         {/if}
+        {#if selected.dup_count > 0}
+          <span class="dup-badge" title="Also published in other feeds you subscribe to">
+            Also in {selected.dup_count + 1} feeds
+          </span>
+        {/if}
         <span class="src-time">· {timeAgo(selected.published_at)}</span>
       </div>
 
@@ -207,7 +212,10 @@
       {/if}
 
       <div class="article-body">
-        {#if selected.content_html}
+        {#if selected.cleaned_html}
+          <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+          {@html selected.cleaned_html}
+        {:else if selected.content_html}
           <!-- eslint-disable-next-line svelte/no-at-html-tags -->
           {@html selected.content_html}
         {:else if selected.content_text}
@@ -345,6 +353,17 @@
     border-radius: 5px;
     background: var(--line-soft);
     color: var(--ink-soft);
+  }
+  .dup-badge {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 5px;
+    background: var(--paper-2);
+    color: var(--ink-soft);
+    border: 1px solid var(--line);
   }
 
   .article-h1 {
@@ -492,14 +511,22 @@
     color: var(--ink);
   }
   .article-body :global(p) { margin: 0 0 18px; }
-  .article-body :global(p:first-of-type::first-letter) {
+  /* Drop cap: scoped to the FIRST direct-child paragraph only so nested
+     <p> inside <ul>/<li>/<blockquote> don't get their own letter. Sized
+     to fit within ~2 lines, and the subsequent direct-child paragraph
+     clears the float so it doesn't get pushed right under the cap. */
+  .article-body > :global(p:first-of-type::first-letter) {
     font-family: var(--font-display);
-    font-size: 52px;
+    font-size: 44px;
     font-weight: 600;
     float: left;
-    line-height: 0.82;
-    margin: 6px 11px 0 0;
+    line-height: 1;
+    margin: 4px 9px 0 0;
     color: var(--ember);
+  }
+  .article-body > :global(p:first-of-type + p),
+  .article-body > :global(p:first-of-type ~ *) {
+    clear: left;
   }
   .article-body :global(h2) {
     font-family: var(--font-display);

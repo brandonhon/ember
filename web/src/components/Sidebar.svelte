@@ -10,8 +10,32 @@
   } from "../lib/stores";
   import { api, ApiError } from "../lib/api";
   import type { FeedWithCounts } from "../lib/types";
+  import ConfirmDialog from "./ConfirmDialog.svelte";
 
   import { onMount, onDestroy } from "svelte";
+
+  // Confirmation modal state. Set to an object to open the dialog; the
+  // onConfirm callback runs the destructive action, and we clear state when
+  // it returns. Replaces window.confirm().
+  type ConfirmReq = {
+    title?: string;
+    message: string;
+    confirmLabel?: string;
+    destructive?: boolean;
+    run: () => Promise<void> | void;
+  };
+  let confirmReq = $state<ConfirmReq | null>(null);
+  let confirmBusy = $state(false);
+  async function runConfirm() {
+    if (!confirmReq) return;
+    confirmBusy = true;
+    try {
+      await confirmReq.run();
+      confirmReq = null;
+    } finally {
+      confirmBusy = false;
+    }
+  }
 
   let collapsedCategories = $state<Record<number, boolean>>({});
   let collapsedUncategorized = $state(false);
@@ -63,7 +87,16 @@
   async function deleteFeed(f: FeedWithCounts) {
     menuFor = null;
     const name = f.title_override || f.title;
-    if (!confirm(`Unsubscribe from "${name}"? This removes the feed from your list.`)) return;
+    confirmReq = {
+      title: "Unsubscribe?",
+      message: `Remove "${name}" from your list. The feed itself stays available for other users.`,
+      confirmLabel: "Unsubscribe",
+      destructive: true,
+      run: () => doDeleteFeed(f),
+    };
+  }
+
+  async function doDeleteFeed(f: FeedWithCounts) {
     try {
       await api.deleteFeed(f.subscription_id);
       await refreshSidebar();
@@ -305,7 +338,16 @@
 
   async function deleteCategory(catID: number, name: string) {
     categoryMenuFor = null;
-    if (!confirm(`Delete folder "${name}"? Feeds in it become uncategorized.`)) return;
+    confirmReq = {
+      title: "Delete folder?",
+      message: `Delete "${name}". Feeds inside it become uncategorized.`,
+      confirmLabel: "Delete",
+      destructive: true,
+      run: () => doDeleteCategory(catID),
+    };
+  }
+
+  async function doDeleteCategory(catID: number) {
     try {
       await api.deleteCategory(catID);
       await refreshSidebar();
@@ -334,7 +376,16 @@
   }
 
   async function deleteBoard(id: number, name: string) {
-    if (!confirm(`Delete board "${name}"?`)) return;
+    confirmReq = {
+      title: "Delete board?",
+      message: `Delete the board "${name}". Articles inside it stay in your library.`,
+      confirmLabel: "Delete",
+      destructive: true,
+      run: () => doDeleteBoard(id),
+    };
+  }
+
+  async function doDeleteBoard(id: number) {
     try {
       await api.deleteBoard(id);
       await refreshSidebar();
@@ -678,6 +729,18 @@
     {/each}
   </div>
 </aside>
+
+{#if confirmReq}
+  <ConfirmDialog
+    title={confirmReq.title}
+    message={confirmReq.message}
+    confirmLabel={confirmReq.confirmLabel ?? "Confirm"}
+    destructive={confirmReq.destructive ?? false}
+    busy={confirmBusy}
+    onConfirm={runConfirm}
+    onCancel={() => (confirmReq = null)}
+  />
+{/if}
 
 <style>
   .rail {

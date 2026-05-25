@@ -8,17 +8,160 @@
     refreshMe,
     showSummary,
     showImages,
+    THEMES,
+    customPalette,
+    branding,
+    refreshBranding,
   } from "../lib/stores";
-  import { api, ApiError, type StarterPack, type StarterImportResult, type LLMStatus } from "../lib/api";
+  import { api, ApiError, type StarterPack, type StarterImportResult, type LLMStatus, type DBStatus } from "../lib/api";
   import { onMount } from "svelte";
   import { refreshSidebar } from "../lib/stores";
   import FilterManager from "./FilterManager.svelte";
   import ManageUsers from "./ManageUsers.svelte";
+  import ConfirmDialog from "./ConfirmDialog.svelte";
+
+  type ConfirmReq = {
+    title?: string;
+    message: string;
+    confirmLabel?: string;
+    destructive?: boolean;
+    run: () => Promise<void> | void;
+  };
+  let confirmReq = $state<ConfirmReq | null>(null);
+  let confirmBusy = $state(false);
+  async function runConfirm() {
+    if (!confirmReq) return;
+    confirmBusy = true;
+    try {
+      await confirmReq.run();
+      confirmReq = null;
+    } finally {
+      confirmBusy = false;
+    }
+  }
 
   let { onClose }: { onClose: () => void } = $props();
 
-  type Section = "profile" | "preferences" | "mobile" | "filters" | "users" | "starter" | "llm" | "about";
+  type Section = "profile" | "preferences" | "mobile" | "filters" | "users" | "starter" | "llm" | "branding" | "database" | "about";
   let section = $state<Section>("profile");
+
+  // Database admin state ----------------------------------------------
+  let dbState = $state<DBStatus | null>(null);
+  let dbErr = $state("");
+  let dbMsg = $state("");
+  let dbBusy = $state("");
+  let cleanupDays = $state(90);
+  async function loadDB() {
+    dbErr = "";
+    try {
+      const res = await api.getDBStatus();
+      dbState = res.data;
+      cleanupDays = res.data.cleanup_older_days || 90;
+    } catch (e) {
+      dbErr = e instanceof ApiError ? e.message : String(e);
+    }
+  }
+  async function runBackup() {
+    dbBusy = "backup";
+    dbMsg = "";
+    dbErr = "";
+    try {
+      await api.dbBackup();
+      await loadDB();
+      dbMsg = "Backup created";
+    } catch (e) {
+      dbErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      dbBusy = "";
+      setTimeout(() => (dbMsg = ""), 3000);
+    }
+  }
+  function askCleanup() {
+    confirmReq = {
+      title: "Clean up old articles?",
+      message: `Permanently delete articles older than ${cleanupDays} days that aren't starred, in a board, or saved for later. The database file is compacted afterwards.`,
+      confirmLabel: "Clean up",
+      destructive: true,
+      run: () => runCleanup(),
+    };
+  }
+  async function runCleanup() {
+    dbBusy = "cleanup";
+    dbMsg = "";
+    dbErr = "";
+    try {
+      const res = await api.dbCleanup(cleanupDays);
+      const { articles_deleted, bytes_reclaimed } = res.data;
+      const mib = (bytes_reclaimed / (1024 * 1024)).toFixed(1);
+      dbMsg = `Deleted ${articles_deleted} articles, reclaimed ${mib} MiB`;
+      await loadDB();
+    } catch (e) {
+      dbErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      dbBusy = "";
+      setTimeout(() => (dbMsg = ""), 5000);
+    }
+  }
+  async function saveDBSchedule() {
+    if (!dbState) return;
+    dbBusy = "schedule";
+    dbMsg = "";
+    dbErr = "";
+    try {
+      await api.dbSchedule({
+        backup_schedule: dbState.backup_schedule as "off" | "daily" | "weekly",
+        backup_keep_count: dbState.backup_keep_count,
+        cleanup_schedule: dbState.cleanup_schedule as "off" | "weekly" | "monthly",
+        cleanup_older_days: dbState.cleanup_older_days,
+      });
+      dbMsg = "Schedule saved";
+    } catch (e) {
+      dbErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      dbBusy = "";
+      setTimeout(() => (dbMsg = ""), 3000);
+    }
+  }
+  function gibBytes(b: number): string {
+    if (!b) return "—";
+    const gb = b / (1024 * 1024 * 1024);
+    if (gb >= 1) return gb.toFixed(2) + " GiB";
+    const mb = b / (1024 * 1024);
+    return mb.toFixed(1) + " MiB";
+  }
+  function fmtTime(unix: number): string {
+    if (!unix) return "";
+    return new Date(unix * 1000).toLocaleString();
+  }
+
+  // Branding admin state ----------------------------------------------
+  let brandingDraft = $state({ name: "", page_title: "", favicon_url: "" });
+  let brandingMsg = $state("");
+  let brandingErr = $state("");
+  let brandingBusy = $state(false);
+  function loadBrandingDraft() {
+    brandingDraft = { name: $branding.name, page_title: $branding.page_title, favicon_url: $branding.favicon_url };
+  }
+  async function saveBranding() {
+    brandingBusy = true;
+    brandingMsg = "";
+    brandingErr = "";
+    try {
+      await api.setBranding(brandingDraft);
+      await refreshBranding();
+      brandingMsg = "Saved";
+    } catch (e) {
+      brandingErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      brandingBusy = false;
+      setTimeout(() => (brandingMsg = ""), 3000);
+    }
+  }
+  async function resetBranding() {
+    brandingDraft = { name: "", page_title: "", favicon_url: "" };
+    await saveBranding();
+    loadBrandingDraft();
+  }
 
   // Starter pack state ------------------------------------------------
   let starterPacks = $state<StarterPack[]>([]);
@@ -95,6 +238,65 @@
     }
   }
 
+  function askDeleteModel(name: string) {
+    confirmReq = {
+      title: "Delete model?",
+      message: `Remove "${name}" from local storage. The model files are deleted from Ollama's cache.`,
+      confirmLabel: "Delete",
+      destructive: true,
+      run: () => deleteModel(name),
+    };
+  }
+
+  async function deleteModel(name: string) {
+    llmBusy = "delete:" + name;
+    llmMsg = "";
+    llmErr = "";
+    try {
+      await api.deleteLLMModel(name);
+      llmMsg = `Deleted ${name}`;
+      await loadLLM();
+    } catch (e) {
+      llmErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      llmBusy = "";
+      setTimeout(() => (llmMsg = ""), 3000);
+    }
+  }
+
+  // LLM tuning state. Edited locally; submitted via Save button.
+  let tuneTemp = $state(0);
+  let tuneTopP = $state(0);
+  let tuneCtx = $state(0);
+  let tuneBusy = $state(false);
+  let tuneMsg = $state("");
+
+  function syncTuningFromLLM() {
+    if (!llm) return;
+    tuneTemp = llm.options?.temperature ?? 0;
+    tuneTopP = llm.options?.top_p ?? 0;
+    tuneCtx = llm.options?.num_ctx ?? 0;
+  }
+  async function saveTuning() {
+    tuneBusy = true;
+    llmErr = "";
+    tuneMsg = "";
+    try {
+      await api.setLLMOptions({ temperature: Number(tuneTemp) || 0, top_p: Number(tuneTopP) || 0, num_ctx: Number(tuneCtx) || 0 });
+      tuneMsg = "Saved";
+      await loadLLM();
+    } catch (e) {
+      llmErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      tuneBusy = false;
+      setTimeout(() => (tuneMsg = ""), 3000);
+    }
+  }
+  $effect(() => {
+    // Re-sync local sliders when the loaded llm state changes.
+    syncTuningFromLLM();
+  });
+
   async function pullModel() {
     const name = pullInput.trim();
     if (!name) return;
@@ -125,6 +327,8 @@
   $effect(() => {
     if (section === "starter") void loadStarterPacks();
     if (section === "llm" && $user?.is_admin) void loadLLM();
+    if (section === "branding" && $user?.is_admin) loadBrandingDraft();
+    if (section === "database" && $user?.is_admin) void loadDB();
   });
 
   onMount(() => {
@@ -216,6 +420,8 @@
         <button class:active={section === "starter"} on:click={() => (section = "starter")} data-testid="settings-starter">Starter packs</button>
         {#if $user?.is_admin}
           <button class:active={section === "llm"} on:click={() => (section = "llm")} data-testid="settings-llm">Language model</button>
+          <button class:active={section === "branding"} on:click={() => (section = "branding")} data-testid="settings-branding">Branding</button>
+          <button class:active={section === "database"} on:click={() => (section = "database")} data-testid="settings-database">Database</button>
           <button class:active={section === "users"} on:click={() => (section = "users")} data-testid="settings-users">Users</button>
         {/if}
         <button class:active={section === "about"} on:click={() => (section = "about")}>About</button>
@@ -263,13 +469,51 @@
           <div class="pref-row">
             <div>
               <div class="pref-label">Theme</div>
-              <div class="pref-hint">Light or dark. Stored locally.</div>
+              <div class="pref-hint">Auto matches your OS light/dark setting. Stored locally per-user.</div>
             </div>
-            <div class="seg">
-              <button class:on={$theme === "light"} on:click={() => theme.set("light")}>Light</button>
-              <button class:on={$theme === "dark"} on:click={() => theme.set("dark")}>Dark</button>
+            <div class="theme-grid">
+              {#each THEMES as t (t.value)}
+                <button
+                  class="theme-tile"
+                  class:on={$theme === t.value}
+                  data-mood={t.mood}
+                  on:click={() => theme.set(t.value)}
+                  data-testid="theme-{t.value}"
+                  aria-pressed={$theme === t.value}
+                >
+                  <span class="theme-swatches" data-theme-preview={t.value}>
+                    <span class="sw paper"></span>
+                    <span class="sw ink"></span>
+                    <span class="sw ember"></span>
+                  </span>
+                  <span class="theme-label">{t.label}</span>
+                </button>
+              {/each}
             </div>
           </div>
+          {#if $theme === "custom"}
+            <div class="pref-row custom-editor">
+              <div>
+                <div class="pref-label">Custom palette</div>
+                <div class="pref-hint">Pick three colors — the rest of the palette is derived automatically.</div>
+              </div>
+              <div class="color-pickers">
+                <label>
+                  <span>Background</span>
+                  <input type="color" bind:value={$customPalette.paper} data-testid="custom-paper" />
+                </label>
+                <label>
+                  <span>Text</span>
+                  <input type="color" bind:value={$customPalette.ink} data-testid="custom-ink" />
+                </label>
+                <label>
+                  <span>Accent</span>
+                  <input type="color" bind:value={$customPalette.ember} data-testid="custom-ember" />
+                </label>
+              </div>
+            </div>
+          {/if}
+
           <div class="pref-row">
             <div>
               <div class="pref-label">Article density</div>
@@ -414,7 +658,7 @@
                     <tr>
                       <td><code>{m.name}</code></td>
                       <td>{mib(m.size_bytes)}</td>
-                      <td>
+                      <td class="llm-actions">
                         {#if m.name === llm.current_model}
                           <span class="muted">active</span>
                         {:else}
@@ -426,6 +670,14 @@
                           >
                             {llmBusy === "switch:" + m.name ? "Switching…" : "Use"}
                           </button>
+                          <button
+                            class="ghost-btn"
+                            on:click={() => askDeleteModel(m.name)}
+                            disabled={llmBusy !== ""}
+                            data-testid="llm-delete-{m.name}"
+                          >
+                            {llmBusy === "delete:" + m.name ? "Deleting…" : "Delete"}
+                          </button>
                         {/if}
                       </td>
                     </tr>
@@ -433,6 +685,32 @@
                 </tbody>
               </table>
             {/if}
+
+            <h4>Tuning</h4>
+            <p class="hint">Generation parameters passed to Ollama. 0 means "use the model default".</p>
+            {#if tuneMsg}<p class="ok" data-testid="tune-msg">{tuneMsg}</p>{/if}
+            <div class="tune-row">
+              <label>
+                <span class="tune-label">Temperature <em>{(+tuneTemp).toFixed(2)}</em></span>
+                <input type="range" min="0" max="2" step="0.05" bind:value={tuneTemp} data-testid="tune-temp" />
+                <span class="tune-hint">0 = deterministic, 1 = default, &gt;1 = creative</span>
+              </label>
+              <label>
+                <span class="tune-label">Top P <em>{(+tuneTopP).toFixed(2)}</em></span>
+                <input type="range" min="0" max="1" step="0.05" bind:value={tuneTopP} data-testid="tune-top-p" />
+                <span class="tune-hint">Lower = focused, higher = diverse</span>
+              </label>
+              <label>
+                <span class="tune-label">Context window <em>{tuneCtx || "default"}</em></span>
+                <input type="range" min="0" max="16384" step="512" bind:value={tuneCtx} data-testid="tune-ctx" />
+                <span class="tune-hint">Max tokens the model considers. 0 = model default (usually 2048)</span>
+              </label>
+            </div>
+            <div class="actions">
+              <button on:click={saveTuning} disabled={tuneBusy} data-testid="tune-save">
+                {tuneBusy ? "Saving…" : "Save tuning"}
+              </button>
+            </div>
 
             <h4>Pull a new model</h4>
             <p class="hint">e.g. <code>qwen2.5:0.5b</code>, <code>qwen2.5:1.5b</code>, <code>llama3.2:1b</code>. Downloads can take several minutes.</p>
@@ -450,6 +728,124 @@
                 data-testid="llm-pull-submit"
               >
                 {llmBusy.startsWith("pull:") ? "Pulling…" : "Pull"}
+              </button>
+            </div>
+          {/if}
+        {/if}
+
+        {#if section === "branding" && $user?.is_admin}
+          <h3>Branding</h3>
+          <p class="hint">Change the app name, browser tab title, and favicon shown to all users. Leave a field blank to restore the default.</p>
+          {#if brandingErr}<p class="error">{brandingErr}</p>{/if}
+          {#if brandingMsg}<p class="ok" data-testid="branding-msg">{brandingMsg}</p>{/if}
+          <label>
+            <span>App name</span>
+            <input type="text" bind:value={brandingDraft.name} placeholder="Ember" data-testid="branding-name" />
+          </label>
+          <label>
+            <span>Browser tab title</span>
+            <input type="text" bind:value={brandingDraft.page_title} placeholder="Ember Reader" data-testid="branding-title" />
+          </label>
+          <label>
+            <span>Favicon URL</span>
+            <input type="text" bind:value={brandingDraft.favicon_url} placeholder="/favicon.svg or data:image/svg+xml;..." data-testid="branding-favicon" />
+            <span class="pref-hint">Public URL (e.g. /favicon.svg, https://…/icon.png) or a data: URI. Hard-refresh after changing.</span>
+          </label>
+          <div class="actions">
+            <button class="ghost" on:click={resetBranding} disabled={brandingBusy}>Reset to defaults</button>
+            <button on:click={saveBranding} disabled={brandingBusy} data-testid="branding-save">
+              {brandingBusy ? "Saving…" : "Save"}
+            </button>
+          </div>
+        {/if}
+
+        {#if section === "database" && $user?.is_admin}
+          <h3>Database</h3>
+          {#if dbErr}<p class="error">{dbErr}</p>{/if}
+          {#if dbMsg}<p class="ok" data-testid="db-msg">{dbMsg}</p>{/if}
+          {#if !dbState}
+            <p class="muted">Loading…</p>
+          {:else}
+            <h4>Status</h4>
+            <dl class="kv">
+              <dt>Size on disk</dt><dd>{gibBytes(dbState.size_bytes)}</dd>
+              <dt>Page count</dt><dd>{dbState.page_count.toLocaleString()}</dd>
+              <dt>Backup directory</dt><dd><code>{dbState.backup_dir}</code></dd>
+            </dl>
+
+            <h4>Manual backup</h4>
+            <p class="hint">Writes a compacted snapshot to <code>{dbState.backup_dir}</code>. Safe to run while ember is serving.</p>
+            <div class="actions">
+              <button on:click={runBackup} disabled={dbBusy === "backup"} data-testid="db-backup">
+                {dbBusy === "backup" ? "Backing up…" : "Back up now"}
+              </button>
+            </div>
+
+            {#if dbState.backups.length > 0}
+              <h4>Recent backups</h4>
+              <table class="llm-table">
+                <thead><tr><th>File</th><th>Size</th><th>Created</th></tr></thead>
+                <tbody>
+                  {#each dbState.backups.slice(0, 8) as b (b.path)}
+                    <tr>
+                      <td><code>{b.path.split("/").slice(-1)[0]}</code></td>
+                      <td>{gibBytes(b.size_bytes)}</td>
+                      <td>{fmtTime(b.created_at)}</td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            {/if}
+
+            <h4>Manual cleanup</h4>
+            <p class="hint">Delete articles older than the chosen window that aren't starred, in a board, or saved for later. Compacts the file afterwards.</p>
+            <div class="rec-row">
+              <label class="inline-label">
+                <span>Older than (days)</span>
+                <input type="number" min="7" max="3650" bind:value={cleanupDays} data-testid="db-cleanup-days" />
+              </label>
+              <button class="ghost-btn" on:click={askCleanup} disabled={dbBusy === "cleanup"} data-testid="db-cleanup">
+                {dbBusy === "cleanup" ? "Cleaning…" : "Clean up now"}
+              </button>
+            </div>
+
+            <h4>Schedule</h4>
+            <p class="hint">Automatic backups and cleanup, run by a background job. Tick every hour; missed runs catch up on the next tick.</p>
+            <div class="pref-row">
+              <div>
+                <div class="pref-label">Backup</div>
+                <div class="pref-hint">Keep the {dbState.backup_keep_count} most recent.</div>
+              </div>
+              <div class="seg">
+                <button class:on={dbState.backup_schedule === "off"} on:click={() => (dbState!.backup_schedule = "off")}>Off</button>
+                <button class:on={dbState.backup_schedule === "daily"} on:click={() => (dbState!.backup_schedule = "daily")}>Daily</button>
+                <button class:on={dbState.backup_schedule === "weekly"} on:click={() => (dbState!.backup_schedule = "weekly")}>Weekly</button>
+              </div>
+            </div>
+            <div class="pref-row">
+              <div>
+                <div class="pref-label">Cleanup</div>
+                <div class="pref-hint">Older than {dbState.cleanup_older_days} days, when scheduled.</div>
+              </div>
+              <div class="seg">
+                <button class:on={dbState.cleanup_schedule === "off"} on:click={() => (dbState!.cleanup_schedule = "off")}>Off</button>
+                <button class:on={dbState.cleanup_schedule === "weekly"} on:click={() => (dbState!.cleanup_schedule = "weekly")}>Weekly</button>
+                <button class:on={dbState.cleanup_schedule === "monthly"} on:click={() => (dbState!.cleanup_schedule = "monthly")}>Monthly</button>
+              </div>
+            </div>
+            <div class="rec-row">
+              <label class="inline-label">
+                <span>Keep N backups</span>
+                <input type="number" min="1" max="365" bind:value={dbState.backup_keep_count} data-testid="db-keep" />
+              </label>
+              <label class="inline-label">
+                <span>Cleanup window (days)</span>
+                <input type="number" min="7" max="3650" bind:value={dbState.cleanup_older_days} data-testid="db-cleanup-days-sched" />
+              </label>
+            </div>
+            <div class="actions">
+              <button on:click={saveDBSchedule} disabled={dbBusy === "schedule"} data-testid="db-schedule-save">
+                {dbBusy === "schedule" ? "Saving…" : "Save schedule"}
               </button>
             </div>
           {/if}
@@ -480,6 +876,17 @@
   {/if}
   {#if showUsers}
     <ManageUsers onClose={() => (showUsers = false)} />
+  {/if}
+  {#if confirmReq}
+    <ConfirmDialog
+      title={confirmReq.title}
+      message={confirmReq.message}
+      confirmLabel={confirmReq.confirmLabel ?? "Confirm"}
+      destructive={confirmReq.destructive ?? false}
+      busy={confirmBusy}
+      onConfirm={runConfirm}
+      onCancel={() => (confirmReq = null)}
+    />
   {/if}
 </div>
 
@@ -625,6 +1032,63 @@
     cursor: pointer;
   }
   .seg button.on { background: var(--ink); color: var(--paper); }
+
+  /* Theme grid: tiles with three-stripe color preview each. The .swatches
+     inner spans render per-theme via [data-theme-preview="..."] selectors so
+     the preview matches the actual palette. */
+  .theme-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 8px;
+    margin-top: 8px;
+    flex-basis: 100%;
+  }
+  .pref-row:has(.theme-grid) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .theme-tile {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    background: var(--card);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: border-color 0.12s;
+  }
+  .theme-tile:hover { border-color: var(--ink-faint); }
+  .theme-tile.on { border-color: var(--ember); box-shadow: 0 0 0 2px var(--ember-wash); }
+  .theme-swatches {
+    display: flex;
+    gap: 0;
+    height: 28px;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+  }
+  .theme-swatches .sw {
+    flex: 1;
+  }
+  .theme-label {
+    font-family: var(--font-ui);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    text-align: left;
+  }
+  .theme-tile.on .theme-label { color: var(--ember); }
+  /* Preview palettes — kept in sync with App.svelte. Note that "auto" gets
+     the light preview since it's the most common case. */
+  [data-theme-preview="auto"]  .paper { background: #f6f2e9; } [data-theme-preview="auto"]  .ink { background: #211d18; } [data-theme-preview="auto"]  .ember { background: #a93b16; }
+  [data-theme-preview="light"] .paper { background: #f6f2e9; } [data-theme-preview="light"] .ink { background: #211d18; } [data-theme-preview="light"] .ember { background: #a93b16; }
+  [data-theme-preview="dark"]  .paper { background: #15130f; } [data-theme-preview="dark"]  .ink { background: #f0e9da; } [data-theme-preview="dark"]  .ember { background: #e8643a; }
+  [data-theme-preview="solarized"] .paper { background: #fdf6e3; } [data-theme-preview="solarized"] .ink { background: #073642; } [data-theme-preview="solarized"] .ember { background: #dc322f; }
+  [data-theme-preview="sepia"] .paper { background: #f4e8d0; } [data-theme-preview="sepia"] .ink { background: #3d2f1f; } [data-theme-preview="sepia"] .ember { background: #8b4513; }
+  [data-theme-preview="nord"]  .paper { background: #2e3440; } [data-theme-preview="nord"]  .ink { background: #eceff4; } [data-theme-preview="nord"]  .ember { background: #d08770; }
+  [data-theme-preview="gruvbox"] .paper { background: #282828; } [data-theme-preview="gruvbox"] .ink { background: #ebdbb2; } [data-theme-preview="gruvbox"] .ember { background: #fe8019; }
+  [data-theme-preview="contrast"] .paper { background: #000000; } [data-theme-preview="contrast"] .ink { background: #ffffff; } [data-theme-preview="contrast"] .ember { background: #ffd400; }
   .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
   .actions button {
     background: var(--ember);
@@ -721,7 +1185,8 @@
     border-radius: 10px;
     margin-bottom: 10px;
   }
-  .rec-row input[type="text"] {
+  .rec-row input[type="text"],
+  .rec-row input[type="number"] {
     flex: 1;
     padding: 7px 10px;
     border: 1px solid var(--line);
@@ -730,6 +1195,20 @@
     font-size: 13px;
     background: var(--paper);
     color: var(--ink);
+  }
+  .inline-label {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex: 1;
+    margin: 0;
+  }
+  .inline-label > span {
+    font-size: 10.5px;
+    color: var(--ink-faint);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
   .llm-table {
     width: 100%;
@@ -755,5 +1234,91 @@
     background: var(--line-soft);
     padding: 1px 5px;
     border-radius: 4px;
+  }
+  .llm-actions { display: flex; gap: 6px; align-items: center; justify-content: flex-end; }
+  .ghost-btn {
+    background: transparent;
+    color: var(--ink-soft);
+    border: 1px solid var(--line);
+    padding: 5px 10px;
+    border-radius: 7px;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .ghost-btn:hover:not(:disabled) { color: #b3261e; border-color: #b3261e; }
+  .ghost-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .custom-editor { flex-direction: column; align-items: stretch; }
+  .color-pickers {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 6px;
+    flex-basis: 100%;
+  }
+  .color-pickers label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0;
+  }
+  .color-pickers label > span {
+    font-size: 11px;
+    color: var(--ink-faint);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .color-pickers input[type="color"] {
+    width: 100%;
+    height: 38px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 3px;
+    background: var(--card);
+    cursor: pointer;
+  }
+
+  .tune-row {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 6px 0 12px;
+  }
+  .tune-row label {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas: "label value" "range range" "hint hint";
+    gap: 4px 12px;
+    margin: 0;
+  }
+  .tune-label {
+    grid-area: label;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ink);
+    text-transform: none;
+    letter-spacing: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .tune-label em {
+    font-style: normal;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    color: var(--ember);
+  }
+  .tune-row input[type="range"] {
+    grid-column: 1 / -1;
+    width: 100%;
+    accent-color: var(--ember);
+  }
+  .tune-hint {
+    grid-column: 1 / -1;
+    font-size: 11.5px;
+    color: var(--ink-faint);
   }
 </style>

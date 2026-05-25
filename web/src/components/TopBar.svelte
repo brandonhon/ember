@@ -8,6 +8,7 @@
     activeView,
     loadArticles,
     sidebarCollapsed,
+    branding,
   } from "../lib/stores";
   import { api, ApiError } from "../lib/api";
   import { get } from "svelte/store";
@@ -112,7 +113,7 @@
         <rect x="8" y="44.5" width="34" height="8" rx="4" fill="url(#brand-emb)" />
       </svg>
     </span>
-    Ember
+    {$branding.name}
   </div>
 
   <form class="search" on:submit={onSearch} data-search-form>

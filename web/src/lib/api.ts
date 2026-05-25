@@ -215,7 +215,52 @@ export const api = {
     call<{ model: string }>("POST", "/api/admin/llm/model", { model }),
   pullLLMModel: (model: string) =>
     call<{ model: string }>("POST", "/api/admin/llm/pull", { model }),
+  deleteLLMModel: (model: string) =>
+    call<{ model: string }>("POST", "/api/admin/llm/delete", { model }),
+  setLLMOptions: (opts: LLMOptions) =>
+    call<LLMOptions>("POST", "/api/admin/llm/options", opts),
+
+  // Branding ---------------------------------------------------------
+  getBranding: () => call<BrandingDTO>("GET", "/api/branding"),
+  setBranding: (b: Partial<BrandingDTO>) =>
+    call<BrandingDTO>("POST", "/api/admin/branding", b),
+
+  // DB admin --------------------------------------------------------
+  getDBStatus: () => call<DBStatus>("GET", "/api/admin/db"),
+  dbBackup: () => call<DBBackup>("POST", "/api/admin/db/backup"),
+  dbCleanup: (older_days: number) =>
+    call<DBCleanupStats>("POST", "/api/admin/db/cleanup", { older_days }),
+  dbSchedule: (s: DBSchedule) =>
+    call<{ ok: string }>("POST", "/api/admin/db/schedule", s),
 };
+
+export interface DBBackup {
+  path: string;
+  size_bytes: number;
+  created_at: number;
+}
+export interface DBCleanupStats {
+  articles_deleted: number;
+  bytes_reclaimed: number;
+}
+export interface DBSchedule {
+  backup_schedule: "off" | "daily" | "weekly";
+  backup_keep_count: number;
+  cleanup_schedule: "off" | "weekly" | "monthly";
+  cleanup_older_days: number;
+}
+export interface DBStatus extends DBSchedule {
+  size_bytes: number;
+  page_count: number;
+  backup_dir: string;
+  backups: DBBackup[];
+}
+
+export interface BrandingDTO {
+  name: string;
+  page_title: string;
+  favicon_url: string;
+}
 
 export interface LLMSystemInfo {
   ram_bytes: number;
@@ -233,6 +278,11 @@ export interface LLMInstalledModel {
   size_bytes: number;
   modified_at: string;
 }
+export interface LLMOptions {
+  temperature: number;
+  top_p: number;
+  num_ctx: number;
+}
 export interface LLMStatus {
   current_model: string;
   base_url: string;
@@ -241,6 +291,7 @@ export interface LLMStatus {
   recommended: LLMRecommendation;
   installed?: LLMInstalledModel[];
   installed_err?: string;
+  options: LLMOptions;
 }
 
 export interface StarterPack {
