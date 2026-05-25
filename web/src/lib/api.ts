@@ -8,6 +8,7 @@ import type {
   Filter,
   ListArticlesQuery,
   MeResponse,
+  SavedSearch,
   SearchResult,
   Share,
   User,
@@ -202,6 +203,23 @@ export const api = {
   // Search ------------------------------------------------------------
   search: (q: string, limit = 30) =>
     call<SearchResult[]>("GET", `/api/search?q=${encodeURIComponent(q)}&limit=${limit}`),
+  listSavedSearches: () => call<SavedSearch[]>("GET", "/api/saved-searches"),
+  createSavedSearch: (name: string, query: string) =>
+    call<SavedSearch>("POST", "/api/saved-searches", { name, query }),
+  deleteSavedSearch: (id: number) =>
+    call<unknown>("DELETE", `/api/saved-searches/${id}`),
+
+  // Per-article tags ------------------------------------------------
+  listArticleTags: (articleID: number) =>
+    call<string[]>("GET", `/api/articles/${articleID}/tags`),
+  addArticleTag: (articleID: number, tag: string) =>
+    call<string[]>("POST", `/api/articles/${articleID}/tags`, { tag }),
+  removeArticleTag: (articleID: number, tag: string) =>
+    call<string[]>("DELETE", `/api/articles/${articleID}/tags?tag=${encodeURIComponent(tag)}`),
+  listUserTags: () => call<{ tag: string; count: number }[]>("GET", "/api/tags"),
+
+  // Reading stats ---------------------------------------------------
+  getStats: () => call<UserStats>("GET", "/api/me/stats"),
 
   // Starter packs ----------------------------------------------------
   listStarterPacks: () =>
@@ -248,12 +266,28 @@ export interface DBSchedule {
   backup_keep_count: number;
   cleanup_schedule: "off" | "weekly" | "monthly";
   cleanup_older_days: number;
+  opml_schedule?: "off" | "weekly" | "monthly";
 }
 export interface DBStatus extends DBSchedule {
   size_bytes: number;
   page_count: number;
   backup_dir: string;
   backups: DBBackup[];
+}
+
+export interface TopFeed {
+  feed_id: number;
+  title: string;
+  read_count: number;
+}
+export interface UserStats {
+  articles_read_today: number;
+  articles_read_week: number;
+  articles_read_month: number;
+  starred_total: number;
+  later_total: number;
+  subscriptions: number;
+  top_feeds: TopFeed[] | null;
 }
 
 export interface BrandingDTO {

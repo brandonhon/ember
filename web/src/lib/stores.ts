@@ -47,12 +47,19 @@ export async function logout(): Promise<void> {
 export const feeds = writable<FeedWithCounts[]>([]);
 export const categories = writable<Category[]>([]);
 export const boards = writable<Board[]>([]);
+export const savedSearches = writable<import("./types").SavedSearch[]>([]);
 
 export async function refreshSidebar(): Promise<void> {
-  const [f, c, b] = await Promise.all([api.listFeeds(), api.listCategories(), api.listBoards()]);
+  const [f, c, b, ss] = await Promise.all([
+    api.listFeeds(),
+    api.listCategories(),
+    api.listBoards(),
+    api.listSavedSearches(),
+  ]);
   feeds.set(f.data ?? []);
   categories.set(c.data ?? []);
   boards.set(b.data ?? []);
+  savedSearches.set(ss.data ?? []);
 }
 
 export const totalUnread = derived(feeds, ($feeds) =>
@@ -64,7 +71,8 @@ export type ActiveView =
   | { kind: "smart"; view: "fresh" | "today" | "unread" | "starred" | "later" | "shared" }
   | { kind: "feed"; id: number }
   | { kind: "category"; id: number }
-  | { kind: "board"; id: number };
+  | { kind: "board"; id: number }
+  | { kind: "search"; query: string; savedID?: number };
 
 export const activeView = writable<ActiveView>({ kind: "smart", view: "fresh" });
 export const selectedArticleId = writable<number | null>(null);
@@ -192,6 +200,9 @@ function queryForView(view: ActiveView): ListArticlesQuery {
       return { category_id: view.id };
     case "board":
       return { board_id: view.id };
+    case "search":
+      // Search uses a different endpoint; loadArticles handles it specially.
+      return {};
   }
 }
 
@@ -206,6 +217,9 @@ export const newArticleCount = writable<number>(0);
 // every 30s while the tab is visible; the user never has to refresh.
 export async function pollForNewArticles(): Promise<number> {
   const view = get(activeView);
+  // Search is a one-shot FTS lookup, not a stream — auto-refresh is
+  // meaningless here and would clobber the user's results.
+  if (view.kind === "search") return 0;
   const current = get(articles);
   if (current.loading) return 0;
   const topID = current.items[0]?.id ?? 0;
@@ -233,6 +247,21 @@ export async function pollForNewArticles(): Promise<number> {
 
 export async function loadArticles(view: ActiveView, append = false): Promise<void> {
   articles.update((s) => ({ ...s, loading: true, err: undefined }));
+  // Search view: hit /api/search and treat the results as the article list.
+  // FTS is not paginated, so append is ignored.
+  if (view.kind === "search") {
+    try {
+      const res = await api.search(view.query, 100);
+      articles.update(() => ({
+        items: (res.data ?? []) as ArticleView[],
+        loading: false,
+      }));
+      newArticleCount.set(0);
+    } catch (err) {
+      articles.update((s) => ({ ...s, loading: false, err: String(err) }));
+    }
+    return;
+  }
   try {
     const q = queryForView(view);
     if (append) {

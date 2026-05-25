@@ -13,7 +13,19 @@
   import { api, ApiError } from "../lib/api";
   import { get } from "svelte/store";
 
-  let { onOpenSettings }: { onOpenSettings: () => void } = $props();
+  let {
+    onOpenSettings,
+    mobile = false,
+    onToggleMobileSidebar,
+    showBack = false,
+    onBack,
+  }: {
+    onOpenSettings: () => void;
+    mobile?: boolean;
+    onToggleMobileSidebar?: () => void;
+    showBack?: boolean;
+    onBack?: () => void;
+  } = $props();
 
   let searchQ = $state("");
   let searchResults = $state<{ id: number; title: string; url?: string }[]>([]);
@@ -42,18 +54,40 @@
 
   async function onSearch(e: Event) {
     e.preventDefault();
-    if (!searchQ.trim()) {
+    const q = searchQ.trim();
+    if (!q) {
       searchResults = [];
       showResults = false;
       return;
     }
-    try {
-      const res = await api.search(searchQ.trim());
-      searchResults = res.data.map((r) => ({ id: r.id, title: r.title, url: r.url }));
-      showResults = true;
-    } catch {
+    // Submit -> dedicated search view in the list pane. The dropdown is
+    // kept as a "did you mean this single hit" preview when the user is
+    // still typing; pressing Enter switches to the full results view.
+    activeView.set({ kind: "search", query: q });
+    void loadArticles({ kind: "search", query: q });
+    showResults = false;
+  }
+
+  // Live typeahead preview (top-3 hits) shown under the input until the
+  // user submits.
+  let searchTimer: ReturnType<typeof setTimeout> | undefined;
+  function onSearchInput() {
+    if (searchTimer) clearTimeout(searchTimer);
+    const q = searchQ.trim();
+    if (!q) {
       searchResults = [];
+      showResults = false;
+      return;
     }
+    searchTimer = setTimeout(async () => {
+      try {
+        const res = await api.search(q, 6);
+        searchResults = (res.data ?? []).map((r) => ({ id: r.id, title: r.title, url: r.url }));
+        showResults = searchResults.length > 0;
+      } catch {
+        searchResults = [];
+      }
+    }, 220);
   }
 
   function toggleTheme() {
@@ -97,7 +131,16 @@
   }
 </script>
 
-<header class="topbar">
+<header class="topbar" class:mobile>
+  {#if mobile && showBack}
+    <button class="mobile-icon-btn" on:click={() => onBack?.()} aria-label="Back to article list" data-testid="mobile-back">
+      <svg viewBox="0 0 24 24" width="22" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+  {:else if mobile}
+    <button class="mobile-icon-btn" on:click={() => onToggleMobileSidebar?.()} aria-label="Open sidebar" data-testid="mobile-menu">
+      <svg viewBox="0 0 24 24" width="22" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+  {/if}
   <div class="brand">
     <span class="kite" aria-hidden="true">
       <svg viewBox="0 0 64 64">
@@ -123,6 +166,7 @@
     </svg>
     <input
       bind:value={searchQ}
+      on:input={onSearchInput}
       placeholder="Search all articles, sources, and notes…"
       data-testid="search-input"
     />
@@ -264,6 +308,38 @@
     gap: 16px;
     padding-right: 18px;
   }
+  .topbar.mobile {
+    grid-template-columns: auto 1fr auto;
+    gap: 8px;
+    padding-right: 10px;
+  }
+  .topbar.mobile .brand {
+    padding-left: 0;
+    font-size: 17px;
+  }
+  .topbar.mobile .brand .kite { display: none; }
+  .topbar.mobile .search {
+    /* On narrow screens, drop the input padding and shrink so it fits next
+       to the brand + actions. */
+    max-width: none;
+    padding: 6px 10px;
+  }
+  .topbar.mobile .search input::placeholder { color: transparent; }
+  .topbar.mobile .search .kbd { display: none; }
+  .mobile-icon-btn {
+    background: transparent;
+    border: 0;
+    padding: 8px 10px;
+    color: var(--ink);
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    margin-left: 6px;
+    border-radius: 8px;
+  }
+  .mobile-icon-btn:hover { background: var(--line-soft); }
+  /* Hide some desktop-only action buttons on mobile via class on parent. */
+  .topbar.mobile .desktop-only { display: none; }
   .brand {
     display: flex;
     align-items: center;

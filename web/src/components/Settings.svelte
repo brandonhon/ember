@@ -13,7 +13,7 @@
     branding,
     refreshBranding,
   } from "../lib/stores";
-  import { api, ApiError, type StarterPack, type StarterImportResult, type LLMStatus, type DBStatus } from "../lib/api";
+  import { api, ApiError, type StarterPack, type StarterImportResult, type LLMStatus, type DBStatus, type UserStats } from "../lib/api";
   import { onMount } from "svelte";
   import { refreshSidebar } from "../lib/stores";
   import FilterManager from "./FilterManager.svelte";
@@ -42,8 +42,21 @@
 
   let { onClose }: { onClose: () => void } = $props();
 
-  type Section = "profile" | "preferences" | "mobile" | "filters" | "users" | "starter" | "llm" | "branding" | "database" | "about";
+  type Section = "profile" | "preferences" | "stats" | "mobile" | "filters" | "users" | "starter" | "llm" | "branding" | "database" | "about";
   let section = $state<Section>("profile");
+
+  // Reading stats state -----------------------------------------------
+  let statsData = $state<UserStats | null>(null);
+  let statsErr = $state("");
+  async function loadStats() {
+    statsErr = "";
+    try {
+      const res = await api.getStats();
+      statsData = res.data;
+    } catch (e) {
+      statsErr = e instanceof ApiError ? e.message : String(e);
+    }
+  }
 
   // Database admin state ----------------------------------------------
   let dbState = $state<DBStatus | null>(null);
@@ -113,6 +126,7 @@
         backup_keep_count: dbState.backup_keep_count,
         cleanup_schedule: dbState.cleanup_schedule as "off" | "weekly" | "monthly",
         cleanup_older_days: dbState.cleanup_older_days,
+        opml_schedule: (dbState.opml_schedule || "off") as "off" | "weekly" | "monthly",
       });
       dbMsg = "Schedule saved";
     } catch (e) {
@@ -329,6 +343,7 @@
     if (section === "llm" && $user?.is_admin) void loadLLM();
     if (section === "branding" && $user?.is_admin) loadBrandingDraft();
     if (section === "database" && $user?.is_admin) void loadDB();
+    if (section === "stats") void loadStats();
   });
 
   onMount(() => {
@@ -417,6 +432,7 @@
         <button class:active={section === "preferences"} on:click={() => (section = "preferences")}>Preferences</button>
         <button class:active={section === "mobile"} on:click={() => (section = "mobile")}>Mobile clients</button>
         <button class:active={section === "filters"} on:click={() => (section = "filters")}>Filters</button>
+        <button class:active={section === "stats"} on:click={() => (section = "stats")} data-testid="settings-stats">Reading stats</button>
         <button class:active={section === "starter"} on:click={() => (section = "starter")} data-testid="settings-starter">Starter packs</button>
         {#if $user?.is_admin}
           <button class:active={section === "llm"} on:click={() => (section = "llm")} data-testid="settings-llm">Language model</button>
@@ -575,6 +591,52 @@
           <div class="actions">
             <button on:click={() => (showFilters = true)} data-testid="open-filters">Open filter editor</button>
           </div>
+        {/if}
+
+        {#if section === "stats"}
+          <h3>Reading stats</h3>
+          {#if statsErr}<p class="error">{statsErr}</p>{/if}
+          {#if !statsData}
+            <p class="muted">Loading…</p>
+          {:else}
+            <div class="stats-grid">
+              <div class="stat-card">
+                <div class="stat-num" data-testid="stat-today">{statsData.articles_read_today}</div>
+                <div class="stat-label">Read today</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-num">{statsData.articles_read_week}</div>
+                <div class="stat-label">Read this week</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-num">{statsData.articles_read_month}</div>
+                <div class="stat-label">Read in 30 days</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-num">{statsData.starred_total}</div>
+                <div class="stat-label">Starred total</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-num">{statsData.later_total}</div>
+                <div class="stat-label">Read later</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-num">{statsData.subscriptions}</div>
+                <div class="stat-label">Subscriptions</div>
+              </div>
+            </div>
+            {#if statsData.top_feeds && statsData.top_feeds.length > 0}
+              <h4>Top feeds (last 30 days)</h4>
+              <table class="llm-table">
+                <thead><tr><th>Feed</th><th>Read</th></tr></thead>
+                <tbody>
+                  {#each statsData.top_feeds as f (f.feed_id)}
+                    <tr><td>{f.title}</td><td>{f.read_count}</td></tr>
+                  {/each}
+                </tbody>
+              </table>
+            {/if}
+          {/if}
         {/if}
 
         {#if section === "starter"}
@@ -831,6 +893,17 @@
                 <button class:on={dbState.cleanup_schedule === "off"} on:click={() => (dbState!.cleanup_schedule = "off")}>Off</button>
                 <button class:on={dbState.cleanup_schedule === "weekly"} on:click={() => (dbState!.cleanup_schedule = "weekly")}>Weekly</button>
                 <button class:on={dbState.cleanup_schedule === "monthly"} on:click={() => (dbState!.cleanup_schedule = "monthly")}>Monthly</button>
+              </div>
+            </div>
+            <div class="pref-row">
+              <div>
+                <div class="pref-label">OPML export</div>
+                <div class="pref-hint">Writes the admin user's subscription list to /data/exports/ on the chosen cadence.</div>
+              </div>
+              <div class="seg">
+                <button class:on={(dbState.opml_schedule || "off") === "off"} on:click={() => (dbState!.opml_schedule = "off")}>Off</button>
+                <button class:on={dbState.opml_schedule === "weekly"} on:click={() => (dbState!.opml_schedule = "weekly")}>Weekly</button>
+                <button class:on={dbState.opml_schedule === "monthly"} on:click={() => (dbState!.opml_schedule = "monthly")}>Monthly</button>
               </div>
             </div>
             <div class="rec-row">
@@ -1209,6 +1282,32 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 10px;
+    margin: 6px 0 14px;
+  }
+  .stat-card {
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    background: var(--card);
+    border-radius: 10px;
+  }
+  .stat-num {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 500;
+    color: var(--ember);
+    line-height: 1;
+  }
+  .stat-label {
+    font-size: 11.5px;
+    color: var(--ink-faint);
+    margin-top: 4px;
+    font-weight: 600;
   }
   .llm-table {
     width: 100%;
