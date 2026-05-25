@@ -40,11 +40,11 @@ test.describe("feed management", () => {
     const row = page.locator(".feed-row", { hasText: "gone.test" }).first();
     await expect(row).toBeVisible({ timeout: 5_000 });
 
-    // Auto-accept the confirm() dialog.
-    page.once("dialog", (d) => d.accept());
-
     await row.locator("[data-feed-actions-trigger]").click({ force: true });
     await row.locator("button", { hasText: "Delete" }).click();
+
+    // Confirm in the in-app ConfirmDialog (no more browser confirm()).
+    await page.getByTestId("confirm-ok").click();
 
     await expect(page.locator(".feed-row", { hasText: "gone.test" })).toHaveCount(0);
   });
