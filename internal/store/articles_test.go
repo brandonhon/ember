@@ -312,6 +312,9 @@ func TestArticles_CrossFeedDedup(t *testing.T) {
 	if list[0].ID != r1.ID {
 		t.Errorf("dedup should keep lowest id (r1=%d), got %d", r1.ID, list[0].ID)
 	}
+	if list[0].DupCount != 1 {
+		t.Errorf("dup_count = %d, want 1 (other feed has the same url)", list[0].DupCount)
+	}
 
 	// Per-feed view still shows the article from that specific feed.
 	direct, _ := s.ListArticles(ctx, u.ID, ListArticlesQuery{FeedID: tc.ID, OnlySummarized: true})

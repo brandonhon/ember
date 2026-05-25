@@ -96,7 +96,7 @@ func (s *Store) UpsertArticle(ctx context.Context, a models.Article) (models.Art
 func (s *Store) GetArticle(ctx context.Context, id int64) (models.Article, error) {
 	row := s.DB.QueryRowContext(ctx, `
 		SELECT id, feed_id, guid, IFNULL(url,''), title, IFNULL(author,''),
-		       IFNULL(content_html,''), IFNULL(content_text,''),
+		       IFNULL(content_html,''), IFNULL(content_text,''), IFNULL(cleaned_html,''),
 		       IFNULL(summary,''), IFNULL(summary_model,''),
 		       IFNULL(image_url,''), IFNULL(published_at,0),
 		       fetched_at, content_hash, IFNULL(tags,'')
@@ -109,7 +109,7 @@ func (s *Store) GetArticle(ctx context.Context, id int64) (models.Article, error
 func (s *Store) GetArticleForUser(ctx context.Context, userID, articleID int64) (models.ArticleView, error) {
 	row := s.DB.QueryRowContext(ctx, `
 		SELECT a.id, a.feed_id, a.guid, IFNULL(a.url,''), a.title, IFNULL(a.author,''),
-		       IFNULL(a.content_html,''), IFNULL(a.content_text,''),
+		       IFNULL(a.content_html,''), IFNULL(a.content_text,''), IFNULL(a.cleaned_html,''),
 		       IFNULL(a.summary,''), IFNULL(a.summary_model,''),
 		       IFNULL(a.image_url,''), IFNULL(a.published_at,0),
 		       a.fetched_at, a.content_hash, IFNULL(a.tags,''),
@@ -121,7 +121,7 @@ func (s *Store) GetArticleForUser(ctx context.Context, userID, articleID int64) 
 	var v models.ArticleView
 	var ir, is, il int
 	err := row.Scan(&v.ID, &v.FeedID, &v.GUID, &v.URL, &v.Title, &v.Author,
-		&v.ContentHTML, &v.ContentText, &v.Summary, &v.SummaryModel,
+		&v.ContentHTML, &v.ContentText, &v.CleanedHTML, &v.Summary, &v.SummaryModel,
 		&v.ImageURL, &v.PublishedAt, &v.FetchedAt, &v.ContentHash, &v.Tags,
 		&ir, &is, &il)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -239,6 +239,14 @@ func (s *Store) UpdateSummary(ctx context.Context, articleID int64, summary, mod
 		return ErrNotFound
 	}
 	return nil
+}
+
+// UpdateCleanedHTML stores the LLM-produced ad-stripped article body.
+func (s *Store) UpdateCleanedHTML(ctx context.Context, articleID int64, html string) error {
+	_, err := s.DB.ExecContext(ctx,
+		`UPDATE articles SET cleaned_html = ? WHERE id = ?`,
+		html, articleID)
+	return err
 }
 
 // ListArticlesQuery parameterizes a user article list.
@@ -367,17 +375,30 @@ JOIN boards b ON b.id = ba.board_id AND b.user_id = ? AND b.id = ?`
 		where = "WHERE " + strings.Join(conds, " AND ")
 	}
 
+	// dup_count: when an article URL is non-empty, count how many OTHER
+	// articles with the same URL the user is subscribed to via different
+	// feeds. The dedup filter above keeps the lowest-id row, so this count
+	// tells the SPA "this article also appeared in N other feeds you follow"
+	// and lets it render a pill.
 	query := fmt.Sprintf(`
 SELECT a.id, a.feed_id, a.guid, IFNULL(a.url,''), a.title, IFNULL(a.author,''),
-       IFNULL(a.content_html,''), IFNULL(a.content_text,''),
+       IFNULL(a.content_html,''), IFNULL(a.content_text,''), IFNULL(a.cleaned_html,''),
        IFNULL(a.summary,''), IFNULL(a.summary_model,''),
        IFNULL(a.image_url,''), IFNULL(a.published_at,0),
        a.fetched_at, a.content_hash, IFNULL(a.tags,''),
-       IFNULL(st.is_read,0), IFNULL(st.is_starred,0), IFNULL(st.is_later,0)
+       IFNULL(st.is_read,0), IFNULL(st.is_starred,0), IFNULL(st.is_later,0),
+       CASE WHEN IFNULL(a.url,'') = '' THEN 0 ELSE (
+           SELECT COUNT(*) FROM articles a4
+           JOIN subscriptions s4 ON s4.feed_id = a4.feed_id AND s4.user_id = ?
+           WHERE a4.url = a.url AND a4.id <> a.id AND s4.muted = 0
+       ) END AS dup_count
 %s
 %s
 ORDER BY IFNULL(a.published_at,0) DESC, a.id DESC
 LIMIT ?`, from, where)
+	// dup_count parameter goes BEFORE the from/where args, so we have to
+	// rebuild args carefully. Easier: prepend user id to args.
+	args = append([]any{userID}, args...)
 	args = append(args, q.Limit)
 
 	rows, err := s.DB.QueryContext(ctx, query, args...)
@@ -390,9 +411,9 @@ LIMIT ?`, from, where)
 		var v models.ArticleView
 		var ir, is, il int
 		if err := rows.Scan(&v.ID, &v.FeedID, &v.GUID, &v.URL, &v.Title, &v.Author,
-			&v.ContentHTML, &v.ContentText, &v.Summary, &v.SummaryModel,
+			&v.ContentHTML, &v.ContentText, &v.CleanedHTML, &v.Summary, &v.SummaryModel,
 			&v.ImageURL, &v.PublishedAt, &v.FetchedAt, &v.ContentHash, &v.Tags,
-			&ir, &is, &il); err != nil {
+			&ir, &is, &il, &v.DupCount); err != nil {
 			return nil, err
 		}
 		v.IsRead = ir == 1
@@ -450,7 +471,7 @@ WHERE IFNULL(st.is_read,0) = 0`
 func scanArticle(row scannable) (models.Article, error) {
 	var a models.Article
 	err := row.Scan(&a.ID, &a.FeedID, &a.GUID, &a.URL, &a.Title, &a.Author,
-		&a.ContentHTML, &a.ContentText, &a.Summary, &a.SummaryModel,
+		&a.ContentHTML, &a.ContentText, &a.CleanedHTML, &a.Summary, &a.SummaryModel,
 		&a.ImageURL, &a.PublishedAt, &a.FetchedAt, &a.ContentHash, &a.Tags)
 	if errors.Is(err, sql.ErrNoRows) {
 		return models.Article{}, ErrNotFound
