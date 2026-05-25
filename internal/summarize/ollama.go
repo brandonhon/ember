@@ -14,14 +14,23 @@ import (
 	"time"
 )
 
+// Options are the tunable Ollama generation parameters. Zero values mean
+// "let Ollama pick its default" (we don't send them in the request body).
+type Options struct {
+	Temperature float64 `json:"temperature"`
+	TopP        float64 `json:"top_p"`
+	NumCtx      int     `json:"num_ctx"`
+}
+
 // Ollama summarizes via Ollama's `/api/generate` endpoint. Output is parsed
 // against the labeled "SUMMARY:/POINTS:" template; legacy JSON-object,
 // bare-array, and plain bullet-list shapes are handled as fallbacks. The
-// active model is held in an atomic value so the admin API can swap it at
-// runtime without restarting the process.
+// active model + generation options are held in atomic values so the admin
+// API can swap them at runtime without restarting the process.
 type Ollama struct {
 	BaseURL    string
-	model      atomic.Value // string
+	model      atomic.Value           // string
+	options    atomic.Pointer[Options]
 	HTTPClient *http.Client
 	Timeout    time.Duration
 	// MaxInput caps the text we send (in runes) so we don't blow the context
@@ -53,6 +62,21 @@ func (o *Ollama) Model() string {
 // models at runtime. Empty string is allowed (Summarize will then error).
 func (o *Ollama) SetModel(name string) {
 	o.model.Store(name)
+}
+
+// Options returns the currently active generation tunables. Zero-valued
+// fields mean "use Ollama defaults".
+func (o *Ollama) Options() Options {
+	if p := o.options.Load(); p != nil {
+		return *p
+	}
+	return Options{}
+}
+
+// SetOptions atomically swaps the generation tunables for future Summarize
+// calls. Pass a zero Options to clear all tuning.
+func (o *Ollama) SetOptions(opts Options) {
+	o.options.Store(&opts)
 }
 
 // InstalledModel is one entry from Ollama's /api/tags.
@@ -97,6 +121,34 @@ func (o *Ollama) ListInstalled(ctx context.Context) ([]InstalledModel, error) {
 	return out, nil
 }
 
+// Delete removes a model from Ollama's local cache via DELETE /api/delete.
+// Returns an error if Ollama refuses (e.g. unknown model) or if it can't be
+// reached.
+func (o *Ollama) Delete(ctx context.Context, name string) error {
+	if o.BaseURL == "" {
+		return errors.New("summarize: ollama url not configured")
+	}
+	body, err := json.Marshal(map[string]any{"name": name})
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, o.BaseURL+"/api/delete", bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := o.HTTPClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		raw, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		return fmt.Errorf("summarize: ollama delete status %d: %s", resp.StatusCode, strings.TrimSpace(string(raw)))
+	}
+	return nil
+}
+
 // Pull triggers `ollama pull <model>`. Blocks until done (or ctx is cancelled).
 // Returns the response body for diagnostic logging; the caller decides what
 // to surface to the UI.
@@ -132,10 +184,14 @@ func (o *Ollama) Pull(ctx context.Context, name string) error {
 
 // promptTemplate asks the model for a labeled plain-text format. Small models
 // (qwen2.5:1.5b in particular) produce malformed JSON often enough that we
-// use a structure they can match more reliably.
-const promptTemplate = `You are an editorial summarizer. Read the article below and produce a structured summary.
+// use a structure they can match more reliably. The CLEANED section is
+// optional: when the article contains promo content (newsletter signups,
+// podcast/app promos, social follows, paywall lead-ins), the model rewrites
+// the body with those lines removed. Otherwise it can echo the original
+// (or omit the section).
+const promptTemplate = `You are an editorial summarizer. Read the article below and produce a structured response.
 
-Format your response EXACTLY like this, with no preamble:
+Format EXACTLY like this, with no preamble:
 
 SUMMARY: <one or two neutral sentences summarizing the article>
 
@@ -144,14 +200,18 @@ POINTS:
 - <one short factual point>
 - <one short factual point>
 
+CLEANED:
+<the article body rewritten with promotional content removed. Strip newsletter signups (e.g. "Get our breaking news email"), podcast/app promos, social follow asks, and paywall lead-ins. Preserve all editorial content verbatim and keep paragraph breaks. If nothing needed stripping, repeat the article body.>
+
 TITLE: %s
 ARTICLE:
 %s`
 
 type generateRequest struct {
-	Model  string `json:"model"`
-	Prompt string `json:"prompt"`
-	Stream bool   `json:"stream"`
+	Model   string         `json:"model"`
+	Prompt  string         `json:"prompt"`
+	Stream  bool           `json:"stream"`
+	Options map[string]any `json:"options,omitempty"`
 }
 
 type generateResponse struct {
@@ -174,11 +234,25 @@ func (o *Ollama) Summarize(ctx context.Context, title, text string) (Result, str
 		input = string(runes[:o.MaxInput])
 	}
 
-	body, err := json.Marshal(generateRequest{
+	req := generateRequest{
 		Model:  model,
 		Prompt: fmt.Sprintf(promptTemplate, title, input),
 		Stream: false,
-	})
+	}
+	opts := o.Options()
+	if opts.Temperature > 0 || opts.TopP > 0 || opts.NumCtx > 0 {
+		req.Options = map[string]any{}
+		if opts.Temperature > 0 {
+			req.Options["temperature"] = opts.Temperature
+		}
+		if opts.TopP > 0 {
+			req.Options["top_p"] = opts.TopP
+		}
+		if opts.NumCtx > 0 {
+			req.Options["num_ctx"] = opts.NumCtx
+		}
+	}
+	body, err := json.Marshal(req)
 	if err != nil {
 		return Result{}, model, err
 	}
@@ -262,8 +336,10 @@ func parseResult(s string) (Result, error) {
 //	POINTS:
 //	- <point>
 //	- <point>
+//	CLEANED:
+//	<promo-stripped article body>
 //
-// Either section is optional. Markers are case-insensitive. Bullet markers
+// Each section is optional. Markers are case-insensitive. Bullet markers
 // accepted: "- ", "* ", "• ", "1. " etc.
 func parseLabeled(s string) (Result, bool) {
 	// Strip any markdown code fences the model may have added.
@@ -271,29 +347,40 @@ func parseLabeled(s string) (Result, bool) {
 	upper := strings.ToUpper(s)
 	sumIdx := strings.Index(upper, "SUMMARY:")
 	ptsIdx := strings.Index(upper, "POINTS:")
-	if sumIdx < 0 && ptsIdx < 0 {
+	cleanIdx := strings.Index(upper, "CLEANED:")
+	if sumIdx < 0 && ptsIdx < 0 && cleanIdx < 0 {
 		return Result{}, false
 	}
-	var paragraph string
-	var bulletText string
-	switch {
-	case sumIdx >= 0 && ptsIdx > sumIdx:
-		paragraph = strings.TrimSpace(s[sumIdx+len("SUMMARY:") : ptsIdx])
-		bulletText = s[ptsIdx+len("POINTS:"):]
-	case sumIdx >= 0:
-		paragraph = strings.TrimSpace(s[sumIdx+len("SUMMARY:"):])
-	case ptsIdx >= 0:
-		bulletText = s[ptsIdx+len("POINTS:"):]
+	// Slice each section by its label's range up to the next label.
+	bound := func(start int, labelLen int, nexts ...int) string {
+		end := len(s)
+		for _, n := range nexts {
+			if n > start && n < end {
+				end = n
+			}
+		}
+		return s[start+labelLen : end]
+	}
+	var paragraph, bulletText, cleaned string
+	if sumIdx >= 0 {
+		paragraph = strings.TrimSpace(bound(sumIdx, len("SUMMARY:"), ptsIdx, cleanIdx))
+	}
+	if ptsIdx >= 0 {
+		bulletText = bound(ptsIdx, len("POINTS:"), cleanIdx)
+	}
+	if cleanIdx >= 0 {
+		cleaned = strings.TrimSpace(bound(cleanIdx, len("CLEANED:")))
+		cleaned = stripEmphasis(cleaned)
 	}
 	paragraph = cleanParagraph(paragraph)
 	var bullets []string
 	if bulletText != "" {
 		bullets = cleanBullets(strings.Split(bulletText, "\n"))
 	}
-	if paragraph == "" && len(bullets) == 0 {
+	if paragraph == "" && len(bullets) == 0 && cleaned == "" {
 		return Result{}, false
 	}
-	return Result{Paragraph: paragraph, Bullets: bullets}, true
+	return Result{Paragraph: paragraph, Bullets: bullets, Cleaned: cleaned}, true
 }
 
 // Inline markdown emphasis patterns. Go's RE2 has no backreferences, so each

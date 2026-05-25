@@ -453,6 +453,42 @@ func (p *Poller) summarizeOne(ctx context.Context, articleID int64) {
 		p.Metrics.SummariesErrored.Add(1)
 		p.Logger.Warn("poller: persist summary", "article_id", articleID, "err", err)
 	}
+	// Persist the cleaned body if the model returned one. Wrapped in
+	// paragraphs so the Reader's prose styling kicks in (the LLM emits plain
+	// text, not HTML).
+	if cleaned := strings.TrimSpace(res.Cleaned); cleaned != "" {
+		html := paragraphizePlain(cleaned)
+		if err := p.Store.UpdateCleanedHTML(ctx, articleID, html); err != nil {
+			p.Logger.Warn("poller: persist cleaned_html", "article_id", articleID, "err", err)
+		}
+	}
+}
+
+// paragraphizePlain wraps blank-line-separated chunks of plain text in <p>
+// tags. The summarizer returns CLEANED as prose, not HTML, so we re-introduce
+// paragraph breaks for the Reader's body styling. HTML special characters
+// are escaped to keep this safe to render with {@html}.
+func paragraphizePlain(s string) string {
+	chunks := strings.Split(s, "\n\n")
+	var b strings.Builder
+	for _, c := range chunks {
+		c = strings.TrimSpace(c)
+		if c == "" {
+			continue
+		}
+		// Escape & < > and convert single newlines inside a paragraph to <br>.
+		c = htmlEscape(c)
+		c = strings.ReplaceAll(c, "\n", "<br>")
+		b.WriteString("<p>")
+		b.WriteString(c)
+		b.WriteString("</p>")
+	}
+	return b.String()
+}
+
+func htmlEscape(s string) string {
+	r := strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;")
+	return r.Replace(s)
 }
 
 // markSkipped writes summary_model='skipped' so the article shows in lists
