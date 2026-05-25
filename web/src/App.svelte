@@ -12,6 +12,11 @@
     sidebarCollapsed,
     toggleStar,
     setRead,
+    customPalette,
+    refreshBranding,
+    pollForNewArticles,
+    newArticleCount,
+    branding,
   } from "./lib/stores";
   import { attach, type ShortcutAction } from "./lib/keyboard";
   import { get } from "svelte/store";
@@ -87,9 +92,35 @@
     user.set(null);
   }
 
+  // Auto-refresh: every 30s while the tab is visible, poll the active view
+  // for new articles. The store prepends them and bumps newArticleCount,
+  // which drives the favicon-dot indicator below. We also poll once on tab
+  // re-focus so coming back from a long Slack rabbit hole feels instant.
+  let pollTimer: ReturnType<typeof setInterval> | null = null;
+  function startPolling() {
+    stopPolling();
+    pollTimer = setInterval(() => {
+      if (document.hidden) return;
+      void pollForNewArticles();
+    }, 30_000);
+  }
+  function stopPolling() {
+    if (pollTimer) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
+  }
+  function onVisibility() {
+    if (!document.hidden) void pollForNewArticles();
+  }
+
   onMount(async () => {
     keymapCleanup = attach(handleAction);
     window.addEventListener("ember:unauthorized", onUnauthorized);
+    document.addEventListener("visibilitychange", onVisibility);
+    // Branding can be fetched without a session so the title/icon match the
+    // server's identity even before the user logs in.
+    void refreshBranding();
     await refreshMe();
     mounted = true;
   });
@@ -97,23 +128,77 @@
   onDestroy(() => {
     keymapCleanup();
     window.removeEventListener("ember:unauthorized", onUnauthorized);
+    document.removeEventListener("visibilitychange", onVisibility);
+    stopPolling();
   });
 
   // Whenever a user becomes authenticated (initial mount with valid session
-  // OR after a successful login), populate the sidebar and article list.
+  // OR after a successful login), populate the sidebar, article list, and
+  // begin polling. Stop polling when the user logs out.
   let loadedForUserId: number | null = $state(null);
   $effect(() => {
     if ($user && $user.id !== loadedForUserId) {
       loadedForUserId = $user.id;
       void refreshSidebar();
       void loadArticles(get(activeView));
+      startPolling();
     } else if (!$user) {
       loadedForUserId = null;
+      stopPolling();
     }
   });
 
+  // Favicon dot: swap to icon-new.svg whenever we have unseen new articles.
+  // Falls back to the branding favicon when the counter is 0. Works across
+  // Chrome, Firefox, Edge, and Safari (all honor a runtime <link rel="icon">
+  // href swap).
   $effect(() => {
-    document.documentElement.dataset.theme = $theme;
+    const link = document.querySelector<HTMLLinkElement>('link[rel="icon"][type="image/svg+xml"]');
+    if (!link) return;
+    link.href = $newArticleCount > 0 ? "/icon-new.svg" : ($branding.favicon_url || "/icon.svg");
+  });
+
+  // Also reflect the count in the page title prefix so it shows in the tab
+  // text on browsers that crop the favicon (or in mobile tab strips).
+  $effect(() => {
+    const base = $branding.page_title || $branding.name || "Ember";
+    document.title = $newArticleCount > 0 ? `(${$newArticleCount}) ${base}` : base;
+  });
+
+  // Theme application:
+  //   - "auto" → resolve to "light" or "dark" via matchMedia.
+  //   - any other value → applied as-is.
+  // We also listen to OS theme changes when in auto mode so toggling dark
+  // mode in macOS / Windows updates the page immediately.
+  let osDark = $state(
+    typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches
+  );
+  $effect(() => {
+    if (typeof window === "undefined") return;
+    const m = window.matchMedia("(prefers-color-scheme: dark)");
+    const handler = (e: MediaQueryListEvent) => (osDark = e.matches);
+    m.addEventListener("change", handler);
+    return () => m.removeEventListener("change", handler);
+  });
+  $effect(() => {
+    const resolved = $theme === "auto" ? (osDark ? "dark" : "light") : $theme;
+    document.documentElement.dataset.theme = resolved;
+    // Persist the user's chosen value (not the resolved one).
+    try { localStorage.setItem("ember:theme", $theme); } catch { /* ignore */ }
+  });
+  // Custom theme: apply the three user-picked colors as inline CSS variables
+  // when the active theme is "custom". The static CSS block uses color-mix()
+  // to derive the rest of the palette from these three.
+  $effect(() => {
+    if ($theme !== "custom") {
+      document.documentElement.style.removeProperty("--paper");
+      document.documentElement.style.removeProperty("--ink");
+      document.documentElement.style.removeProperty("--ember");
+      return;
+    }
+    document.documentElement.style.setProperty("--paper", $customPalette.paper);
+    document.documentElement.style.setProperty("--ink", $customPalette.ink);
+    document.documentElement.style.setProperty("--ember", $customPalette.ember);
   });
 </script>
 
@@ -192,6 +277,107 @@
     --green: #7fa766;
     --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px -16px rgba(0, 0, 0, 0.8);
     --shadow-pane: 0 0 0 1px var(--line), 0 24px 60px -32px rgba(0, 0, 0, 0.9);
+  }
+  /* Solarized (light variant) — Ethan Schoonover's classic palette. */
+  :global(:root[data-theme="solarized"]) {
+    --paper: #fdf6e3;
+    --paper-2: #eee8d5;
+    --card: #fffbf0;
+    --ink: #073642;
+    --ink-soft: #495a62;
+    --ink-faint: #657b83;
+    --line: #e3dcc7;
+    --line-soft: #f0ead2;
+    --ember: #dc322f;
+    --ember-soft: #cb4b16;
+    --ember-wash: #fbe6cf;
+    --gold: #b58900;
+    --green: #859900;
+  }
+  /* Sepia — warm browns, e-reader friendly. */
+  :global(:root[data-theme="sepia"]) {
+    --paper: #f4e8d0;
+    --paper-2: #ede0c5;
+    --card: #f9efde;
+    --ink: #3d2f1f;
+    --ink-soft: #5b4a35;
+    --ink-faint: #7a6849;
+    --line: #d8c8aa;
+    --line-soft: #e6d8b9;
+    --ember: #8b4513;
+    --ember-soft: #a0561a;
+    --ember-wash: #ecd4b2;
+    --gold: #9d7d2a;
+    --green: #6b6232;
+  }
+  /* Nord — cool blue/gray dark theme. */
+  :global(:root[data-theme="nord"]) {
+    --paper: #2e3440;
+    --paper-2: #3b4252;
+    --card: #434c5e;
+    --ink: #eceff4;
+    --ink-soft: #d8dee9;
+    --ink-faint: #88a3b3;
+    --line: #4c566a;
+    --line-soft: #3b4252;
+    --ember: #d08770;
+    --ember-soft: #ebcb8b;
+    --ember-wash: #4c3a35;
+    --gold: #ebcb8b;
+    --green: #a3be8c;
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px -16px rgba(0, 0, 0, 0.7);
+    --shadow-pane: 0 0 0 1px var(--line), 0 24px 60px -32px rgba(0, 0, 0, 0.8);
+  }
+  /* Gruvbox (dark) — warm-tinted dark theme by morhetz. */
+  :global(:root[data-theme="gruvbox"]) {
+    --paper: #282828;
+    --paper-2: #32302f;
+    --card: #3c3836;
+    --ink: #ebdbb2;
+    --ink-soft: #d5c4a1;
+    --ink-faint: #a89984;
+    --line: #504945;
+    --line-soft: #3c3836;
+    --ember: #fe8019;
+    --ember-soft: #fabd2f;
+    --ember-wash: #4a3424;
+    --gold: #fabd2f;
+    --green: #b8bb26;
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px -16px rgba(0, 0, 0, 0.85);
+    --shadow-pane: 0 0 0 1px var(--line), 0 24px 60px -32px rgba(0, 0, 0, 0.9);
+  }
+  /* Custom — three core colors come from the user (set via inline style on
+     :root by App.svelte); the rest are derived with color-mix() so palette
+     coherence holds without making the user pick 13 hex codes. */
+  :global(:root[data-theme="custom"]) {
+    --paper-2: color-mix(in srgb, var(--paper) 92%, var(--ink) 8%);
+    --card: color-mix(in srgb, var(--paper) 96%, white 4%);
+    --ink-soft: color-mix(in srgb, var(--ink) 78%, var(--paper) 22%);
+    --ink-faint: color-mix(in srgb, var(--ink) 55%, var(--paper) 45%);
+    --line: color-mix(in srgb, var(--paper) 75%, var(--ink) 25%);
+    --line-soft: color-mix(in srgb, var(--paper) 88%, var(--ink) 12%);
+    --ember-soft: color-mix(in srgb, var(--ember) 78%, white 22%);
+    --ember-wash: color-mix(in srgb, var(--ember) 14%, var(--paper) 86%);
+    --gold: color-mix(in srgb, var(--ember) 60%, gold 40%);
+    --green: color-mix(in srgb, var(--ember) 30%, green 70%);
+  }
+  /* High contrast — for WCAG AAA + low-vision users. */
+  :global(:root[data-theme="contrast"]) {
+    --paper: #000000;
+    --paper-2: #0d0d0d;
+    --card: #1a1a1a;
+    --ink: #ffffff;
+    --ink-soft: #f0f0f0;
+    --ink-faint: #c8c8c8;
+    --line: #ffffff;
+    --line-soft: #2a2a2a;
+    --ember: #ffd400;
+    --ember-soft: #ffe04d;
+    --ember-wash: #332a00;
+    --gold: #ffd700;
+    --green: #66ff66;
+    --shadow-card: 0 1px 2px rgba(255, 255, 255, 0.15), 0 8px 24px -16px rgba(255, 255, 255, 0.3);
+    --shadow-pane: 0 0 0 1px var(--line), 0 24px 60px -32px rgba(255, 255, 255, 0.25);
   }
   :global(*),
   :global(*::before),

@@ -56,6 +56,7 @@ export interface Article {
   title: string;
   author?: string;
   content_html?: string;
+  cleaned_html?: string;
   content_text?: string;
   summary?: string;
   summary_model?: string;
@@ -70,6 +71,9 @@ export interface ArticleView extends Article {
   is_read: boolean;
   is_starred: boolean;
   is_later: boolean;
+  // Count of other articles with the same URL the user is subscribed to via
+  // different feeds (cross-feed dedup kept the lowest-id row). 0 = unique.
+  dup_count: number;
 }
 
 export interface Filter {

@@ -78,7 +78,76 @@ function loadPref<T extends string>(key: string, fallback: T): T {
     return fallback;
   }
 }
-export const theme = writable<"light" | "dark">(loadPref("ember:theme", "light"));
+// Theme: "auto" follows the OS prefers-color-scheme; the rest are explicit
+// presets. The DOM data-theme attribute always carries a concrete palette
+// (App.svelte resolves "auto" → "light"/"dark" via matchMedia).
+export type Theme = "auto" | "light" | "dark" | "solarized" | "sepia" | "nord" | "gruvbox" | "contrast" | "custom";
+export const THEMES: { value: Theme; label: string; mood: "light" | "dark" }[] = [
+  { value: "auto", label: "Auto (OS)", mood: "light" },
+  { value: "light", label: "Light", mood: "light" },
+  { value: "dark", label: "Dark", mood: "dark" },
+  { value: "solarized", label: "Solarized", mood: "light" },
+  { value: "sepia", label: "Sepia", mood: "light" },
+  { value: "nord", label: "Nord", mood: "dark" },
+  { value: "gruvbox", label: "Gruvbox", mood: "dark" },
+  { value: "contrast", label: "High contrast", mood: "dark" },
+  { value: "custom", label: "Custom", mood: "light" },
+];
+export const theme = writable<Theme>(loadPref<Theme>("ember:theme", "auto"));
+
+// Custom theme palette — user picks paper/ink/ember; everything else is
+// derived in App.svelte via color-mix(). Stored as JSON for simple persistence.
+export interface CustomPalette {
+  paper: string;
+  ink: string;
+  ember: string;
+}
+const DEFAULT_CUSTOM: CustomPalette = { paper: "#f6f2e9", ink: "#211d18", ember: "#a93b16" };
+function loadCustom(): CustomPalette {
+  try {
+    const raw = globalThis.localStorage?.getItem("ember:custom");
+    if (!raw) return DEFAULT_CUSTOM;
+    const parsed = JSON.parse(raw) as Partial<CustomPalette>;
+    return { ...DEFAULT_CUSTOM, ...parsed };
+  } catch {
+    return DEFAULT_CUSTOM;
+  }
+}
+export const customPalette = writable<CustomPalette>(loadCustom());
+customPalette.subscribe((p) => {
+  try {
+    globalThis.localStorage?.setItem("ember:custom", JSON.stringify(p));
+  } catch {
+    /* ignore */
+  }
+});
+
+// App branding (server-wide). Loaded from /api/branding at boot; admins can
+// edit via Settings → Branding. Falls back to "Ember" if the endpoint is
+// unreachable.
+export interface Branding {
+  name: string;
+  page_title: string;
+  favicon_url: string;
+}
+const DEFAULT_BRANDING: Branding = { name: "Ember", page_title: "Ember Reader", favicon_url: "/favicon.svg" };
+export const branding = writable<Branding>(DEFAULT_BRANDING);
+export async function refreshBranding(): Promise<void> {
+  try {
+    const res = await fetch("/api/branding", { credentials: "include" });
+    if (!res.ok) return;
+    const body = (await res.json()) as { data: Partial<Branding> };
+    const next = { ...DEFAULT_BRANDING, ...body.data };
+    branding.set(next);
+    if (typeof document !== "undefined") {
+      document.title = next.page_title || next.name || "Ember";
+      const link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+      if (link && next.favicon_url) link.href = next.favicon_url;
+    }
+  } catch {
+    /* keep defaults */
+  }
+}
 export const density = writable<"card" | "compact">(loadPref("ember:density", "card"));
 export const sidebarCollapsed = writable<boolean>(loadPref<string>("ember:sidebar", "open") === "closed");
 
@@ -126,6 +195,42 @@ function queryForView(view: ActiveView): ListArticlesQuery {
   }
 }
 
+// newArticleCount tracks unseen articles that have arrived since the user
+// last sat at the top of the list. Drives the green favicon-dot indicator
+// in App.svelte. Reset to 0 when the user is at the top of the list AND the
+// tab is visible (App.svelte handles that).
+export const newArticleCount = writable<number>(0);
+
+// pollForNewArticles fetches the current view's top page and merges any
+// articles whose id is higher than the current top into the store. Runs
+// every 30s while the tab is visible; the user never has to refresh.
+export async function pollForNewArticles(): Promise<number> {
+  const view = get(activeView);
+  const current = get(articles);
+  if (current.loading) return 0;
+  const topID = current.items[0]?.id ?? 0;
+  try {
+    const q = queryForView(view);
+    const res = await api.listArticles({ ...q });
+    const fresh = res.data ?? [];
+    if (fresh.length === 0) return 0;
+    // Find where the current top sits in the fresh list; everything before
+    // it is new. If the current top isn't present (e.g. it was filtered out
+    // or the user scrolled far), prepend nothing — refreshing the whole
+    // list would feel jarring.
+    const idx = topID > 0 ? fresh.findIndex((a) => a.id === topID) : -1;
+    const newItems = idx > 0 ? fresh.slice(0, idx) : topID === 0 ? fresh : [];
+    if (newItems.length === 0) return 0;
+    articles.update((s) => ({ ...s, items: [...newItems, ...s.items] }));
+    newArticleCount.update((n) => n + newItems.length);
+    // Refresh sidebar badges so per-feed unread counts stay accurate.
+    void refreshSidebar();
+    return newItems.length;
+  } catch {
+    return 0;
+  }
+}
+
 export async function loadArticles(view: ActiveView, append = false): Promise<void> {
   articles.update((s) => ({ ...s, loading: true, err: undefined }));
   try {
@@ -147,6 +252,11 @@ export async function loadArticles(view: ActiveView, append = false): Promise<vo
       loading: false,
       cursor: next,
     }));
+    if (!append) {
+      // Switching views resets the "new" indicator — the user is looking at
+      // the fresh top of the new view.
+      newArticleCount.set(0);
+    }
   } catch (err) {
     articles.update((s) => ({ ...s, loading: false, err: String(err) }));
   }

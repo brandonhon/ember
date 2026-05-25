@@ -3,8 +3,29 @@
   import { api, ApiError } from "../lib/api";
   import { user } from "../lib/stores";
   import type { User } from "../lib/types";
+  import ConfirmDialog from "./ConfirmDialog.svelte";
 
   let { onClose }: { onClose: () => void } = $props();
+
+  type ConfirmReq = {
+    title?: string;
+    message: string;
+    confirmLabel?: string;
+    destructive?: boolean;
+    run: () => Promise<void> | void;
+  };
+  let confirmReq = $state<ConfirmReq | null>(null);
+  let confirmBusy = $state(false);
+  async function runConfirm() {
+    if (!confirmReq) return;
+    confirmBusy = true;
+    try {
+      await confirmReq.run();
+      confirmReq = null;
+    } finally {
+      confirmBusy = false;
+    }
+  }
 
   let users = $state<User[]>([]);
   let loading = $state(false);
@@ -53,12 +74,17 @@
     }
   }
 
-  async function deleteUser(u: User) {
-    if (!confirm(`Delete user "${u.username}"? This cannot be undone.`)) return;
+  function deleteUser(u: User) {
+    confirmReq = {
+      title: "Delete user?",
+      message: `Permanently delete the account "${u.username}". This cannot be undone.`,
+      confirmLabel: "Delete",
+      destructive: true,
+      run: () => doDeleteUser(u),
+    };
+  }
+  async function doDeleteUser(u: User) {
     try {
-      // Direct fetch — no api.deleteUser since user-delete is admin-only and
-      // we share the same CSRF/cookie path. The existing api client doesn't
-      // expose a DELETE for users yet; inline it here.
       const tok = document.cookie.match(/ember_csrf=([^;]+)/)?.[1] ?? "";
       const res = await fetch(`/api/users/${u.id}`, {
         method: "DELETE",
@@ -151,6 +177,18 @@
     </section>
   </div>
 </div>
+
+{#if confirmReq}
+  <ConfirmDialog
+    title={confirmReq.title}
+    message={confirmReq.message}
+    confirmLabel={confirmReq.confirmLabel ?? "Confirm"}
+    destructive={confirmReq.destructive ?? false}
+    busy={confirmBusy}
+    onConfirm={runConfirm}
+    onCancel={() => (confirmReq = null)}
+  />
+{/if}
 
 <style>
   .backdrop {

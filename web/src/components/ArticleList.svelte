@@ -13,6 +13,7 @@
     setRead,
     toggleStar,
     toggleLater,
+    newArticleCount,
   } from "../lib/stores";
   import { api } from "../lib/api";
   import { get } from "svelte/store";
@@ -74,6 +75,15 @@
 
   function select(id: number) {
     selectedArticleId.set(id);
+  }
+
+  // When the user scrolls to the top of the list, they've "seen" the new
+  // articles — clear the favicon-dot counter.
+  function onScroll() {
+    if (!containerEl) return;
+    if (containerEl.scrollTop <= 12 && get(newArticleCount) > 0) {
+      newArticleCount.set(0);
+    }
   }
 
   const headerTitle = $derived.by(() => {
@@ -155,7 +165,7 @@
   }
 </script>
 
-<section class="list-col" bind:this={containerEl} data-testid="article-list">
+<section class="list-col" bind:this={containerEl} on:scroll={onScroll} data-testid="article-list">
   <div class="list-header">
     <div class="list-title-row">
       <div>
@@ -232,6 +242,11 @@
               <span class="tag-badge">{a.tags.split(",")[0].trim()}</span>
             {/if}
             {#if isFresh(a.published_at)}<span class="fresh-tag">Fresh</span>{/if}
+            {#if a.dup_count > 0}
+              <span class="dup-tag" title="Also published in other feeds you subscribe to" data-testid="dup-tag-{a.id}">
+                Also in {a.dup_count + 1}
+              </span>
+            {/if}
           </span>
           <span class="story-title">{a.title}</span>
           {#if a.image_url}
@@ -445,6 +460,17 @@
     padding: 2px 7px;
     border-radius: 5px;
     text-transform: uppercase;
+  }
+  .dup-tag {
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--ink-soft);
+    background: var(--line-soft);
+    padding: 2px 7px;
+    border-radius: 5px;
+    text-transform: uppercase;
+    border: 1px solid var(--line);
   }
   .tag-badge {
     font-size: 9.5px;
