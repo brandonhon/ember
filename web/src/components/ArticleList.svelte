@@ -109,6 +109,8 @@
         const b = $boards.find((x) => x.id === ($activeView as { id: number }).id);
         return b ? b.name : "Board";
       }
+      case "search":
+        return `Search: ${$activeView.query}`;
     }
   });
   const headerSub = $derived.by(() => {
@@ -145,6 +147,15 @@
   function isFresh(unix: number | undefined): boolean {
     if (!unix) return false;
     return Date.now() / 1000 - unix < 6 * 3600;
+  }
+  // Reading-time estimate at 200 wpm. Falls back to stripping HTML tags out
+  // of content_html when content_text is empty. Returns 0 (renders nothing)
+  // when we have no body at all.
+  function readingMinutes(a: ArticleView): number {
+    const src = a.content_text || (a.content_html ? a.content_html.replace(/<[^>]+>/g, " ") : "");
+    if (!src) return 0;
+    const words = src.trim().split(/\s+/).length;
+    return Math.max(1, Math.round(words / 200));
   }
 
   const filtered = $derived.by(() => {
@@ -209,6 +220,22 @@
       <p class="empty">Loading…</p>
     {:else if $articles.err}
       <p class="empty error">Error: {$articles.err}</p>
+    {:else if filtered.length === 0 && $feeds.length === 0}
+      <!-- True empty state: no subscriptions at all. Onboarding panel
+           directs the user toward starter packs or OPML import. -->
+      <div class="onboarding" data-testid="onboarding-empty">
+        <h2>Welcome to Ember.</h2>
+        <p>Start by adding feeds — pick a curated pack or import an OPML file.</p>
+        <div class="onboarding-actions">
+          <a href="#" class="primary" on:click|preventDefault={() => (location.hash = "#starter") && window.dispatchEvent(new CustomEvent("ember:open-settings", { detail: "starter" }))}>
+            Browse starter packs
+          </a>
+          <a href="#" class="ghost" on:click|preventDefault={() => window.dispatchEvent(new CustomEvent("ember:open-settings"))}>
+            Open settings
+          </a>
+        </div>
+        <p class="onboarding-hint">Or paste a feed URL via the "+ Add feed" button in the sidebar.</p>
+      </div>
     {:else if filtered.length === 0}
       <p class="empty">No articles in this view.</p>
     {/if}
@@ -238,6 +265,9 @@
               {srcName(a)}
             </span>
             <span class="src-meta">· {timeAgo(a.published_at)}</span>
+            {#if readingMinutes(a) > 0}
+              <span class="src-meta">· {readingMinutes(a)} min read</span>
+            {/if}
             {#if a.tags}
               <span class="tag-badge">{a.tags.split(",")[0].trim()}</span>
             {/if}
@@ -293,6 +323,9 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
+  }
+  @media (max-width: 900px) {
+    .list-col { border-right: 0; }
   }
   .list-header {
     position: sticky;
@@ -558,4 +591,51 @@
     font-family: var(--font-display);
   }
   .empty.error { color: #b91c1c; }
+
+  .onboarding {
+    margin: 40px 20px 0;
+    padding: 28px 24px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    text-align: center;
+  }
+  .onboarding h2 {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 22px;
+    margin: 0 0 8px;
+    color: var(--ink);
+  }
+  .onboarding p {
+    color: var(--ink-soft);
+    font-size: 13.5px;
+    margin: 0 0 18px;
+    line-height: 1.5;
+  }
+  .onboarding-actions { display: flex; gap: 8px; justify-content: center; margin-bottom: 14px; }
+  .onboarding-actions a {
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-family: var(--font-ui);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .onboarding-actions a.primary {
+    background: var(--ember);
+    color: #fff;
+  }
+  .onboarding-actions a.primary:hover { background: var(--ember-soft); }
+  .onboarding-actions a.ghost {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--line);
+  }
+  .onboarding-actions a.ghost:hover { background: var(--line-soft); }
+  .onboarding-hint {
+    font-size: 12px;
+    color: var(--ink-faint);
+    margin: 0;
+  }
 </style>

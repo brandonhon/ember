@@ -91,6 +91,9 @@
   function onUnauthorized() {
     user.set(null);
   }
+  function onOpenSettingsEvent() {
+    showSettings = true;
+  }
 
   // Auto-refresh: every 30s while the tab is visible, poll the active view
   // for new articles. The store prepends them and bumps newArticleCount,
@@ -117,6 +120,7 @@
   onMount(async () => {
     keymapCleanup = attach(handleAction);
     window.addEventListener("ember:unauthorized", onUnauthorized);
+    window.addEventListener("ember:open-settings", onOpenSettingsEvent);
     document.addEventListener("visibilitychange", onVisibility);
     // Branding can be fetched without a session so the title/icon match the
     // server's identity even before the user logs in.
@@ -128,6 +132,7 @@
   onDestroy(() => {
     keymapCleanup();
     window.removeEventListener("ember:unauthorized", onUnauthorized);
+    window.removeEventListener("ember:open-settings", onOpenSettingsEvent);
     document.removeEventListener("visibilitychange", onVisibility);
     stopPolling();
   });
@@ -173,6 +178,31 @@
   let osDark = $state(
     typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches
   );
+
+  // Mobile breakpoint detection. Single-pane layout under 900px: only one of
+  // sidebar/list/reader is visible at a time.
+  let isMobile = $state(
+    typeof window !== "undefined" && window.matchMedia?.("(max-width: 900px)").matches
+  );
+  $effect(() => {
+    if (typeof window === "undefined") return;
+    const m = window.matchMedia("(max-width: 900px)");
+    const handler = (e: MediaQueryListEvent) => (isMobile = e.matches);
+    m.addEventListener("change", handler);
+    return () => m.removeEventListener("change", handler);
+  });
+  // Mobile sidebar drawer (open/closed) — separate from the desktop
+  // collapse since desktop hides the rail entirely while mobile slides it
+  // over the list.
+  let mobileSidebarOpen = $state(false);
+  // On mobile, selecting an article switches to reader-only. Tapping back
+  // returns to the list. Drives via selectedArticleId.
+  const mobilePane = $derived.by((): "list" | "reader" => {
+    return $selectedArticleId !== null ? "reader" : "list";
+  });
+  function mobileBack() {
+    selectedArticleId.set(null);
+  }
   $effect(() => {
     if (typeof window === "undefined") return;
     const m = window.matchMedia("(prefers-color-scheme: dark)");
@@ -207,14 +237,41 @@
 {:else if !$user}
   <Login />
 {:else}
-  <div class="shell" data-theme={$theme}>
-    <TopBar onOpenSettings={() => (showSettings = true)} />
-    <div class="panes" class:sidebar-collapsed={$sidebarCollapsed}>
-      {#if !$sidebarCollapsed}
-        <Sidebar />
+  <div class="shell" data-theme={$theme} class:mobile={isMobile}>
+    <TopBar
+      onOpenSettings={() => (showSettings = true)}
+      mobile={isMobile}
+      onToggleMobileSidebar={() => (mobileSidebarOpen = !mobileSidebarOpen)}
+      showBack={isMobile && mobilePane === "reader"}
+      onBack={mobileBack}
+    />
+    <div
+      class="panes"
+      class:sidebar-collapsed={$sidebarCollapsed}
+      class:mobile={isMobile}
+      data-mobile-pane={mobilePane}
+      class:drawer-open={isMobile && mobileSidebarOpen}
+    >
+      {#if isMobile}
+        <!-- Mobile: sidebar is an off-canvas drawer; tap-outside closes it. -->
+        {#if mobileSidebarOpen}
+          <div class="mobile-scrim" on:click={() => (mobileSidebarOpen = false)} role="presentation"></div>
+        {/if}
+        <div class="mobile-drawer" class:open={mobileSidebarOpen}>
+          <Sidebar />
+        </div>
+        {#if mobilePane === "list"}
+          <ArticleList />
+        {:else}
+          <Reader />
+        {/if}
+      {:else}
+        {#if !$sidebarCollapsed}
+          <Sidebar />
+        {/if}
+        <ArticleList />
+        <Reader />
       {/if}
-      <ArticleList />
-      <Reader />
     </div>
   </div>
   {#if showHelp}
@@ -432,6 +489,34 @@
     overflow: hidden;
   }
   .panes.sidebar-collapsed { grid-template-columns: var(--list-w) 1fr; }
+
+  /* Mobile single-pane layout. Sidebar slides in as a drawer on top of
+     the visible pane; list and reader take turns at full width. */
+  .panes.mobile { grid-template-columns: 1fr; position: relative; }
+  .mobile-scrim {
+    position: fixed;
+    inset: var(--topbar-h) 0 0 0;
+    background: rgba(33, 29, 24, 0.5);
+    z-index: 30;
+  }
+  .mobile-drawer {
+    position: fixed;
+    top: var(--topbar-h);
+    left: 0;
+    bottom: 0;
+    width: min(280px, 86vw);
+    transform: translateX(-100%);
+    transition: transform 0.18s ease;
+    z-index: 40;
+    background: var(--paper-2);
+    border-right: 1px solid var(--line);
+    overflow-y: auto;
+  }
+  .mobile-drawer.open { transform: translateX(0); }
+  @media (max-width: 900px) {
+    :global(:root) { --topbar-h: 52px; }
+  }
+
   .boot {
     text-align: center;
     margin-top: 4rem;

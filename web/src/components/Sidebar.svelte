@@ -7,6 +7,7 @@
     totalUnread,
     loadArticles,
     refreshSidebar,
+    savedSearches,
   } from "../lib/stores";
   import { api, ApiError } from "../lib/api";
   import type { FeedWithCounts } from "../lib/types";
@@ -299,6 +300,51 @@
     activeView.set({ kind: "board", id });
     loadArticles({ kind: "board", id });
   }
+  function pickSavedSearch(id: number, query: string) {
+    const v = { kind: "search" as const, query, savedID: id };
+    activeView.set(v);
+    loadArticles(v);
+  }
+  // New saved search inline form state.
+  let newSearchFormOpen = $state(false);
+  let newSearchName = $state("");
+  let newSearchQuery = $state("");
+  let creatingSearch = $state(false);
+  async function submitNewSavedSearch(e: Event) {
+    e.preventDefault();
+    if (!newSearchName.trim() || !newSearchQuery.trim()) return;
+    creatingSearch = true;
+    try {
+      await api.createSavedSearch(newSearchName.trim(), newSearchQuery.trim());
+      newSearchName = "";
+      newSearchQuery = "";
+      newSearchFormOpen = false;
+      await refreshSidebar();
+    } catch (err) {
+      console.error("createSavedSearch", err);
+    } finally {
+      creatingSearch = false;
+    }
+  }
+  function deleteSavedSearch(id: number, name: string) {
+    confirmReq = {
+      title: "Delete saved search?",
+      message: `Remove "${name}" from your saved searches.`,
+      confirmLabel: "Delete",
+      destructive: true,
+      run: async () => {
+        try {
+          await api.deleteSavedSearch(id);
+          await refreshSidebar();
+        } catch (err) {
+          console.error("deleteSavedSearch", err);
+        }
+      },
+    };
+  }
+  function isActiveSavedSearch(id: number): boolean {
+    return $activeView.kind === "search" && $activeView.savedID === id;
+  }
   function toggleCategory(catID: number) {
     collapsedCategories[catID] = !collapsedCategories[catID];
   }
@@ -440,6 +486,7 @@
   <div
     class="feed-row"
     class:muted={f.muted}
+    class:errored={(f.error_count ?? 0) >= 3}
     class:drop-target={sameDrag(dropTarget, { kind: "feed", id: f.subscription_id, cat: f.category_id ?? 0 })}
     draggable="true"
     on:dragstart={(e) => onFeedDragStart(e, f)}
@@ -456,6 +503,9 @@
     >
       <span class="favicon" style="background:{favColor(f.id)}">{faviconLetter(f.title_override || f.title)}</span>
       <span class="ni-label">{f.title_override || f.title}</span>
+      {#if (f.error_count ?? 0) >= 3}
+        <span class="error-tag" aria-label="feed errored" title={`${f.error_count} consecutive errors: ${f.last_error || "unknown"}`}>!</span>
+      {/if}
       {#if f.muted}<span class="muted-tag" aria-label="muted">🔕</span>{/if}
       {#if f.unread > 0 && !f.muted}<span class="badge">{f.unread}</span>{/if}
     </button>
@@ -668,6 +718,72 @@
         </form>
       {/if}
     </div>
+  </div>
+
+  <!-- Saved searches -->
+  <div class="rail-section">
+    <div class="rail-head">
+      <h3>Saved searches</h3>
+      <button
+        class="head-add"
+        on:click={() => (newSearchFormOpen = !newSearchFormOpen)}
+        aria-label="New saved search"
+        title="Save a search"
+        data-testid="open-add-search"
+      >+</button>
+    </div>
+
+    {#if newSearchFormOpen}
+      <form class="add-form add-form-board" on:submit={submitNewSavedSearch}>
+        <input
+          type="text"
+          bind:value={newSearchName}
+          placeholder="Name (e.g. 'rust news')"
+          disabled={creatingSearch}
+          data-testid="add-search-name"
+        />
+        <input
+          type="text"
+          bind:value={newSearchQuery}
+          placeholder="Query — FTS5 syntax"
+          disabled={creatingSearch}
+          data-testid="add-search-query"
+        />
+        <div class="add-form-actions">
+          <button type="button" class="ghost" on:click={() => { newSearchFormOpen = false; newSearchName = ""; newSearchQuery = ""; }}>
+            Cancel
+          </button>
+          <button type="submit" disabled={creatingSearch || !newSearchName.trim() || !newSearchQuery.trim()} data-testid="add-search-submit">
+            {creatingSearch ? "…" : "Save"}
+          </button>
+        </div>
+      </form>
+    {/if}
+
+    {#each $savedSearches as ss (ss.id)}
+      <div class="feed-row board-row">
+        <button
+          class="nav-item board-item"
+          class:active={isActiveSavedSearch(ss.id)}
+          on:click={() => pickSavedSearch(ss.id, ss.query)}
+          data-testid="saved-search-{ss.id}"
+        >
+          <span class="ni-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4-4" /></svg>
+          </span>
+          <span class="ni-label">{ss.name}</span>
+        </button>
+        <button
+          class="board-delete"
+          on:click={() => deleteSavedSearch(ss.id, ss.name)}
+          aria-label="Delete saved search"
+          title="Delete saved search"
+          data-testid="saved-search-delete-{ss.id}"
+        >
+          ×
+        </button>
+      </div>
+    {/each}
   </div>
 
   <!-- Boards -->
@@ -943,6 +1059,20 @@
     box-shadow: 0 -2px 0 var(--ember) inset;
   }
   .feed-row.muted .ni-label { color: var(--ink-faint); font-style: italic; }
+  .feed-row.errored .ni-label { color: var(--ink-faint); }
+  .error-tag {
+    width: 16px;
+    height: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 11px;
+    border-radius: 50%;
+    background: #b3261e;
+    color: #fff;
+    cursor: help;
+  }
   .feed-row:hover .feed-actions-trigger { opacity: 1; }
   .feed-item {
     display: flex;

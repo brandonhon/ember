@@ -29,12 +29,89 @@
   let showShare = $state(false);
   let showBoardPicker = $state(false);
   let boardMsg = $state("");
+  let showMutePicker = $state(false);
+  let muteKeyword = $state("");
+  let muteBusy = $state(false);
+  // Per-article user tags. Loaded lazily when an article is selected.
+  let articleTags = $state<string[]>([]);
+  let tagInput = $state("");
+  let tagBusy = $state(false);
+  let tagsLoadedFor = $state<number | null>(null);
+
+  async function loadTagsForSelected() {
+    if (!selected) return;
+    if (tagsLoadedFor === selected.id) return;
+    tagsLoadedFor = selected.id;
+    try {
+      const res = await api.listArticleTags(selected.id);
+      articleTags = res.data ?? [];
+    } catch {
+      articleTags = [];
+    }
+  }
+  async function addTag() {
+    const t = tagInput.trim();
+    if (!t || !selected) return;
+    tagBusy = true;
+    try {
+      const res = await api.addArticleTag(selected.id, t);
+      articleTags = res.data ?? [];
+      tagInput = "";
+    } catch (err) {
+      console.error("addTag", err);
+    } finally {
+      tagBusy = false;
+    }
+  }
+  async function removeTag(t: string) {
+    if (!selected) return;
+    try {
+      const res = await api.removeArticleTag(selected.id, t);
+      articleTags = res.data ?? [];
+    } catch (err) {
+      console.error("removeTag", err);
+    }
+  }
+  $effect(() => {
+    void selected;
+    if (selected) {
+      void loadTagsForSelected();
+    } else {
+      articleTags = [];
+      tagsLoadedFor = null;
+    }
+  });
+
+  async function createMuteFilter() {
+    const kw = muteKeyword.trim();
+    if (!kw) return;
+    muteBusy = true;
+    try {
+      await api.createFilter({
+        name: `Mute: ${kw}`,
+        match_json: JSON.stringify({ field: "title", op: "contains", value: kw }),
+        action: "hide",
+        enabled: true,
+      });
+      boardMsg = `Muting "${kw}" in titles`;
+      muteKeyword = "";
+      showMutePicker = false;
+      setTimeout(() => (boardMsg = ""), 2400);
+    } catch (err) {
+      boardMsg = err instanceof ApiError ? err.message : String(err);
+      setTimeout(() => (boardMsg = ""), 4000);
+    } finally {
+      muteBusy = false;
+    }
+  }
 
   function onDocClick(e: MouseEvent) {
-    if (!showBoardPicker) return;
     const t = e.target as HTMLElement;
-    if (!t.closest("[data-board-picker]") && !t.closest("[data-board-trigger]")) {
+    if (showBoardPicker && !t.closest("[data-board-picker]") && !t.closest("[data-board-trigger]")) {
       showBoardPicker = false;
+    }
+    if (showMutePicker && !t.closest("[data-mute-picker]") && !t.closest("[data-mute-trigger]")) {
+      showMutePicker = false;
     }
   }
   onMount(() => document.addEventListener("click", onDocClick));
@@ -64,6 +141,14 @@
     if (diff < 3600) return `${Math.round(diff / 60)} min ago`;
     if (diff < 86400) return `${Math.round(diff / 3600)} hr ago`;
     return `${Math.round(diff / 86400)} d ago`;
+  }
+  // Reading time estimate at 200 wpm. Same logic as ArticleList.
+  function readingMinutes(): number {
+    if (!selected) return 0;
+    const src = selected.content_text || (selected.content_html ? selected.content_html.replace(/<[^>]+>/g, " ") : "");
+    if (!src) return 0;
+    const words = src.trim().split(/\s+/).length;
+    return Math.max(1, Math.round(words / 200));
   }
 
   // Stored summary format: "{paragraph...}\n\n• bullet 1\n• bullet 2\n• bullet 3"
@@ -151,6 +236,40 @@
             <span class="board-msg">{boardMsg}</span>
           {/if}
         </div>
+        <div class="board-wrap">
+          <button
+            class="ra-btn"
+            on:click={(e) => { e.stopPropagation(); showMutePicker = !showMutePicker; }}
+            data-mute-trigger
+            data-testid="reader-mute"
+            title="Hide articles whose title contains a keyword"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9v6h4l5 4V5L7 9H3z"/><line x1="22" y1="5" x2="14" y2="13"/><line x1="14" y1="5" x2="22" y2="13"/></svg>
+            Mute
+          </button>
+          {#if showMutePicker}
+            <div class="board-picker mute-picker" data-mute-picker>
+              <input
+                type="text"
+                bind:value={muteKeyword}
+                placeholder="keyword in title"
+                on:keydown={(e) => { if (e.key === "Enter") createMuteFilter(); }}
+                disabled={muteBusy}
+                data-testid="mute-input"
+              />
+              <button
+                on:click={createMuteFilter}
+                disabled={muteBusy || !muteKeyword.trim()}
+                data-testid="mute-submit"
+              >
+                {muteBusy ? "Muting…" : "Add mute rule"}
+              </button>
+              <div class="board-picker-empty">
+                Future articles with this word in the title will be hidden. Manage all rules in Settings → Filters.
+              </div>
+            </div>
+          {/if}
+        </div>
         <span style="flex:1"></span>
         {#if selected.url}
           <a class="ra-btn primary" href={selected.url} target="_blank" rel="noopener noreferrer">
@@ -174,9 +293,31 @@
           </span>
         {/if}
         <span class="src-time">· {timeAgo(selected.published_at)}</span>
+        {#if readingMinutes() > 0}
+          <span class="src-time">· {readingMinutes()} min read</span>
+        {/if}
       </div>
 
       <h1 class="article-h1">{selected.title}</h1>
+
+      <div class="tag-row" data-testid="article-tags">
+        {#each articleTags as t (t)}
+          <span class="tag-chip">
+            #{t}
+            <button class="tag-chip-x" on:click={() => removeTag(t)} aria-label={`Remove tag ${t}`} title={`Remove tag ${t}`}>×</button>
+          </span>
+        {/each}
+        <input
+          type="text"
+          class="tag-input"
+          placeholder={articleTags.length === 0 ? "Add tag…" : "+ tag"}
+          bind:value={tagInput}
+          on:keydown={(e) => { if (e.key === "Enter") addTag(); }}
+          on:blur={() => tagInput.trim() && addTag()}
+          disabled={tagBusy}
+          data-testid="tag-input"
+        />
+      </div>
 
       {#if $showSummary && (summary.paragraph || summary.bullets.length > 0)}
         <aside class="ai-card" data-testid="summary-card">
@@ -251,6 +392,10 @@
     margin: 0 auto;
     padding: 28px clamp(20px, 3vw, 56px) 120px;
   }
+  @media (max-width: 900px) {
+    .reader-inner { padding: 16px 16px 80px; }
+    .article-h1 { font-size: 24px; }
+  }
   .reader-actions {
     position: sticky;
     top: 0;
@@ -320,6 +465,34 @@
     font-size: 12px;
     padding: 8px 10px;
   }
+  .mute-picker {
+    padding: 10px;
+    min-width: 220px;
+    gap: 6px;
+  }
+  .mute-picker input[type="text"] {
+    padding: 6px 9px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font: inherit;
+    font-size: 13px;
+    background: var(--paper);
+    color: var(--ink);
+    width: 100%;
+  }
+  .mute-picker button {
+    background: var(--ember);
+    color: #fff;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 12px;
+  }
+  .mute-picker button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .mute-picker .board-picker-empty {
+    font-size: 11px;
+    padding: 4px 0 0;
+  }
   .board-msg {
     color: var(--ember);
     font-size: 12px;
@@ -377,6 +550,49 @@
     margin: 0 0 12px;
     color: var(--ink);
   }
+  .tag-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0 0 16px;
+    align-items: center;
+  }
+  .tag-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--line-soft);
+    color: var(--ink-soft);
+    padding: 3px 4px 3px 9px;
+    border-radius: 12px;
+    font-family: var(--font-ui);
+    font-size: 11.5px;
+    font-weight: 600;
+  }
+  .tag-chip-x {
+    background: transparent;
+    border: 0;
+    color: var(--ink-faint);
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1;
+    padding: 1px 4px;
+    border-radius: 50%;
+  }
+  .tag-chip-x:hover { color: var(--ember); }
+  .tag-input {
+    background: transparent;
+    border: 1px dashed var(--line);
+    color: var(--ink-soft);
+    font-family: var(--font-ui);
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 12px;
+    outline: none;
+    width: 110px;
+  }
+  .tag-input:focus { border-style: solid; border-color: var(--ember); color: var(--ink); }
   .article-hero {
     margin: 18px 0 24px;
     border-radius: 12px;

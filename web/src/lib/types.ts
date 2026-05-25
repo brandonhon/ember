@@ -76,6 +76,14 @@ export interface ArticleView extends Article {
   dup_count: number;
 }
 
+export interface SavedSearch {
+  id: number;
+  user_id: number;
+  name: string;
+  query: string;
+  created_at: number;
+}
+
 export interface Filter {
   id: number;
   user_id: number;
