@@ -508,5 +508,19 @@ func isPromptEcho(s string) bool {
 			return true
 		}
 	}
+	// Placeholder-only bullets like "<one short factual point>" — the model
+	// copied the prompt's literal example angle-bracket text instead of
+	// filling it in.
+	if placeholderRE.MatchString(s) {
+		return true
+	}
 	return false
 }
+
+// placeholderRE matches lines whose only meaningful content is wrapped in
+// angle brackets — i.e. the model echoed a prompt placeholder instead of
+// generating real content. Examples:
+//   <one short factual point>
+//   <fact 1>
+//   < placeholder text >
+var placeholderRE = regexp.MustCompile(`^\s*<[^<>]+>\s*$`)
