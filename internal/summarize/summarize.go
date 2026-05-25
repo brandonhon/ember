@@ -12,6 +12,10 @@ type Result struct {
 	Paragraph string
 	// Bullets are 3-5 short factual points.
 	Bullets []string
+	// Cleaned is the article body with newsletter/podcast/app promos and
+	// social-follow lines stripped. Empty when the model didn't return one,
+	// in which case the caller should fall back to the original body.
+	Cleaned string
 }
 
 // Summarizer produces editorial article summaries (lead paragraph + bullets).

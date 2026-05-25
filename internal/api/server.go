@@ -78,6 +78,11 @@ func NewRouter(d Dependencies) http.Handler {
 		// cookie yet on first call). The wrapping middleware checks for the
 		// login suffix.
 		r.With(loginLimiter.LimitMiddleware).Post("/auth/login", d.handleLogin)
+
+		// Branding is public — the login page needs to show the right app
+		// name + favicon before authentication.
+		r.Get("/branding", d.handleGetBranding)
+		r.With(d.Auth.RequireAdmin).Post("/admin/branding", d.handleSetBranding)
 		r.With(d.Auth.RequireAuth).Post("/auth/logout", d.handleLogout)
 		r.With(d.Auth.RequireAuth).Get("/me", d.handleMe)
 		r.With(d.Auth.RequireAuth).Patch("/me/settings", d.handleUpdateSettings)
@@ -110,6 +115,14 @@ func NewRouter(d Dependencies) http.Handler {
 		r.With(d.Auth.RequireAdmin).Get("/admin/llm", d.handleGetLLM)
 		r.With(d.Auth.RequireAdmin).Post("/admin/llm/model", d.handleSetLLMModel)
 		r.With(d.Auth.RequireAdmin).Post("/admin/llm/pull", d.handlePullLLMModel)
+		r.With(d.Auth.RequireAdmin).Post("/admin/llm/delete", d.handleDeleteLLMModel)
+		r.With(d.Auth.RequireAdmin).Post("/admin/llm/options", d.handleSetLLMOptions)
+
+		// DB admin
+		r.With(d.Auth.RequireAdmin).Get("/admin/db", d.handleGetDB)
+		r.With(d.Auth.RequireAdmin).Post("/admin/db/backup", d.handleDBBackup)
+		r.With(d.Auth.RequireAdmin).Post("/admin/db/cleanup", d.handleDBCleanup)
+		r.With(d.Auth.RequireAdmin).Post("/admin/db/schedule", d.handleDBSchedule)
 		r.With(d.Auth.RequireAuth).Post("/feeds/import", d.handleOPMLImport)
 		r.With(d.Auth.RequireAuth).Get("/feeds/export", d.handleOPMLExport)
 

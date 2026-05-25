@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -156,6 +157,24 @@ func run() error {
 			logger.Info("loaded saved ollama_model from app_settings", "model", model)
 		}
 		ollamaSum = summarize.NewOllama(cfg.OllamaURL, model)
+		// Load any persisted generation tunables so they survive a restart.
+		opts := summarize.Options{}
+		if v, _ := st.GetAppSetting(ctx, "llm_temperature"); v != "" {
+			if f, err := strconv.ParseFloat(v, 64); err == nil {
+				opts.Temperature = f
+			}
+		}
+		if v, _ := st.GetAppSetting(ctx, "llm_top_p"); v != "" {
+			if f, err := strconv.ParseFloat(v, 64); err == nil {
+				opts.TopP = f
+			}
+		}
+		if v, _ := st.GetAppSetting(ctx, "llm_num_ctx"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil {
+				opts.NumCtx = n
+			}
+		}
+		ollamaSum.SetOptions(opts)
 		sum = ollamaSum
 	}
 
@@ -172,6 +191,10 @@ func run() error {
 	// the fake feed URL doesn't resolve.
 	if !cfg.TestMode {
 		go p.Run(ctx)
+		// Scheduled DB maintenance: a single goroutine that ticks every hour
+		// and runs the backup / cleanup actions when their app_setting cadence
+		// says it's time. Failures log and continue.
+		go runDBMaintenance(ctx, st, logger.With("component", "db-maintenance"))
 	}
 
 	// Embedded static SPA.
