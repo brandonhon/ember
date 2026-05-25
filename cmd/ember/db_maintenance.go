@@ -3,13 +3,19 @@ package main
 import (
 	"context"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
+	"github.com/brandonhon/ember/internal/opml"
 	"github.com/brandonhon/ember/internal/store"
 )
 
-const defaultBackupDir = "/data/backups"
+const (
+	defaultBackupDir = "/data/backups"
+	defaultExportDir = "/data/exports"
+)
 
 // runDBMaintenance ticks every hour and runs the scheduled backup / cleanup
 // actions when their app_setting cadence says they're due. Cadence values:
@@ -18,6 +24,12 @@ const defaultBackupDir = "/data/backups"
 //
 // Last-run timestamps are kept in app_settings under db_backup_last and
 // db_cleanup_last so a restart doesn't trigger an immediate run.
+// runDBMaintenance is registered from main.go with the OPML service so the
+// scheduler can do per-user exports.
+var maintOPML *opml.Service
+
+func setMaintenanceOPML(svc *opml.Service) { maintOPML = svc }
+
 func runDBMaintenance(ctx context.Context, st *store.Store, lg *slog.Logger) {
 	t := time.NewTicker(1 * time.Hour)
 	defer t.Stop()
@@ -57,6 +69,51 @@ func tickMaintenance(ctx context.Context, st *store.Store, lg *slog.Logger) {
 			runCleanup(ctx, st, lg)
 		}
 	}
+	// OPML export
+	switch readSetting(ctx, st, "opml_schedule", "off") {
+	case "weekly":
+		if dueSince(ctx, st, "opml_last", 7*24*time.Hour, now) {
+			runOPMLExport(ctx, st, lg)
+		}
+	case "monthly":
+		if dueSince(ctx, st, "opml_last", 30*24*time.Hour, now) {
+			runOPMLExport(ctx, st, lg)
+		}
+	}
+}
+
+// runOPMLExport writes the admin user's OPML to /data/exports/. We pick the
+// first admin since OPML is per-user and a server-wide cron has no other
+// natural choice. Multi-tenant deployments can disable this and trigger
+// exports per-user via the manual endpoint instead.
+func runOPMLExport(ctx context.Context, st *store.Store, lg *slog.Logger) {
+	if maintOPML == nil {
+		lg.Warn("opml export scheduled but service not initialized")
+		return
+	}
+	adminID, err := st.FirstAdminID(ctx)
+	if err != nil || adminID == 0 {
+		lg.Warn("opml export: no admin user to export for", "err", err)
+		return
+	}
+	if err := os.MkdirAll(defaultExportDir, 0o750); err != nil {
+		lg.Warn("opml export: mkdir failed", "err", err)
+		return
+	}
+	name := time.Now().UTC().Format("ember-2006-01-02-150405.opml")
+	out := filepath.Join(defaultExportDir, name)
+	f, err := os.Create(out)
+	if err != nil {
+		lg.Warn("opml export: create file", "err", err)
+		return
+	}
+	defer f.Close()
+	if err := maintOPML.Export(ctx, adminID, f); err != nil {
+		lg.Warn("opml export: write failed", "err", err)
+		return
+	}
+	lg.Info("scheduled OPML export complete", "path", out, "user_id", adminID)
+	_ = st.PutAppSetting(ctx, "opml_last", strconv.FormatInt(time.Now().Unix(), 10))
 }
 
 func runBackup(ctx context.Context, st *store.Store, lg *slog.Logger) {

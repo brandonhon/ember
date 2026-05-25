@@ -270,6 +270,9 @@ type ListArticlesQuery struct {
 	// Defaults to false — tests, admin tools, and the Fever shim get
 	// everything by default.
 	OnlySummarized bool
+	// Tag filters to articles the user has tagged with this label (joined
+	// against article_tags). Empty = no filter.
+	Tag string
 }
 
 // ListArticles returns articles for the user under the given filters using
@@ -325,6 +328,11 @@ LEFT JOIN article_state st ON st.article_id = a.id AND st.user_id = ?`
 JOIN board_articles ba ON ba.article_id = a.id
 JOIN boards b ON b.id = ba.board_id AND b.user_id = ? AND b.id = ?`
 		args = append(args, userID, q.BoardID)
+	}
+	if q.Tag != "" {
+		from += `
+JOIN article_tags atg ON atg.article_id = a.id AND atg.user_id = ? AND atg.tag = ?`
+		args = append(args, userID, q.Tag)
 	}
 	if q.Unread {
 		conds = append(conds, "IFNULL(st.is_read,0) = 0")

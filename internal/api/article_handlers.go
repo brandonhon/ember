@@ -58,6 +58,7 @@ func (d *Dependencies) handleListArticles(w http.ResponseWriter, r *http.Request
 		// poller stamps a summary_model (success or 'skipped'). Admin/debug
 		// callers can pass ?all=1 to bypass.
 		OnlySummarized: !atoB("all"),
+		Tag:            q.Get("tag"),
 	}
 	articles, err := d.Store.ListArticles(r.Context(), u.ID, query)
 	if mapStoreError(w, err) {

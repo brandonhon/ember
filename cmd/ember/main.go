@@ -138,6 +138,7 @@ func run() error {
 	}
 
 	op := opml.NewService(st)
+	setMaintenanceOPML(op)
 
 	// Summarizer: noop in test mode, nil if disabled at install, otherwise
 	// Ollama. The active model is the persisted app setting if present, else
