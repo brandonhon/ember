@@ -95,7 +95,7 @@
     showSettings = true;
   }
 
-  // Auto-refresh: every 30s while the tab is visible, poll the active view
+  // Auto-refresh: every 15s while the tab is visible, poll the active view
   // for new articles. The store prepends them and bumps newArticleCount,
   // which drives the favicon-dot indicator below. We also poll once on tab
   // re-focus so coming back from a long Slack rabbit hole feels instant.
@@ -105,7 +105,7 @@
     pollTimer = setInterval(() => {
       if (document.hidden) return;
       void pollForNewArticles();
-    }, 30_000);
+    }, 15_000);
   }
   function stopPolling() {
     if (pollTimer) {
