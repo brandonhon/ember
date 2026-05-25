@@ -760,7 +760,32 @@
     font-style: italic;
     color: var(--ink-soft);
   }
-  .article-body :global(img) { max-width: 100%; height: auto; border-radius: 6px; margin: 12px 0; }
+  /* Constrain any media or wrapper to the column width. Inline width
+     attributes on <img>/<figure>/<picture> from publishers don't override
+     max-width, but the wrapper itself can. So we cap both. */
+  .article-body :global(img),
+  .article-body :global(svg),
+  .article-body :global(video),
+  .article-body :global(iframe),
+  .article-body :global(picture),
+  .article-body :global(picture > img),
+  .article-body :global(figure),
+  .article-body :global(figure > img) {
+    max-width: 100%;
+    height: auto;
+  }
+  .article-body :global(img) { border-radius: 6px; margin: 12px 0; }
+  .article-body :global(figure) { margin: 18px 0; }
+  /* Wide tables get horizontal scroll instead of pushing the layout. */
+  .article-body :global(table) {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+  /* Last line of defense: never let any descendant force horizontal scroll
+     on the column itself. */
+  .article-body { overflow-wrap: break-word; word-break: break-word; }
+  .article-body :global(*) { max-width: 100%; }
   .article-body :global(code) {
     font-family: ui-monospace, monospace;
     font-size: 0.9em;
