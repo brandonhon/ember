@@ -71,6 +71,11 @@ type Article struct {
 	Author       string `json:"author,omitempty"`
 	ContentHTML  string `json:"content_html,omitempty"`
 	ContentText  string `json:"content_text,omitempty"`
+	// CleanedHTML is the LLM-produced version of ContentHTML with promo
+	// content (newsletter signups, podcast/app promos) stripped. Empty when
+	// summaries are disabled or the model didn't return a CLEANED section.
+	// Reader prefers this over ContentHTML when present.
+	CleanedHTML  string `json:"cleaned_html,omitempty"`
 	Summary      string `json:"summary,omitempty"`
 	SummaryModel string `json:"summary_model,omitempty"`
 	ImageURL     string `json:"image_url,omitempty"`
@@ -128,6 +133,10 @@ type ArticleView struct {
 	IsRead    bool `json:"is_read"`
 	IsStarred bool `json:"is_starred"`
 	IsLater   bool `json:"is_later"`
+	// DupCount counts other articles with the same URL that the user is
+	// subscribed to via a different feed. 0 means no duplicates. The UI shows
+	// a pill ("Also in 2 feeds") when this is > 0.
+	DupCount int `json:"dup_count"`
 }
 
 // FeedWithCounts is a feed joined with the requesting user's subscription

@@ -18,14 +18,23 @@ import (
 //go:embed migrations/*.sql
 var migrationsFS embed.FS
 
-// Pragmas applied to every connection. WAL + foreign keys + busy timeout +
-// reasonable cache size.
+// Pragmas applied to every connection.
+//   - journal_mode=WAL: concurrent readers + one writer
+//   - foreign_keys=ON: enforce referential integrity
+//   - busy_timeout=5s: wait instead of SQLITE_BUSY on contention
+//   - synchronous=NORMAL: safe with WAL, ~2x faster than FULL for our writes
+//   - temp_store=MEMORY: temp tables in RAM
+//   - cache_size=-65536: 64 MiB page cache (default is 2 MiB — too small for
+//     our workload of nested article queries with dedup joins)
+//   - mmap_size=268435456: 256 MiB memory-mapped IO for read-heavy paths
 const pragmas = `
 PRAGMA journal_mode=WAL;
 PRAGMA foreign_keys=ON;
 PRAGMA busy_timeout=5000;
 PRAGMA synchronous=NORMAL;
 PRAGMA temp_store=MEMORY;
+PRAGMA cache_size=-65536;
+PRAGMA mmap_size=268435456;
 `
 
 // Open opens the SQLite database at path, applies PRAGMAs, and runs all
@@ -36,7 +45,13 @@ func Open(ctx context.Context, path string) (*sql.DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite %q: %w", path, err)
 	}
-	dbh.SetMaxOpenConns(1) // SQLite single-writer; readers OK but keep it simple
+	// WAL mode supports concurrent readers + one writer. modernc.org/sqlite
+	// serializes writes via a mutex internally, so MaxOpenConns can safely be
+	// >1; reads then run in parallel which matters once the SPA is polling
+	// + the poller is ingesting + admins are looking at feed lists.
+	dbh.SetMaxOpenConns(8)
+	dbh.SetMaxIdleConns(4)
+	dbh.SetConnMaxIdleTime(5 * time.Minute)
 	if _, err := dbh.ExecContext(ctx, pragmas); err != nil {
 		dbh.Close()
 		return nil, fmt.Errorf("apply pragmas: %w", err)
@@ -44,6 +59,12 @@ func Open(ctx context.Context, path string) (*sql.DB, error) {
 	if err := Migrate(ctx, dbh); err != nil {
 		dbh.Close()
 		return nil, fmt.Errorf("migrate: %w", err)
+	}
+	// Refresh query planner stats so range/keyset scans hit good plans even
+	// on a long-running DB that's drifted from its initial ANALYZE.
+	if _, err := dbh.ExecContext(ctx, "PRAGMA optimize;"); err != nil {
+		// Non-fatal — log via caller's logger isn't available here.
+		_ = err
 	}
 	return dbh, nil
 }
