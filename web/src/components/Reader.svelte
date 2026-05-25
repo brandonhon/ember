@@ -212,12 +212,14 @@
       {/if}
 
       <div class="article-body">
-        {#if selected.cleaned_html}
-          <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-          {@html selected.cleaned_html}
-        {:else if selected.content_html}
+        {#if selected.content_html}
           <!-- eslint-disable-next-line svelte/no-at-html-tags -->
           {@html selected.content_html}
+        {:else if selected.cleaned_html}
+          <!-- Original body missing — fall back to the LLM-cleaned text so
+               the reader still has something to read. -->
+          <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+          {@html selected.cleaned_html}
         {:else if selected.content_text}
           <p>{selected.content_text}</p>
         {/if}

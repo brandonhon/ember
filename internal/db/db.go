@@ -40,18 +40,30 @@ PRAGMA mmap_size=268435456;
 // Open opens the SQLite database at path, applies PRAGMAs, and runs all
 // pending migrations. Returns the database handle.
 func Open(ctx context.Context, path string) (*sql.DB, error) {
-	dsn := path + "?_pragma=busy_timeout(5000)&_pragma=foreign_keys(ON)"
+	// All tuning pragmas live in the DSN so they apply per-connection. The
+	// later ExecContext(pragmas) only hits one connection in the pool, so
+	// without DSN-side pragmas the rest of the pool would run without WAL /
+	// cache / mmap tuning — which is why an earlier attempt to raise the
+	// pool size caused SQLITE_BUSY storms.
+	dsn := path +
+		"?_pragma=busy_timeout(5000)" +
+		"&_pragma=foreign_keys(ON)" +
+		"&_pragma=journal_mode(WAL)" +
+		"&_pragma=synchronous(NORMAL)" +
+		"&_pragma=temp_store(MEMORY)" +
+		"&_pragma=cache_size(-65536)" +
+		"&_pragma=mmap_size(268435456)"
 	dbh, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite %q: %w", path, err)
 	}
-	// WAL mode supports concurrent readers + one writer. modernc.org/sqlite
-	// serializes writes via a mutex internally, so MaxOpenConns can safely be
-	// >1; reads then run in parallel which matters once the SPA is polling
-	// + the poller is ingesting + admins are looking at feed lists.
-	dbh.SetMaxOpenConns(8)
-	dbh.SetMaxIdleConns(4)
-	dbh.SetConnMaxIdleTime(5 * time.Minute)
+	// Serialize through a single connection. SQLite has one writer; with
+	// multiple Go conns the poller's UpsertArticle calls fight for the write
+	// lock and hit SQLITE_BUSY even with a 5s busy_timeout (BUSY_SNAPSHOT in
+	// WAL doesn't honor busy_timeout). One conn lets Go's database/sql queue
+	// requests cleanly; reads block briefly when the poller writes but the
+	// numbers are tiny for our workload (single-digit RPS).
+	dbh.SetMaxOpenConns(1)
 	if _, err := dbh.ExecContext(ctx, pragmas); err != nil {
 		dbh.Close()
 		return nil, fmt.Errorf("apply pragmas: %w", err)
