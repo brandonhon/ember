@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"sync"
@@ -258,6 +259,12 @@ func (p *Poller) fetchAndStore(ctx context.Context, f models.Feed) {
 		if p.Config.EnrichOnIngest && p.shouldEnrich(a) {
 			p.enrichWithReadability(ctx, &a)
 		}
+		// Strip aggregator residue ("Comments", "View Comments", "Read more")
+		// no matter how the body got here. Even after enrichment some sites
+		// leave a standalone <p>Comments</p> trailing the article.
+		if before := a.ContentHTML; before != "" {
+			a.ContentHTML = stripCommentsResidue(before)
+		}
 		if p.Config.DisableImages {
 			a.ImageURL = ""
 		}
@@ -274,11 +281,19 @@ func (p *Poller) fetchAndStore(ctx context.Context, f models.Feed) {
 		for _, userID := range subs {
 			p.applyFiltersForUser(ctx, userID, stored)
 		}
-		// Enqueue for summarization (best-effort; drop if queue full).
+		// Enqueue for summarization (best-effort; drop if queue full). When
+		// no summarizer is configured (EMBER_DISABLE_SUMMARIES) we stamp the
+		// article with summary_model='disabled' so the SPA's OnlySummarized
+		// filter passes it through — otherwise new articles would never
+		// appear without manual refresh.
 		if p.Summarizer != nil {
 			select {
 			case p.summaryCh <- stored.ID:
 			default:
+			}
+		} else {
+			if err := p.Store.UpdateSummary(ctx, stored.ID, "", "disabled"); err != nil {
+				p.Logger.Warn("poller: stamp summary_model=disabled", "article_id", stored.ID, "err", err)
 			}
 		}
 	}
@@ -312,6 +327,81 @@ func (p *Poller) fetchAndStore(ctx context.Context, f models.Feed) {
 // HN-style RSS body that has no actual article text in it.
 var linkListRE = regexp.MustCompile(`(?i)\bcomments\s*url\b|^article\s*url\b`)
 
+// aggregatorHosts are link-aggregator sites whose RSS entries don't contain
+// the actual article body. When the article URL points to one of these and
+// readability fails to extract anything substantial, we fall back to the
+// first external link found in the original feed body.
+var aggregatorHosts = map[string]bool{
+	"lobste.rs":             true,
+	"news.ycombinator.com":  true,
+	"reddit.com":            true,
+	"old.reddit.com":        true,
+	"www.reddit.com":        true,
+	"hckrnews.com":          true,
+	"feedproxy.google.com":  true,
+}
+
+// hrefRE captures URLs from <a href="..."> attributes in raw HTML. Used to
+// recover the real article link out of aggregator-style RSS bodies.
+var hrefRE = regexp.MustCompile(`(?i)href\s*=\s*"([^"]+)"`)
+
+// commentsResidueInner is the inner content pattern for "comments only"
+// snippets — text that is just "Comments", "View Comments", "Read more",
+// etc., optionally wrapped in nested tags (like <a>Comments</a>).
+const commentsResidueInner = `\s*(?:<[^>]+>\s*)*(?:View\s+)?(?:Read\s+more|Read\s+the\s+rest|Comments?(?:\s*\(\d+\))?|Continue\s+reading|Discuss(?:\s+on\s+\w+)?|See\s+comments)\s*(?:<[^>]+>\s*)*`
+
+// commentsResidueREs are per-tag matchers. Go's RE2 has no backreferences,
+// so we can't use `<(p|li|div)>...</\1>`. Instead we apply a regex per tag.
+var commentsResidueREs = []*regexp.Regexp{
+	regexp.MustCompile(`(?is)<p[^>]*>` + commentsResidueInner + `</p>`),
+	regexp.MustCompile(`(?is)<li[^>]*>` + commentsResidueInner + `</li>`),
+	regexp.MustCompile(`(?is)<div[^>]*>` + commentsResidueInner + `</div>`),
+}
+
+// stripCommentsResidue removes stand-alone "Comments"/"Read more" paragraphs
+// from an article HTML body. Safe to run on any content_html: real article
+// paragraphs are too long to match the pattern.
+func stripCommentsResidue(html string) string {
+	for _, re := range commentsResidueREs {
+		html = re.ReplaceAllString(html, "")
+	}
+	return html
+}
+
+// hostOf returns the lowercased hostname of a URL, or "" if it can't be parsed.
+func hostOf(u string) string {
+	if u == "" {
+		return ""
+	}
+	parsed, err := url.Parse(u)
+	if err != nil {
+		return ""
+	}
+	return strings.ToLower(parsed.Host)
+}
+
+// firstExternalLink scans HTML for the first <a href="..."> whose host is not
+// one of the aggregator hosts and not the source host. Returns "" if nothing
+// usable is found.
+func firstExternalLink(html, sourceURL string) string {
+	srcHost := hostOf(sourceURL)
+	for _, m := range hrefRE.FindAllStringSubmatch(html, -1) {
+		candidate := m[1]
+		host := hostOf(candidate)
+		if host == "" || host == srcHost {
+			continue
+		}
+		if aggregatorHosts[host] {
+			continue
+		}
+		if !strings.HasPrefix(candidate, "http") {
+			continue
+		}
+		return candidate
+	}
+	return ""
+}
+
 // shouldEnrich returns true when the article's parsed body is too thin or
 // looks like a link list — readability against the article URL will usually
 // produce something more useful.
@@ -330,25 +420,42 @@ func (p *Poller) shouldEnrich(a models.Article) bool {
 }
 
 // enrichWithReadability fetches the article URL through go-readability and
-// replaces the parsed body + image_url with the extracted content. Failures
-// are logged and the original article is left intact. Re-computes the
-// content_hash so dedup works on the enriched body for new articles.
+// replaces the parsed body + image_url with the extracted content. When the
+// article URL points to a link aggregator (Lobsters, HN, Reddit), we first
+// look for an external link in the feed body and use that instead — the
+// aggregator page's "real" content is comments, which isn't what we want.
+//
+// Failures are logged and the original article is left intact. Re-computes
+// the content_hash so dedup works on the enriched body for new articles.
 func (p *Poller) enrichWithReadability(ctx context.Context, a *models.Article) {
+	target := a.URL
+	if aggregatorHosts[hostOf(target)] {
+		if ext := firstExternalLink(a.ContentHTML, a.URL); ext != "" {
+			target = ext
+		} else {
+			// Aggregator page with no extractable external link — readability
+			// would just re-fetch comments. Skip.
+			p.Logger.Debug("poller: aggregator article with no external link, skipping enrich", "url", a.URL)
+			return
+		}
+	}
 	// Short per-request timeout so a slow site doesn't stall the whole feed.
 	rctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 	client := &http.Client{Timeout: 15 * time.Second}
-	r, err := feed.ExtractFromURL(rctx, client, a.URL)
+	r, err := feed.ExtractFromURL(rctx, client, target)
 	if err != nil {
-		p.Logger.Debug("poller: readability failed", "url", a.URL, "err", err)
+		p.Logger.Debug("poller: readability failed", "url", target, "err", err)
 		return
 	}
-	if len(strings.TrimSpace(r.Text)) < len(strings.TrimSpace(a.ContentText)) {
+	cleanHTML := stripCommentsResidue(r.HTML)
+	cleanText := strings.TrimSpace(r.Text)
+	if len(cleanText) < len(strings.TrimSpace(a.ContentText)) {
 		// Worse than what we already had — keep the original.
 		return
 	}
-	a.ContentHTML = r.HTML
-	a.ContentText = r.Text
+	a.ContentHTML = cleanHTML
+	a.ContentText = cleanText
 	if a.ImageURL == "" && r.ImageURL != "" {
 		a.ImageURL = r.ImageURL
 	}

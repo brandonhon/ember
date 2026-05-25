@@ -112,6 +112,27 @@ POINTS:
 	}
 }
 
+func TestOllama_FiltersPlaceholderBullets(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			// qwen2.5:0.5b sometimes echoes the prompt's literal example
+			// placeholders. They should be dropped.
+			"response": "SUMMARY: A beginner-friendly guide to Makefiles.\n\nPOINTS:\n- <one short factual point>\n- Makefiles automate builds\n- <fact 2>",
+			"done":     true,
+		})
+	}))
+	defer srv.Close()
+	o := NewOllama(srv.URL, "m")
+	o.HTTPClient = srv.Client()
+	res, _, err := o.Summarize(context.Background(), "T", "x")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Bullets) != 1 || res.Bullets[0] != "Makefiles automate builds" {
+		t.Errorf("placeholder bullets not filtered: %+v", res.Bullets)
+	}
+}
+
 func TestOllama_LabeledFormStripsBoldAndPromptEcho(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]any{

@@ -177,6 +177,32 @@ func TestPoller_RunGracefulShutdown(t *testing.T) {
 	}
 }
 
+func TestStripCommentsResidue(t *testing.T) {
+	cases := []struct {
+		in, want string
+	}{
+		{`<p>Real paragraph one.</p><p>Comments</p>`, `<p>Real paragraph one.</p>`},
+		{`<p>Body.</p><p><a href="https://example.com">Comments (12)</a></p>`, `<p>Body.</p>`},
+		{`<li>View Comments</li>`, ``},
+		{`<p>Continue reading</p>`, ``},
+		{`<p>Real paragraph with the word comments inside it should stay.</p>`, `<p>Real paragraph with the word comments inside it should stay.</p>`},
+	}
+	for _, c := range cases {
+		got := stripCommentsResidue(c.in)
+		if got != c.want {
+			t.Errorf("stripCommentsResidue(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+}
+
+func TestFirstExternalLink(t *testing.T) {
+	html := `<p><a href="https://example.com/article">Source</a></p><p><a href="https://lobste.rs/s/xyz/article">Comments</a></p>`
+	got := firstExternalLink(html, "https://lobste.rs/s/xyz/article")
+	if got != "https://example.com/article" {
+		t.Errorf("firstExternalLink = %q, want https://example.com/article", got)
+	}
+}
+
 func TestPoller_ShouldEnrich(t *testing.T) {
 	p := &Poller{}
 	cases := []struct {
