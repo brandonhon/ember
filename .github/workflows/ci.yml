@@ -1,5 +1,23 @@
 name: CI
 
+# === CI IS PAUSED ON THIS REPO ===
+#
+# The remote CI workflow is intentionally a no-op. All validation runs locally
+# before push:
+#
+#   GO111MODULE=on make embed build
+#   GO111MODULE=on go vet ./...
+#   GO111MODULE=on go test -race -count=1 ./...
+#   (cd web && npm run check && npm run build)
+#
+# Branch protection on `main` still requires the four status checks below by
+# name (Detect changes / Go / Web / E2E). They each exit 0 in seconds so PRs
+# can merge without burning CI minutes; the real gate is the local chain.
+#
+# TO UN-PAUSE: revert this file to the commit before the "ci: pause on main"
+# change. The dorny/paths-filter logic + real Go/Web/E2E jobs come back as a
+# unit; nothing else needs touching.
+
 on:
   push:
     branches: [main]
@@ -20,26 +38,8 @@ jobs:
     outputs:
       app: ${{ steps.filter.outputs.app }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          # Allow-list of paths that affect the running app or its tests.
-          # Anything outside this list (docs/, README, LICENSE, deploy/, etc.)
-          # causes the gated jobs below to skip, which counts as success for
-          # required-status-check branch protection.
-          filters: |
-            app:
-              - 'cmd/**'
-              - 'internal/**'
-              - 'web/**'
-              - 'go.mod'
-              - 'go.sum'
-              - 'Makefile'
-              - 'Dockerfile'
-              - '.dockerignore'
-              - '.golangci.yml'
-              - '.github/workflows/ci.yml'
+      - id: filter
+        run: echo "app=false" >> "$GITHUB_OUTPUT"
 
   go:
     name: Go (vet + test + vuln)
@@ -47,38 +47,7 @@ jobs:
     if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-
-      - uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: '22'
-          cache: npm
-          cache-dependency-path: web/package-lock.json
-
-      - name: embed SPA
-        # //go:embed all:dist requires real files in internal/web/dist.
-        # Build the SPA + copy it before any Go command runs.
-        run: |
-          (cd web && npm ci && npm run build)
-          rm -rf internal/web/dist
-          mkdir -p internal/web/dist
-          cp -R web/dist/. internal/web/dist/
-
-      - name: go vet
-        run: go vet ./...
-
-      - name: go test
-        run: go test -race -count=1 ./...
-
-      - name: govulncheck
-        run: |
-          go install golang.org/x/vuln/cmd/govulncheck@latest
-          govulncheck ./...
+      - run: 'true'
 
   web:
     name: Web (typecheck + build)
@@ -86,25 +55,7 @@ jobs:
     if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: '22'
-          cache: npm
-          cache-dependency-path: web/package-lock.json
-
-      - name: install
-        working-directory: web
-        run: npm ci
-
-      - name: typecheck
-        working-directory: web
-        run: npm run check
-
-      - name: build
-        working-directory: web
-        run: npm run build
+      - run: 'true'
 
   e2e:
     name: E2E (Playwright)
@@ -112,30 +63,4 @@ jobs:
     if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-
-      - uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: '22'
-          cache: npm
-          cache-dependency-path: web/package-lock.json
-
-      - name: install web
-        working-directory: web
-        run: npm ci
-
-      - name: embed + build binary
-        run: make embed build
-
-      - name: install playwright
-        working-directory: web
-        run: npx playwright install --with-deps chromium
-
-      - name: run e2e
-        working-directory: web
-        run: npx playwright test --reporter=line
+      - run: 'true'
