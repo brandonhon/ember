@@ -171,7 +171,7 @@ func (a *Auth) CreateSession(ctx context.Context, w http.ResponseWriter, r *http
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   a.SecureCookies,
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteStrictMode,
 		Expires:  now.Add(SessionTTL),
 		MaxAge:   int(SessionTTL.Seconds()),
 	})
@@ -224,7 +224,7 @@ func (a *Auth) DestroySession(ctx context.Context, w http.ResponseWriter, r *htt
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   a.SecureCookies,
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteStrictMode,
 		MaxAge:   -1,
 	})
 	return nil
@@ -314,7 +314,11 @@ func (a *Auth) BootstrapAdmin(ctx context.Context, username, password string) (m
 	return u, true, nil
 }
 
-// Login is a convenience: verify credentials and create a session.
+// Login is a convenience: verify credentials and create a session. Destroys
+// any prior session cookie on the request first (session-fixation defense
+// in depth — the cookie value is signed + random so pre-planting one is
+// already infeasible, but this prevents any inherited state from carrying
+// across the login boundary).
 func (a *Auth) Login(ctx context.Context, w http.ResponseWriter, r *http.Request, username, password string) (models.User, error) {
 	u, err := a.Store.GetUserByUsername(ctx, username)
 	if errors.Is(err, store.ErrNotFound) {
@@ -326,8 +330,18 @@ func (a *Auth) Login(ctx context.Context, w http.ResponseWriter, r *http.Request
 	if err := a.VerifyPassword(password, u.PasswordHash); err != nil {
 		return models.User{}, ErrInvalidCredentials
 	}
+	_ = a.DestroySession(ctx, w, r)
 	if _, err := a.CreateSession(ctx, w, r, u.ID); err != nil {
 		return models.User{}, err
 	}
 	return u, nil
+}
+
+// DeleteUserSessions removes every session row for a user. Called after a
+// password change so any other browser/tab carrying the old credentials
+// gets logged out.
+func (a *Auth) DeleteUserSessions(ctx context.Context, userID int64) error {
+	_, err := a.Store.DB.ExecContext(ctx,
+		`DELETE FROM sessions WHERE user_id = ?`, userID)
+	return err
 }

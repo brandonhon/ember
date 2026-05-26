@@ -91,10 +91,19 @@ type setReadReq struct {
 	Read bool    `json:"read"`
 }
 
+// maxBulkArticleIDs caps how many ids a single read/star/later request can
+// touch. Prevents a single 50k-id payload from triggering an enormous SQL
+// statement with hundreds of thousands of placeholders.
+const maxBulkArticleIDs = 1000
+
 func (d *Dependencies) handleSetRead(w http.ResponseWriter, r *http.Request) {
 	u, _ := auth.FromContext(r.Context())
 	var req setReadReq
 	if !decodeJSON(w, r, &req) {
+		return
+	}
+	if len(req.IDs) > maxBulkArticleIDs {
+		writeError(w, http.StatusBadRequest, "bad_request", "too many ids")
 		return
 	}
 	if mapStoreError(w, d.Store.SetRead(r.Context(), u.ID, req.IDs, req.Read)) {

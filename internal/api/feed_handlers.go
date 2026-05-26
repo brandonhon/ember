@@ -9,6 +9,7 @@ import (
 	"github.com/brandonhon/ember/internal/auth"
 	"github.com/brandonhon/ember/internal/models"
 	"github.com/brandonhon/ember/internal/store"
+	"github.com/brandonhon/ember/internal/urlcheck"
 )
 
 type addFeedReq struct {
@@ -40,6 +41,10 @@ func (d *Dependencies) handleAddFeed(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.URL == "" {
 		writeError(w, http.StatusBadRequest, "bad_request", "url required")
+		return
+	}
+	if err := urlcheck.Check(r.Context(), req.URL, d.AllowPrivateURLs); err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", "URL rejected: "+err.Error())
 		return
 	}
 	f, err := d.Store.UpsertFeed(r.Context(), models.Feed{URL: req.URL, Title: req.URL})
@@ -109,12 +114,12 @@ func (d *Dependencies) handleRefreshFeed(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal", err.Error())
+		internalError(w, "internal", err)
 		return
 	}
 	if d.Poller != nil {
 		if err := d.Poller.RefreshFeed(r.Context(), sub.FeedID); err != nil {
-			writeError(w, http.StatusInternalServerError, "internal", err.Error())
+			internalError(w, "internal", err)
 			return
 		}
 	}
@@ -137,12 +142,12 @@ func (d *Dependencies) handleResummarizeFeed(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal", err.Error())
+		internalError(w, "internal", err)
 		return
 	}
 	ids, err := d.Store.ResetSummariesByFeed(r.Context(), sub.FeedID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal", err.Error())
+		internalError(w, "internal", err)
 		return
 	}
 	enqueued := 0
@@ -162,7 +167,7 @@ func (d *Dependencies) handleResummarizeFeed(w http.ResponseWriter, r *http.Requ
 func (d *Dependencies) handleResummarizeAll(w http.ResponseWriter, r *http.Request) {
 	ids, err := d.Store.ClearAllSummaries(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal", err.Error())
+		internalError(w, "internal", err)
 		return
 	}
 	enqueued := 0
@@ -178,6 +183,10 @@ func (d *Dependencies) handleResummarizeAll(w http.ResponseWriter, r *http.Reque
 
 func (d *Dependencies) handleOPMLImport(w http.ResponseWriter, r *http.Request) {
 	u, _ := auth.FromContext(r.Context())
+	// Cap the request body at 8 MiB. ParseMultipartForm's argument is the
+	// in-memory threshold (parts spill to disk above it), not a body limit;
+	// MaxBytesReader enforces the actual ceiling.
+	r.Body = http.MaxBytesReader(w, r.Body, 8<<20)
 	if err := r.ParseMultipartForm(8 << 20); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
@@ -201,7 +210,7 @@ func (d *Dependencies) handleOPMLExport(w http.ResponseWriter, r *http.Request) 
 	u, _ := auth.FromContext(r.Context())
 	var buf bytes.Buffer
 	if err := d.OPML.Export(r.Context(), u.ID, &buf); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal", err.Error())
+		internalError(w, "internal", err)
 		return
 	}
 	w.Header().Set("Content-Type", "text/x-opml; charset=utf-8")

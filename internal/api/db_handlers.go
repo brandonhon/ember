@@ -36,7 +36,7 @@ const (
 func (d *Dependencies) handleGetDB(w http.ResponseWriter, r *http.Request) {
 	size, pages, err := d.Store.DBSize(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal", err.Error())
+		internalError(w, "internal", err)
 		return
 	}
 	backups, _ := d.Store.ListBackups(defaultBackupDir)
@@ -57,7 +57,7 @@ func (d *Dependencies) handleGetDB(w http.ResponseWriter, r *http.Request) {
 func (d *Dependencies) handleDBBackup(w http.ResponseWriter, r *http.Request) {
 	info, err := d.Store.Backup(r.Context(), defaultBackupDir)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "backup_failed", err.Error())
+		internalError(w, "backup", err)
 		return
 	}
 	writeData(w, http.StatusOK, info, nil)
@@ -77,7 +77,7 @@ func (d *Dependencies) handleDBCleanup(w http.ResponseWriter, r *http.Request) {
 	}
 	stats, err := d.Store.Cleanup(r.Context(), time.Duration(req.OlderDays)*24*time.Hour)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "cleanup_failed", err.Error())
+		internalError(w, "cleanup", err)
 		return
 	}
 	writeData(w, http.StatusOK, stats, nil)
@@ -116,24 +116,24 @@ func (d *Dependencies) handleDBSchedule(w http.ResponseWriter, r *http.Request) 
 	}
 	ctx := r.Context()
 	if err := d.Store.PutAppSetting(ctx, keyBackupSchedule, req.BackupSchedule); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal", err.Error())
+		internalError(w, "internal", err)
 		return
 	}
 	if err := d.Store.PutAppSetting(ctx, keyBackupKeep, strconv.Itoa(req.BackupKeepCount)); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal", err.Error())
+		internalError(w, "internal", err)
 		return
 	}
 	if err := d.Store.PutAppSetting(ctx, keyCleanupSchedule, req.CleanupSchedule); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal", err.Error())
+		internalError(w, "internal", err)
 		return
 	}
 	if err := d.Store.PutAppSetting(ctx, keyCleanupOlderDays, strconv.Itoa(req.CleanupOlderDays)); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal", err.Error())
+		internalError(w, "internal", err)
 		return
 	}
 	if req.OPMLSchedule != "" {
 		if err := d.Store.PutAppSetting(ctx, "opml_schedule", req.OPMLSchedule); err != nil {
-			writeError(w, http.StatusInternalServerError, "internal", err.Error())
+			internalError(w, "internal", err)
 			return
 		}
 	}

@@ -2,8 +2,7 @@ package api
 
 import (
 	"context"
-	"crypto/md5" //nolint:gosec // Fever protocol requires md5; not for security.
-	"encoding/hex"
+	"crypto/subtle"
 	"net/http"
 	"strconv"
 	"strings"
@@ -131,31 +130,25 @@ func (d *Dependencies) handleFever(w http.ResponseWriter, r *http.Request) {
 }
 
 func (d *Dependencies) feverFindUser(ctx context.Context, apiKey string) (models.User, error) {
+	if apiKey == "" {
+		return models.User{}, store.ErrNotFound
+	}
 	users, err := d.Store.ListUsers(ctx)
 	if err != nil {
 		return models.User{}, err
 	}
-	// Fever's key is md5(user:pass). We can't recover the password from a hash,
-	// so we accept md5(username:user_id) as a stand-in. Clients configure this
-	// key per ember user via /api/me's exposed key (TODO: surface in UI).
+	// Constant-time compare per user so a network observer can't time-extract
+	// the matching token. ListUsers is bounded and tiny in the homelab case.
+	provided := []byte(apiKey)
 	for _, u := range users {
-		key := feverKey(u.Username, strconv.FormatInt(u.ID, 10))
-		if key == apiKey {
+		if u.FeverToken == "" {
+			continue
+		}
+		if subtle.ConstantTimeCompare(provided, []byte(u.FeverToken)) == 1 {
 			return u, nil
 		}
 	}
 	return models.User{}, store.ErrNotFound
-}
-
-// FeverKey returns the api_key clients should configure for a user. Exposed
-// so the API/UI can surface it to humans.
-func FeverKey(username, secret string) string {
-	return feverKey(username, secret)
-}
-
-func feverKey(username, secret string) string {
-	sum := md5.Sum([]byte(username + ":" + secret)) //nolint:gosec
-	return hex.EncodeToString(sum[:])
 }
 
 func (d *Dependencies) feverIDsForFlag(ctx context.Context, userID int64, flag string) (string, error) {

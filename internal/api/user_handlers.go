@@ -11,12 +11,30 @@ import (
 	"github.com/brandonhon/ember/internal/store"
 )
 
+// userMini is the public projection of a user shown to non-admin callers
+// (the share-modal user picker, mainly). Hides email, is_admin,
+// settings_json, and created_at.
+type userMini struct {
+	ID       int64  `json:"id"`
+	Username string `json:"username"`
+}
+
 func (d *Dependencies) handleListUsers(w http.ResponseWriter, r *http.Request) {
 	users, err := d.Store.ListUsers(r.Context())
 	if mapStoreError(w, err) {
 		return
 	}
-	writeData(w, http.StatusOK, users, nil)
+	caller, _ := auth.FromContext(r.Context())
+	if caller.IsAdmin {
+		writeData(w, http.StatusOK, users, nil)
+		return
+	}
+	// Non-admin caller: minimal projection only.
+	out := make([]userMini, 0, len(users))
+	for _, u := range users {
+		out = append(out, userMini{ID: u.ID, Username: u.Username})
+	}
+	writeData(w, http.StatusOK, out, nil)
 }
 
 type createUserReq struct {
@@ -37,7 +55,7 @@ func (d *Dependencies) handleCreateUser(w http.ResponseWriter, r *http.Request) 
 	}
 	hash, err := d.Auth.HashPassword(req.Password)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal", err.Error())
+		internalError(w, "internal", err)
 		return
 	}
 	u, err := d.Store.CreateUser(r.Context(), models.User{
@@ -69,13 +87,22 @@ func (d *Dependencies) handleUpdateUser(w http.ResponseWriter, r *http.Request) 
 	if req.Password != nil {
 		hash, err := d.Auth.HashPassword(*req.Password)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "internal", err.Error())
+			internalError(w, "internal", err)
 			return
 		}
 		patch.PasswordHash = &hash
 	}
 	if mapStoreError(w, d.Store.UpdateUser(r.Context(), id, patch)) {
 		return
+	}
+	// If the admin changed this user's password, invalidate any sessions
+	// they have open. The admin's own session is unaffected (different
+	// user_id).
+	if req.Password != nil {
+		if err := d.Auth.DeleteUserSessions(r.Context(), id); err != nil {
+			internalError(w, "admin-password-change/delete-sessions", err)
+			return
+		}
 	}
 	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
 }

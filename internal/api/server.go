@@ -41,6 +41,9 @@ type Dependencies struct {
 	Ollama *summarize.Ollama
 	// TestMode loosens cookie Secure flag for non-HTTPS tests.
 	TestMode bool
+	// AllowPrivateURLs disables the SSRF block on outbound HTTP fetches for
+	// homelab users who subscribe to LAN feeds. Off by default.
+	AllowPrivateURLs bool
 }
 
 // NewRouter constructs the chi router. Public routes: /api/auth/*, /fever.
@@ -56,13 +59,17 @@ func NewRouter(d Dependencies) http.Handler {
 	r.Use(SecurityHeaders)
 	r.Use(CSRFIssue(!d.TestMode))
 
-	// Health endpoints — fast, no auth, no DB hit on /healthz; /readyz pings DB.
+	// Health endpoints — fast, no auth, no DB hit on /healthz; /readyz pings
+	// DB. /healthz stays public because Caddy uses it for liveness probes.
 	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
 	r.Get("/readyz", d.handleReadyz)
-	r.Get("/metrics", d.handleMetrics)
+	// /metrics is admin-only — exposing build version + error counters to
+	// unauthenticated callers leaks operational state. Caddy can scrape it
+	// over the internal docker network using an admin cookie.
+	r.With(d.Auth.RequireAdmin).Get("/metrics", d.handleMetrics)
 
 	// Per-IP rate limiter for the login endpoint to slow credential stuffing.
 	// Generously sized in test mode so a full e2e run doesn't trip it.
@@ -79,9 +86,10 @@ func NewRouter(d Dependencies) http.Handler {
 		// login suffix.
 		r.With(loginLimiter.LimitMiddleware).Post("/auth/login", d.handleLogin)
 
-		// Branding is public — the login page needs to show the right app
-		// name + favicon before authentication.
-		r.Get("/branding", d.handleGetBranding)
+		// Branding is auth-required so anonymous callers can't probe whether
+		// an instance exists or what it's branded as. The login page renders
+		// with the stock "Ember" name until a user signs in.
+		r.With(d.Auth.RequireAuth).Get("/branding", d.handleGetBranding)
 		r.With(d.Auth.RequireAdmin).Post("/admin/branding", d.handleSetBranding)
 		r.With(d.Auth.RequireAuth).Post("/auth/logout", d.handleLogout)
 		r.With(d.Auth.RequireAuth).Get("/me", d.handleMe)

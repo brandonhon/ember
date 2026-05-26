@@ -60,6 +60,9 @@ func newHarness(t *testing.T) *harness {
 	fp := &fakePoller{}
 	dep := Dependencies{
 		Store: st, Auth: a, Poller: fp, OPML: op, TestMode: true,
+		// Test fixtures use synthetic hosts like x.test that don't resolve;
+		// the SSRF block would reject those, so bypass it in tests.
+		AllowPrivateURLs: true,
 	}
 	r := NewRouter(dep)
 	srv := httptest.NewTLSServer(r)
@@ -560,8 +563,12 @@ func TestFever_Auth(t *testing.T) {
 		t.Errorf("bad-key auth = %v", v)
 	}
 
-	// Good key → auth:1, can fetch feeds.
-	key := FeverKey(u.Username, fmt.Sprintf("%d", u.ID))
+	// Good key → auth:1, can fetch feeds. Seed a known token directly so
+	// the test doesn't depend on the lazy-backfill path.
+	const key = "deadbeef0000feed0000cafe0000beef0000deadbeef0000cafefeedface0000"
+	if err := h.store.SetFeverToken(context.Background(), u.ID, key); err != nil {
+		t.Fatal(err)
+	}
 	resp2, err := cl.Post(h.srv.URL+"/fever?feeds", "application/x-www-form-urlencoded",
 		strings.NewReader("api_key="+key))
 	if err != nil {

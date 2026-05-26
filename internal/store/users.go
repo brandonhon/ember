@@ -34,6 +34,15 @@ func (s *Store) CreateUser(ctx context.Context, u models.User) (models.User, err
 	return u, nil
 }
 
+// SetFeverToken sets the Fever API token for a user. Used by the auth/me
+// handler to backfill a random token on first access, and by the user's
+// rotate-key endpoint.
+func (s *Store) SetFeverToken(ctx context.Context, userID int64, token string) error {
+	_, err := s.DB.ExecContext(ctx,
+		`UPDATE users SET fever_token = ? WHERE id = ?`, token, userID)
+	return err
+}
+
 // FirstAdminID returns the lowest-id admin user, or 0 if none exist. Used by
 // scheduled jobs that need a user-scoped operation but aren't tied to a
 // request.
@@ -50,7 +59,7 @@ func (s *Store) FirstAdminID(ctx context.Context) (int64, error) {
 // GetUser returns a user by ID.
 func (s *Store) GetUser(ctx context.Context, id int64) (models.User, error) {
 	row := s.DB.QueryRowContext(ctx, `
-		SELECT id, username, IFNULL(email,''), password_hash, is_admin, settings_json, created_at
+		SELECT id, username, IFNULL(email,''), password_hash, is_admin, settings_json, IFNULL(fever_token,''), created_at
 		FROM users WHERE id = ?`, id)
 	return scanUser(row)
 }
@@ -58,7 +67,7 @@ func (s *Store) GetUser(ctx context.Context, id int64) (models.User, error) {
 // GetUserByUsername returns a user by username.
 func (s *Store) GetUserByUsername(ctx context.Context, username string) (models.User, error) {
 	row := s.DB.QueryRowContext(ctx, `
-		SELECT id, username, IFNULL(email,''), password_hash, is_admin, settings_json, created_at
+		SELECT id, username, IFNULL(email,''), password_hash, is_admin, settings_json, IFNULL(fever_token,''), created_at
 		FROM users WHERE username = ?`, username)
 	return scanUser(row)
 }
@@ -66,7 +75,7 @@ func (s *Store) GetUserByUsername(ctx context.Context, username string) (models.
 // ListUsers returns all users ordered by id.
 func (s *Store) ListUsers(ctx context.Context) ([]models.User, error) {
 	rows, err := s.DB.QueryContext(ctx, `
-		SELECT id, username, IFNULL(email,''), password_hash, is_admin, settings_json, created_at
+		SELECT id, username, IFNULL(email,''), password_hash, is_admin, settings_json, IFNULL(fever_token,''), created_at
 		FROM users ORDER BY id`)
 	if err != nil {
 		return nil, err
@@ -154,7 +163,7 @@ type scannable interface {
 func scanUser(row scannable) (models.User, error) {
 	var u models.User
 	var isAdmin int
-	if err := row.Scan(&u.ID, &u.Username, &u.Email, &u.PasswordHash, &isAdmin, &u.SettingsJSON, &u.CreatedAt); err != nil {
+	if err := row.Scan(&u.ID, &u.Username, &u.Email, &u.PasswordHash, &isAdmin, &u.SettingsJSON, &u.FeverToken, &u.CreatedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return models.User{}, ErrNotFound
 		}

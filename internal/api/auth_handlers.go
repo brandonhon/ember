@@ -1,9 +1,10 @@
 package api
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"net/http"
-	"strconv"
 
 	"github.com/brandonhon/ember/internal/auth"
 	"github.com/brandonhon/ember/internal/store"
@@ -29,7 +30,7 @@ func (d *Dependencies) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal", err.Error())
+		internalError(w, "internal", err)
 		return
 	}
 	writeData(w, http.StatusOK, u, nil)
@@ -37,7 +38,7 @@ func (d *Dependencies) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 func (d *Dependencies) handleLogout(w http.ResponseWriter, r *http.Request) {
 	if err := d.Auth.DestroySession(r.Context(), w, r); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal", err.Error())
+		internalError(w, "internal", err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"data": map[string]bool{"ok": true}})
@@ -60,12 +61,36 @@ func (d *Dependencies) handleMe(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "no user")
 		return
 	}
+	// Lazily backfill a random Fever API token if this user doesn't have
+	// one. Old users predate the column; new users without the migration
+	// applied also land here.
+	if u.FeverToken == "" {
+		token, err := randomToken()
+		if err != nil {
+			internalError(w, "me/fever-token", err)
+			return
+		}
+		if err := d.Store.SetFeverToken(r.Context(), u.ID, token); err != nil {
+			internalError(w, "me/fever-token-store", err)
+			return
+		}
+		u.FeverToken = token
+	}
 	resp := meResponse{
 		User:        u,
-		FeverAPIKey: FeverKey(u.Username, strconv.FormatInt(u.ID, 10)),
+		FeverAPIKey: u.FeverToken,
 		Version:     Version,
 	}
 	writeData(w, http.StatusOK, resp, nil)
+}
+
+// randomToken returns 32 cryptographically random bytes hex-encoded (64 chars).
+func randomToken() (string, error) {
+	var b [32]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b[:]), nil
 }
 
 // PasswordChangeReq carries the old + new password for a self-service password
@@ -98,10 +123,20 @@ func (d *Dependencies) handleChangePassword(w http.ResponseWriter, r *http.Reque
 	}
 	hash, err := d.Auth.HashPassword(req.NewPassword)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal", err.Error())
+		internalError(w, "internal", err)
 		return
 	}
 	if mapStoreError(w, d.Store.UpdateUser(r.Context(), u.ID, store.UpdateUserPatch{PasswordHash: &hash})) {
+		return
+	}
+	// Invalidate every existing session for this user. Re-issue one for the
+	// current browser so the user stays logged in here.
+	if err := d.Auth.DeleteUserSessions(r.Context(), u.ID); err != nil {
+		internalError(w, "password-change/delete-sessions", err)
+		return
+	}
+	if _, err := d.Auth.CreateSession(r.Context(), w, r, u.ID); err != nil {
+		internalError(w, "password-change/recreate-session", err)
 		return
 	}
 	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)

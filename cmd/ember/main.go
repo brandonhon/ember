@@ -25,6 +25,7 @@ import (
 	"github.com/brandonhon/ember/internal/store"
 	"github.com/brandonhon/ember/internal/summarize"
 	"github.com/brandonhon/ember/internal/sysinfo"
+	"github.com/brandonhon/ember/internal/urlcheck"
 	"github.com/brandonhon/ember/internal/web"
 )
 
@@ -138,6 +139,9 @@ func run() error {
 	}
 
 	op := opml.NewService(st)
+	op.ValidateURL = func(ctx context.Context, raw string) error {
+		return urlcheck.Check(ctx, raw, cfg.AllowPrivateURLs)
+	}
 
 	// Summarizer: noop in test mode, nil if disabled at install, otherwise
 	// Ollama. The active model is the persisted app setting if present, else
@@ -179,12 +183,17 @@ func run() error {
 	}
 
 	fetcher := feed.NewFetcher(30 * time.Second)
+	// Block redirects to private/internal addresses on every feed fetch.
+	fetcher.Client.CheckRedirect = feed.RedirectGuard(func(rawURL string) error {
+		return urlcheck.Check(ctx, rawURL, cfg.AllowPrivateURLs)
+	})
 	p := poller.New(st, fetcher, sum, poller.Config{
-		Tick:           cfg.PollTick,
-		Concurrency:    cfg.PollConcurrency,
-		SummaryWorker:  !cfg.TestMode && !cfg.DisableSummaries,
-		EnrichOnIngest: !cfg.TestMode,
-		DisableImages:  cfg.DisableImages,
+		Tick:             cfg.PollTick,
+		Concurrency:      cfg.PollConcurrency,
+		SummaryWorker:    !cfg.TestMode && !cfg.DisableSummaries,
+		EnrichOnIngest:   !cfg.TestMode,
+		DisableImages:    cfg.DisableImages,
+		AllowPrivateURLs: cfg.AllowPrivateURLs,
 	}, logger.With("component", "poller"))
 
 	// Background poller. Skipped in test mode — articles are pre-seeded and
@@ -206,6 +215,7 @@ func run() error {
 	router := api.NewRouter(api.Dependencies{
 		Store: st, Auth: a, Poller: p, Metrics: p, OPML: op,
 		StaticH: staticH, TestMode: cfg.TestMode, Ollama: ollamaSum,
+		AllowPrivateURLs: cfg.AllowPrivateURLs,
 	})
 
 	srv := &http.Server{
