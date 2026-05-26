@@ -20,12 +20,20 @@ updates:
       web-deps:
         patterns: ["*"]
 
-  # Docs site (VitePress).
+  # Docs site (VitePress). vite + esbuild advisories target the dev server,
+  # which we never expose — the docs build produces static HTML deployed to
+  # GitHub Pages. Ignoring them keeps the PR queue useful without forcing
+  # a VitePress major-version upgrade.
   - package-ecosystem: npm
     directory: /docs
     schedule:
       interval: monthly
     open-pull-requests-limit: 3
+    ignore:
+      - dependency-name: vite
+        versions: ["5.x"]
+      - dependency-name: esbuild
+        versions: ["0.21.x"]
 
   # GitHub Actions versions.
   - package-ecosystem: github-actions

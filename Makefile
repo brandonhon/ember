@@ -101,6 +101,10 @@ docker: ## build the docker image
 docs-install: ## install docs site deps (one-time)
 	cd $(DOCS_DIR) && $(NPM) install
 
+.PHONY: docs-screenshots
+docs-screenshots: ## capture UI screenshots into docs/public/screenshots (requires running docker stack)
+	cd $(WEB_DIR) && node scripts/screenshots.mjs
+
 .PHONY: docs-dev
 docs-dev: ## VitePress dev server (hot reload)
 	cd $(DOCS_DIR) && $(NPM) run docs:dev
