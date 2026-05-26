@@ -16,6 +16,7 @@ import (
 	"github.com/brandonhon/ember/internal/models"
 	"github.com/brandonhon/ember/internal/store"
 	"github.com/brandonhon/ember/internal/summarize"
+	"github.com/brandonhon/ember/internal/urlcheck"
 )
 
 // Fetcher is the subset of *feed.Fetcher the poller depends on. Defined
@@ -39,6 +40,8 @@ type Config struct {
 	// DisableImages drops image_url at ingest so the article hero image is
 	// never stored. Set via EMBER_DISABLE_IMAGES at install.
 	DisableImages bool
+	// AllowPrivateURLs disables the SSRF block on outbound fetches.
+	AllowPrivateURLs bool
 }
 
 // Metrics is an in-memory snapshot for observability/tests.
@@ -442,6 +445,12 @@ func (p *Poller) enrichWithReadability(ctx context.Context, a *models.Article) {
 	// Short per-request timeout so a slow site doesn't stall the whole feed.
 	rctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
+	// SSRF check: the target may have come from a feed body (aggregator path)
+	// and could be any URL the publisher chose.
+	if err := urlcheck.Check(rctx, target, p.Config.AllowPrivateURLs); err != nil {
+		p.Logger.Debug("poller: readability target rejected by urlcheck", "url", target, "err", err)
+		return
+	}
 	client := &http.Client{Timeout: 15 * time.Second}
 	r, err := feed.ExtractFromURL(rctx, client, target)
 	if err != nil {

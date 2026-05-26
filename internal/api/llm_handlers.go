@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
@@ -17,7 +18,6 @@ func intToStr(i int) string       { return strconv.Itoa(i) }
 // model, recommended model for the host, and what's installed in Ollama.
 type llmStatus struct {
 	CurrentModel string                       `json:"current_model"`
-	BaseURL      string                       `json:"base_url"`
 	Enabled      bool                         `json:"enabled"`
 	System       sysinfo.SystemInfo           `json:"system"`
 	Recommended  sysinfo.Recommendation       `json:"recommended"`
@@ -38,7 +38,6 @@ func (d *Dependencies) handleGetLLM(w http.ResponseWriter, r *http.Request) {
 	}
 	resp.Enabled = true
 	resp.CurrentModel = d.Ollama.Model()
-	resp.BaseURL = d.Ollama.BaseURL
 	resp.Options = d.Ollama.Options()
 	// Tags can fail if Ollama is down — surface as a soft error rather than
 	// 500ing the whole status page.
@@ -46,7 +45,8 @@ func (d *Dependencies) handleGetLLM(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	installed, err := d.Ollama.ListInstalled(ctx)
 	if err != nil {
-		resp.InstalledErr = err.Error()
+		slog.Default().Warn("api: ollama list installed", "err", err)
+		resp.InstalledErr = "Ollama unreachable"
 	} else {
 		resp.Installed = installed
 	}
@@ -73,7 +73,7 @@ func (d *Dependencies) handleSetLLMModel(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	if err := d.Store.PutAppSetting(r.Context(), "ollama_model", req.Model); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal", err.Error())
+		internalError(w, "internal", err)
 		return
 	}
 	d.Ollama.SetModel(req.Model)
@@ -111,15 +111,15 @@ func (d *Dependencies) handleSetLLMOptions(w http.ResponseWriter, r *http.Reques
 		opts.NumCtx = 32768
 	}
 	if err := d.Store.PutAppSetting(r.Context(), "llm_temperature", floatToStr(opts.Temperature)); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal", err.Error())
+		internalError(w, "internal", err)
 		return
 	}
 	if err := d.Store.PutAppSetting(r.Context(), "llm_top_p", floatToStr(opts.TopP)); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal", err.Error())
+		internalError(w, "internal", err)
 		return
 	}
 	if err := d.Store.PutAppSetting(r.Context(), "llm_num_ctx", intToStr(opts.NumCtx)); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal", err.Error())
+		internalError(w, "internal", err)
 		return
 	}
 	d.Ollama.SetOptions(opts)
@@ -146,7 +146,8 @@ func (d *Dependencies) handleDeleteLLMModel(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	if err := d.Ollama.Delete(r.Context(), req.Model); err != nil {
-		writeError(w, http.StatusBadGateway, "delete_failed", err.Error())
+		slog.Default().Warn("api: ollama delete failed", "model", req.Model, "err", err)
+		writeError(w, http.StatusBadGateway, "delete_failed", "Ollama refused the delete (model may not exist)")
 		return
 	}
 	writeData(w, http.StatusOK, map[string]string{"model": req.Model}, nil)
@@ -182,7 +183,8 @@ func (d *Dependencies) handlePullLLMModel(w http.ResponseWriter, r *http.Request
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer cancel()
 	if err := d.Ollama.Pull(ctx, req.Model); err != nil {
-		writeError(w, http.StatusBadGateway, "pull_failed", err.Error())
+		slog.Default().Warn("api: ollama pull failed", "model", req.Model, "err", err)
+		writeError(w, http.StatusBadGateway, "pull_failed", "Ollama refused the pull (check model name and network)")
 		return
 	}
 	writeData(w, http.StatusOK, map[string]string{"model": req.Model}, nil)

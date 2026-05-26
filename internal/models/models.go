@@ -10,7 +10,11 @@ type User struct {
 	PasswordHash string `json:"-"`
 	IsAdmin      bool   `json:"is_admin"`
 	SettingsJSON string `json:"settings_json"`
-	CreatedAt    int64  `json:"created_at"`
+	// FeverToken is the random API key clients use for the Fever shim. Not
+	// exposed in admin user listings; only the owning user sees it via
+	// /api/me. Empty until backfilled on first /api/me hit.
+	FeverToken string `json:"-"`
+	CreatedAt  int64  `json:"created_at"`
 }
 
 // Session is a server-side row backing a session cookie.

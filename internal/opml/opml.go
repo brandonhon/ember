@@ -13,9 +13,15 @@ import (
 	"github.com/brandonhon/ember/internal/store"
 )
 
+// URLValidator is called for every feed URL during Import. Return non-nil
+// to reject the URL (the feed is skipped, import continues). Nil means
+// "no validator configured" → accept all URLs.
+type URLValidator func(ctx context.Context, raw string) error
+
 // Service exposes Import/Export, wired to a store and a discovery helper.
 type Service struct {
-	Store *store.Store
+	Store      *store.Store
+	ValidateURL URLValidator
 }
 
 // NewService constructs an OPML service.
@@ -60,6 +66,12 @@ func (s *Service) Import(ctx context.Context, userID int64, body io.Reader) (int
 	var addFeed func(ol outline, categoryID *int64) error
 	addFeed = func(ol outline, categoryID *int64) error {
 		if ol.XMLURL != "" {
+			// SSRF block: skip private/internal URLs entirely.
+			if s.ValidateURL != nil {
+				if err := s.ValidateURL(ctx, ol.XMLURL); err != nil {
+					return nil
+				}
+			}
 			title := ol.Title
 			if title == "" {
 				title = ol.Text

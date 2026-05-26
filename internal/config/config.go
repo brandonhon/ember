@@ -31,6 +31,9 @@ type Config struct {
 	// DisableImages drops image_url at ingest, so no main image gets stored or
 	// shown. Per-user UI prefs further hide images at display time.
 	DisableImages bool
+	// AllowPrivateURLs disables the SSRF block on outbound HTTP fetches so a
+	// homelab can subscribe to feeds on its LAN. Default false (production).
+	AllowPrivateURLs bool
 }
 
 // Defaults returns a Config populated with safe defaults. SessionKey and
@@ -148,6 +151,14 @@ func loadFrom(get func(string) string) (Config, error) {
 			errs = append(errs, fmt.Sprintf("EMBER_DISABLE_IMAGES %v", err))
 		} else {
 			cfg.DisableImages = on
+		}
+	}
+	if v := get("EMBER_ALLOW_PRIVATE_URLS"); v != "" {
+		on, err := parseBool(v)
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("EMBER_ALLOW_PRIVATE_URLS %v", err))
+		} else {
+			cfg.AllowPrivateURLs = on
 		}
 	}
 

@@ -29,6 +29,23 @@ type Fetcher struct {
 	UserAgent string
 }
 
+// RedirectGuard returns a CheckRedirect function that rejects redirects whose
+// next-URL fails the supplied validator. Use it to plug SSRF protection into
+// any *http.Client; the standard library follows up to 10 redirects by
+// default, and without this a feed publisher could send a 30x to a private
+// address.
+func RedirectGuard(validate func(rawURL string) error) func(*http.Request, []*http.Request) error {
+	return func(req *http.Request, via []*http.Request) error {
+		if len(via) >= 10 {
+			return errors.New("stopped after 10 redirects")
+		}
+		if validate == nil {
+			return nil
+		}
+		return validate(req.URL.String())
+	}
+}
+
 // NewFetcher returns a Fetcher with sensible defaults.
 func NewFetcher(timeout time.Duration) *Fetcher {
 	if timeout <= 0 {

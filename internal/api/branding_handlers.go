@@ -60,15 +60,15 @@ func (d *Dependencies) handleSetBranding(w http.ResponseWriter, r *http.Request)
 		return d.Store.PutAppSetting(r.Context(), key, strings.TrimSpace(*val))
 	}
 	if err := apply(keyBrandName, req.Name); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal", err.Error())
+		internalError(w, "internal", err)
 		return
 	}
 	if err := apply(keyBrandTitle, req.PageTitle); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal", err.Error())
+		internalError(w, "internal", err)
 		return
 	}
 	if err := apply(keyBrandFavicon, req.FaviconURL); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal", err.Error())
+		internalError(w, "internal", err)
 		return
 	}
 	writeData(w, http.StatusOK, d.currentBranding(r), nil)

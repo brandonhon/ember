@@ -65,13 +65,30 @@ func mapStoreError(w http.ResponseWriter, err error) bool {
 	return true
 }
 
+// maxJSONBody caps the size of any JSON request body. Articles/read bulk
+// arrays are the largest legitimate payload (1000 int64 ids ≈ 12 KiB),
+// 1 MiB leaves ample slack while shutting down body-bomb DoS attempts.
+const maxJSONBody = 1 << 20
+
+// internalError writes a generic 500 response and logs the actual error
+// server-side. Replaces direct `writeError(w, 500, "internal", err.Error())`
+// calls so SQLite error text, file paths, and constraint details don't leak
+// to clients.
+func internalError(w http.ResponseWriter, op string, err error) {
+	slog.Default().Error("api: "+op, "err", err)
+	writeError(w, http.StatusInternalServerError, "internal", "internal error")
+}
+
 // decodeJSON decodes the request body, writes a 400 on failure, and reports
-// whether decoding succeeded.
+// whether decoding succeeded. Caps the body at maxJSONBody bytes via
+// MaxBytesReader so a slow-loris or huge-body client can't tie up the
+// connection or exhaust memory.
 func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
 	if r.Body == nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "empty body")
 		return false
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxJSONBody)
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(dst); err != nil {

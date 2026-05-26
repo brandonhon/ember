@@ -1,14 +1,36 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/brandonhon/ember/internal/auth"
+	"github.com/brandonhon/ember/internal/store"
 )
+
+// requireArticleAccess returns (articleID, true) when the calling user is
+// subscribed to the article's feed. Otherwise writes 404 and returns false.
+// Used by every per-article endpoint to enforce ownership instead of letting
+// users enumerate article ids across the global articles table.
+func (d *Dependencies) requireArticleAccess(w http.ResponseWriter, r *http.Request, userID int64) (int64, bool) {
+	id, ok := paramInt(w, r, "id")
+	if !ok {
+		return 0, false
+	}
+	if _, err := d.Store.GetArticleForUser(r.Context(), userID, id); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "not_found", "article not found")
+			return 0, false
+		}
+		internalError(w, "tag/access", err)
+		return 0, false
+	}
+	return id, true
+}
 
 func (d *Dependencies) handleListArticleTags(w http.ResponseWriter, r *http.Request) {
 	u, _ := auth.FromContext(r.Context())
-	id, ok := paramInt(w, r, "id")
+	id, ok := d.requireArticleAccess(w, r, u.ID)
 	if !ok {
 		return
 	}
@@ -28,7 +50,7 @@ type tagReq struct {
 
 func (d *Dependencies) handleAddArticleTag(w http.ResponseWriter, r *http.Request) {
 	u, _ := auth.FromContext(r.Context())
-	id, ok := paramInt(w, r, "id")
+	id, ok := d.requireArticleAccess(w, r, u.ID)
 	if !ok {
 		return
 	}
@@ -41,7 +63,7 @@ func (d *Dependencies) handleAddArticleTag(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if err := d.Store.AddArticleTag(r.Context(), u.ID, id, req.Tag); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal", err.Error())
+		internalError(w, "internal", err)
 		return
 	}
 	tags, _ := d.Store.ListArticleTags(r.Context(), u.ID, id)
@@ -50,7 +72,7 @@ func (d *Dependencies) handleAddArticleTag(w http.ResponseWriter, r *http.Reques
 
 func (d *Dependencies) handleRemoveArticleTag(w http.ResponseWriter, r *http.Request) {
 	u, _ := auth.FromContext(r.Context())
-	id, ok := paramInt(w, r, "id")
+	id, ok := d.requireArticleAccess(w, r, u.ID)
 	if !ok {
 		return
 	}
@@ -60,7 +82,7 @@ func (d *Dependencies) handleRemoveArticleTag(w http.ResponseWriter, r *http.Req
 		return
 	}
 	if err := d.Store.RemoveArticleTag(r.Context(), u.ID, id, tag); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal", err.Error())
+		internalError(w, "internal", err)
 		return
 	}
 	tags, _ := d.Store.ListArticleTags(r.Context(), u.ID, id)

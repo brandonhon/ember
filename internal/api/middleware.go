@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"net"
 	"net/http"
 	"strings"
 	"sync"
@@ -18,6 +19,15 @@ func SecurityHeaders(next http.Handler) http.Handler {
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("X-Frame-Options", "DENY")
 		h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		// HSTS — Caddy normally sets this in front, but adding it here means a
+		// misconfigured proxy can't accidentally expose plain HTTP. 2 years +
+		// includeSubDomains is the standard hardened value.
+		h.Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
+		// Disable browser features we never use. Defense in depth against XSS
+		// chains that try to exfil via webcam, geolocation, etc.
+		h.Set("Permissions-Policy", "geolocation=(), microphone=(), camera=(), payment=(), usb=()")
+		h.Set("Cross-Origin-Opener-Policy", "same-origin")
+		h.Set("Cross-Origin-Resource-Policy", "same-origin")
 		// CSP — locked down to the same origin except for the Google Fonts
 		// stylesheets and webfonts. The mockup's typography is critical to
 		// the design language.
@@ -27,6 +37,9 @@ func SecurityHeaders(next http.Handler) http.Handler {
 				"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "+
 				"font-src 'self' data: https://fonts.gstatic.com; "+
 				"connect-src 'self'; "+
+				"object-src 'none'; "+
+				"base-uri 'self'; "+
+				"form-action 'self'; "+
 				"frame-ancestors 'none'")
 		next.ServeHTTP(w, r)
 	})
@@ -106,16 +119,46 @@ func (rl *RateLimiter) LimitMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+// trustedProxyNets are addresses we accept X-Real-IP from. RemoteAddr must
+// be inside one of these for the header to be honored. Without this check
+// any client that can reach ember on :8080 directly can forge X-Real-IP to
+// bypass the rate limiter (or DoS another IP's bucket).
+var trustedProxyNets = []*net.IPNet{
+	mustCIDR("127.0.0.0/8"),     // loopback
+	mustCIDR("::1/128"),         // loopback IPv6
+	mustCIDR("172.16.0.0/12"),   // Docker default bridge range
+	mustCIDR("10.0.0.0/8"),      // typical compose / k8s overlays
+	mustCIDR("192.168.0.0/16"),  // LAN
+}
+
+func mustCIDR(s string) *net.IPNet {
+	_, n, err := net.ParseCIDR(s)
+	if err != nil {
+		panic(err)
+	}
+	return n
+}
+
 func remoteIP(r *http.Request) string {
-	// Caddy sets X-Real-IP. Trust it only because we're behind Caddy on the
-	// internal compose network; in any other deployment, audit this.
-	if v := r.Header.Get("X-Real-IP"); v != "" {
-		return v
+	directHost := r.RemoteAddr
+	if i := strings.LastIndexByte(directHost, ':'); i > 0 {
+		directHost = directHost[:i]
 	}
-	if i := strings.IndexByte(r.RemoteAddr, ':'); i > 0 {
-		return r.RemoteAddr[:i]
+	directHost = strings.TrimPrefix(strings.TrimSuffix(directHost, "]"), "[")
+	directIP := net.ParseIP(directHost)
+	// Only honor X-Real-IP if the immediate peer is a trusted proxy (Caddy on
+	// the docker network, in our deployment). Otherwise any client could spoof.
+	if directIP != nil {
+		for _, n := range trustedProxyNets {
+			if n.Contains(directIP) {
+				if v := r.Header.Get("X-Real-IP"); v != "" {
+					return v
+				}
+				break
+			}
+		}
 	}
-	return r.RemoteAddr
+	return directHost
 }
 
 // CSRFCookieName is the cookie the API sets carrying the CSRF token.
@@ -164,8 +207,10 @@ func CSRFVerify(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		// Login is the bootstrap path — no cookie yet. Skip.
-		if strings.HasSuffix(r.URL.Path, "/api/auth/login") {
+		// Login is the bootstrap path — no cookie yet. Skip. Use exact match
+		// so a routing mishap that mounts /api under a sub-path can't expose
+		// other endpoints to the bypass.
+		if r.URL.Path == "/api/auth/login" {
 			next.ServeHTTP(w, r)
 			return
 		}
