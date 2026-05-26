@@ -41,7 +41,7 @@ func (s *Store) Backup(ctx context.Context, dir string) (BackupInfo, error) {
 	}
 	fi, err := os.Stat(out)
 	if err != nil {
-		return BackupInfo{}, err
+		return BackupInfo{}, fmt.Errorf("backup: stat %s: %w", out, err)
 	}
 	return BackupInfo{Path: out, SizeBytes: fi.Size(), CreatedAt: fi.ModTime().Unix()}, nil
 }

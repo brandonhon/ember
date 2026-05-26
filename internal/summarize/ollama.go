@@ -50,12 +50,11 @@ func NewOllama(baseURL, model string) *Ollama {
 	return o
 }
 
-// Model returns the currently active model name.
+// Model returns the currently active model name. NewOllama always stores
+// a string into o.model (possibly ""), so Load is never nil here.
 func (o *Ollama) Model() string {
-	if v := o.model.Load(); v != nil {
-		return v.(string)
-	}
-	return ""
+	v, _ := o.model.Load().(string)
+	return v
 }
 
 // SetModel atomically swaps the active model. Used by the admin API to switch
@@ -160,8 +159,14 @@ func (o *Ollama) Pull(ctx context.Context, name string) error {
 	if err != nil {
 		return err
 	}
-	// Long-running operation: don't use the short Summarize timeout.
-	client := &http.Client{Timeout: 30 * time.Minute}
+	// Long-running operation: reuse the configured transport (so custom
+	// proxies / TLS / mTLS still apply) but override the timeout. Default
+	// Summarize timeout is 90s; pulling a multi-GB model can take 30 min.
+	var transport http.RoundTripper
+	if o.HTTPClient != nil {
+		transport = o.HTTPClient.Transport
+	}
+	client := &http.Client{Transport: transport, Timeout: 30 * time.Minute}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, o.BaseURL+"/api/pull", bytes.NewReader(body))
 	if err != nil {
 		return err

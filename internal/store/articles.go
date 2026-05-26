@@ -140,7 +140,12 @@ func (s *Store) GetArticleForUser(ctx context.Context, userID, articleID int64) 
 // after a summarizer prompt change to force re-processing of existing rows.
 // Returns the affected article IDs so the caller can enqueue them.
 func (s *Store) ClearAllSummaries(ctx context.Context) ([]int64, error) {
-	rows, err := s.DB.QueryContext(ctx,
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	rows, err := tx.QueryContext(ctx,
 		`SELECT id FROM articles WHERE IFNULL(summary_model,'') <> ''`)
 	if err != nil {
 		return nil, err
@@ -159,13 +164,13 @@ func (s *Store) ClearAllSummaries(ctx context.Context) ([]int64, error) {
 		return nil, err
 	}
 	if len(ids) == 0 {
-		return nil, nil
+		return nil, tx.Commit()
 	}
-	if _, err := s.DB.ExecContext(ctx,
+	if _, err := tx.ExecContext(ctx,
 		`UPDATE articles SET summary_model = NULL, summary = '' WHERE IFNULL(summary_model,'') <> ''`); err != nil {
 		return nil, err
 	}
-	return ids, nil
+	return ids, tx.Commit()
 }
 
 // ListUnsummarizedIDs returns articles that have not yet been processed by

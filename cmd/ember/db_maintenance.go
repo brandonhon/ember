@@ -24,28 +24,22 @@ const (
 //
 // Last-run timestamps are kept in app_settings under db_backup_last and
 // db_cleanup_last so a restart doesn't trigger an immediate run.
-// runDBMaintenance is registered from main.go with the OPML service so the
-// scheduler can do per-user exports.
-var maintOPML *opml.Service
-
-func setMaintenanceOPML(svc *opml.Service) { maintOPML = svc }
-
-func runDBMaintenance(ctx context.Context, st *store.Store, lg *slog.Logger) {
+func runDBMaintenance(ctx context.Context, st *store.Store, op *opml.Service, lg *slog.Logger) {
 	t := time.NewTicker(1 * time.Hour)
 	defer t.Stop()
 	// First tick immediately so a restart catches up if something was missed.
-	tickMaintenance(ctx, st, lg)
+	tickMaintenance(ctx, st, op, lg)
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-t.C:
-			tickMaintenance(ctx, st, lg)
+			tickMaintenance(ctx, st, op, lg)
 		}
 	}
 }
 
-func tickMaintenance(ctx context.Context, st *store.Store, lg *slog.Logger) {
+func tickMaintenance(ctx context.Context, st *store.Store, op *opml.Service, lg *slog.Logger) {
 	now := time.Now()
 	// Backups
 	switch readSetting(ctx, st, "db_backup_schedule", "off") {
@@ -73,11 +67,11 @@ func tickMaintenance(ctx context.Context, st *store.Store, lg *slog.Logger) {
 	switch readSetting(ctx, st, "opml_schedule", "off") {
 	case "weekly":
 		if dueSince(ctx, st, "opml_last", 7*24*time.Hour, now) {
-			runOPMLExport(ctx, st, lg)
+			runOPMLExport(ctx, st, op, lg)
 		}
 	case "monthly":
 		if dueSince(ctx, st, "opml_last", 30*24*time.Hour, now) {
-			runOPMLExport(ctx, st, lg)
+			runOPMLExport(ctx, st, op, lg)
 		}
 	}
 }
@@ -86,8 +80,8 @@ func tickMaintenance(ctx context.Context, st *store.Store, lg *slog.Logger) {
 // first admin since OPML is per-user and a server-wide cron has no other
 // natural choice. Multi-tenant deployments can disable this and trigger
 // exports per-user via the manual endpoint instead.
-func runOPMLExport(ctx context.Context, st *store.Store, lg *slog.Logger) {
-	if maintOPML == nil {
+func runOPMLExport(ctx context.Context, st *store.Store, op *opml.Service, lg *slog.Logger) {
+	if op == nil {
 		lg.Warn("opml export scheduled but service not initialized")
 		return
 	}
@@ -108,7 +102,7 @@ func runOPMLExport(ctx context.Context, st *store.Store, lg *slog.Logger) {
 		return
 	}
 	defer f.Close()
-	if err := maintOPML.Export(ctx, adminID, f); err != nil {
+	if err := op.Export(ctx, adminID, f); err != nil {
 		lg.Warn("opml export: write failed", "err", err)
 		return
 	}
