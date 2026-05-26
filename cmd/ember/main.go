@@ -19,6 +19,7 @@ import (
 	"github.com/brandonhon/ember/internal/auth"
 	"github.com/brandonhon/ember/internal/config"
 	"github.com/brandonhon/ember/internal/db"
+	"github.com/brandonhon/ember/internal/digest"
 	"github.com/brandonhon/ember/internal/feed"
 	"github.com/brandonhon/ember/internal/opml"
 	"github.com/brandonhon/ember/internal/poller"
@@ -204,6 +205,18 @@ func run() error {
 		// and runs the backup / cleanup actions when their app_setting cadence
 		// says it's time. Failures log and continue.
 		go runDBMaintenance(ctx, st, op, logger.With("component", "db-maintenance"))
+		// Daily digest sender. Skipped when SMTP isn't configured.
+		sender := &digest.Sender{
+			Store: st,
+			SMTP: digest.SMTPConfig{
+				Host: cfg.SMTPHost, Port: cfg.SMTPPort,
+				Username: cfg.SMTPUser, Password: cfg.SMTPPassword,
+				From: cfg.SMTPFrom, StartTLS: cfg.SMTPStartTLS,
+			},
+		}
+		if sender.SMTP.Configured() {
+			go runDigestSender(ctx, st, sender, logger.With("component", "digest"))
+		}
 	}
 
 	// Embedded static SPA.

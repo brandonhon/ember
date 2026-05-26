@@ -14,7 +14,7 @@
     refreshBranding,
     scrollMarksRead,
   } from "../lib/stores";
-  import { api, ApiError, type StarterPack, type StarterImportResult, type LLMStatus, type DBStatus, type UserStats } from "../lib/api";
+  import { api, ApiError, type StarterPack, type StarterImportResult, type LLMStatus, type DBStatus, type UserStats, type UserDigest } from "../lib/api";
   import { onMount } from "svelte";
   import { refreshSidebar } from "../lib/stores";
   import FilterManager from "./FilterManager.svelte";
@@ -43,8 +43,39 @@
 
   let { onClose }: { onClose: () => void } = $props();
 
-  type Section = "profile" | "preferences" | "stats" | "mobile" | "filters" | "users" | "starter" | "llm" | "branding" | "database" | "about";
+  type Section = "profile" | "preferences" | "stats" | "digest" | "mobile" | "filters" | "users" | "starter" | "llm" | "branding" | "database" | "about";
   let section = $state<Section>("profile");
+
+  // Daily digest state -------------------------------------------------
+  let digest = $state<UserDigest | null>(null);
+  let digestErr = $state("");
+  let digestMsg = $state("");
+  let digestBusy = $state(false);
+  async function loadDigest() {
+    digestErr = "";
+    try {
+      const res = await api.getDigest();
+      digest = res.data;
+    } catch (e) {
+      digestErr = e instanceof ApiError ? e.message : String(e);
+    }
+  }
+  async function saveDigest() {
+    if (!digest) return;
+    digestBusy = true;
+    digestMsg = "";
+    digestErr = "";
+    try {
+      const res = await api.setDigest(digest);
+      digest = res.data;
+      digestMsg = "Saved";
+    } catch (e) {
+      digestErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      digestBusy = false;
+      setTimeout(() => (digestMsg = ""), 3000);
+    }
+  }
 
   // Reading stats state -----------------------------------------------
   let statsData = $state<UserStats | null>(null);
@@ -345,6 +376,7 @@
     if (section === "branding" && $user?.is_admin) loadBrandingDraft();
     if (section === "database" && $user?.is_admin) void loadDB();
     if (section === "stats") void loadStats();
+    if (section === "digest") void loadDigest();
   });
 
   onMount(() => {
@@ -434,6 +466,7 @@
         <button class:active={section === "mobile"} on:click={() => (section = "mobile")}>Mobile clients</button>
         <button class:active={section === "filters"} on:click={() => (section = "filters")}>Filters</button>
         <button class:active={section === "stats"} on:click={() => (section = "stats")} data-testid="settings-stats">Reading stats</button>
+        <button class:active={section === "digest"} on:click={() => (section = "digest")} data-testid="settings-digest">Daily digest</button>
         <button class:active={section === "starter"} on:click={() => (section = "starter")} data-testid="settings-starter">Starter packs</button>
         {#if $user?.is_admin}
           <button class:active={section === "llm"} on:click={() => (section = "llm")} data-testid="settings-llm">Language model</button>
@@ -647,6 +680,61 @@
                 </tbody>
               </table>
             {/if}
+          {/if}
+        {/if}
+
+        {#if section === "digest"}
+          <h3>Daily digest</h3>
+          <p class="hint">Get an email at a fixed time each day with the articles in your chosen view. Requires the server to have SMTP configured.</p>
+          {#if digestErr}<p class="error">{digestErr}</p>{/if}
+          {#if digestMsg}<p class="ok" data-testid="digest-msg">{digestMsg}</p>{/if}
+          {#if !digest}
+            <p class="muted">Loading…</p>
+          {:else}
+            <div class="pref-row">
+              <div>
+                <div class="pref-label">Enabled</div>
+                <div class="pref-hint">Sends one email per day. Skipped silently when no new articles match.</div>
+              </div>
+              <div class="seg">
+                <button class:on={digest.enabled} on:click={() => (digest!.enabled = true)} data-testid="digest-on">On</button>
+                <button class:on={!digest.enabled} on:click={() => (digest!.enabled = false)} data-testid="digest-off">Off</button>
+              </div>
+            </div>
+
+            <label>
+              <span>View</span>
+              <select bind:value={digest.view_value} on:change={() => (digest!.view_kind = "smart")} data-testid="digest-view">
+                <option value="fresh">Fresh (last 24h)</option>
+                <option value="today">Today</option>
+                <option value="unread">All unread</option>
+                <option value="starred">Starred</option>
+                <option value="later">Read later</option>
+              </select>
+              <span class="pref-hint">Saved searches, feeds and folders can be wired in later; smart views are the common case.</span>
+            </label>
+
+            <div class="rec-row">
+              <label class="inline-label">
+                <span>Hour (UTC)</span>
+                <input type="number" min="0" max="23" bind:value={digest.hour_utc} data-testid="digest-hour" />
+              </label>
+              <label class="inline-label">
+                <span>Minute (UTC)</span>
+                <input type="number" min="0" max="59" bind:value={digest.minute_utc} data-testid="digest-minute" />
+              </label>
+            </div>
+
+            <label>
+              <span>Email override</span>
+              <input type="email" bind:value={digest.email_override} placeholder="optional — defaults to your account email" data-testid="digest-email" />
+            </label>
+
+            <div class="actions">
+              <button on:click={saveDigest} disabled={digestBusy} data-testid="digest-save">
+                {digestBusy ? "Saving…" : "Save"}
+              </button>
+            </div>
           {/if}
         {/if}
 
