@@ -19,6 +19,7 @@
     branding,
   } from "./lib/stores";
   import { attach, type ShortcutAction } from "./lib/keyboard";
+  import { renderFaviconWithDot } from "./lib/favicon";
   import { get } from "svelte/store";
   import Login from "./components/Login.svelte";
   import Sidebar from "./components/Sidebar.svelte";
@@ -153,14 +154,23 @@
     }
   });
 
-  // Favicon dot: swap to icon-new.svg whenever we have unseen new articles.
-  // Falls back to the branding favicon when the counter is 0. Works across
-  // Chrome, Firefox, Edge, and Safari (all honor a runtime <link rel="icon">
-  // href swap).
+  // Favicon dot: render an overlay corner-dot ON TOP of the active favicon
+  // when there are unseen new articles (TT-RSS-style). Falls back to a plain
+  // href swap if the canvas overlay fails (cross-origin branded favicon, no
+  // canvas in the runtime, etc).
   $effect(() => {
-    const link = document.querySelector<HTMLLinkElement>('link[rel="icon"][type="image/svg+xml"]');
+    const link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
     if (!link) return;
-    link.href = $newArticleCount > 0 ? "/icon-new.svg" : ($branding.favicon_url || "/icon.svg");
+    const base = $branding.favicon_url || "/icon.svg";
+    const dot = $newArticleCount > 0;
+    void renderFaviconWithDot(base, dot).then((url) => {
+      // The overlay is rasterized PNG; the original tag may declare svg+xml.
+      // Drop the type so the browser doesn't reject the data URL.
+      if (url.startsWith("data:image/png")) {
+        link.removeAttribute("type");
+      }
+      link.href = url;
+    });
   });
 
   // Also reflect the count in the page title prefix so it shows in the tab
