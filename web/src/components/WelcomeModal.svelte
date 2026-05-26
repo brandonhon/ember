@@ -58,14 +58,19 @@
 <style>
   .backdrop {
     position: fixed;
-    inset: 0;
+    /* Start below the topbar — never cover it. New users land on this modal
+       on first login (zero feeds) and need the topbar (user chip, theme
+       toggle, refresh, sidebar collapse) to stay interactive without first
+       dismissing the welcome card. The backdrop still catches outside clicks
+       in the article/sidebar area for dismissal, and Esc / × button close it. */
+    top: var(--topbar-h);
+    left: 0;
+    right: 0;
+    bottom: 0;
     background: rgba(0, 0, 0, 0.45);
     display: flex;
     align-items: center;
     justify-content: center;
-    /* Stay below the user-chip popover (z-index 200 in TopBar) so the popover
-       remains clickable even when this modal is open. The backdrop itself
-       still catches outside clicks for dismissal. */
     z-index: 100;
   }
   .card {
