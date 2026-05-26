@@ -9,11 +9,11 @@ export default defineConfig({
   title: 'Ember',
   description: 'Self-hosted RSS reader with on-device AI summaries.',
   head: [
-    // Favicon: media-scoped pair so the browser picks the legible variant
-    // for whichever OS theme the visitor is in. Mirrors the app's
-    // web/index.html setup.
-    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/ember/icon.svg', media: '(prefers-color-scheme: light)' }],
-    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/ember/icon-dark.svg', media: '(prefers-color-scheme: dark)' }],
+    // Self-adaptive favicon: the SVG contains its own
+    // prefers-color-scheme <style> rules so a single <link> tag works in
+    // both OS modes. Firefox historically ignored media-scoped favicon
+    // <link>s; the in-SVG CSS sidesteps that entirely.
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/ember/icon.svg' }],
     ['meta', { name: 'theme-color', content: '#a93b16' }],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:title', content: 'Ember' }],

@@ -8,7 +8,11 @@
 //     reading UI still works offline for the last-seen state).
 //   - Auth endpoints and CSRF-sensitive POSTs are never cached.
 
-const VERSION = "ember-v1";
+// Bumped 2026-05-26 to flush stale shells that still served the old
+// inline "Welcome to Ember" onboarding card (replaced by WelcomeModal in
+// PR #32) and the old favicon defaults (PR #33). Old SHELL_CACHE entries
+// get deleted on activate.
+const VERSION = "ember-v2";
 const SHELL_CACHE = `${VERSION}-shell`;
 const ASSET_CACHE = `${VERSION}-assets`;
 const API_CACHE = `${VERSION}-api`;
