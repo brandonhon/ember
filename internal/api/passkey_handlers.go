@@ -3,14 +3,12 @@ package api
 import (
 	"encoding/json"
 	"errors"
-	"io"
 	"net/http"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
 
 	"github.com/brandonhon/ember/internal/auth"
-	"github.com/brandonhon/ember/internal/models"
 	"github.com/brandonhon/ember/internal/store"
 )
 
@@ -214,12 +212,3 @@ func (d *Dependencies) handlePasskeyLoginFinish(w http.ResponseWriter, r *http.R
 	writeData(w, http.StatusOK, u, nil)
 }
 
-// readBodyLimited is a small helper for hand-decoding raw bytes when we don't
-// want JSON-decoding the body ourselves.
-func readBodyLimited(r *http.Request, max int64) ([]byte, error) {
-	return io.ReadAll(io.LimitReader(r.Body, max))
-}
-
-// Compile-time assertion that models.Passkey stays available — used in tests.
-var _ = models.Passkey{}
-var _ = readBodyLimited

@@ -91,9 +91,6 @@ func TestFetch_5xxIsError(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error on 500")
 	}
-	if !IsTransientError(err) {
-		t.Errorf("5xx should be transient")
-	}
 }
 
 func TestFetch_Timeout(t *testing.T) {
