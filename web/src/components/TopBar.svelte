@@ -484,7 +484,10 @@
     position: absolute;
     top: calc(var(--topbar-h) - 4px);
     right: 18px;
-    z-index: 60;
+    /* Above ShortcutHelp / Settings / WelcomeModal backdrops (z-index 100)
+       so the user can always reach Settings from the chip menu, even if
+       another modal is somehow open. */
+    z-index: 200;
     width: 248px;
     background: var(--card);
     border: 1px solid var(--line);
