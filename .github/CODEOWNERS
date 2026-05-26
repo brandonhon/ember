@@ -1,0 +1,12 @@
+# Default owners for everything in the repo. Required reviewers for any PR
+# that touches paths listed below.
+*                                       @brandonhon
+
+# Anything that affects the security posture pulls the maintainer in
+# regardless.
+/SECURITY.md                            @brandonhon
+/internal/auth/                         @brandonhon
+/internal/api/middleware.go             @brandonhon
+/internal/urlcheck/                     @brandonhon
+/internal/db/migrations/                @brandonhon
+/.github/workflows/                     @brandonhon
