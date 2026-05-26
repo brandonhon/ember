@@ -202,6 +202,11 @@ func (s *Store) Cleanup(ctx context.Context, olderThan time.Duration) (CleanupSt
 	if _, err := s.DB.ExecContext(ctx, `VACUUM`); err != nil {
 		return CleanupStats{}, fmt.Errorf("cleanup vacuum: %w", err)
 	}
+	// Refresh query planner stats. PRAGMA optimize is the recommended periodic
+	// housekeeping per SQLite docs — startup-only ANALYZE drifts over time.
+	if _, err := s.DB.ExecContext(ctx, `PRAGMA optimize`); err != nil {
+		return CleanupStats{}, fmt.Errorf("cleanup pragma optimize: %w", err)
+	}
 	_ = s.DB.QueryRowContext(ctx, `PRAGMA page_count`).Scan(&pageCount)
 	after := pageCount * pageSize
 	return CleanupStats{ArticlesDeleted: int(n), BytesReclaimed: before - after}, nil
