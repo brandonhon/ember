@@ -745,6 +745,19 @@
     color: var(--ink);
   }
   .article-body :global(p) { margin: 0 0 18px; }
+  /* Anchors inherit the theme link color. Visited has a subtle dim so revisited
+     links don't fight for attention. */
+  .article-body :global(a) {
+    color: var(--link, var(--ember));
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+  }
+  .article-body :global(a:visited) {
+    color: color-mix(in srgb, var(--link, var(--ember)) 75%, var(--ink-faint) 25%);
+  }
+  .article-body :global(a:hover) {
+    text-decoration-thickness: 2px;
+  }
   .article-body :global(h2) {
     font-family: var(--font-display);
     font-size: 20px;

@@ -481,6 +481,60 @@ WHERE IFNULL(st.is_read,0) = 0`
 	return n, err
 }
 
+// SmartViewCounts drives the sidebar badges for Fresh / Starred / Read Later /
+// Shared. Each count uses the same semantics the corresponding list view
+// shows, so the badge never lies relative to clicking through:
+//   - Fresh: unread + summarized + published_at within the last 6 hours
+//     (matches isFresh() in ArticleList.svelte; if that horizon ever moves
+//     to a config value, update both at once).
+//   - Starred: total starred articles.
+//   - Later: total saved-for-later articles.
+//   - Shared: count of unseen shares received (matches inbox/mention semantics).
+type SmartViewCounts struct {
+	Fresh   int `json:"fresh"`
+	Starred int `json:"starred"`
+	Later   int `json:"later"`
+	Shared  int `json:"shared"`
+}
+
+// CountSmartViews returns all four counts in a single roundtrip. SQLite
+// single-conn pool: bundling the queries doesn't help latency much, but it
+// keeps the API surface small.
+func (s *Store) CountSmartViews(ctx context.Context, userID int64) (SmartViewCounts, error) {
+	var c SmartViewCounts
+	// Fresh: unread, summarized, recent. Matches the Fresh-view filter.
+	const freshWindowSeconds int64 = 6 * 3600
+	err := s.DB.QueryRowContext(ctx, `
+SELECT COUNT(*)
+FROM articles a
+JOIN subscriptions sub ON sub.feed_id = a.feed_id AND sub.user_id = ?
+LEFT JOIN article_state st ON st.article_id = a.id AND st.user_id = ?
+WHERE IFNULL(st.is_read,0) = 0
+  AND sub.muted = 0
+  AND a.summary_model IS NOT NULL AND a.summary_model <> ''
+  AND IFNULL(a.published_at,0) >= ?`,
+		userID, userID, s.nowUnix()-freshWindowSeconds).Scan(&c.Fresh)
+	if err != nil {
+		return c, fmt.Errorf("count fresh: %w", err)
+	}
+	if err := s.DB.QueryRowContext(ctx, `
+SELECT COUNT(*) FROM article_state WHERE user_id = ? AND is_starred = 1`,
+		userID).Scan(&c.Starred); err != nil {
+		return c, fmt.Errorf("count starred: %w", err)
+	}
+	if err := s.DB.QueryRowContext(ctx, `
+SELECT COUNT(*) FROM article_state WHERE user_id = ? AND is_later = 1`,
+		userID).Scan(&c.Later); err != nil {
+		return c, fmt.Errorf("count later: %w", err)
+	}
+	if err := s.DB.QueryRowContext(ctx, `
+SELECT COUNT(*) FROM shares WHERE to_user = ? AND seen = 0`,
+		userID).Scan(&c.Shared); err != nil {
+		return c, fmt.Errorf("count shared: %w", err)
+	}
+	return c, nil
+}
+
 func scanArticle(row scannable) (models.Article, error) {
 	var a models.Article
 	err := row.Scan(&a.ID, &a.FeedID, &a.GUID, &a.URL, &a.Title, &a.Author,

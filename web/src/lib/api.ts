@@ -221,6 +221,10 @@ export const api = {
   // Reading stats ---------------------------------------------------
   getStats: () => call<UserStats>("GET", "/api/me/stats"),
 
+  // Sidebar smart-view badge counts (Fresh / Starred / Later / Shared).
+  getSmartCounts: () =>
+    call<SmartCounts>("GET", "/api/me/smart-counts"),
+
   // Daily digest -----------------------------------------------------
   getDigest: () => call<UserDigest>("GET", "/api/me/digest"),
   setDigest: (d: Partial<UserDigest>) =>
@@ -347,6 +351,15 @@ export interface UserStats {
   later_total: number;
   subscriptions: number;
   top_feeds: TopFeed[] | null;
+}
+
+// Mirrors store.SmartViewCounts — populated by GET /api/me/smart-counts and
+// stored alongside the sidebar feeds list.
+export interface SmartCounts {
+  fresh: number;
+  starred: number;
+  later: number;
+  shared: number;
 }
 
 export interface UserDigest {

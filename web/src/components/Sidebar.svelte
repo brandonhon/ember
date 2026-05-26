@@ -5,6 +5,7 @@
     categories,
     feeds,
     totalUnread,
+    smartCounts,
     loadArticles,
     refreshSidebar,
     savedSearches,
@@ -557,6 +558,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9z" /></svg>
       </span>
       <span class="ni-label">Fresh</span>
+      {#if $smartCounts.fresh > 0}<span class="badge" data-testid="badge-fresh">{$smartCounts.fresh}</span>{/if}
     </button>
     <button class="nav-item" class:active={isActiveSmart("unread")} on:click={() => pickSmart("unread")}>
       <span class="ni-icon">
@@ -570,18 +572,21 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.9 21l1.2-6.8-5-4.9 6.9-1z" /></svg>
       </span>
       <span class="ni-label">Starred</span>
+      {#if $smartCounts.starred > 0}<span class="badge" data-testid="badge-starred">{$smartCounts.starred}</span>{/if}
     </button>
     <button class="nav-item" class:active={isActiveSmart("later")} on:click={() => pickSmart("later")}>
       <span class="ni-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>
       </span>
       <span class="ni-label">Read Later</span>
+      {#if $smartCounts.later > 0}<span class="badge" data-testid="badge-later">{$smartCounts.later}</span>{/if}
     </button>
     <button class="nav-item" class:active={isActiveSmart("shared")} on:click={() => pickSmart("shared")}>
       <span class="ni-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" /></svg>
       </span>
       <span class="ni-label">Shared with me</span>
+      {#if $smartCounts.shared > 0}<span class="badge" data-testid="badge-shared">{$smartCounts.shared}</span>{/if}
     </button>
   </div>
 

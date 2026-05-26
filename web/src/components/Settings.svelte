@@ -700,7 +700,7 @@
             <div class="pref-row custom-editor">
               <div>
                 <div class="pref-label">Custom palette</div>
-                <div class="pref-hint">Pick three colors — the rest of the palette is derived automatically.</div>
+                <div class="pref-hint">Pick four colors — the rest of the palette is derived automatically.</div>
               </div>
               <div class="color-pickers">
                 <label>
@@ -714,6 +714,10 @@
                 <label>
                   <span>Accent</span>
                   <input type="color" bind:value={$customPalette.ember} data-testid="custom-ember" />
+                </label>
+                <label>
+                  <span>Links</span>
+                  <input type="color" bind:value={$customPalette.link} data-testid="custom-link" />
                 </label>
               </div>
             </div>
@@ -1074,7 +1078,7 @@
           </label>
           <label>
             <span>Browser tab title</span>
-            <input type="text" bind:value={brandingDraft.page_title} placeholder="Ember Reader" data-testid="branding-title" />
+            <input type="text" bind:value={brandingDraft.page_title} placeholder="Ember" data-testid="branding-title" />
           </label>
           <label>
             <span>Favicon URL</span>
