@@ -1,9 +1,12 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/brandonhon/ember/internal/auth"
 )
 
 // keySessionTTL is the app_settings key that persists an admin-configured
@@ -11,13 +14,6 @@ import (
 // Empty (or unset) means "fall through to the env-var / DefaultSessionTTL
 // that auth.New picked at boot".
 const keySessionTTL = "session_ttl_seconds"
-
-// Allowed range: 5 minutes lower bound (no foot-guns), 90 days upper bound
-// (matches the original hardcoded 30d max-plus-room).
-const (
-	minSessionTTL = 5 * time.Minute
-	maxSessionTTL = 90 * 24 * time.Hour
-)
 
 type sessionTTLResponse struct {
 	TTLSeconds int64 `json:"ttl_seconds"`
@@ -30,11 +26,13 @@ type sessionTTLResponse struct {
 // handleGetSessionTTL returns the currently-active session TTL plus a hint
 // about where it came from. Admin-only.
 func (d *Dependencies) handleGetSessionTTL(w http.ResponseWriter, r *http.Request) {
-	ttl := d.Auth.SessionTTL
 	source := "default"
 	if v, _ := d.Store.GetAppSetting(r.Context(), keySessionTTL); v != "" {
 		source = "admin"
 	}
+	// Read through Auth's lock — direct field access would race the admin
+	// handler below if two admins were configuring simultaneously.
+	ttl := d.Auth.EffectiveSessionTTL()
 	writeData(w, http.StatusOK, sessionTTLResponse{
 		TTLSeconds: int64(ttl.Seconds()),
 		Source:     source,
@@ -50,17 +48,20 @@ type setSessionTTLReq struct {
 // Existing DB sessions keep their stored expires_at — only new logins (and
 // re-logins after the existing cookie expires) get the new TTL.
 //
-// Admin-only. Range-validated.
+// Admin-only. Range-validated via auth.SetSessionTTL which is the single
+// source of truth for the bounds (auth.MinSessionTTL, auth.MaxSessionTTL).
 func (d *Dependencies) handleSetSessionTTL(w http.ResponseWriter, r *http.Request) {
 	var req setSessionTTLReq
 	if !decodeJSON(w, r, &req) {
 		return
 	}
 	d2 := time.Duration(req.TTLSeconds) * time.Second
-	if d2 < minSessionTTL || d2 > maxSessionTTL {
+	// Pre-check + early 400 with a clear message (auth.SetSessionTTL returns
+	// the same error but we want to surface the bounds in the response body).
+	if d2 < auth.MinSessionTTL || d2 > auth.MaxSessionTTL {
 		writeError(w, http.StatusBadRequest, "bad_request",
-			"ttl_seconds must be between "+strconv.FormatInt(int64(minSessionTTL.Seconds()), 10)+
-				" and "+strconv.FormatInt(int64(maxSessionTTL.Seconds()), 10))
+			"ttl_seconds must be between "+strconv.FormatInt(int64(auth.MinSessionTTL.Seconds()), 10)+
+				" and "+strconv.FormatInt(int64(auth.MaxSessionTTL.Seconds()), 10))
 		return
 	}
 	if err := d.Store.PutAppSetting(r.Context(), keySessionTTL,
@@ -68,7 +69,17 @@ func (d *Dependencies) handleSetSessionTTL(w http.ResponseWriter, r *http.Reques
 		internalError(w, "session/ttl-store", err)
 		return
 	}
-	d.Auth.SetSessionTTL(d2)
+	if err := d.Auth.SetSessionTTL(d2); err != nil {
+		// Should be unreachable given the pre-check above, but if the bounds
+		// ever drift between api and auth packages, the auth check is the
+		// final gate.
+		if errors.Is(err, auth.ErrSessionTTLOutOfRange) {
+			writeError(w, http.StatusBadRequest, "bad_request", err.Error())
+			return
+		}
+		internalError(w, "session/ttl-apply", err)
+		return
+	}
 	writeData(w, http.StatusOK, sessionTTLResponse{
 		TTLSeconds: int64(d2.Seconds()),
 		Source:     "admin",

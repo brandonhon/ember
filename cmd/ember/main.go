@@ -123,14 +123,30 @@ func run() error {
 		a.SecureCookies = false
 	}
 	// Apply operator-configured session lifetime if EMBER_SESSION_TTL was set.
-	// Zero falls through to auth.DefaultSessionTTL (24h).
-	a.SetSessionTTL(cfg.SessionTTL)
+	// Zero (cfg.SessionTTL not parsed) and out-of-range values fall through
+	// to auth.DefaultSessionTTL — SetSessionTTL returns an error rather than
+	// silently accepting bad values.
+	if cfg.SessionTTL > 0 {
+		if err := a.SetSessionTTL(cfg.SessionTTL); err != nil {
+			logger.Warn("EMBER_SESSION_TTL rejected, using default",
+				"requested", cfg.SessionTTL, "err", err,
+				"min", auth.MinSessionTTL, "max", auth.MaxSessionTTL)
+		}
+	}
 	// Admin-set session TTL persisted in app_settings overrides the env var
-	// so changes via Settings → Sessions survive a restart.
+	// so changes via Settings → Sessions survive a restart. Same validation
+	// as the HTTP handler — a hand-edited DB row with a 1-second TTL would
+	// be rejected here instead of silently breaking session issuance.
 	if v, _ := st.GetAppSetting(ctx, "session_ttl_seconds"); v != "" {
 		if n, err := strconv.ParseInt(v, 10, 64); err == nil && n > 0 {
-			a.SetSessionTTL(time.Duration(n) * time.Second)
-			logger.Info("loaded session_ttl_seconds from app_settings", "seconds", n)
+			if e := a.SetSessionTTL(time.Duration(n) * time.Second); e != nil {
+				logger.Warn("session_ttl_seconds app_setting rejected",
+					"seconds", n, "err", e,
+					"min_seconds", int64(auth.MinSessionTTL.Seconds()),
+					"max_seconds", int64(auth.MaxSessionTTL.Seconds()))
+			} else {
+				logger.Info("loaded session_ttl_seconds from app_settings", "seconds", n)
+			}
 		}
 	}
 

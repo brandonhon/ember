@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gorilla/securecookie"
@@ -59,6 +60,21 @@ var ErrInvalidCredentials = errors.New("auth: invalid credentials")
 var ErrSession = errors.New("auth: invalid session")
 
 // Auth wires together store + cookie signing + argon2 params.
+// MinSessionTTL and MaxSessionTTL bound the values accepted by
+// SetSessionTTL — both the admin-UI handler and the boot-time
+// app_settings loader go through the same validation. 5 minutes prevents
+// foot-guns from typos; 90 days keeps the upper bound within the original
+// hardcoded ceiling.
+const (
+	MinSessionTTL = 5 * time.Minute
+	MaxSessionTTL = 90 * 24 * time.Hour
+)
+
+// ErrSessionTTLOutOfRange is returned by SetSessionTTL when the requested
+// duration falls outside [MinSessionTTL, MaxSessionTTL]. Callers can
+// surface this as a 400 to the admin UI or log + skip at boot.
+var ErrSessionTTLOutOfRange = errors.New("auth: session TTL out of range")
+
 type Auth struct {
 	Store  *store.Store
 	Cookie *securecookie.SecureCookie
@@ -67,25 +83,47 @@ type Auth struct {
 	// SecureCookies sets the Secure flag on issued cookies. Defaults to true.
 	// Set to false in test mode where the server runs over plain HTTP.
 	SecureCookies bool
+	// mu guards SessionTTL. CreateSession reads it on every login while
+	// the admin handler can write it via SetSessionTTL — without this lock
+	// the access pattern is a formal data race under Go's memory model
+	// (the race detector catches it during -race tests).
+	mu sync.RWMutex
 	// SessionTTL is how long a freshly-issued session remains valid. Defaults
 	// to DefaultSessionTTL; main.go can override from EMBER_SESSION_TTL.
+	// Access through the lock (see EffectiveSessionTTL).
 	SessionTTL time.Duration
 	// sc keeps a reference so SessionTTL changes after New() take effect on
 	// the securecookie MaxAge guard.
 	sc *securecookie.SecureCookie
 }
 
+// EffectiveSessionTTL reads SessionTTL under the read lock. All callers
+// outside Auth itself MUST use this rather than touching the SessionTTL
+// field directly — direct reads race SetSessionTTL writes.
+func (a *Auth) EffectiveSessionTTL() time.Duration {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.SessionTTL
+}
+
 // SetSessionTTL adjusts the active session lifetime. Affects newly-issued
 // cookies; existing sessions in the DB keep their original expires_at until
 // they expire on their own or are swept.
-func (a *Auth) SetSessionTTL(d time.Duration) {
-	if d <= 0 {
-		return
+//
+// Returns ErrSessionTTLOutOfRange if d falls outside
+// [MinSessionTTL, MaxSessionTTL]; the existing TTL is left untouched in
+// that case.
+func (a *Auth) SetSessionTTL(d time.Duration) error {
+	if d < MinSessionTTL || d > MaxSessionTTL {
+		return ErrSessionTTLOutOfRange
 	}
+	a.mu.Lock()
 	a.SessionTTL = d
+	a.mu.Unlock()
 	if a.sc != nil {
 		a.sc.MaxAge(int(d.Seconds()))
 	}
+	return nil
 }
 
 // New constructs an Auth instance. sessionKey must be at least 32 bytes. The
@@ -173,11 +211,16 @@ func (a *Auth) CreateSession(ctx context.Context, w http.ResponseWriter, r *http
 	}
 	sessionID := hex.EncodeToString(idBytes)
 	now := a.Now()
+	// Snapshot the TTL under the read lock once, then reuse the value
+	// across the three places it's needed (DB row, cookie Expires, cookie
+	// MaxAge). Avoids triple-locking and keeps the row + cookie consistent
+	// even if SetSessionTTL fires mid-call.
+	ttl := a.EffectiveSessionTTL()
 	sess := models.Session{
 		ID:        sessionID,
 		UserID:    userID,
 		CreatedAt: now.Unix(),
-		ExpiresAt: now.Add(a.SessionTTL).Unix(),
+		ExpiresAt: now.Add(ttl).Unix(),
 		UserAgent: r.UserAgent(),
 	}
 	if _, err := a.Store.DB.ExecContext(ctx, `
@@ -197,8 +240,8 @@ func (a *Auth) CreateSession(ctx context.Context, w http.ResponseWriter, r *http
 		HttpOnly: true,
 		Secure:   a.SecureCookies,
 		SameSite: http.SameSiteStrictMode,
-		Expires:  now.Add(a.SessionTTL),
-		MaxAge:   int(a.SessionTTL.Seconds()),
+		Expires:  now.Add(ttl),
+		MaxAge:   int(ttl.Seconds()),
 	})
 	return sess, nil
 }
