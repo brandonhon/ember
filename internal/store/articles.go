@@ -495,9 +495,16 @@ type SmartViewCounts struct {
 	Starred int `json:"starred"`
 	Later   int `json:"later"`
 	Shared  int `json:"shared"`
+	// PendingSummary: articles in the user's subscribed feeds that the
+	// summarizer hasn't touched yet (summary_model NULL or empty). Drains
+	// as the poller's summary worker processes them. Drives the
+	// "Summarizing N articles" indicator at the bottom of the sidebar.
+	// Articles stamped 'disabled' or 'skipped' do NOT count — they've been
+	// finalized one way or another.
+	PendingSummary int `json:"pending_summary"`
 }
 
-// CountSmartViews returns all four counts in a single roundtrip. SQLite
+// CountSmartViews returns all five counts in a single roundtrip. SQLite
 // single-conn pool: bundling the queries doesn't help latency much, but it
 // keeps the API surface small.
 func (s *Store) CountSmartViews(ctx context.Context, userID int64) (SmartViewCounts, error) {
@@ -531,6 +538,18 @@ SELECT COUNT(*) FROM article_state WHERE user_id = ? AND is_later = 1`,
 SELECT COUNT(*) FROM shares WHERE to_user = ? AND seen = 0`,
 		userID).Scan(&c.Shared); err != nil {
 		return c, fmt.Errorf("count shared: %w", err)
+	}
+	// PendingSummary: scoped to the user's (non-muted) feeds. Muted feeds
+	// are excluded because the user has signalled they don't care; their
+	// pending count would just inflate the indicator with no signal.
+	if err := s.DB.QueryRowContext(ctx, `
+SELECT COUNT(*)
+FROM articles a
+JOIN subscriptions sub ON sub.feed_id = a.feed_id AND sub.user_id = ?
+WHERE sub.muted = 0
+  AND (a.summary_model IS NULL OR a.summary_model = '')`,
+		userID).Scan(&c.PendingSummary); err != nil {
+		return c, fmt.Errorf("count pending summary: %w", err)
 	}
 	return c, nil
 }

@@ -409,11 +409,20 @@ func TestCountSmartViews(t *testing.T) {
 	sh5, _ := s.CreateShare(ctx, models.Share{ArticleID: a5.ID, FromUser: bob.ID, ToUser: aliceID})
 	_ = s.MarkShareSeen(ctx, aliceID, sh5.ID)
 
+	// Add one article that's been finalized by the summarizer with 'skipped'
+	// (LLM failed but article is still visible). It must NOT count toward
+	// PendingSummary even though summary_model isn't a real model name.
+	// Placed outside the fresh window so it doesn't shift the Fresh count.
+	a6, _, _ := s.UpsertArticle(ctx, mk("a6", -12*time.Hour, "skipped"))
+	_ = a6
+
 	got, err := s.CountSmartViews(ctx, aliceID)
 	if err != nil {
 		t.Fatalf("CountSmartViews: %v", err)
 	}
-	want := SmartViewCounts{Fresh: 1, Starred: 1, Later: 1, Shared: 1}
+	// PendingSummary = 1: only a3 has summary_model="". a1, a2, a6 are
+	// finalized; a4/a5 belong to bob, not alice.
+	want := SmartViewCounts{Fresh: 1, Starred: 1, Later: 1, Shared: 1, PendingSummary: 1}
 	if got != want {
 		t.Errorf("got %+v, want %+v", got, want)
 	}
