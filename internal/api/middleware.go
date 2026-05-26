@@ -3,7 +3,6 @@ package api
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"net"
 	"net/http"
 	"strings"
@@ -167,9 +166,6 @@ const CSRFCookieName = "ember_csrf"
 // CSRFHeaderName is the header the SPA echoes the cookie value on. Double-
 // submit pattern — both must match.
 const CSRFHeaderName = "X-Ember-CSRF"
-
-// ErrCSRF is returned when the double-submit token check fails.
-var ErrCSRF = errors.New("api: csrf token mismatch")
 
 // CSRFIssue returns a chi middleware that lazily sets the CSRF cookie on
 // every response that doesn't already carry one. `secure` controls the Secure

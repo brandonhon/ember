@@ -113,15 +113,3 @@ func (f *Fetcher) userAgent() string {
 	return DefaultUserAgent
 }
 
-// IsTransientError returns true for errors a caller should back off on rather
-// than disable a feed (network blips, timeouts, 5xx).
-func IsTransientError(err error) bool {
-	if err == nil {
-		return false
-	}
-	var ne interface{ Timeout() bool }
-	if errors.As(err, &ne) && ne.Timeout() {
-		return true
-	}
-	return true // we treat all fetch errors as transient by default
-}
