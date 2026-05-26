@@ -118,6 +118,20 @@ type SavedSearch struct {
 	CreatedAt int64  `json:"created_at"`
 }
 
+// UserDigest is the per-user daily-digest configuration. ViewKind is one of
+// smart|feed|category|board and ViewValue is the smart-view name or numeric
+// id, matching the ActiveView union the SPA uses.
+type UserDigest struct {
+	UserID        int64  `json:"user_id"`
+	Enabled       bool   `json:"enabled"`
+	ViewKind      string `json:"view_kind"`
+	ViewValue     string `json:"view_value"`
+	HourUTC       int    `json:"hour_utc"`
+	MinuteUTC     int    `json:"minute_utc"`
+	LastSentAt    int64  `json:"last_sent_at"`
+	EmailOverride string `json:"email_override"`
+}
+
 // Filter is a user rule applied to incoming articles.
 type Filter struct {
 	ID        int64  `json:"id"`

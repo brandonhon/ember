@@ -34,6 +34,14 @@ type Config struct {
 	// AllowPrivateURLs disables the SSRF block on outbound HTTP fetches so a
 	// homelab can subscribe to feeds on its LAN. Default false (production).
 	AllowPrivateURLs bool
+	// SMTP for daily digest emails. Configured = host + port + from. Username
+	// + password are optional (skipped when empty).
+	SMTPHost     string
+	SMTPPort     int
+	SMTPUser     string
+	SMTPPassword string
+	SMTPFrom     string
+	SMTPStartTLS bool
 }
 
 // Defaults returns a Config populated with safe defaults. SessionKey and
@@ -50,6 +58,8 @@ func Defaults() Config {
 		PollConcurrency: 8,
 		PollTick:        60 * time.Second,
 		LogLevel:        slog.LevelInfo,
+		SMTPPort:        587,
+		SMTPStartTLS:    true,
 	}
 }
 
@@ -159,6 +169,34 @@ func loadFrom(get func(string) string) (Config, error) {
 			errs = append(errs, fmt.Sprintf("EMBER_ALLOW_PRIVATE_URLS %v", err))
 		} else {
 			cfg.AllowPrivateURLs = on
+		}
+	}
+	if v := get("EMBER_SMTP_HOST"); v != "" {
+		cfg.SMTPHost = v
+	}
+	if v := get("EMBER_SMTP_PORT"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil || n < 1 || n > 65535 {
+			errs = append(errs, "EMBER_SMTP_PORT invalid")
+		} else {
+			cfg.SMTPPort = n
+		}
+	}
+	if v := get("EMBER_SMTP_USER"); v != "" {
+		cfg.SMTPUser = v
+	}
+	if v := get("EMBER_SMTP_PASSWORD"); v != "" {
+		cfg.SMTPPassword = v
+	}
+	if v := get("EMBER_SMTP_FROM"); v != "" {
+		cfg.SMTPFrom = v
+	}
+	if v := get("EMBER_SMTP_STARTTLS"); v != "" {
+		on, err := parseBool(v)
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("EMBER_SMTP_STARTTLS %v", err))
+		} else {
+			cfg.SMTPStartTLS = on
 		}
 	}
 
