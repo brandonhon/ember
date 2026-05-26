@@ -221,6 +221,11 @@ export const api = {
   // Reading stats ---------------------------------------------------
   getStats: () => call<UserStats>("GET", "/api/me/stats"),
 
+  // Daily digest -----------------------------------------------------
+  getDigest: () => call<UserDigest>("GET", "/api/me/digest"),
+  setDigest: (d: Partial<UserDigest>) =>
+    call<UserDigest>("POST", "/api/me/digest", d),
+
   // Starter packs ----------------------------------------------------
   listStarterPacks: () =>
     call<StarterPack[]>("GET", "/api/starter-packs"),
@@ -288,6 +293,17 @@ export interface UserStats {
   later_total: number;
   subscriptions: number;
   top_feeds: TopFeed[] | null;
+}
+
+export interface UserDigest {
+  user_id: number;
+  enabled: boolean;
+  view_kind: "smart" | "feed" | "category" | "board";
+  view_value: string;
+  hour_utc: number;
+  minute_utc: number;
+  last_sent_at: number;
+  email_override: string;
 }
 
 export interface BrandingDTO {
