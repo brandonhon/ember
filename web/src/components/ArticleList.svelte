@@ -14,6 +14,7 @@
     toggleStar,
     toggleLater,
     newArticleCount,
+    scrollMarksRead,
   } from "../lib/stores";
   import { api } from "../lib/api";
   import { get } from "svelte/store";
@@ -52,7 +53,7 @@
           if (!idAttr) continue;
           if (entry.isIntersecting) {
             sawVisible.add(idAttr);
-          } else if (sawVisible.has(idAttr) && !isRead) {
+          } else if (sawVisible.has(idAttr) && !isRead && get(scrollMarksRead)) {
             pendingRead.add(Number(idAttr));
             scheduleFlush();
           }

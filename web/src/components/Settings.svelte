@@ -12,6 +12,7 @@
     customPalette,
     branding,
     refreshBranding,
+    scrollMarksRead,
   } from "../lib/stores";
   import { api, ApiError, type StarterPack, type StarterImportResult, type LLMStatus, type DBStatus, type UserStats } from "../lib/api";
   import { onMount } from "svelte";
@@ -538,6 +539,16 @@
             <div class="seg">
               <button class:on={$density === "card"} on:click={() => density.set("card")}>Cards</button>
               <button class:on={$density === "compact"} on:click={() => density.set("compact")}>Compact</button>
+            </div>
+          </div>
+          <div class="pref-row">
+            <div>
+              <div class="pref-label">Scroll-to-mark-read</div>
+              <div class="pref-hint">Articles you scroll past in the list get marked read automatically.</div>
+            </div>
+            <div class="seg">
+              <button class:on={$scrollMarksRead} on:click={() => scrollMarksRead.set(true)} data-testid="pref-scroll-on">On</button>
+              <button class:on={!$scrollMarksRead} on:click={() => scrollMarksRead.set(false)} data-testid="pref-scroll-off">Off</button>
             </div>
           </div>
           <div class="pref-row">
