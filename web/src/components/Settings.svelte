@@ -1421,7 +1421,7 @@
     font-size: 12px;
   }
   label > span { color: var(--ink-faint); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; font-size: 10.5px; }
-  input[type="text"], input[type="password"], input[type="email"] {
+  input[type="text"], input[type="password"], input[type="email"], input[type="number"] {
     padding: 8px 11px;
     border: 1px solid var(--line);
     border-radius: 8px;
@@ -1432,6 +1432,28 @@
   }
   input:focus { outline: none; border-color: var(--ember); box-shadow: 0 0 0 3px var(--ember-wash); }
   input[disabled], input[readonly] { color: var(--ink-soft); background: var(--paper-2); }
+  /* Themed <select>. Native browser chrome would render OS-default greys
+     (gray on macOS/Linux, white on Windows) regardless of theme; styling
+     it requires appearance: none + a custom chevron. The chevron SVG uses
+     a neutral muted stroke that reads OK on both light + dark backgrounds
+     without needing per-theme overrides. */
+  select {
+    padding: 8px 32px 8px 11px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-family: var(--font-ui);
+    font-size: 13px;
+    background-color: var(--paper);
+    color: var(--ink);
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'><path fill='none' stroke='%23999' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' d='M2.5 4l2.5 2.5 2.5-2.5'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    cursor: pointer;
+  }
+  select:focus { outline: none; border-color: var(--ember); box-shadow: 0 0 0 3px var(--ember-wash); }
+  select option { background: var(--paper); color: var(--ink); }
   .row { display: flex; gap: 12px; }
   .row > label { flex: 1; }
   .pref-row {
@@ -1453,6 +1475,12 @@
     background: var(--card);
   }
   .seg button {
+    /* Equal width across all buttons in a group so the segmented control
+       looks balanced regardless of label length (Off / Daily / Weekly /
+       Monthly vary by 2-3 characters). flex: 1 distributes available space;
+       min-width keeps single-char labels from collapsing. */
+    flex: 1 1 0;
+    min-width: 64px;
     padding: 5px 12px;
     font-size: 12px;
     font-weight: 600;
@@ -1460,6 +1488,7 @@
     background: transparent;
     border: none;
     cursor: pointer;
+    text-align: center;
   }
   .seg button.on { background: var(--ink); color: var(--paper); }
 
