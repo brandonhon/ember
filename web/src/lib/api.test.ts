@@ -7,7 +7,6 @@ const fetchMock = vi.fn();
 
 beforeEach(() => {
   fetchMock.mockReset();
-  // @ts-expect-error overriding global fetch
   global.fetch = fetchMock;
 });
 

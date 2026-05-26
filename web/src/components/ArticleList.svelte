@@ -20,7 +20,7 @@
   import { get } from "svelte/store";
   import type { ArticleView, FeedWithCounts } from "../lib/types";
 
-  let containerEl: HTMLDivElement | undefined = $state();
+  let containerEl: HTMLElement | undefined = $state();
   let freshOnly = $state(false);
   let unreadOnly = $state(false);
   const pendingRead = new Set<number>();

@@ -54,13 +54,7 @@ jobs:
 
       - name: typecheck
         working-directory: web
-        # svelte-check returns non-zero on errors. We tolerate the pre-existing
-        # ArticleList HTMLElement warning by piping through grep that strips
-        # only that single line; any other error still fails.
-        run: |
-          set -o pipefail
-          npm run check 2>&1 | tee check.out
-          ! grep -q "ERROR" check.out || (grep "ERROR" check.out | grep -v "Property 'align' is missing")
+        run: npm run check
 
       - name: build
         working-directory: web
