@@ -37,7 +37,7 @@ func (s *Store) CreateUser(ctx context.Context, u models.User) (models.User, err
 // FirstAdminID returns the lowest-id admin user, or 0 if none exist. Used by
 // scheduled jobs that need a user-scoped operation but aren't tied to a
 // request.
-func (s *Store) FirstAdminID(ctx context.Context, _ ...any) (int64, error) {
+func (s *Store) FirstAdminID(ctx context.Context) (int64, error) {
 	var id int64
 	err := s.DB.QueryRowContext(ctx,
 		`SELECT id FROM users WHERE is_admin = 1 ORDER BY id LIMIT 1`).Scan(&id)

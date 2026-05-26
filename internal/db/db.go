@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
+	"log/slog"
 	"path/filepath"
 	"testing"
 	"time"
@@ -75,8 +76,7 @@ func Open(ctx context.Context, path string) (*sql.DB, error) {
 	// Refresh query planner stats so range/keyset scans hit good plans even
 	// on a long-running DB that's drifted from its initial ANALYZE.
 	if _, err := dbh.ExecContext(ctx, "PRAGMA optimize;"); err != nil {
-		// Non-fatal — log via caller's logger isn't available here.
-		_ = err
+		slog.Default().Warn("db: PRAGMA optimize failed", "err", err)
 	}
 	return dbh, nil
 }

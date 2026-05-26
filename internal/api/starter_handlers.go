@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/brandonhon/ember/internal/auth"
 	"github.com/brandonhon/ember/internal/models"
@@ -164,12 +165,15 @@ func (d *Dependencies) handleImportStarterPack(w http.ResponseWriter, r *http.Re
 		}
 		result.FeedsAdded++
 		// Best-effort initial refresh — don't block the response on the
-		// network. Detaches from the request context so the fetch survives
-		// the handler return.
+		// network. Detaches from the request context (so the fetch survives
+		// the handler return) but uses a bounded timeout so a hanging fetch
+		// doesn't leak the goroutine for the rest of the process lifetime.
 		if d.Poller != nil {
 			feedID := f.ID
 			go func() {
-				_ = d.Poller.RefreshFeed(context.Background(), feedID)
+				rctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+				defer cancel()
+				_ = d.Poller.RefreshFeed(rctx, feedID)
 			}()
 		}
 	}

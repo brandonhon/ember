@@ -138,7 +138,6 @@ func run() error {
 	}
 
 	op := opml.NewService(st)
-	setMaintenanceOPML(op)
 
 	// Summarizer: noop in test mode, nil if disabled at install, otherwise
 	// Ollama. The active model is the persisted app setting if present, else
@@ -195,7 +194,7 @@ func run() error {
 		// Scheduled DB maintenance: a single goroutine that ticks every hour
 		// and runs the backup / cleanup actions when their app_setting cadence
 		// says it's time. Failures log and continue.
-		go runDBMaintenance(ctx, st, logger.With("component", "db-maintenance"))
+		go runDBMaintenance(ctx, st, op, logger.With("component", "db-maintenance"))
 	}
 
 	// Embedded static SPA.

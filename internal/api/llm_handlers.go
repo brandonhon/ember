@@ -153,8 +153,9 @@ func (d *Dependencies) handleDeleteLLMModel(w http.ResponseWriter, r *http.Reque
 }
 
 // handlePullLLMModel proxies an `ollama pull` for the named model. Blocks
-// until done — model downloads run to minutes, so the client should expect
-// a long-poll. Admin-only.
+// until done — model downloads can run to minutes. The server's default
+// WriteTimeout (90s) is too short for large models, so we bump the write
+// deadline via ResponseController for this handler. Admin-only.
 func (d *Dependencies) handlePullLLMModel(w http.ResponseWriter, r *http.Request) {
 	if d.Ollama == nil {
 		writeError(w, http.StatusServiceUnavailable, "no_summarizer", "summaries are disabled on this server")
@@ -168,6 +169,14 @@ func (d *Dependencies) handlePullLLMModel(w http.ResponseWriter, r *http.Request
 		writeError(w, http.StatusBadRequest, "bad_request", "model required")
 		return
 	}
+	// Override per-connection deadlines so the response can stay open for
+	// the duration of the pull. http.NewResponseController is the modern
+	// way to do this; errors mean the server doesn't support it (very old
+	// stdlib) and we fall back to whatever the default is.
+	rc := http.NewResponseController(w)
+	deadline := time.Now().Add(35 * time.Minute)
+	_ = rc.SetWriteDeadline(deadline)
+	_ = rc.SetReadDeadline(deadline)
 	// Detach from the request context: the pull should still complete if the
 	// browser tab closes mid-download. Cap at 30 minutes total.
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
