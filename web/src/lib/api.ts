@@ -373,6 +373,10 @@ export interface SmartCounts {
   starred: number;
   later: number;
   shared: number;
+  // pending_summary: articles awaiting LLM summarization. Drives the
+  // "Summarizing N articles" indicator at the bottom of the sidebar.
+  // 0 → indicator hidden.
+  pending_summary: number;
 }
 
 export interface UserDigest {
