@@ -186,6 +186,11 @@ func NewRouter(d Dependencies) http.Handler {
 		r.With(d.Auth.RequireAuth).Get("/me/digest", d.handleGetDigest)
 		r.With(d.Auth.RequireAuth).Post("/me/digest", d.handleSetDigest)
 
+		// Admin session policy (server-wide TTL). Per-user TTL is not
+		// supported — see internal/api/session_handlers.go for rationale.
+		r.With(d.Auth.RequireAdmin).Get("/admin/session", d.handleGetSessionTTL)
+		r.With(d.Auth.RequireAdmin).Post("/admin/session/ttl", d.handleSetSessionTTL)
+
 		// Boards
 		r.With(d.Auth.RequireAuth).Get("/boards", d.handleListBoards)
 		r.With(d.Auth.RequireAuth).Post("/boards", d.handleCreateBoard)

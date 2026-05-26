@@ -44,7 +44,7 @@
 
   let { onClose }: { onClose: () => void } = $props();
 
-  type Section = "profile" | "passkeys" | "preferences" | "stats" | "digest" | "mobile" | "filters" | "users" | "starter" | "llm" | "branding" | "database" | "about";
+  type Section = "profile" | "passkeys" | "preferences" | "stats" | "digest" | "mobile" | "filters" | "users" | "starter" | "llm" | "branding" | "database" | "session" | "about";
   let section = $state<Section>("profile");
 
   // Daily digest state -------------------------------------------------
@@ -465,10 +465,53 @@
     if (section === "llm" && $user?.is_admin) void loadLLM();
     if (section === "branding" && $user?.is_admin) loadBrandingDraft();
     if (section === "database" && $user?.is_admin) void loadDB();
+    if (section === "session" && $user?.is_admin) void loadSessionTTL();
     if (section === "stats") void loadStats();
     if (section === "digest") void loadDigest();
     if (section === "passkeys") void loadPasskeys();
   });
+
+  // Admin session TTL ------------------------------------------------
+  let sessionTTL = $state<{ ttl_seconds: number; source: "admin" | "default" } | null>(null);
+  let sessionTTLDraft = $state(86400); // 24h default
+  let sessionMsg = $state("");
+  let sessionErr = $state("");
+  let sessionBusy = $state(false);
+  async function loadSessionTTL() {
+    sessionErr = "";
+    try {
+      const res = await api.getSessionTTL();
+      sessionTTL = res.data;
+      sessionTTLDraft = res.data.ttl_seconds;
+    } catch (e) {
+      sessionErr = e instanceof ApiError ? e.message : String(e);
+    }
+  }
+  async function saveSessionTTL() {
+    sessionBusy = true;
+    sessionMsg = "";
+    sessionErr = "";
+    try {
+      const res = await api.setSessionTTL(sessionTTLDraft);
+      sessionTTL = res.data;
+      sessionMsg = "Saved";
+    } catch (e) {
+      sessionErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      sessionBusy = false;
+      setTimeout(() => (sessionMsg = ""), 3000);
+    }
+  }
+  // Presets cover the common cases; admins who want odd values can edit
+  // the number input directly. Lower bound matches the server's
+  // minSessionTTL (5min); upper bound matches maxSessionTTL (90d).
+  const ttlPresets: { label: string; seconds: number }[] = [
+    { label: "1 hour", seconds: 3600 },
+    { label: "4 hours", seconds: 14400 },
+    { label: "24 hours (default)", seconds: 86400 },
+    { label: "7 days", seconds: 604800 },
+    { label: "30 days", seconds: 2592000 },
+  ];
 
   onMount(() => {
     // Allow opening Settings directly to the starter pack section via hash.
@@ -564,6 +607,7 @@
           <button class:active={section === "llm"} on:click={() => (section = "llm")} data-testid="settings-llm">Language model</button>
           <button class:active={section === "branding"} on:click={() => (section = "branding")} data-testid="settings-branding">Branding</button>
           <button class:active={section === "database"} on:click={() => (section = "database")} data-testid="settings-database">Database</button>
+          <button class:active={section === "session"} on:click={() => (section = "session")} data-testid="settings-session">Sessions</button>
           <button class:active={section === "users"} on:click={() => (section = "users")} data-testid="settings-users">Users</button>
         {/if}
         <button class:active={section === "about"} on:click={() => (section = "about")}>About</button>
@@ -1201,6 +1245,47 @@
           <p class="hint">Admin-only. Add or remove user accounts.</p>
           <div class="actions">
             <button on:click={() => (showUsers = true)} data-testid="open-users">Manage users</button>
+          </div>
+        {/if}
+
+        {#if section === "session" && $user?.is_admin}
+          <h3>Sessions</h3>
+          <p class="hint">
+            Server-wide session lifetime — how long a freshly-issued login cookie stays valid.
+            Affects newly-issued sessions only; existing sessions keep their stored expiry.
+            Range: 5 minutes to 90 days.
+          </p>
+          {#if sessionErr}<p class="error" data-testid="session-error">{sessionErr}</p>{/if}
+          {#if sessionMsg}<p class="ok" data-testid="session-msg">{sessionMsg}</p>{/if}
+          {#if sessionTTL}
+            <p class="pref-hint">
+              Active TTL: {Math.round(sessionTTL.ttl_seconds / 3600)}h
+              <span style="opacity:0.6">({sessionTTL.source === "admin" ? "set in admin UI" : "default / env var"})</span>
+            </p>
+          {/if}
+          <label class="pref-row">
+            <span>Preset</span>
+            <select bind:value={sessionTTLDraft} data-testid="session-preset">
+              {#each ttlPresets as p}
+                <option value={p.seconds}>{p.label}</option>
+              {/each}
+            </select>
+          </label>
+          <label class="pref-row">
+            <span>Custom (seconds)</span>
+            <input
+              type="number"
+              min="300"
+              max="7776000"
+              step="60"
+              bind:value={sessionTTLDraft}
+              data-testid="session-seconds"
+            />
+          </label>
+          <div class="actions">
+            <button on:click={saveSessionTTL} disabled={sessionBusy} data-testid="session-save">
+              {sessionBusy ? "Saving…" : "Save"}
+            </button>
           </div>
         {/if}
 

@@ -5,7 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#c2451d" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <!-- Favicon: light + dark SVGs with media-scoped <link> for initial
+         paint (before JS hydrates and App.svelte's $effect takes over with
+         the canvas-rendered new-article-dot overlay). PNG fallbacks for
+         browsers that don't render SVG favicons (or where SVG isn't picked
+         due to size matching). -->
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" media="(prefers-color-scheme: light)" />
+    <link rel="icon" type="image/svg+xml" href="/icon-dark.svg" media="(prefers-color-scheme: dark)" />
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/03-feedmark-32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/icons/03-feedmark-16.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
