@@ -716,6 +716,49 @@ func mustJSON(v any) []byte {
 	return b
 }
 
+func TestDigest_EmailOverrideValidation(t *testing.T) {
+	h := newHarness(t)
+	h.seedUser(t, "alice", "hunter2", false)
+	cl := h.login(t, "alice", "hunter2")
+
+	base := map[string]any{
+		"enabled":    true,
+		"view_kind":  "smart",
+		"view_value": "fresh",
+		"hour_utc":   8,
+		"minute_utc": 0,
+	}
+	mk := func(override string) map[string]any {
+		out := map[string]any{}
+		for k, v := range base {
+			out[k] = v
+		}
+		out["email_override"] = override
+		return out
+	}
+
+	cases := []struct {
+		name     string
+		override string
+		wantCode int
+	}{
+		{"valid_address", "alice+digest@example.com", http.StatusOK},
+		{"empty_uses_user_email", "", http.StatusOK},
+		{"crlf_injection_rejected", "alice@example.com\r\nBcc: attacker@example.com", http.StatusBadRequest},
+		{"lf_only_rejected", "alice@example.com\nBcc: x@x.com", http.StatusBadRequest},
+		{"cr_only_rejected", "alice@example.com\rBcc: x@x.com", http.StatusBadRequest},
+		{"garbage_rejected", "not-an-email", http.StatusBadRequest},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			code := post(t, cl, h.srv.URL+"/api/me/digest", mk(tc.override), nil)
+			if code != tc.wantCode {
+				t.Errorf("override=%q: got %d, want %d", tc.override, code, tc.wantCode)
+			}
+		})
+	}
+}
+
 // Test feed package was wired correctly (imported elsewhere transitively;
 // ensure the import path didn't drift).
 var _ = feed.DefaultUserAgent
