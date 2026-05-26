@@ -849,6 +849,20 @@
       </div>
     {/each}
   </div>
+
+  <!-- Summarizer status: shown only while the poller's summary worker has
+       articles to chew through. Drains as the worker completes each item.
+       Updates piggyback on refreshSidebar() (login, polling tick, navigation
+       refresh) so the count stays roughly live without a dedicated stream. -->
+  {#if $smartCounts.pending_summary > 0}
+    <div class="summarizing" data-testid="sidebar-summarizing">
+      <span class="summarizing-dot" aria-hidden="true"></span>
+      <span class="summarizing-label">
+        Summarizing {$smartCounts.pending_summary}
+        {$smartCounts.pending_summary === 1 ? "article" : "articles"}…
+      </span>
+    </div>
+  {/if}
 </aside>
 
 {#if confirmReq}
@@ -1243,4 +1257,35 @@
   }
   .board-row:hover .board-delete { opacity: 1; }
   .board-delete:hover { background: var(--line); color: #b91c1c; }
+
+  /* Summarizer status indicator at the bottom of the rail. Sticky-ish:
+     stays at the natural end of the rail content. Hidden when nothing is
+     pending (no DOM, not visibility:hidden). */
+  .summarizing {
+    margin: 12px 12px 0;
+    padding: 8px 10px;
+    background: var(--ember-wash);
+    border: 1px solid var(--line-soft);
+    border-radius: 8px;
+    color: var(--ink-soft);
+    font-size: 12.5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .summarizing-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--ember);
+    animation: pulse 1.6s ease-in-out infinite;
+    flex: 0 0 auto;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 0.4; transform: scale(0.85); }
+    50%      { opacity: 1;   transform: scale(1.1); }
+  }
+  .summarizing-label {
+    line-height: 1.3;
+  }
 </style>

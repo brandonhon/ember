@@ -49,15 +49,18 @@ export const categories = writable<Category[]>([]);
 export const boards = writable<Board[]>([]);
 export const savedSearches = writable<import("./types").SavedSearch[]>([]);
 
-// Smart-view badge counts (Fresh / Starred / Read Later / Shared). Refreshed
-// alongside the sidebar so the badges stay live.
+// Smart-view badge counts (Fresh / Starred / Read Later / Shared) plus the
+// summarizer pending-queue count. Refreshed alongside the sidebar so the
+// badges + summarizing indicator stay live.
 export interface SmartCounts {
   fresh: number;
   starred: number;
   later: number;
   shared: number;
+  pending_summary: number;
 }
-export const smartCounts = writable<SmartCounts>({ fresh: 0, starred: 0, later: 0, shared: 0 });
+const EMPTY_SMART_COUNTS: SmartCounts = { fresh: 0, starred: 0, later: 0, shared: 0, pending_summary: 0 };
+export const smartCounts = writable<SmartCounts>(EMPTY_SMART_COUNTS);
 
 export async function refreshSidebar(): Promise<void> {
   const [f, c, b, ss, sc] = await Promise.all([
@@ -71,7 +74,7 @@ export async function refreshSidebar(): Promise<void> {
   categories.set(c.data ?? []);
   boards.set(b.data ?? []);
   savedSearches.set(ss.data ?? []);
-  smartCounts.set(sc.data ?? { fresh: 0, starred: 0, later: 0, shared: 0 });
+  smartCounts.set(sc.data ?? EMPTY_SMART_COUNTS);
 }
 
 export const totalUnread = derived(feeds, ($feeds) =>
