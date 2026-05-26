@@ -215,7 +215,9 @@ func run() error {
 	router := api.NewRouter(api.Dependencies{
 		Store: st, Auth: a, Poller: p, Metrics: p, OPML: op,
 		StaticH: staticH, TestMode: cfg.TestMode, Ollama: ollamaSum,
-		AllowPrivateURLs: cfg.AllowPrivateURLs,
+		// Test mode uses synthetic .test hostnames that don't resolve; the
+		// SSRF DNS check would reject them. Production stays strict.
+		AllowPrivateURLs: cfg.AllowPrivateURLs || cfg.TestMode,
 	})
 
 	srv := &http.Server{
