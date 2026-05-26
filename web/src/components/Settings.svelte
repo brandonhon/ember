@@ -19,7 +19,6 @@
   import { onMount } from "svelte";
   import { refreshSidebar } from "../lib/stores";
   import FilterManager from "./FilterManager.svelte";
-  import ManageUsers from "./ManageUsers.svelte";
   import ConfirmDialog from "./ConfirmDialog.svelte";
 
   type ConfirmReq = {
@@ -466,6 +465,7 @@
     if (section === "branding" && $user?.is_admin) loadBrandingDraft();
     if (section === "database" && $user?.is_admin) void loadDB();
     if (section === "session" && $user?.is_admin) void loadSessionTTL();
+    if (section === "users" && $user?.is_admin) void loadUsers();
     if (section === "stats") void loadStats();
     if (section === "digest") void loadDigest();
     if (section === "passkeys") void loadPasskeys();
@@ -568,9 +568,100 @@
 
   const feverURL = $derived(typeof location !== "undefined" ? `${location.origin}/fever` : "");
 
-  // Toggling stays a child modal so we don't double-render filters/users.
+  // Toggling stays a child modal so we don't double-render filters.
   let showFilters = $state(false);
-  let showUsers = $state(false);
+
+  // Users admin: full inline section (no modal). Mirrors the structure of
+  // Database / Sessions / LLM admin sections.
+  type UserRow = {
+    id: number;
+    username: string;
+    email: string;
+    is_admin: boolean;
+    created_at: number;
+  };
+  let usersList = $state<UserRow[]>([]);
+  let usersErr = $state("");
+  let usersMsg = $state("");
+  let usersBusy = $state<string>(""); // active row action key, e.g. "admin:5" or "delete:5"
+  let newUsername = $state("");
+  let newUserEmail = $state("");
+  let newUserPassword = $state("");
+  let newUserIsAdmin = $state(false);
+
+  async function loadUsers() {
+    usersErr = "";
+    try {
+      const res = await api.listUsers();
+      usersList = (res.data ?? []) as UserRow[];
+    } catch (e) {
+      usersErr = e instanceof ApiError ? e.message : String(e);
+    }
+  }
+  async function createNewUser() {
+    if (!newUsername.trim() || !newUserPassword.trim()) {
+      usersErr = "username and password required";
+      return;
+    }
+    usersBusy = "create";
+    usersErr = "";
+    usersMsg = "";
+    try {
+      await api.createUser({
+        username: newUsername.trim(),
+        email: newUserEmail.trim() || undefined,
+        password: newUserPassword,
+        is_admin: newUserIsAdmin,
+      });
+      newUsername = "";
+      newUserEmail = "";
+      newUserPassword = "";
+      newUserIsAdmin = false;
+      await loadUsers();
+      usersMsg = "User created";
+    } catch (e) {
+      usersErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      usersBusy = "";
+      setTimeout(() => (usersMsg = ""), 3000);
+    }
+  }
+  async function toggleAdmin(u: UserRow) {
+    const next = !u.is_admin;
+    usersBusy = `admin:${u.id}`;
+    usersErr = "";
+    try {
+      await api.updateUser(u.id, { is_admin: next });
+      // Optimistic local update — refresh would also fix it but this
+      // makes the toggle feel instant.
+      usersList = usersList.map((x) => (x.id === u.id ? { ...x, is_admin: next } : x));
+    } catch (e) {
+      usersErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      usersBusy = "";
+    }
+  }
+  function askDeleteUser(u: UserRow) {
+    confirmReq = {
+      title: "Delete user?",
+      message: `Permanently delete the account "${u.username}". This cannot be undone.`,
+      confirmLabel: "Delete",
+      destructive: true,
+      run: () => deleteUserById(u.id),
+    };
+  }
+  async function deleteUserById(id: number) {
+    usersBusy = `delete:${id}`;
+    usersErr = "";
+    try {
+      await api.deleteUser(id);
+      await loadUsers();
+    } catch (e) {
+      usersErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      usersBusy = "";
+    }
+  }
 
   // Re-fetch /api/me on close so any changes (e.g. password) take effect.
   function onCloseAll() {
@@ -1242,10 +1333,118 @@
 
         {#if section === "users" && $user?.is_admin}
           <h3>Users</h3>
-          <p class="hint">Admin-only. Add or remove user accounts.</p>
-          <div class="actions">
-            <button on:click={() => (showUsers = true)} data-testid="open-users">Manage users</button>
+          <p class="hint">Admin-only. Create new accounts, toggle admin, and remove users.</p>
+          {#if usersErr}<p class="error" data-testid="users-error">{usersErr}</p>{/if}
+          {#if usersMsg}<p class="ok" data-testid="users-msg">{usersMsg}</p>{/if}
+
+          <h4>New user</h4>
+          <div class="row">
+            <label>
+              <span>Username</span>
+              <input
+                type="text"
+                bind:value={newUsername}
+                autocomplete="username"
+                data-testid="new-user-username"
+              />
+            </label>
+            <label>
+              <span>Email (optional)</span>
+              <input
+                type="email"
+                bind:value={newUserEmail}
+                autocomplete="email"
+                data-testid="new-user-email"
+              />
+            </label>
           </div>
+          <div class="row">
+            <label>
+              <span>Password</span>
+              <input
+                type="password"
+                bind:value={newUserPassword}
+                autocomplete="new-password"
+                data-testid="new-user-password"
+              />
+            </label>
+          </div>
+          <div class="pref-row">
+            <div>
+              <div class="pref-label">Admin</div>
+              <div class="pref-hint">Grants access to Settings → Branding / Database / Sessions / Users / LLM.</div>
+            </div>
+            <div class="seg">
+              <button class:on={newUserIsAdmin} on:click={() => (newUserIsAdmin = true)} data-testid="new-user-admin-on">Yes</button>
+              <button class:on={!newUserIsAdmin} on:click={() => (newUserIsAdmin = false)} data-testid="new-user-admin-off">No</button>
+            </div>
+          </div>
+          <div class="actions">
+            <button
+              on:click={createNewUser}
+              disabled={usersBusy === "create"}
+              data-testid="create-user-submit"
+            >
+              {usersBusy === "create" ? "Creating…" : "Create user"}
+            </button>
+          </div>
+
+          <h4>Existing users</h4>
+          {#if usersList.length === 0}
+            <p class="muted">Loading…</p>
+          {:else}
+            <table class="llm-table" data-testid="users-table">
+              <thead>
+                <tr>
+                  <th>Username</th>
+                  <th>Email</th>
+                  <th>Admin</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each usersList as u (u.id)}
+                  <tr data-testid="user-row-{u.id}">
+                    <td>
+                      <strong>{u.username}</strong>
+                      {#if $user?.id === u.id}<span class="muted"> (you)</span>{/if}
+                    </td>
+                    <td>{u.email || "—"}</td>
+                    <td>
+                      <div class="seg">
+                        <button
+                          class:on={u.is_admin}
+                          on:click={() => toggleAdmin(u)}
+                          disabled={usersBusy === `admin:${u.id}` || $user?.id === u.id}
+                          data-testid="user-admin-yes-{u.id}"
+                          title={$user?.id === u.id ? "Cannot change your own admin status" : ""}
+                        >Yes</button>
+                        <button
+                          class:on={!u.is_admin}
+                          on:click={() => toggleAdmin(u)}
+                          disabled={usersBusy === `admin:${u.id}` || $user?.id === u.id}
+                          data-testid="user-admin-no-{u.id}"
+                          title={$user?.id === u.id ? "Cannot change your own admin status" : ""}
+                        >No</button>
+                      </div>
+                    </td>
+                    <td class="llm-actions">
+                      {#if $user?.id !== u.id}
+                        <button
+                          class="ghost-btn"
+                          on:click={() => askDeleteUser(u)}
+                          disabled={usersBusy === `delete:${u.id}`}
+                          data-testid="user-delete-{u.id}"
+                        >
+                          {usersBusy === `delete:${u.id}` ? "Deleting…" : "Delete"}
+                        </button>
+                      {/if}
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          {/if}
         {/if}
 
         {#if section === "session" && $user?.is_admin}
@@ -1303,9 +1502,6 @@
 
   {#if showFilters}
     <FilterManager onClose={() => (showFilters = false)} />
-  {/if}
-  {#if showUsers}
-    <ManageUsers onClose={() => (showUsers = false)} />
   {/if}
   {#if confirmReq}
     <ConfirmDialog
