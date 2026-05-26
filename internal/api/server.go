@@ -39,6 +39,9 @@ type Dependencies struct {
 	// installed models, pull new ones, and swap the active model. Optional —
 	// nil when the summarizer is disabled or the noop (tests) is in use.
 	Ollama *summarize.Ollama
+	// WebAuthn drives passkey registration + assertion. Nil when EMBER_PUBLIC_URL
+	// is not configured; the passkey endpoints then return 503.
+	WebAuthn *auth.WebAuthn
 	// TestMode loosens cookie Secure flag for non-HTTPS tests.
 	TestMode bool
 	// AllowPrivateURLs disables the SSRF block on outbound HTTP fetches for
@@ -85,6 +88,9 @@ func NewRouter(d Dependencies) http.Handler {
 		// cookie yet on first call). The wrapping middleware checks for the
 		// login suffix.
 		r.With(loginLimiter.LimitMiddleware).Post("/auth/login", d.handleLogin)
+		// Passkey login (public; rate-limited the same as password login).
+		r.With(loginLimiter.LimitMiddleware).Post("/auth/passkey/begin", d.handlePasskeyLoginBegin)
+		r.With(loginLimiter.LimitMiddleware).Post("/auth/passkey/finish", d.handlePasskeyLoginFinish)
 
 		// Branding is auth-required so anonymous callers can't probe whether
 		// an instance exists or what it's branded as. The login page renders
@@ -95,6 +101,12 @@ func NewRouter(d Dependencies) http.Handler {
 		r.With(d.Auth.RequireAuth).Get("/me", d.handleMe)
 		r.With(d.Auth.RequireAuth).Patch("/me/settings", d.handleUpdateSettings)
 		r.With(d.Auth.RequireAuth).Post("/me/password", d.handleChangePassword)
+		// Passkeys (self-service registration + management).
+		r.With(d.Auth.RequireAuth).Get("/me/passkeys", d.handleListPasskeys)
+		r.With(d.Auth.RequireAuth).Post("/me/passkeys/register/begin", d.handlePasskeyRegisterBegin)
+		r.With(d.Auth.RequireAuth).Post("/me/passkeys/register/finish", d.handlePasskeyRegisterFinish)
+		r.With(d.Auth.RequireAuth).Patch("/me/passkeys/{id}", d.handlePasskeyRename)
+		r.With(d.Auth.RequireAuth).Delete("/me/passkeys/{id}", d.handlePasskeyDelete)
 
 		// Users — list/get auth'd; mutation admin-only
 		r.With(d.Auth.RequireAuth).Get("/users", d.handleListUsers)
