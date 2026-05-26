@@ -5,8 +5,10 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/brandonhon/ember/internal/auth"
+	"github.com/brandonhon/ember/internal/feed"
 	"github.com/brandonhon/ember/internal/models"
 	"github.com/brandonhon/ember/internal/store"
 	"github.com/brandonhon/ember/internal/urlcheck"
@@ -47,7 +49,26 @@ func (d *Dependencies) handleAddFeed(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "bad_request", "URL rejected: "+err.Error())
 		return
 	}
-	f, err := d.Store.UpsertFeed(r.Context(), models.Feed{URL: req.URL, Title: req.URL})
+	// Discover: if the user pasted a website URL (not a feed URL), find its
+	// <link rel="alternate"> or probe common feed paths. Discover() returns
+	// the input unchanged when it points at a feed already.
+	target := req.URL
+	dctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+	disco := &http.Client{
+		Timeout: 10 * time.Second,
+		CheckRedirect: feed.RedirectGuard(func(rawURL string) error {
+			return urlcheck.Check(dctx, rawURL, d.AllowPrivateURLs)
+		}),
+	}
+	if discovered, derr := feed.Discover(dctx, disco, req.URL); derr == nil && discovered != "" {
+		if err := urlcheck.Check(dctx, discovered, d.AllowPrivateURLs); err != nil {
+			writeError(w, http.StatusBadRequest, "bad_request", "discovered feed URL rejected: "+err.Error())
+			return
+		}
+		target = discovered
+	}
+	f, err := d.Store.UpsertFeed(r.Context(), models.Feed{URL: target, Title: target})
 	if mapStoreError(w, err) {
 		return
 	}
