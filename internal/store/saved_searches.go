@@ -2,8 +2,6 @@ package store
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 
 	"github.com/brandonhon/ember/internal/models"
 )
@@ -44,19 +42,6 @@ func (s *Store) ListSavedSearches(ctx context.Context, userID int64) ([]models.S
 		out = append(out, ss)
 	}
 	return out, rows.Err()
-}
-
-// GetSavedSearch returns a saved search by ID, scoped to the user.
-func (s *Store) GetSavedSearch(ctx context.Context, userID, id int64) (models.SavedSearch, error) {
-	row := s.DB.QueryRowContext(ctx,
-		`SELECT id, user_id, name, query, created_at FROM saved_searches WHERE id = ? AND user_id = ?`,
-		id, userID)
-	var ss models.SavedSearch
-	err := row.Scan(&ss.ID, &ss.UserID, &ss.Name, &ss.Query, &ss.CreatedAt)
-	if errors.Is(err, sql.ErrNoRows) {
-		return models.SavedSearch{}, ErrNotFound
-	}
-	return ss, err
 }
 
 // DeleteSavedSearch removes a saved search, scoped to the user.

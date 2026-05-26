@@ -78,31 +78,6 @@ type TagWithCount struct {
 	Count int    `json:"count"`
 }
 
-// ListArticleIDsByTag returns article IDs the user has tagged with the given
-// tag. Used to render the "filter by tag" view.
-func (s *Store) ListArticleIDsByTag(ctx context.Context, userID int64, tag string) ([]int64, error) {
-	t := normalizeTag(tag)
-	if t == "" {
-		return nil, nil
-	}
-	rows, err := s.DB.QueryContext(ctx,
-		`SELECT article_id FROM article_tags WHERE user_id = ? AND tag = ?`,
-		userID, t)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var out []int64
-	for rows.Next() {
-		var id int64
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		out = append(out, id)
-	}
-	return out, rows.Err()
-}
-
 // normalizeTag lowercases, trims, and collapses internal whitespace so
 // "AI ", " ai", and "Ai" all become "ai".
 func normalizeTag(s string) string {
