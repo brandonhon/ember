@@ -143,9 +143,19 @@ func (s *Store) UpdateUser(ctx context.Context, id int64, patch UpdateUserPatch)
 	return nil
 }
 
-// DeleteUser removes a user.
+// DeleteUser removes a user. FK cascades take care of the user's owned
+// rows (subscriptions, sessions, state, tags, boards, filters, passkeys,
+// saved_searches, categories, user_digests). A subsequent sweep drops any
+// feeds that the deleted user was the sole subscriber to — the cascade on
+// subscriptions bypasses the refcount-and-drop logic in Unsubscribe.
 func (s *Store) DeleteUser(ctx context.Context, id int64) error {
-	res, err := s.DB.ExecContext(ctx, `DELETE FROM users WHERE id = ?`, id)
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	res, err := tx.ExecContext(ctx, `DELETE FROM users WHERE id = ?`, id)
 	if err != nil {
 		return err
 	}
@@ -153,7 +163,13 @@ func (s *Store) DeleteUser(ctx context.Context, id int64) error {
 	if n == 0 {
 		return ErrNotFound
 	}
-	return nil
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM feeds
+		WHERE id NOT IN (SELECT DISTINCT feed_id FROM subscriptions)
+	`); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 type scannable interface {

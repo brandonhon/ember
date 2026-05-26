@@ -81,6 +81,43 @@ func TestUsers_DuplicateUsernameConflict(t *testing.T) {
 	}
 }
 
+func TestDeleteUser_DropsOrphanFeeds(t *testing.T) {
+	s := NewTest(t)
+	ctx := context.Background()
+
+	// alice subscribes to "solo" (no one else) and "shared" (also bob).
+	// bob subscribes only to "shared".
+	aliceID, _ := seedUserAndFeed(t, s, "alice")
+	bobID, sharedFeedID := seedUserAndFeed(t, s, "bob")
+
+	soloFeed, _ := s.UpsertFeed(ctx, models.Feed{URL: "https://solo.test/feed", Title: "solo"})
+	if _, err := s.Subscribe(ctx, models.Subscription{UserID: aliceID, FeedID: soloFeed.ID}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Subscribe(ctx, models.Subscription{UserID: aliceID, FeedID: sharedFeedID}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Drop alice. Expect:
+	// - "solo" feed gone (alice was the only subscriber).
+	// - "shared" feed retained (bob still subscribes).
+	// - alice's own seeded feed gone (only alice subscribed).
+	if err := s.DeleteUser(ctx, aliceID); err != nil {
+		t.Fatalf("DeleteUser: %v", err)
+	}
+
+	if _, err := s.GetFeed(ctx, soloFeed.ID); !errors.Is(err, ErrNotFound) {
+		t.Errorf("solo feed should be gone, got err=%v", err)
+	}
+	if _, err := s.GetFeed(ctx, sharedFeedID); err != nil {
+		t.Errorf("shared feed should remain (bob subscribes), got err=%v", err)
+	}
+	// bob is still here.
+	if _, err := s.GetUser(ctx, bobID); err != nil {
+		t.Errorf("bob should be untouched: %v", err)
+	}
+}
+
 func TestUsers_CountAndNotFound(t *testing.T) {
 	s := NewTest(t)
 	ctx := context.Background()
