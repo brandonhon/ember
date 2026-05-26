@@ -319,7 +319,6 @@ export interface LLMOptions {
 }
 export interface LLMStatus {
   current_model: string;
-  base_url: string;
   enabled: boolean;
   system: LLMSystemInfo;
   recommended: LLMRecommendation;

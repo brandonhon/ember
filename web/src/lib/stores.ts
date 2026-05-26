@@ -167,6 +167,10 @@ export const sidebarCollapsed = writable<boolean>(loadPref<string>("ember:sideba
 export const showSummary = writable<boolean>(loadPref<string>("ember:show-summary", "on") !== "off");
 export const showImages = writable<boolean>(loadPref<string>("ember:show-images", "on") !== "off");
 export const summaryCollapsed = writable<boolean>(loadPref<string>("ember:summary-collapsed", "open") === "closed");
+// scrollMarksRead: when on, scrolling a story card out of view from the
+// top of the list marks it read. Default on — power users like this; new
+// users can disable in Settings → Preferences if they prefer manual control.
+export const scrollMarksRead = writable<boolean>(loadPref<string>("ember:scroll-mark-read", "on") !== "off");
 function persistBool(key: string, store: { subscribe: (cb: (v: boolean) => void) => () => void }, on: string, off: string) {
   store.subscribe((v) => {
     try {
@@ -179,6 +183,7 @@ function persistBool(key: string, store: { subscribe: (cb: (v: boolean) => void)
 persistBool("ember:show-summary", showSummary, "on", "off");
 persistBool("ember:show-images", showImages, "on", "off");
 persistBool("ember:summary-collapsed", summaryCollapsed, "closed", "open");
+persistBool("ember:scroll-mark-read", scrollMarksRead, "on", "off");
 
 // Articles list --------------------------------------------------------------
 export interface ArticleListState {
