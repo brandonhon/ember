@@ -545,6 +545,9 @@
 {/snippet}
 
 <aside class="rail">
+  <!-- Scrolling content wrapper. Lets the .summarizing footer below stay
+       pinned to the bottom of the rail regardless of scroll position. -->
+  <div class="rail-scroll">
   <!-- Smart views -->
   <div class="rail-section">
     <button class="nav-item" class:active={isActiveSmart("today")} on:click={() => pickSmart("today")}>
@@ -849,11 +852,13 @@
       </div>
     {/each}
   </div>
+  </div><!-- /.rail-scroll -->
 
-  <!-- Summarizer status: shown only while the poller's summary worker has
-       articles to chew through. Drains as the worker completes each item.
-       Updates piggyback on refreshSidebar() (login, polling tick, navigation
-       refresh) so the count stays roughly live without a dedicated stream. -->
+  <!-- Summarizer status footer: pinned to the bottom of the rail (outside
+       .rail-scroll) so it stays visible regardless of scroll position.
+       Shown only while the poller's summary worker has articles to chew
+       through. Updates piggyback on refreshSidebar() (login, polling tick,
+       navigation refresh) so the count stays roughly live. -->
   {#if $smartCounts.pending_summary > 0}
     <div class="summarizing" data-testid="sidebar-summarizing">
       <span class="summarizing-dot" aria-hidden="true"></span>
@@ -881,8 +886,20 @@
   .rail {
     border-right: 1px solid var(--line);
     background: var(--paper-2);
+    /* Flex column so the .summarizing footer (last child) stays pinned to
+       the bottom while .rail-scroll consumes remaining height + scrolls. */
+    display: flex;
+    flex-direction: column;
+    /* Take the full available height of the layout grid track so the footer
+       has a viewport to anchor to. */
+    height: 100%;
+    min-height: 0;
+  }
+  .rail-scroll {
+    flex: 1 1 auto;
     overflow-y: auto;
     padding: 14px 12px 40px;
+    min-height: 0;
   }
   .rail-section { margin-bottom: 22px; }
   .rail-head {
@@ -1258,15 +1275,16 @@
   .board-row:hover .board-delete { opacity: 1; }
   .board-delete:hover { background: var(--line); color: #b91c1c; }
 
-  /* Summarizer status indicator at the bottom of the rail. Sticky-ish:
-     stays at the natural end of the rail content. Hidden when nothing is
-     pending (no DOM, not visibility:hidden). */
+  /* Summarizer status footer. Sits OUTSIDE .rail-scroll so it stays
+     pinned to the bottom of the rail viewport regardless of scroll
+     position. Full-width footer band with a top border to separate
+     visually from the scrolling list. Hidden when nothing is pending
+     (no DOM, not visibility:hidden). */
   .summarizing {
-    margin: 12px 12px 0;
-    padding: 8px 10px;
+    flex: 0 0 auto;
+    padding: 10px 14px;
     background: var(--ember-wash);
-    border: 1px solid var(--line-soft);
-    border-radius: 8px;
+    border-top: 1px solid var(--line-soft);
     color: var(--ink-soft);
     font-size: 12.5px;
     display: flex;
