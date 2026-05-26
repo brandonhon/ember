@@ -416,7 +416,7 @@ func TestCountSmartViews(t *testing.T) {
 	a6, _, _ := s.UpsertArticle(ctx, mk("a6", -12*time.Hour, "skipped"))
 	_ = a6
 
-	got, err := s.CountSmartViews(ctx, aliceID)
+	got, err := s.CountSmartViews(ctx, aliceID, 6*time.Hour)
 	if err != nil {
 		t.Fatalf("CountSmartViews: %v", err)
 	}

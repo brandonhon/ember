@@ -94,16 +94,6 @@ func Migrate(ctx context.Context, dbh *sql.DB) error {
 	return nil
 }
 
-// MigrateDown rolls back the most recent migration. Used in tests.
-func MigrateDown(ctx context.Context, dbh *sql.DB) error {
-	goose.SetBaseFS(migrationsFS)
-	goose.SetLogger(goose.NopLogger())
-	if err := goose.SetDialect("sqlite3"); err != nil {
-		return err
-	}
-	return goose.DownContext(ctx, dbh, "migrations")
-}
-
 // MigrateReset rolls back every applied migration. Used in tests.
 func MigrateReset(ctx context.Context, dbh *sql.DB) error {
 	goose.SetBaseFS(migrationsFS)

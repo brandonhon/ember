@@ -15,6 +15,12 @@ export interface MeResponse {
   user: User;
   fever_api_key: string;
   version: string;
+  // Server-configured Fresh-view cutoff in seconds (EMBER_FRESH_WINDOW).
+  // ArticleList.svelte's isFresh() uses this so the badge + filter stay
+  // consistent with the server's CountSmartViews query. Defaults to 6h
+  // on the server if unset, but the client also defaults to 6h on
+  // missing/zero to be defensive.
+  fresh_window_seconds: number;
 }
 
 export interface Category {

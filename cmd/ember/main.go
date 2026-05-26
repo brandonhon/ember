@@ -304,6 +304,10 @@ func run() error {
 		// Test mode uses synthetic .test hostnames that don't resolve; the
 		// SSRF DNS check would reject them. Production stays strict.
 		AllowPrivateURLs: cfg.AllowPrivateURLs || cfg.TestMode,
+		// FreshWindow makes EMBER_FRESH_WINDOW actually take effect — the
+		// Fresh-view article list, the sidebar's Fresh count, and the
+		// client-side isFresh() all read from this single source.
+		FreshWindow: cfg.FreshWindow,
 		// Handlers that spawn detached goroutines (initial feed refresh on
 		// starter-pack import / add-feed) derive their context from this
 		// parent so they don't outlive process shutdown and end up making

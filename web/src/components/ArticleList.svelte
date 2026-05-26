@@ -15,6 +15,7 @@
     toggleLater,
     newArticleCount,
     scrollMarksRead,
+    freshWindowSeconds,
   } from "../lib/stores";
   import { api } from "../lib/api";
   import { get } from "svelte/store";
@@ -181,9 +182,13 @@
     if (diff < 86400) return `${Math.round(diff / 3600)} hr ago`;
     return `${Math.round(diff / 86400)} d ago`;
   }
+  // Window comes from the server (EMBER_FRESH_WINDOW, surfaced via
+  // /api/me) so the client filter matches the server's CountSmartViews
+  // query + Fresh-list default cutoff. Defaults to 6h until /api/me
+  // resolves on first paint.
   function isFresh(unix: number | undefined): boolean {
     if (!unix) return false;
-    return Date.now() / 1000 - unix < 6 * 3600;
+    return Date.now() / 1000 - unix < $freshWindowSeconds;
   }
   // Reading-time estimate at 200 wpm. Falls back to stripping HTML tags out
   // of content_html when content_text is empty. Returns 0 (renders nothing)

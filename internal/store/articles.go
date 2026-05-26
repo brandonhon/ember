@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/brandonhon/ember/internal/models"
 )
@@ -507,10 +508,17 @@ type SmartViewCounts struct {
 // CountSmartViews returns all five counts in a single roundtrip. SQLite
 // single-conn pool: bundling the queries doesn't help latency much, but it
 // keeps the API surface small.
-func (s *Store) CountSmartViews(ctx context.Context, userID int64) (SmartViewCounts, error) {
+//
+// freshWindow controls the Fresh-view cutoff (unread + summarized +
+// published within the window). The caller passes cfg.FreshWindow so the
+// EMBER_FRESH_WINDOW env var actually takes effect; a zero or negative
+// window falls back to 6h to match the legacy hardcoded value.
+func (s *Store) CountSmartViews(ctx context.Context, userID int64, freshWindow time.Duration) (SmartViewCounts, error) {
 	var c SmartViewCounts
-	// Fresh: unread, summarized, recent. Matches the Fresh-view filter.
-	const freshWindowSeconds int64 = 6 * 3600
+	if freshWindow <= 0 {
+		freshWindow = 6 * time.Hour
+	}
+	// Fresh: unread, summarized, published within the configured window.
 	err := s.DB.QueryRowContext(ctx, `
 SELECT COUNT(*)
 FROM articles a
@@ -520,7 +528,7 @@ WHERE IFNULL(st.is_read,0) = 0
   AND sub.muted = 0
   AND a.summary_model IS NOT NULL AND a.summary_model <> ''
   AND IFNULL(a.published_at,0) >= ?`,
-		userID, userID, s.nowUnix()-freshWindowSeconds).Scan(&c.Fresh)
+		userID, userID, s.nowUnix()-int64(freshWindow.Seconds())).Scan(&c.Fresh)
 	if err != nil {
 		return c, fmt.Errorf("count fresh: %w", err)
 	}
