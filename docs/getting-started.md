@@ -91,6 +91,7 @@ Test mode seeds a deterministic admin (`admin` / `admintest`), one feed, and 12 
 
 ## Verifying the install
 
+- `docker compose ps` — all three containers (`ember-caddy-1`, `ember-ember-1`, `ember-ollama-1`) should report `Up` / `healthy`.
 - `https://localhost/healthz` — public liveness probe (Caddy uses this).
 - `https://localhost/metrics` — admin-authenticated metrics endpoint.
 
