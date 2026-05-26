@@ -368,3 +368,53 @@ func TestArticles_FixedClock(t *testing.T) {
 		t.Errorf("clock not injected: %d != %d", u.CreatedAt, fixed.Unix())
 	}
 }
+
+func TestCountSmartViews(t *testing.T) {
+	s := NewTest(t)
+	// Pin the clock so the 6h "fresh" window is deterministic.
+	now := time.Unix(1_700_000_000, 0)
+	s.Now = func() time.Time { return now }
+	ctx := context.Background()
+
+	aliceID, feedID := seedUserAndFeed(t, s, "alice")
+	// Alice gets a second account to receive shares.
+	bob, _ := s.CreateUser(ctx, models.User{Username: "bob", PasswordHash: "h"})
+
+	// Three articles: one fresh+summarized (counts), one too old, one fresh
+	// but no summary model (doesn't count toward Fresh badge — matches the
+	// sidebar Fresh-view filter).
+	mk := func(guid string, publishedDelta time.Duration, summary string) models.Article {
+		a := mkArticle(feedID, guid, "t-"+guid, "h-"+guid, now.Add(publishedDelta).Unix())
+		a.SummaryModel = summary
+		return a
+	}
+	a1, _, _ := s.UpsertArticle(ctx, mk("a1", -1*time.Hour, "qwen2.5:0.5b")) // fresh, summarized → Fresh++
+	_, _, _ = s.UpsertArticle(ctx, mk("a2", -12*time.Hour, "qwen2.5:0.5b"))  // too old
+	a3, _, _ := s.UpsertArticle(ctx, mk("a3", -2*time.Hour, ""))             // not yet summarized
+
+	// Star a1, save a3 for later.
+	if err := s.SetStarred(ctx, aliceID, a1.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetLater(ctx, aliceID, a3.ID, true); err != nil {
+		t.Fatal(err)
+	}
+
+	// bob shares one article to alice (unseen) and one already seen.
+	bobFeed, _ := s.UpsertFeed(ctx, models.Feed{URL: "https://bob.test/feed", Title: "bob"})
+	_, _ = s.Subscribe(ctx, models.Subscription{UserID: bob.ID, FeedID: bobFeed.ID})
+	a4, _, _ := s.UpsertArticle(ctx, mkArticle(bobFeed.ID, "a4", "t4", "h4", now.Unix()))
+	a5, _, _ := s.UpsertArticle(ctx, mkArticle(bobFeed.ID, "a5", "t5", "h5", now.Unix()))
+	_, _ = s.CreateShare(ctx, models.Share{ArticleID: a4.ID, FromUser: bob.ID, ToUser: aliceID})
+	sh5, _ := s.CreateShare(ctx, models.Share{ArticleID: a5.ID, FromUser: bob.ID, ToUser: aliceID})
+	_ = s.MarkShareSeen(ctx, aliceID, sh5.ID)
+
+	got, err := s.CountSmartViews(ctx, aliceID)
+	if err != nil {
+		t.Fatalf("CountSmartViews: %v", err)
+	}
+	want := SmartViewCounts{Fresh: 1, Starred: 1, Later: 1, Shared: 1}
+	if got != want {
+		t.Errorf("got %+v, want %+v", got, want)
+	}
+}
