@@ -197,9 +197,12 @@ func NewRouter(d Dependencies) http.Handler {
 		})
 	})
 
-	// Fever shim (public path, auth via md5 key in body)
-	r.Post("/fever", d.handleFever)
-	r.Get("/fever", d.handleFever)
+	// Fever shim (public path, auth via per-user random token in form body).
+	// The token is 256-bit random so brute force is infeasible; the limiter
+	// is here to bound the cost of unauthenticated requests, each of which
+	// would otherwise force a full ListUsers scan.
+	r.With(loginLimiter.LimitMiddleware).Post("/fever", d.handleFever)
+	r.With(loginLimiter.LimitMiddleware).Get("/fever", d.handleFever)
 
 	// Static SPA / embed fallback
 	if d.StaticH != nil {
