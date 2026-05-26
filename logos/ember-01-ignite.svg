@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <defs>
-    <linearGradient id="emb" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#e8643a"/><stop offset="1" stop-color="#c2451d"/>
-    </linearGradient>
-  </defs>
-  <path d="M32 5 Q36.5 27.5 59 32 Q36.5 36.5 32 59 Q27.5 36.5 5 32 Q27.5 27.5 32 5 Z" fill="url(#emb)"/>
-  <path d="M49 8 Q50.5 16 58 17.5 Q50.5 19 49 27 Q47.5 19 40 17.5 Q47.5 16 49 8 Z" fill="#c2451d" opacity=".7"/>
-</svg>
