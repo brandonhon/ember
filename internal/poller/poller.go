@@ -109,8 +109,14 @@ func (p *Poller) Run(ctx context.Context) {
 		}()
 		// Backfill: enqueue any article that doesn't yet have a summary so a
 		// restart picks up where the previous process left off. Runs once at
-		// startup; the channel buffer caps how many we queue eagerly.
-		go p.enqueuePendingSummaries(ctx)
+		// startup; the channel buffer caps how many we queue eagerly. Tracked
+		// in the same WaitGroup so a shutdown-time send on summaryCh can't
+		// race with the channel being closed.
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			p.enqueuePendingSummaries(ctx)
+		}()
 	}
 
 	ticker := time.NewTicker(p.Config.Tick)
@@ -121,7 +127,11 @@ func (p *Poller) Run(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			close(p.summaryCh)
+			// Don't close summaryCh: request handlers (RefreshFeed,
+			// handleAddFeed) may still call EnqueueSummary during the HTTP
+			// graceful-shutdown window, and a send on a closed channel
+			// panics regardless of any default case. summaryWorker exits on
+			// ctx.Done() — closing the channel was redundant.
 			wg.Wait()
 			return
 		case <-ticker.C:
