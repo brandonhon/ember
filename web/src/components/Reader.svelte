@@ -7,6 +7,7 @@
     selectedArticleId,
     toggleStar,
     toggleLater,
+    setRead,
     showSummary,
     showImages,
     summaryCollapsed,
@@ -24,6 +25,19 @@
   const feed = $derived.by(() => {
     if (!selected) return null as FeedWithCounts | null;
     return $feeds.find((f) => f.id === selected.feed_id) ?? null;
+  });
+
+  // Opening an article marks it read. Always-on (matches Feedly/Reeder/
+  // Inoreader). Triggered for both mouse-clicks (ArticleList → select()) and
+  // keyboard nav (j/k → moveSelection() → selectedArticleId.set). Guarded on
+  // !is_read so we don't re-POST on every effect cycle.
+  let lastMarkedRead = -1;
+  $effect(() => {
+    if (!selected) return;
+    if (selected.is_read) return;
+    if (lastMarkedRead === selected.id) return;
+    lastMarkedRead = selected.id;
+    void setRead([selected.id], true);
   });
 
   let showShare = $state(false);

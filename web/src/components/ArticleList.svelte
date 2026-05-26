@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy } from "svelte";
+  import { onDestroy, tick } from "svelte";
   import {
     activeView,
     articles,
@@ -38,34 +38,64 @@
   }
 
   let io: IntersectionObserver | undefined;
+  // sawVisible tracks article IDs that have been in-view at least once during
+  // this session. We intentionally do NOT clear it when items change — that
+  // way, when the poller prepends new articles, the ones the user has already
+  // scrolled past keep their "seen" state and still mark-read when scrolled
+  // out of view. The set is bounded by total articles touched per session,
+  // which stays small in practice.
   const sawVisible = new Set<string>();
+  // observed tracks DOM elements currently attached to the IO so we don't
+  // re-observe on every items refresh (which kept dropping the "seen" state
+  // before this fix).
+  const observed = new WeakSet<HTMLElement>();
+
+  // Clear the seen-set when the active view changes — different feed/folder/
+  // search means a different population of articles, and stale "seen" entries
+  // from a previous view shouldn't mark anything read here.
+  $effect(() => {
+    void $activeView;
+    sawVisible.clear();
+  });
 
   $effect(() => {
     if (!containerEl) return;
-    io?.disconnect();
-    sawVisible.clear();
-    io = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          const target = entry.target as HTMLElement;
-          const idAttr = target.dataset.articleId;
-          const isRead = target.dataset.isRead === "1";
-          if (!idAttr) continue;
-          if (entry.isIntersecting) {
-            sawVisible.add(idAttr);
-          } else if (sawVisible.has(idAttr) && !isRead && get(scrollMarksRead)) {
-            pendingRead.add(Number(idAttr));
-            scheduleFlush();
+    // Touch the items signal so the effect re-runs whenever the list mutates
+    // (initial load, polling prepend, filter switch). Reading by index forces
+    // Svelte 5 to track the array reference itself.
+    void $articles.items.length;
+
+    if (!io) {
+      io = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            const target = entry.target as HTMLElement;
+            const idAttr = target.dataset.articleId;
+            const isRead = target.dataset.isRead === "1";
+            if (!idAttr) continue;
+            if (entry.isIntersecting) {
+              sawVisible.add(idAttr);
+            } else if (sawVisible.has(idAttr) && !isRead && get(scrollMarksRead)) {
+              pendingRead.add(Number(idAttr));
+              scheduleFlush();
+            }
           }
-        }
-      },
-      { root: containerEl, threshold: 0 },
-    );
-    void $articles.items;
-    queueMicrotask(() => {
+        },
+        { root: containerEl, threshold: 0 },
+      );
+    }
+
+    // After Svelte flushes the DOM for the new items, observe every card we
+    // haven't already attached to. New elements get tracked; existing ones
+    // stay attached so their seen-state survives across renders.
+    void tick().then(() => {
       if (!containerEl || !io) return;
       const els = containerEl.querySelectorAll<HTMLElement>("[data-article-id]");
-      els.forEach((el) => io!.observe(el));
+      els.forEach((el) => {
+        if (observed.has(el)) return;
+        io!.observe(el);
+        observed.add(el);
+      });
     });
   });
 
@@ -239,21 +269,10 @@
     {:else if $articles.err}
       <p class="empty error">Error: {$articles.err}</p>
     {:else if filtered.length === 0 && $feeds.length === 0}
-      <!-- True empty state: no subscriptions at all. Onboarding panel
-           directs the user toward starter packs or OPML import. -->
-      <div class="onboarding" data-testid="onboarding-empty">
-        <h2>Welcome to Ember.</h2>
-        <p>Start by adding feeds — pick a curated pack or import an OPML file.</p>
-        <div class="onboarding-actions">
-          <a href="#" class="primary" on:click|preventDefault={() => (location.hash = "#starter") && window.dispatchEvent(new CustomEvent("ember:open-settings", { detail: "starter" }))}>
-            Browse starter packs
-          </a>
-          <a href="#" class="ghost" on:click|preventDefault={() => window.dispatchEvent(new CustomEvent("ember:open-settings"))}>
-            Open settings
-          </a>
-        </div>
-        <p class="onboarding-hint">Or paste a feed URL via the "+ Add feed" button in the sidebar.</p>
-      </div>
+      <!-- Quiet empty state. The full welcome flow (starter-pack CTA + docs
+           link) is rendered as a modal in App.svelte so it doesn't sit in
+           the article column and block clicks on the topbar/sidebar. -->
+      <p class="empty" data-testid="onboarding-empty">No feeds yet.</p>
     {:else if filtered.length === 0}
       <p class="empty">No articles in this view.</p>
     {/if}

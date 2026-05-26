@@ -6,6 +6,7 @@
     refreshSidebar,
     loadArticles,
     articles,
+    feeds,
     selectedArticleId,
     activeView,
     theme,
@@ -28,11 +29,20 @@
   import TopBar from "./components/TopBar.svelte";
   import ShortcutHelp from "./components/ShortcutHelp.svelte";
   import Settings from "./components/Settings.svelte";
+  import WelcomeModal from "./components/WelcomeModal.svelte";
 
   let keymapCleanup: () => void = () => {};
   let mounted = $state(false);
   let showHelp = $state(false);
   let showSettings = $state(false);
+  // Welcome modal shown once on a fresh account (no feeds yet). Dismissal
+  // persists to localStorage so it doesn't reappear if the user closes it
+  // without adding a feed.
+  const welcomeSeenKey = "ember:welcome-seen";
+  let welcomeSeen = $state(false);
+  // Set after the first refreshSidebar() so we don't flash the modal during
+  // initial load while $feeds is still its empty default.
+  let sidebarLoaded = $state(false);
 
   function moveSelection(delta: number) {
     const items = get(articles).items;
@@ -123,12 +133,23 @@
     window.addEventListener("ember:unauthorized", onUnauthorized);
     window.addEventListener("ember:open-settings", onOpenSettingsEvent);
     document.addEventListener("visibilitychange", onVisibility);
+    // Hydrate the welcome-seen flag — set if the user previously dismissed
+    // the modal without subscribing. Cleared automatically once a feed is
+    // added (we don't show the modal when $feeds is non-empty anyway).
+    try {
+      welcomeSeen = localStorage.getItem(welcomeSeenKey) === "1";
+    } catch { /* ignore */ }
     // Branding can be fetched without a session so the title/icon match the
     // server's identity even before the user logs in.
     void refreshBranding();
     await refreshMe();
     mounted = true;
   });
+
+  function dismissWelcome() {
+    welcomeSeen = true;
+    try { localStorage.setItem(welcomeSeenKey, "1"); } catch { /* ignore */ }
+  }
 
   onDestroy(() => {
     keymapCleanup();
@@ -145,11 +166,12 @@
   $effect(() => {
     if ($user && $user.id !== loadedForUserId) {
       loadedForUserId = $user.id;
-      void refreshSidebar();
+      void refreshSidebar().then(() => { sidebarLoaded = true; });
       void loadArticles(get(activeView));
       startPolling();
     } else if (!$user) {
       loadedForUserId = null;
+      sidebarLoaded = false;
       stopPolling();
     }
   });
@@ -297,6 +319,13 @@
   {/if}
   {#if showSettings}
     <Settings onClose={() => (showSettings = false)} />
+  {/if}
+  <!-- Welcome modal: fresh accounts only. Gated on sidebarLoaded so we
+       don't flash it during initial /api/feeds load when $feeds is still
+       the empty default. Suppressed once the user dismisses (persistent)
+       OR adds any feed. -->
+  {#if $user && sidebarLoaded && $feeds.length === 0 && !welcomeSeen}
+    <WelcomeModal onClose={dismissWelcome} />
   {/if}
 {/if}
 
