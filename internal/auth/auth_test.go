@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -158,8 +159,11 @@ func TestSession_ExpiredRejected(t *testing.T) {
 	}
 	cookie := extractCookie(t, w)
 
-	// Move the clock past the TTL.
-	a.Now = func() time.Time { return time.Now().Add(a.SessionTTL + time.Hour) }
+	// Move the clock past the TTL. EffectiveSessionTTL reads under the
+	// lock — direct a.SessionTTL access would race SetSessionTTL writes
+	// when -race is enabled (production matters even though this test
+	// is single-goroutine).
+	a.Now = func() time.Time { return time.Now().Add(a.EffectiveSessionTTL() + time.Hour) }
 	r2 := httptest.NewRequest(http.MethodGet, "/", nil)
 	r2.AddCookie(cookie)
 	if _, err := a.VerifySession(ctx, r2); err == nil {
@@ -347,6 +351,97 @@ func TestCleanupExpiredSessions(t *testing.T) {
 	if n != 1 {
 		t.Errorf("cleaned %d, want 1", n)
 	}
+}
+
+// TestSetSessionTTL_NoRaceWithCreateSession exercises the read/write
+// path that go-review flagged: SetSessionTTL writes a.SessionTTL while
+// CreateSession reads it. Pre-fix this would fail under `go test -race`.
+func TestSetSessionTTL_NoRaceWithCreateSession(t *testing.T) {
+	a := newAuth(t)
+	ctx := context.Background()
+	u, _ := a.Store.CreateUser(ctx, models.User{Username: "u", PasswordHash: "x"})
+
+	var wg sync.WaitGroup
+	stop := make(chan struct{})
+
+	// Writer: bounce the TTL between two values 100 times.
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		ttls := []time.Duration{30 * time.Minute, 12 * time.Hour}
+		for i := 0; i < 100; i++ {
+			if err := a.SetSessionTTL(ttls[i%2]); err != nil {
+				t.Errorf("SetSessionTTL: %v", err)
+				return
+			}
+		}
+		close(stop)
+	}()
+
+	// Reader: keep issuing sessions until the writer signals done.
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+			}
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodGet, "/", nil)
+			if _, err := a.CreateSession(ctx, w, r, u.ID); err != nil {
+				t.Errorf("CreateSession: %v", err)
+				return
+			}
+		}
+	}()
+
+	wg.Wait()
+}
+
+// TestSetSessionTTL_RangeValidation exercises the bounds enforced by
+// SetSessionTTL — single source of truth for both the admin handler and
+// the boot-time app_settings loader.
+func TestSetSessionTTL_RangeValidation(t *testing.T) {
+	a := newAuth(t)
+	prior := a.EffectiveSessionTTL()
+
+	cases := []struct {
+		name    string
+		d       time.Duration
+		wantErr bool
+	}{
+		{"below min", MinSessionTTL - time.Second, true},
+		{"at min", MinSessionTTL, false},
+		{"in range", time.Hour, false},
+		{"at max", MaxSessionTTL, false},
+		{"above max", MaxSessionTTL + time.Second, true},
+		{"zero", 0, true},
+		{"negative", -time.Hour, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			before := a.EffectiveSessionTTL()
+			err := a.SetSessionTTL(tc.d)
+			if tc.wantErr {
+				if err == nil {
+					t.Errorf("expected error for %v, got nil", tc.d)
+				}
+				if a.EffectiveSessionTTL() != before {
+					t.Errorf("TTL changed on rejected input: %v → %v", before, a.EffectiveSessionTTL())
+				}
+				return
+			}
+			if err != nil {
+				t.Errorf("unexpected error for %v: %v", tc.d, err)
+			}
+			if a.EffectiveSessionTTL() != tc.d {
+				t.Errorf("TTL not applied: %v", a.EffectiveSessionTTL())
+			}
+		})
+	}
+	_ = prior
 }
 
 // extractCookie pulls the ember session cookie from a recorder.
