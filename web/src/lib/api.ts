@@ -276,6 +276,12 @@ export const api = {
     call<PasskeyChallenge>("POST", "/api/auth/passkey/begin", { username }),
   passkeyLoginFinish: (session_id: string, response: unknown) =>
     call<User>("POST", "/api/auth/passkey/finish", { session_id, response }),
+  // System-wide "any passkey on this server?" — used by Login.svelte to hide
+  // the passkey button when no user has registered one yet. Returns
+  // {any_registered: false} when WebAuthn isn't configured either, so the
+  // UI can treat both cases the same way.
+  passkeyAnyRegistered: () =>
+    call<{ any_registered: boolean }>("GET", "/api/auth/passkey/exists"),
 };
 
 export interface PasskeySummary {

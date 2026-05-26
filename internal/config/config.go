@@ -23,6 +23,10 @@ type Config struct {
 	FreshWindow     time.Duration
 	PollConcurrency int
 	PollTick        time.Duration
+	// SessionTTL is the lifetime of a freshly-issued session cookie. Defaults
+	// to 24h. Override via EMBER_SESSION_TTL (Go duration: e.g. 30m, 12h, 7d
+	// not supported — use 168h for a week).
+	SessionTTL time.Duration
 	LogLevel        slog.Level
 	TestMode        bool
 	// DisableSummaries skips the LLM summarizer entirely. Articles still show
@@ -61,6 +65,7 @@ func Defaults() Config {
 		FreshWindow:     6 * time.Hour,
 		PollConcurrency: 8,
 		PollTick:        60 * time.Second,
+		SessionTTL:      24 * time.Hour,
 		LogLevel:        slog.LevelInfo,
 		SMTPPort:        587,
 		SMTPStartTLS:    true,
@@ -109,6 +114,17 @@ func loadFrom(get func(string) string) (Config, error) {
 			errs = append(errs, "EMBER_FRESH_WINDOW must be > 0")
 		default:
 			cfg.FreshWindow = d
+		}
+	}
+	if v := get("EMBER_SESSION_TTL"); v != "" {
+		d, err := time.ParseDuration(v)
+		switch {
+		case err != nil:
+			errs = append(errs, fmt.Sprintf("EMBER_SESSION_TTL invalid: %v", err))
+		case d <= 0:
+			errs = append(errs, "EMBER_SESSION_TTL must be > 0")
+		default:
+			cfg.SessionTTL = d
 		}
 	}
 	if v := get("EMBER_POLL_CONCURRENCY"); v != "" {

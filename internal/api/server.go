@@ -105,6 +105,9 @@ func NewRouter(d Dependencies) http.Handler {
 		// Passkey login (public; rate-limited the same as password login).
 		r.With(loginLimiter.LimitMiddleware).Post("/auth/passkey/begin", d.handlePasskeyLoginBegin)
 		r.With(loginLimiter.LimitMiddleware).Post("/auth/passkey/finish", d.handlePasskeyLoginFinish)
+		// Public probe that drives the login UI's passkey-button visibility.
+		// Returns {any_registered: bool}. No auth, no CSRF (it's a GET).
+		r.Get("/auth/passkey/exists", d.handlePasskeyExists)
 
 		// Branding is auth-required so anonymous callers can't probe whether
 		// an instance exists or what it's branded as. The login page renders
