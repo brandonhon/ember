@@ -25,6 +25,21 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: embed SPA
+        # //go:embed all:dist requires real files in internal/web/dist.
+        # Build the SPA + copy it before any Go command runs.
+        run: |
+          (cd web && npm ci && npm run build)
+          rm -rf internal/web/dist
+          mkdir -p internal/web/dist
+          cp -R web/dist/. internal/web/dist/
+
       - name: go vet
         run: go vet ./...
 
