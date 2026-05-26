@@ -14,7 +14,8 @@
     refreshBranding,
     scrollMarksRead,
   } from "../lib/stores";
-  import { api, ApiError, type StarterPack, type StarterImportResult, type LLMStatus, type DBStatus, type UserStats, type UserDigest } from "../lib/api";
+  import { api, ApiError, type StarterPack, type StarterImportResult, type LLMStatus, type DBStatus, type UserStats, type UserDigest, type PasskeySummary } from "../lib/api";
+  import { createPasskey, passkeySupported } from "../lib/passkey";
   import { onMount } from "svelte";
   import { refreshSidebar } from "../lib/stores";
   import FilterManager from "./FilterManager.svelte";
@@ -43,7 +44,7 @@
 
   let { onClose }: { onClose: () => void } = $props();
 
-  type Section = "profile" | "preferences" | "stats" | "digest" | "mobile" | "filters" | "users" | "starter" | "llm" | "branding" | "database" | "about";
+  type Section = "profile" | "passkeys" | "preferences" | "stats" | "digest" | "mobile" | "filters" | "users" | "starter" | "llm" | "branding" | "database" | "about";
   let section = $state<Section>("profile");
 
   // Daily digest state -------------------------------------------------
@@ -370,6 +371,65 @@
     return (bytes / (1024 * 1024)).toFixed(0) + " MiB";
   }
 
+  // Passkey admin state ----------------------------------------------
+  const canPasskey = passkeySupported();
+  let passkeys = $state<PasskeySummary[]>([]);
+  let passkeyErr = $state("");
+  let passkeyMsg = $state("");
+  let passkeyBusy = $state<string>(""); // "register" | "delete:<id>"
+  let newPasskeyName = $state("");
+  async function loadPasskeys() {
+    passkeyErr = "";
+    try {
+      const res = await api.listPasskeys();
+      passkeys = res.data ?? [];
+    } catch (e) {
+      passkeyErr = e instanceof ApiError ? e.message : String(e);
+    }
+  }
+  async function addPasskey() {
+    passkeyBusy = "register";
+    passkeyErr = "";
+    passkeyMsg = "";
+    try {
+      const begin = await api.passkeyRegisterBegin();
+      const cred = await createPasskey(begin.data.options as any);
+      const name = newPasskeyName.trim() || "Passkey";
+      await api.passkeyRegisterFinish(begin.data.session_id, name, cred);
+      newPasskeyName = "";
+      passkeyMsg = "Passkey added";
+      await loadPasskeys();
+    } catch (e) {
+      if (e instanceof ApiError) passkeyErr = e.message || "Registration failed";
+      else if (e instanceof DOMException) passkeyErr = "Registration cancelled";
+      else passkeyErr = String(e);
+    } finally {
+      passkeyBusy = "";
+      setTimeout(() => (passkeyMsg = ""), 3000);
+    }
+  }
+  function askDeletePasskey(p: PasskeySummary) {
+    confirmReq = {
+      title: "Remove passkey?",
+      message: `Devices using "${p.name}" won't be able to sign in with it anymore.`,
+      confirmLabel: "Remove",
+      destructive: true,
+      run: () => deletePasskey(p.id),
+    };
+  }
+  async function deletePasskey(id: number) {
+    passkeyBusy = "delete:" + id;
+    passkeyErr = "";
+    try {
+      await api.deletePasskey(id);
+      await loadPasskeys();
+    } catch (e) {
+      passkeyErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      passkeyBusy = "";
+    }
+  }
+
   $effect(() => {
     if (section === "starter") void loadStarterPacks();
     if (section === "llm" && $user?.is_admin) void loadLLM();
@@ -377,6 +437,7 @@
     if (section === "database" && $user?.is_admin) void loadDB();
     if (section === "stats") void loadStats();
     if (section === "digest") void loadDigest();
+    if (section === "passkeys") void loadPasskeys();
   });
 
   onMount(() => {
@@ -462,6 +523,7 @@
     <div class="layout">
       <nav class="nav" aria-label="Settings sections">
         <button class:active={section === "profile"} on:click={() => (section = "profile")} data-testid="settings-profile">Profile</button>
+        <button class:active={section === "passkeys"} on:click={() => (section = "passkeys")} data-testid="settings-passkeys">Passkeys</button>
         <button class:active={section === "preferences"} on:click={() => (section = "preferences")}>Preferences</button>
         <button class:active={section === "mobile"} on:click={() => (section = "mobile")}>Mobile clients</button>
         <button class:active={section === "filters"} on:click={() => (section = "filters")}>Filters</button>
@@ -512,6 +574,69 @@
               {pwBusy ? "Saving…" : "Change password"}
             </button>
           </div>
+        {/if}
+
+        {#if section === "passkeys"}
+          <h3>Passkeys</h3>
+          {#if !canPasskey}
+            <p class="hint">Your browser doesn't support passkeys.</p>
+          {:else}
+            <p class="hint">
+              Passkeys let you sign in without a password using a fingerprint, face scan, or
+              hardware key. Each device you register here can be used at sign-in.
+            </p>
+
+            {#if passkeyErr}<p class="error">{passkeyErr}</p>{/if}
+            {#if passkeyMsg}<p class="ok">{passkeyMsg}</p>{/if}
+
+            <h4>Add a passkey</h4>
+            <label>
+              <span>Name this device</span>
+              <input
+                type="text"
+                bind:value={newPasskeyName}
+                placeholder="e.g. MacBook Touch ID"
+                maxlength="60"
+              />
+            </label>
+            <div class="actions">
+              <button
+                on:click={addPasskey}
+                disabled={passkeyBusy === "register"}
+                data-testid="passkey-register"
+              >
+                {passkeyBusy === "register" ? "Waiting for device…" : "Register passkey"}
+              </button>
+            </div>
+
+            <h4>Your passkeys</h4>
+            {#if passkeys.length === 0}
+              <p class="hint">No passkeys registered yet.</p>
+            {:else}
+              <ul class="list">
+                {#each passkeys as p (p.id)}
+                  <li class="list-row">
+                    <div>
+                      <div class="list-title">{p.name}</div>
+                      <div class="list-sub">
+                        Added {new Date(p.created_at * 1000).toLocaleDateString()}
+                        {#if p.last_used_at}
+                          · last used {new Date(p.last_used_at * 1000).toLocaleDateString()}
+                        {/if}
+                      </div>
+                    </div>
+                    <button
+                      class="btn-danger"
+                      on:click={() => askDeletePasskey(p)}
+                      disabled={passkeyBusy === "delete:" + p.id}
+                    >
+                      Remove
+                    </button>
+                  </li>
+                {/each}
+              </ul>
+            {/if}
+          {/if}
         {/if}
 
         {#if section === "preferences"}

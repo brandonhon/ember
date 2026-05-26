@@ -123,6 +123,19 @@ func run() error {
 		a.SecureCookies = false
 	}
 
+	// WebAuthn (passkeys). Optional — requires EMBER_PUBLIC_URL so the relying
+	// party ID + origin can be set. Passkey endpoints return 503 when absent.
+	var webAuthn *auth.WebAuthn
+	if cfg.PublicURL != "" {
+		w, werr := auth.NewWebAuthn(st, cfg.PublicURL, "Ember")
+		if werr != nil {
+			logger.Warn("webauthn disabled", "err", werr)
+		} else {
+			webAuthn = w
+			logger.Info("webauthn enabled", "rp", cfg.PublicURL)
+		}
+	}
+
 	// Test mode seeds a deterministic admin + feed + articles so the e2e
 	// harness has known data to assert against. In normal mode, do the
 	// usual first-run admin bootstrap.
@@ -217,6 +230,19 @@ func run() error {
 		if sender.SMTP.Configured() {
 			go runDigestSender(ctx, st, sender, logger.With("component", "digest"))
 		}
+		// Reap stale WebAuthn ceremony rows (created_at < now-5m). Cheap.
+		go func() {
+			t := time.NewTicker(15 * time.Minute)
+			defer t.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-t.C:
+					_ = st.CleanupWebAuthnSessions(ctx)
+				}
+			}
+		}()
 	}
 
 	// Embedded static SPA.
@@ -228,6 +254,7 @@ func run() error {
 	router := api.NewRouter(api.Dependencies{
 		Store: st, Auth: a, Poller: p, Metrics: p, OPML: op,
 		StaticH: staticH, TestMode: cfg.TestMode, Ollama: ollamaSum,
+		WebAuthn: webAuthn,
 		// Test mode uses synthetic .test hostnames that don't resolve; the
 		// SSRF DNS check would reject them. Production stays strict.
 		AllowPrivateURLs: cfg.AllowPrivateURLs || cfg.TestMode,

@@ -42,6 +42,10 @@ type Config struct {
 	SMTPPassword string
 	SMTPFrom     string
 	SMTPStartTLS bool
+	// PublicURL is the canonical scheme://host[:port] users hit the app on.
+	// Required for WebAuthn registration so the RP ID + origin can be set.
+	// Optional otherwise.
+	PublicURL string
 }
 
 // Defaults returns a Config populated with safe defaults. SessionKey and
@@ -162,6 +166,9 @@ func loadFrom(get func(string) string) (Config, error) {
 		} else {
 			cfg.DisableImages = on
 		}
+	}
+	if v := get("EMBER_PUBLIC_URL"); v != "" {
+		cfg.PublicURL = v
 	}
 	if v := get("EMBER_ALLOW_PRIVATE_URLS"); v != "" {
 		on, err := parseBool(v)
