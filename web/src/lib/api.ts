@@ -411,4 +411,7 @@ export interface StarterRemoveResult {
   pack: string;
   feeds_removed: number;
   not_subscribed: number;
+  // True when the empty pack-category was deleted after the last feed was
+  // unsubscribed. False if the user had added their own feeds to it (kept).
+  category_removed: boolean;
 }

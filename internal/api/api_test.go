@@ -797,6 +797,10 @@ func TestStarterPack_AddListRemoveCycle(t *testing.T) {
 	if rm.Data.NotSubscribed != 0 {
 		t.Errorf("not_subscribed after fresh install = %d, want 0", rm.Data.NotSubscribed)
 	}
+	// The pack-only category is now empty and should be auto-deleted.
+	if !rm.Data.CategoryRemoved {
+		t.Errorf("category_removed = false after pristine remove, want true")
+	}
 
 	// 5. List reports subscribed=0 again.
 	var packs3 struct {
@@ -816,6 +820,69 @@ func TestStarterPack_AddListRemoveCycle(t *testing.T) {
 	}
 	if rm2.Data.FeedsRemoved != 0 || rm2.Data.NotSubscribed != wantCount {
 		t.Errorf("second remove = %+v, want feeds_removed=0 not_subscribed=%d", rm2.Data, wantCount)
+	}
+}
+
+// When the user has added their own feed to a pack's category, removing the
+// pack must keep the category alive so the user-added subscription stays
+// grouped.
+func TestStarterPack_RemoveKeepsCategoryWithUserAddedFeeds(t *testing.T) {
+	h := newHarness(t)
+	u := h.seedUser(t, "alice", "hunter2", false)
+	cl := h.login(t, "alice", "hunter2")
+
+	const slug = "technology"
+	const packCategory = "Technology"
+
+	// Install the pack.
+	if code := post(t, cl, h.srv.URL+"/api/starter-packs/"+slug, map[string]any{}, nil); code != http.StatusOK {
+		t.Fatalf("install: %d", code)
+	}
+
+	// Drop a user-added feed into the same category. Done via the store
+	// directly so we don't need to wire a parallel category lookup over HTTP.
+	cats, _ := h.store.ListCategories(context.Background(), u.ID)
+	var catID int64
+	for _, c := range cats {
+		if c.Name == packCategory {
+			catID = c.ID
+			break
+		}
+	}
+	if catID == 0 {
+		t.Fatalf("pack category %q not found after install", packCategory)
+	}
+	f, err := h.store.UpsertFeed(context.Background(), models.Feed{URL: "https://user-added.test/feed", Title: "User Added"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.store.Subscribe(context.Background(), models.Subscription{
+		UserID: u.ID, FeedID: f.ID, CategoryID: &catID,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Remove the pack — the user-added feed should keep the category alive.
+	var rm struct {
+		Data starterRemoveResult `json:"data"`
+	}
+	if code := delJSON(t, cl, h.srv.URL+"/api/starter-packs/"+slug, &rm); code != http.StatusOK {
+		t.Fatalf("remove: %d", code)
+	}
+	if rm.Data.CategoryRemoved {
+		t.Errorf("category_removed = true, want false (user-added feed should retain the category)")
+	}
+	// Category still exists.
+	catsAfter, _ := h.store.ListCategories(context.Background(), u.ID)
+	stillThere := false
+	for _, c := range catsAfter {
+		if c.ID == catID {
+			stillThere = true
+			break
+		}
+	}
+	if !stillThere {
+		t.Errorf("pack category was deleted even though a user-added feed lives in it")
 	}
 }
 

@@ -121,9 +121,10 @@ type starterImportResult struct {
 }
 
 type starterRemoveResult struct {
-	Pack         string `json:"pack"`
-	FeedsRemoved int    `json:"feeds_removed"`
-	NotSubscribed int   `json:"not_subscribed"`
+	Pack            string `json:"pack"`
+	FeedsRemoved    int    `json:"feeds_removed"`
+	NotSubscribed   int    `json:"not_subscribed"`
+	CategoryRemoved bool   `json:"category_removed"`
 }
 
 // handleImportStarterPack creates the named category (or reuses an existing
@@ -219,8 +220,8 @@ func (d *Dependencies) handleImportStarterPack(w http.ResponseWriter, r *http.Re
 // that they currently have a subscription to. Idempotent — calling it twice
 // (or on a pack they never installed) is harmless. Orphan feed rows are
 // cleaned up automatically by Store.Unsubscribe when the user was the sole
-// subscriber. The category created by import is left alone — the user may
-// have added their own feeds to it.
+// subscriber. The category created by import is deleted only if zero
+// subscriptions remain under it — the user may have added their own feeds.
 func (d *Dependencies) handleRemoveStarterPack(w http.ResponseWriter, r *http.Request) {
 	u, _ := auth.FromContext(r.Context())
 	slug := chi.URLParam(r, "slug")
@@ -237,6 +238,22 @@ func (d *Dependencies) handleRemoveStarterPack(w http.ResponseWriter, r *http.Re
 	}
 
 	ctx := r.Context()
+
+	// Capture the pack's category ID before unsubscribing so we can check
+	// whether it should be removed afterward. Matched by name (same lookup
+	// import uses); may not exist if the user renamed/deleted it.
+	cats, err := d.Store.ListCategories(ctx, u.ID)
+	if mapStoreError(w, err) {
+		return
+	}
+	var packCategoryID int64
+	for _, c := range cats {
+		if strings.EqualFold(c.Name, pack.Name) {
+			packCategoryID = c.ID
+			break
+		}
+	}
+
 	subs, err := d.Store.ListFeedsForUser(ctx, u.ID)
 	if mapStoreError(w, err) {
 		return
@@ -261,5 +278,30 @@ func (d *Dependencies) handleRemoveStarterPack(w http.ResponseWriter, r *http.Re
 		}
 		result.FeedsRemoved++
 	}
+
+	// If the pack's category is now empty (no user-added feeds remain),
+	// delete it so the sidebar doesn't keep a vestigial folder. Skip when
+	// no category was resolved (already removed manually, etc).
+	if packCategoryID != 0 {
+		remaining, err := d.Store.ListFeedsForUser(ctx, u.ID)
+		if mapStoreError(w, err) {
+			return
+		}
+		empty := true
+		for _, f := range remaining {
+			if f.CategoryID != nil && *f.CategoryID == packCategoryID {
+				empty = false
+				break
+			}
+		}
+		if empty {
+			if err := d.Store.DeleteCategory(ctx, u.ID, packCategoryID); err == nil {
+				result.CategoryRemoved = true
+			}
+			// Soft-fail: a category-delete error doesn't undo the
+			// unsubscribes; just leave CategoryRemoved=false.
+		}
+	}
+
 	writeData(w, http.StatusOK, result, nil)
 }

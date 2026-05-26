@@ -267,6 +267,7 @@
       const parts: string[] = [];
       if (r.feeds_removed) parts.push(`${r.feeds_removed} removed`);
       if (r.not_subscribed) parts.push(`${r.not_subscribed} not subscribed`);
+      if (r.category_removed) parts.push("folder cleared");
       starterMsg = parts.join(" · ") || "Nothing to remove";
       await refreshSidebar();
       await loadStarterPacks();
