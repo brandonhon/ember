@@ -21,6 +21,13 @@ Ember reads configuration from environment variables at startup. A handful of se
 | `EMBER_DISABLE_SUMMARIES` | `0` | Skip LLM summarization entirely. Articles still surface (poller stamps `summary_model='disabled'`). |
 | `EMBER_DISABLE_IMAGES` | `0` | Drop article hero images at ingest. |
 | `EMBER_ALLOW_PRIVATE_URLS` | `0` | Bypass the SSRF block so feeds on RFC1918 / loopback addresses can be subscribed. **Only set this if you trust every user who can add feeds.** |
+| `EMBER_PUBLIC_URL` | — | Canonical `scheme://host` users hit, e.g. `https://reader.example.com`. Required to enable passkey / WebAuthn sign-in. |
+| `EMBER_SMTP_HOST` | — | SMTP server hostname. Required to enable the daily-digest email feature. |
+| `EMBER_SMTP_PORT` | `587` | SMTP port. |
+| `EMBER_SMTP_USER` | — | SMTP auth username (optional; omit for relays without auth). |
+| `EMBER_SMTP_PASSWORD` | — | SMTP auth password. |
+| `EMBER_SMTP_FROM` | — | `From:` address used on digest emails. |
+| `EMBER_SMTP_STARTTLS` | `1` | STARTTLS on submission ports (587). Set `0` only when targeting a server that doesn't support it. |
 | `EMBER_FRESH_WINDOW` | `6h` | How recent an article must be to appear in the "Fresh" smart view. |
 | `EMBER_POLL_CONCURRENCY` | `8` | Number of feed-fetch worker goroutines. |
 | `EMBER_POLL_TICK` | `60s` | How often the poller scans for feeds due to fetch. |
