@@ -80,10 +80,11 @@ func (d *Dependencies) handleAddFeed(w http.ResponseWriter, r *http.Request) {
 	}
 	// Initial refresh: do it inline (cheap with mocked poller in tests; real
 	// poller will fire fetch+parse synchronously, which is fine for a single
-	// feed — caller is already paying a network cost). We use the request
-	// context's parent (a Background ctx) to survive the handler return.
+	// feed — caller is already paying a network cost). We use the server-
+	// level background context (cancelled at shutdown) rather than the
+	// request context so a slow client disconnect doesn't abort the fetch.
 	if d.Poller != nil {
-		_ = d.Poller.RefreshFeed(context.Background(), f.ID)
+		_ = d.Poller.RefreshFeed(d.backgroundCtx(), f.ID)
 	}
 	writeData(w, http.StatusCreated, map[string]any{"feed": f, "subscription": sub}, nil)
 }

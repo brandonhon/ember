@@ -43,9 +43,9 @@ Stored in the `app_settings` KV. Edit via the admin UI in **Settings → ...**.
 | Active LLM model | Language model |
 | Temperature / Top P / Context window | Language model → Tuning |
 | App name, page title, favicon URL | Branding |
-| Backup schedule + retention | Database |
-| Cleanup schedule + window | Database |
-| OPML export schedule | Database |
+| Backup schedule + retention (`db_backup_keep`, default 7) | Database |
+| Cleanup schedule + window (`db_cleanup_older_days`, default 90) | Database |
+| OPML export schedule + retention (`opml_keep`, default 12) | Database |
 
 Each user also has client-side preferences stored in browser `localStorage`:
 

@@ -51,9 +51,9 @@ func ExtractFromURL(ctx context.Context, c *http.Client, target string) (Readabl
 	}, nil
 }
 
-// ExtractFromHTML runs readability over the given HTML body without making an
-// HTTP request. Used for tests.
-func ExtractFromHTML(body, target string) (Readable, error) {
+// extractFromHTML runs readability over the given HTML body without making an
+// HTTP request. Internal test helper; not part of the package's public API.
+func extractFromHTML(body, target string) (Readable, error) {
 	u, _ := url.Parse(target)
 	art, err := readability.FromReader(strings.NewReader(body), u)
 	if err != nil {

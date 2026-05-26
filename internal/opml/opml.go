@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/brandonhon/ember/internal/feed"
 	"github.com/brandonhon/ember/internal/models"
 	"github.com/brandonhon/ember/internal/store"
 )
@@ -209,35 +208,3 @@ func (s *Service) Export(ctx context.Context, userID int64, w io.Writer) error {
 	return enc.Flush()
 }
 
-// DiscoverThenSubscribe is a convenience used by the API: given a candidate
-// URL (which may be a site URL, not a feed URL), discover the feed link, then
-// upsert + subscribe. Returns the created subscription and feed.
-func (s *Service) DiscoverThenSubscribe(ctx context.Context, userID int64, candidate string, categoryID *int64, fetcher *feed.Fetcher) (models.Subscription, models.Feed, error) {
-	// Try treating as a feed directly. If parsing fails, try discovery.
-	feedURL := candidate
-	if fetcher == nil {
-		fetcher = feed.NewFetcher(15)
-	}
-	// Probe to see if it's a direct feed.
-	res, err := fetcher.Fetch(ctx, candidate, "", "")
-	if err == nil && res.Changed {
-		if _, perr := feed.Parse(ctx, 0, res.Body, candidate); perr != nil {
-			// Fall back to discovery via the HTTP client of the fetcher.
-			disc, derr := feed.Discover(ctx, fetcher.Client, candidate)
-			if derr == nil {
-				feedURL = disc
-			}
-		}
-	}
-	f, err := s.Store.UpsertFeed(ctx, models.Feed{URL: feedURL, Title: feedURL})
-	if err != nil {
-		return models.Subscription{}, models.Feed{}, err
-	}
-	sub, err := s.Store.Subscribe(ctx, models.Subscription{
-		UserID: userID, FeedID: f.ID, CategoryID: categoryID,
-	})
-	if err != nil {
-		return models.Subscription{}, models.Feed{}, err
-	}
-	return sub, f, nil
-}
