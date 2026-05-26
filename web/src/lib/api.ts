@@ -89,6 +89,9 @@ export const api = {
   listUsers: () => call<User[]>("GET", "/api/users"),
   createUser: (req: { username: string; password: string; email?: string; is_admin?: boolean }) =>
     call<User>("POST", "/api/users", req),
+  updateUser: (id: number, req: { email?: string; is_admin?: boolean }) =>
+    call<unknown>("PATCH", `/api/users/${id}`, req),
+  deleteUser: (id: number) => call<unknown>("DELETE", `/api/users/${id}`),
 
   // Categories --------------------------------------------------------
   listCategories: () => call<Category[]>("GET", "/api/categories"),
