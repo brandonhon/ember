@@ -1,0 +1,102 @@
+/*
+ * Ember docs theme — paper + ink + ember palette layered on top of VitePress
+ * default theme variables. Keeps the default's typography and layout intact
+ * while shifting the brand colors to match the app.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Newsreader:wght@400;600&family=Bricolage+Grotesque:wght@400;600;800&display=swap');
+
+:root {
+  /* Brand */
+  --vp-c-brand-1: #a93b16;
+  --vp-c-brand-2: #c2451d;
+  --vp-c-brand-3: #e8643a;
+  --vp-c-brand-soft: rgba(169, 59, 22, 0.14);
+
+  /* Paper background */
+  --vp-c-bg: #f6f2e9;
+  --vp-c-bg-alt: #efe9dc;
+  --vp-c-bg-elv: #fffdf8;
+  --vp-c-bg-soft: #ece5d6;
+
+  /* Ink text */
+  --vp-c-text-1: #211d18;
+  --vp-c-text-2: #3f3930;
+  --vp-c-text-3: #6a604f;
+
+  /* Borders */
+  --vp-c-divider: #e2dac9;
+  --vp-c-border: #d8cfb9;
+  --vp-c-gutter: #efe9dc;
+
+  /* Typography */
+  --vp-font-family-base: 'Bricolage Grotesque', system-ui, -apple-system, sans-serif;
+  --vp-font-family-mono: ui-monospace, SFMono-Regular, 'JetBrains Mono', monospace;
+
+  /* Hero gradient */
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: -webkit-linear-gradient(120deg, #a93b16, #e8643a);
+  --vp-home-hero-image-background-image: linear-gradient(135deg, rgba(232, 100, 58, 0.25) 0%, rgba(169, 59, 22, 0.15) 100%);
+  --vp-home-hero-image-filter: blur(48px);
+
+  /* Buttons */
+  --vp-button-brand-bg: var(--vp-c-brand-1);
+  --vp-button-brand-hover-bg: var(--vp-c-brand-2);
+  --vp-button-brand-active-bg: var(--vp-c-brand-2);
+  --vp-button-brand-border: var(--vp-c-brand-1);
+  --vp-button-brand-hover-border: var(--vp-c-brand-2);
+}
+
+.dark {
+  --vp-c-bg: #15130f;
+  --vp-c-bg-alt: #1c1915;
+  --vp-c-bg-elv: #211d18;
+  --vp-c-bg-soft: #2a2620;
+
+  --vp-c-text-1: #f0e9da;
+  --vp-c-text-2: #b8ac98;
+  --vp-c-text-3: #847a68;
+
+  --vp-c-divider: #322c23;
+  --vp-c-border: #3f3930;
+
+  --vp-c-brand-1: #e8643a;
+  --vp-c-brand-2: #f0855f;
+  --vp-c-brand-soft: rgba(232, 100, 58, 0.18);
+}
+
+/* Headings use Fraunces for an editorial feel that matches the app's reader pane. */
+h1, h2, h3, .VPHero .name, .VPHero .text {
+  font-family: 'Fraunces', Georgia, serif;
+  letter-spacing: -0.01em;
+}
+
+/* Body copy in long-form pages gets Newsreader for readability. */
+.vp-doc p,
+.vp-doc li,
+.vp-doc blockquote {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 17px;
+  line-height: 1.65;
+}
+
+/* Code stays in the mono stack. */
+.vp-doc code,
+.vp-doc pre {
+  font-family: var(--vp-font-family-mono);
+  font-size: 14px;
+}
+
+/* Pretty link underline on hover. */
+.vp-doc a {
+  text-decoration: none;
+  border-bottom: 1px dashed var(--vp-c-brand-1);
+  transition: border-color 0.15s;
+}
+.vp-doc a:hover {
+  border-bottom-color: var(--vp-c-brand-2);
+  border-bottom-style: solid;
+}
+
+/* Soften the sidebar to match. */
+.VPSidebar { background: var(--vp-c-bg-alt); }
