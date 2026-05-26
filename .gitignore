@@ -29,6 +29,11 @@ web/playwright-report/
 web/.playwright-data/
 internal/web/dist/
 
+# Docs site (VitePress)
+docs/node_modules/
+docs/.vitepress/dist/
+docs/.vitepress/cache/
+
 # Env
 .env
 .env.local
@@ -37,3 +42,4 @@ internal/web/dist/
 # Misc
 files.zip
 ember-logos.zip
+screens/

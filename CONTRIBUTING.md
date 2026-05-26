@@ -1,0 +1,72 @@
+# Contributing to Ember
+
+Thanks for considering a contribution. This document covers the minimum you need to know.
+
+## Workflow
+
+1. Open an issue describing the change before you start coding. For trivial fixes (typos, one-line bugs) a PR with a clear description is fine.
+2. Fork the repo, create a topic branch off `main`.
+3. Make the change. Keep commits focused and use conventional commit prefixes (`feat:`, `fix:`, `chore:`, `docs:`, `sec:`, `refactor:`, `style:`, `test:`).
+4. Run `make verify` (vet + tests). Run `make web-check && make web-test` if you touched the SPA.
+5. Open a PR against `main`. CI must pass; a maintainer will review.
+
+## Code style
+
+**Go**
+
+- Standard formatting: `gofmt`/`goimports` on save.
+- Idiomatic error wrapping with `%w`.
+- One-line comments above non-obvious functions only — don't restate what the code already says.
+- Prefer table-driven tests when there are 3+ cases for the same function.
+- No `panic` in handlers or stores. Return errors.
+
+**Svelte / TypeScript**
+
+- Svelte 5 runes (`$state`, `$derived`, `$effect`, `$props`) — no legacy reactive `let`.
+- TypeScript strict; no `any` without justification.
+- Components stay under ~500 lines. Extract subcomponents when they grow.
+- All user-visible strings live in the component (we don't have i18n yet).
+
+**SQL**
+
+- Always parameterize. Use `?` placeholders.
+- Every user-scoped query MUST have `WHERE user_id = ?` (or equivalent join).
+- Migrations are append-only; never edit a committed migration. Add a new one.
+
+## Development setup
+
+```
+# One-time
+make web-install
+make docs-install   # if working on the docs site
+
+# Hack on Go + SPA together
+make embed build
+EMBER_TEST_MODE=1 ./bin/ember
+
+# Or: SPA hot reload + ember in test mode
+cd web && npm run dev
+EMBER_TEST_MODE=1 ./bin/ember
+# open http://localhost:5173
+```
+
+## Before opening a PR
+
+```
+make verify           # go vet + go test
+make web-check        # svelte-check
+make e2e-install      # one-time
+make embed build      # produces ./bin/ember
+make e2e              # playwright suite
+make vulncheck        # govulncheck
+```
+
+If you bump a Go dependency, run `make tidy`.
+
+## Security issues
+
+Don't open public issues for security problems. See [SECURITY.md](./SECURITY.md).
+
+## License
+
+By contributing you agree your code is licensed under the project's [MIT License](./LICENSE).
