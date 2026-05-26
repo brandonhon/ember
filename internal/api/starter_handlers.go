@@ -166,12 +166,13 @@ func (d *Dependencies) handleImportStarterPack(w http.ResponseWriter, r *http.Re
 		result.FeedsAdded++
 		// Best-effort initial refresh — don't block the response on the
 		// network. Detaches from the request context (so the fetch survives
-		// the handler return) but uses a bounded timeout so a hanging fetch
-		// doesn't leak the goroutine for the rest of the process lifetime.
+		// the handler return) but uses a bounded timeout. Derives from
+		// d.backgroundCtx() (the server-level shutdown context) so we never
+		// keep hitting the DB after dbh.Close().
 		if d.Poller != nil {
 			feedID := f.ID
 			go func() {
-				rctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+				rctx, cancel := context.WithTimeout(d.backgroundCtx(), 60*time.Second)
 				defer cancel()
 				_ = d.Poller.RefreshFeed(rctx, feedID)
 			}()

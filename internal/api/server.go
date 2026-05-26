@@ -47,6 +47,20 @@ type Dependencies struct {
 	// AllowPrivateURLs disables the SSRF block on outbound HTTP fetches for
 	// homelab users who subscribe to LAN feeds. Off by default.
 	AllowPrivateURLs bool
+	// BackgroundCtx is the parent context for goroutines that a handler
+	// detaches from the request lifecycle (e.g. initial feed refresh after
+	// starter-pack import). Cancelled at process shutdown; nil falls back
+	// to context.Background so tests that don't wire shutdown still work.
+	BackgroundCtx context.Context
+}
+
+// backgroundCtx returns d.BackgroundCtx or context.Background if unset.
+// Used by handlers that spawn detached goroutines.
+func (d *Dependencies) backgroundCtx() context.Context {
+	if d.BackgroundCtx != nil {
+		return d.BackgroundCtx
+	}
+	return context.Background()
 }
 
 // NewRouter constructs the chi router. Public routes: /api/auth/*, /fever.

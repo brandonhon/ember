@@ -14,7 +14,7 @@ func TestExtractFromHTML(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r, err := ExtractFromHTML(string(body), "https://example.com/article")
+	r, err := extractFromHTML(string(body), "https://example.com/article")
 	if err != nil {
 		t.Fatal(err)
 	}

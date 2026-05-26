@@ -277,6 +277,11 @@ func run() error {
 		// Test mode uses synthetic .test hostnames that don't resolve; the
 		// SSRF DNS check would reject them. Production stays strict.
 		AllowPrivateURLs: cfg.AllowPrivateURLs || cfg.TestMode,
+		// Handlers that spawn detached goroutines (initial feed refresh on
+		// starter-pack import / add-feed) derive their context from this
+		// parent so they don't outlive process shutdown and end up making
+		// DB calls against a closed handle.
+		BackgroundCtx: ctx,
 	})
 
 	srv := &http.Server{
