@@ -106,7 +106,9 @@ func runOPMLExport(ctx context.Context, st *store.Store, op *opml.Service, lg *s
 		lg.Warn("opml export: write failed", "err", err)
 		return
 	}
-	lg.Info("scheduled OPML export complete", "path", out, "user_id", adminID)
+	keep := readIntSetting(ctx, st, "opml_keep", 12)
+	pruned, _ := st.PruneExports(defaultExportDir, keep)
+	lg.Info("scheduled OPML export complete", "path", out, "user_id", adminID, "pruned", pruned)
 	_ = st.PutAppSetting(ctx, "opml_last", strconv.FormatInt(time.Now().Unix(), 10))
 }
 
