@@ -14,8 +14,37 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      app: ${{ steps.filter.outputs.app }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          # Allow-list of paths that affect the running app or its tests.
+          # Anything outside this list (docs/, README, LICENSE, deploy/, etc.)
+          # causes the gated jobs below to skip, which counts as success for
+          # required-status-check branch protection.
+          filters: |
+            app:
+              - 'cmd/**'
+              - 'internal/**'
+              - 'web/**'
+              - 'go.mod'
+              - 'go.sum'
+              - 'Makefile'
+              - 'Dockerfile'
+              - '.dockerignore'
+              - '.golangci.yml'
+              - '.github/workflows/ci.yml'
+
   go:
     name: Go (vet + test + vuln)
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -53,6 +82,8 @@ jobs:
 
   web:
     name: Web (typecheck + build)
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -77,8 +108,9 @@ jobs:
 
   e2e:
     name: E2E (Playwright)
+    needs: [changes, go, web]
+    if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
-    needs: [go, web]
     steps:
       - uses: actions/checkout@v6
 
