@@ -333,18 +333,60 @@ export async function setRead(ids: number[], read: boolean): Promise<void> {
   );
 }
 
+// toggleStar / toggleLater do two optimistic updates so the UI feels
+// immediate:
+//   1. flip the article's flag in the loaded list (already existed).
+//   2. bump the sidebar's smart-count badge by ±1 (NEW — fixes the
+//      reported "I have to refresh to see the count update").
+// On API failure, both updates roll back to the captured prior state.
+// We compute the delta from the article's PREVIOUS flag so a no-op
+// toggle (same value as current) bumps by 0.
+
 export async function toggleStar(id: number, value: boolean): Promise<void> {
+  const prev = get(articles).items.find((a) => a.id === id);
+  const delta = prev ? (value === !!prev.is_starred ? 0 : value ? 1 : -1) : 0;
   articles.update((s) => ({
     ...s,
     items: s.items.map((a) => (a.id === id ? { ...a, is_starred: value } : a)),
   }));
-  await api.setStar(id, value);
+  if (delta !== 0) {
+    smartCounts.update((c) => ({ ...c, starred: Math.max(0, c.starred + delta) }));
+  }
+  try {
+    await api.setStar(id, value);
+  } catch (err) {
+    // Roll back both optimistic updates.
+    articles.update((s) => ({
+      ...s,
+      items: s.items.map((a) => (a.id === id ? { ...a, is_starred: !!prev?.is_starred } : a)),
+    }));
+    if (delta !== 0) {
+      smartCounts.update((c) => ({ ...c, starred: Math.max(0, c.starred - delta) }));
+    }
+    throw err;
+  }
 }
 
 export async function toggleLater(id: number, value: boolean): Promise<void> {
+  const prev = get(articles).items.find((a) => a.id === id);
+  const delta = prev ? (value === !!prev.is_later ? 0 : value ? 1 : -1) : 0;
   articles.update((s) => ({
     ...s,
     items: s.items.map((a) => (a.id === id ? { ...a, is_later: value } : a)),
   }));
-  await api.setLater(id, value);
+  if (delta !== 0) {
+    smartCounts.update((c) => ({ ...c, later: Math.max(0, c.later + delta) }));
+  }
+  try {
+    await api.setLater(id, value);
+  } catch (err) {
+    articles.update((s) => ({
+      ...s,
+      items: s.items.map((a) => (a.id === id ? { ...a, is_later: !!prev?.is_later } : a)),
+    }));
+    if (delta !== 0) {
+      smartCounts.update((c) => ({ ...c, later: Math.max(0, c.later - delta) }));
+    }
+    throw err;
+  }
 }
