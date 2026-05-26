@@ -182,6 +182,7 @@ func NewRouter(d Dependencies) http.Handler {
 		r.With(d.Auth.RequireAuth).Delete("/articles/{id}/tags", d.handleRemoveArticleTag)
 		r.With(d.Auth.RequireAuth).Get("/tags", d.handleListUserTags)
 		r.With(d.Auth.RequireAuth).Get("/me/stats", d.handleGetStats)
+		r.With(d.Auth.RequireAuth).Get("/me/smart-counts", d.handleSmartCounts)
 		r.With(d.Auth.RequireAuth).Get("/me/digest", d.handleGetDigest)
 		r.With(d.Auth.RequireAuth).Post("/me/digest", d.handleSetDigest)
 

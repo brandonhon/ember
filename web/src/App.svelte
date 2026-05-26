@@ -234,11 +234,19 @@
       document.documentElement.style.removeProperty("--paper");
       document.documentElement.style.removeProperty("--ink");
       document.documentElement.style.removeProperty("--ember");
+      document.documentElement.style.removeProperty("--link");
       return;
     }
     document.documentElement.style.setProperty("--paper", $customPalette.paper);
     document.documentElement.style.setProperty("--ink", $customPalette.ink);
     document.documentElement.style.setProperty("--ember", $customPalette.ember);
+    // Link color is user-pickable in the custom-theme palette. Falls back to
+    // --ember if unset so older localStorage entries don't lose anchor styling.
+    if ($customPalette.link) {
+      document.documentElement.style.setProperty("--link", $customPalette.link);
+    } else {
+      document.documentElement.style.removeProperty("--link");
+    }
   });
 </script>
 
@@ -308,6 +316,9 @@
     --ember-wash: #fbeae0;
     --gold: #b07d1a;
     --green: #4f7a3d;
+    /* Anchor color used by Reader content + any inline link.
+       Default falls in line with the warm ember palette — never browser blue. */
+    --link: var(--ember);
     --rail-w: 272px;
     --list-w: 380px;
     --topbar-h: 56px;
@@ -443,6 +454,9 @@
     --ember-wash: #332a00;
     --gold: #ffd700;
     --green: #66ff66;
+    /* Cyan picks up cleanly against pure black and stays distinct from the
+       yellow accent so links are unambiguous. */
+    --link: #66e2ff;
     --shadow-card: 0 1px 2px rgba(255, 255, 255, 0.15), 0 8px 24px -16px rgba(255, 255, 255, 0.3);
     --shadow-pane: 0 0 0 1px var(--line), 0 24px 60px -32px rgba(255, 255, 255, 0.25);
   }

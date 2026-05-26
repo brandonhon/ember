@@ -49,17 +49,29 @@ export const categories = writable<Category[]>([]);
 export const boards = writable<Board[]>([]);
 export const savedSearches = writable<import("./types").SavedSearch[]>([]);
 
+// Smart-view badge counts (Fresh / Starred / Read Later / Shared). Refreshed
+// alongside the sidebar so the badges stay live.
+export interface SmartCounts {
+  fresh: number;
+  starred: number;
+  later: number;
+  shared: number;
+}
+export const smartCounts = writable<SmartCounts>({ fresh: 0, starred: 0, later: 0, shared: 0 });
+
 export async function refreshSidebar(): Promise<void> {
-  const [f, c, b, ss] = await Promise.all([
+  const [f, c, b, ss, sc] = await Promise.all([
     api.listFeeds(),
     api.listCategories(),
     api.listBoards(),
     api.listSavedSearches(),
+    api.getSmartCounts(),
   ]);
   feeds.set(f.data ?? []);
   categories.set(c.data ?? []);
   boards.set(b.data ?? []);
   savedSearches.set(ss.data ?? []);
+  smartCounts.set(sc.data ?? { fresh: 0, starred: 0, later: 0, shared: 0 });
 }
 
 export const totalUnread = derived(feeds, ($feeds) =>
@@ -103,14 +115,18 @@ export const THEMES: { value: Theme; label: string; mood: "light" | "dark" }[] =
 ];
 export const theme = writable<Theme>(loadPref<Theme>("ember:theme", "auto"));
 
-// Custom theme palette — user picks paper/ink/ember; everything else is
+// Custom theme palette — user picks paper/ink/ember/link; everything else is
 // derived in App.svelte via color-mix(). Stored as JSON for simple persistence.
 export interface CustomPalette {
   paper: string;
   ink: string;
   ember: string;
+  // Anchor color override for the custom theme. Forward-compatible: old
+  // localStorage entries that omit this fall through to DEFAULT_CUSTOM.link
+  // via the spread in loadCustom().
+  link: string;
 }
-const DEFAULT_CUSTOM: CustomPalette = { paper: "#f6f2e9", ink: "#211d18", ember: "#a93b16" };
+const DEFAULT_CUSTOM: CustomPalette = { paper: "#f6f2e9", ink: "#211d18", ember: "#a93b16", link: "#a93b16" };
 function loadCustom(): CustomPalette {
   try {
     const raw = globalThis.localStorage?.getItem("ember:custom");
@@ -138,7 +154,7 @@ export interface Branding {
   page_title: string;
   favicon_url: string;
 }
-const DEFAULT_BRANDING: Branding = { name: "Ember", page_title: "Ember Reader", favicon_url: "/favicon.svg" };
+const DEFAULT_BRANDING: Branding = { name: "Ember", page_title: "Ember", favicon_url: "/favicon.svg" };
 export const branding = writable<Branding>(DEFAULT_BRANDING);
 export async function refreshBranding(): Promise<void> {
   try {
