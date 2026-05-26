@@ -47,6 +47,11 @@ type Dependencies struct {
 	// AllowPrivateURLs disables the SSRF block on outbound HTTP fetches for
 	// homelab users who subscribe to LAN feeds. Off by default.
 	AllowPrivateURLs bool
+	// FreshWindow is the cutoff for the Fresh smart view — articles
+	// published within this window count as "fresh". Surfaced to the
+	// frontend via /api/me so isFresh() agrees with the server's
+	// CountSmartViews query. Zero falls back to 6h.
+	FreshWindow time.Duration
 	// BackgroundCtx is the parent context for goroutines that a handler
 	// detaches from the request lifecycle (e.g. initial feed refresh after
 	// starter-pack import). Cancelled at process shutdown; nil falls back
@@ -69,7 +74,6 @@ func (d *Dependencies) backgroundCtx() context.Context {
 func NewRouter(d Dependencies) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
-	r.Use(requestLogger())
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Compress(5))
 	r.Use(middleware.Timeout(60 * time.Second))
@@ -234,13 +238,4 @@ func NewRouter(d Dependencies) http.Handler {
 	}
 
 	return r
-}
-
-// requestLogger is a slim slog-based middleware.
-func requestLogger() func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			next.ServeHTTP(w, r)
-		})
-	}
 }

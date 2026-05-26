@@ -26,8 +26,14 @@ func (d *Dependencies) handleListArticles(w http.ResponseWriter, r *http.Request
 
 	freshAfter := atoi("fresh_after")
 	if view == "fresh" && freshAfter == 0 {
-		// default: 6 hours.
-		freshAfter = time.Now().Add(-6 * time.Hour).Unix()
+		// Default cutoff comes from cfg.FreshWindow (EMBER_FRESH_WINDOW)
+		// wired through Dependencies. Zero falls back to 6h to match the
+		// legacy hardcoded value.
+		fw := d.FreshWindow
+		if fw <= 0 {
+			fw = 6 * time.Hour
+		}
+		freshAfter = time.Now().Add(-fw).Unix()
 	}
 	if view == "today" && freshAfter == 0 {
 		now := time.Now()
