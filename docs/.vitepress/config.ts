@@ -9,7 +9,11 @@ export default defineConfig({
   title: 'Ember',
   description: 'Self-hosted RSS reader with on-device AI summaries.',
   head: [
-    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/ember/icon.svg' }],
+    // Favicon: media-scoped pair so the browser picks the legible variant
+    // for whichever OS theme the visitor is in. Mirrors the app's
+    // web/index.html setup.
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/ember/icon.svg', media: '(prefers-color-scheme: light)' }],
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/ember/icon-dark.svg', media: '(prefers-color-scheme: dark)' }],
     ['meta', { name: 'theme-color', content: '#a93b16' }],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:title', content: 'Ember' }],
@@ -19,7 +23,9 @@ export default defineConfig({
   lastUpdated: true,
   themeConfig: {
     siteTitle: 'Ember',
-    logo: '/icon.svg',
+    // Header logo: VitePress swaps automatically based on the active site
+    // theme (light/dark mode toggle), independent of OS theme.
+    logo: { light: '/icon.svg', dark: '/icon-dark.svg' },
     nav: [
       { text: 'Guide', link: '/getting-started' },
       { text: 'Architecture', link: '/architecture' },

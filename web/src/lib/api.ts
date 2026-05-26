@@ -262,6 +262,11 @@ export const api = {
   dbSchedule: (s: DBSchedule) =>
     call<{ ok: string }>("POST", "/api/admin/db/schedule", s),
 
+  // Admin: session TTL ----------------------------------------------
+  getSessionTTL: () => call<SessionTTL>("GET", "/api/admin/session"),
+  setSessionTTL: (ttl_seconds: number) =>
+    call<SessionTTL>("POST", "/api/admin/session/ttl", { ttl_seconds }),
+
   // Passkeys --------------------------------------------------------
   listPasskeys: () => call<PasskeySummary[]>("GET", "/api/me/passkeys"),
   passkeyRegisterBegin: () =>
@@ -336,6 +341,14 @@ export interface DBStatus extends DBSchedule {
   page_count: number;
   backup_dir: string;
   backups: DBBackup[];
+}
+
+// Admin server-wide session TTL. Source = 'admin' means an admin saved
+// a value via Settings; 'default' means we're using auth.DefaultSessionTTL
+// or whatever EMBER_SESSION_TTL bootstrapped.
+export interface SessionTTL {
+  ttl_seconds: number;
+  source: "admin" | "default";
 }
 
 export interface TopFeed {

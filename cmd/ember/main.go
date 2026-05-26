@@ -125,6 +125,14 @@ func run() error {
 	// Apply operator-configured session lifetime if EMBER_SESSION_TTL was set.
 	// Zero falls through to auth.DefaultSessionTTL (24h).
 	a.SetSessionTTL(cfg.SessionTTL)
+	// Admin-set session TTL persisted in app_settings overrides the env var
+	// so changes via Settings → Sessions survive a restart.
+	if v, _ := st.GetAppSetting(ctx, "session_ttl_seconds"); v != "" {
+		if n, err := strconv.ParseInt(v, 10, 64); err == nil && n > 0 {
+			a.SetSessionTTL(time.Duration(n) * time.Second)
+			logger.Info("loaded session_ttl_seconds from app_settings", "seconds", n)
+		}
+	}
 
 	// WebAuthn (passkeys). Optional — requires EMBER_PUBLIC_URL so the relying
 	// party ID + origin can be set. Passkey endpoints return 503 when absent.

@@ -176,14 +176,34 @@
     }
   });
 
-  // Favicon dot: render an overlay corner-dot ON TOP of the active favicon
-  // when there are unseen new articles (TT-RSS-style). Falls back to a plain
-  // href swap if the canvas overlay fails (cross-origin branded favicon, no
-  // canvas in the runtime, etc).
+  // OS dark-mode listener for the favicon. Tracked separately from the
+  // existing osDark state below because that one is gated on $theme="auto";
+  // the favicon should follow the OS regardless of the user's chosen
+  // app theme (the favicon lives in the browser chrome, not in our UI).
+  let osDarkFavicon = $state(
+    typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches,
+  );
+  $effect(() => {
+    if (typeof window === "undefined") return;
+    const m = window.matchMedia("(prefers-color-scheme: dark)");
+    const handler = (e: MediaQueryListEvent) => (osDarkFavicon = e.matches);
+    m.addEventListener("change", handler);
+    return () => m.removeEventListener("change", handler);
+  });
+
+  // Favicon: pick the OS-mode-appropriate base SVG, then overlay a
+  // corner-dot via canvas when there are unseen new articles. Admin-set
+  // branding.favicon_url overrides the OS-mode swap (admins providing a
+  // custom mark should ship a single SVG that reads well in both modes;
+  // a future branding_favicon_dark_url could split that if needed).
+  // Falls back to a plain href swap if the canvas overlay fails
+  // (cross-origin branded favicon, no canvas in the runtime, etc).
   $effect(() => {
     const link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
     if (!link) return;
-    const base = $branding.favicon_url || "/icon.svg";
+    const base = $branding.favicon_url
+      ? $branding.favicon_url
+      : (osDarkFavicon ? "/icon-dark.svg" : "/icon.svg");
     const dot = $newArticleCount > 0;
     void renderFaviconWithDot(base, dot).then((url) => {
       // The overlay is rasterized PNG; the original tag may declare svg+xml.
