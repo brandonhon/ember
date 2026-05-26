@@ -167,6 +167,23 @@ type ArticleView struct {
 	DupCount int `json:"dup_count"`
 }
 
+// Passkey is one WebAuthn credential bound to a user.
+type Passkey struct {
+	ID             int64  `json:"id"`
+	UserID         int64  `json:"user_id"`
+	CredentialID   []byte `json:"-"`
+	PublicKey      []byte `json:"-"`
+	AttestationTyp string `json:"-"`
+	AAGUID         []byte `json:"-"`
+	SignCount      uint32 `json:"-"`
+	Transports     string `json:"transports,omitempty"`
+	BackupEligible bool   `json:"backup_eligible"`
+	BackupState    bool   `json:"backup_state"`
+	Name           string `json:"name"`
+	CreatedAt      int64  `json:"created_at"`
+	LastUsedAt     int64  `json:"last_used_at"`
+}
+
 // FeedWithCounts is a feed joined with the requesting user's subscription
 // metadata and unread count.
 type FeedWithCounts struct {

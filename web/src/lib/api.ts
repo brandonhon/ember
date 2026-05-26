@@ -255,7 +255,53 @@ export const api = {
     call<DBCleanupStats>("POST", "/api/admin/db/cleanup", { older_days }),
   dbSchedule: (s: DBSchedule) =>
     call<{ ok: string }>("POST", "/api/admin/db/schedule", s),
+
+  // Passkeys --------------------------------------------------------
+  listPasskeys: () => call<PasskeySummary[]>("GET", "/api/me/passkeys"),
+  passkeyRegisterBegin: () =>
+    call<PasskeyChallenge>("POST", "/api/me/passkeys/register/begin"),
+  passkeyRegisterFinish: (session_id: string, name: string, response: unknown) =>
+    call<PasskeySummary>("POST", "/api/me/passkeys/register/finish", {
+      session_id,
+      name,
+      response,
+    }),
+  renamePasskey: (id: number, name: string) =>
+    call<unknown>("PATCH", `/api/me/passkeys/${id}`, { name }),
+  deletePasskey: (id: number) =>
+    call<unknown>("DELETE", `/api/me/passkeys/${id}`),
+  passkeyLoginBegin: (username: string) =>
+    call<PasskeyChallenge>("POST", "/api/auth/passkey/begin", { username }),
+  passkeyLoginFinish: (session_id: string, response: unknown) =>
+    call<User>("POST", "/api/auth/passkey/finish", { session_id, response }),
 };
+
+export interface PasskeySummary {
+  id: number;
+  name: string;
+  created_at: number;
+  last_used_at: number;
+}
+export interface PasskeyChallenge {
+  session_id: string;
+  // PublicKeyCredentialCreationOptions / RequestOptions JSON. Has a top-level
+  // `publicKey` field per the WebAuthn API.
+  options: { publicKey: PublicKeyCredentialCreationOptionsJSON | PublicKeyCredentialRequestOptionsJSON };
+}
+// Minimal local types covering the fields we need to convert. The library
+// returns spec JSON with base64url-encoded ArrayBuffers; we round-trip them
+// in passkey.ts.
+export interface PublicKeyCredentialCreationOptionsJSON {
+  challenge: string;
+  user: { id: string; name: string; displayName: string };
+  excludeCredentials?: { id: string; type: string; transports?: string[] }[];
+  [k: string]: unknown;
+}
+export interface PublicKeyCredentialRequestOptionsJSON {
+  challenge: string;
+  allowCredentials?: { id: string; type: string; transports?: string[] }[];
+  [k: string]: unknown;
+}
 
 export interface DBBackup {
   path: string;

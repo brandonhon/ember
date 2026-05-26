@@ -1,11 +1,14 @@
 <script lang="ts">
-  import { login } from "../lib/stores";
-  import { ApiError } from "../lib/api";
+  import { login, refreshMe } from "../lib/stores";
+  import { api, ApiError } from "../lib/api";
+  import { getPasskey, passkeySupported } from "../lib/passkey";
 
   let username = $state("");
   let password = $state("");
   let error = $state("");
   let busy = $state(false);
+  let passkeyBusy = $state(false);
+  const canPasskey = passkeySupported();
 
   async function onSubmit(e: Event) {
     e.preventDefault();
@@ -22,6 +25,31 @@
       }
     } finally {
       busy = false;
+    }
+  }
+
+  async function onPasskey() {
+    if (!username) {
+      error = "Type your username first";
+      return;
+    }
+    passkeyBusy = true;
+    error = "";
+    try {
+      const begin = await api.passkeyLoginBegin(username);
+      const credential = await getPasskey(begin.data.options as any);
+      await api.passkeyLoginFinish(begin.data.session_id, credential);
+      await refreshMe();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        error = err.message || "Passkey sign-in failed";
+      } else if (err instanceof DOMException) {
+        error = "Passkey sign-in cancelled";
+      } else {
+        error = String(err);
+      }
+    } finally {
+      passkeyBusy = false;
     }
   }
 </script>
@@ -88,6 +116,19 @@
       <button class="btn-primary" type="submit" disabled={busy} data-testid="login-submit">
         {busy ? "Signing in…" : "Sign in"}
       </button>
+
+      {#if canPasskey}
+        <div class="or">or</div>
+        <button
+          type="button"
+          class="btn-secondary"
+          on:click={onPasskey}
+          disabled={passkeyBusy || !username}
+          data-testid="login-passkey"
+        >
+          {passkeyBusy ? "Waiting for passkey…" : "Sign in with passkey"}
+        </button>
+      {/if}
 
       <div class="login-meta">
         Multi-user · ask your admin for an invite
@@ -255,6 +296,30 @@
   .btn-primary:hover:not(:disabled) { background: var(--ember-soft); }
   .btn-primary:active:not(:disabled) { transform: translateY(1px); }
   .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .or {
+    text-align: center;
+    color: var(--ink-faint);
+    font-size: 12px;
+    margin: 14px 0 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .btn-secondary {
+    width: 100%;
+    padding: 11px;
+    border-radius: 11px;
+    background: var(--card);
+    color: var(--ink);
+    font-weight: 600;
+    font-size: 14px;
+    border: 1px solid var(--line);
+    cursor: pointer;
+    font-family: var(--font-ui);
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .btn-secondary:hover:not(:disabled) { border-color: var(--ember); }
+  .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
 
   .login-meta {
     margin-top: 18px;
