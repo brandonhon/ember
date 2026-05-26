@@ -13,6 +13,10 @@ import { api, ApiError } from "./api";
 export const user = writable<User | null>(null);
 export const feverAPIKey = writable<string>("");
 export const appVersion = writable<string>("");
+// Server-configured Fresh-view cutoff in seconds (EMBER_FRESH_WINDOW).
+// Used by ArticleList.svelte's isFresh() so the client filter matches the
+// server's CountSmartViews query. 6h default until /api/me resolves.
+export const freshWindowSeconds = writable<number>(6 * 3600);
 
 export async function refreshMe(): Promise<User | null> {
   try {
@@ -20,6 +24,9 @@ export async function refreshMe(): Promise<User | null> {
     user.set(res.data.user);
     feverAPIKey.set(res.data.fever_api_key);
     appVersion.set(res.data.version);
+    if (res.data.fresh_window_seconds && res.data.fresh_window_seconds > 0) {
+      freshWindowSeconds.set(res.data.fresh_window_seconds);
+    }
     return res.data.user;
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) {

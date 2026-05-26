@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/brandonhon/ember/internal/auth"
 	"github.com/brandonhon/ember/internal/store"
@@ -50,6 +51,10 @@ type meResponse struct {
 	User        any    `json:"user"`
 	FeverAPIKey string `json:"fever_api_key"`
 	Version     string `json:"version"`
+	// FreshWindowSeconds lets the SPA's isFresh() use the same cutoff the
+	// server uses for the Fresh badge + Fresh list. Zero/missing on the
+	// client falls back to 6h to match the server's own fallback.
+	FreshWindowSeconds int64 `json:"fresh_window_seconds"`
 }
 
 // Version is populated by main.go at startup so /api/me can surface it.
@@ -76,10 +81,15 @@ func (d *Dependencies) handleMe(w http.ResponseWriter, r *http.Request) {
 		}
 		u.FeverToken = token
 	}
+	fw := d.FreshWindow
+	if fw <= 0 {
+		fw = 6 * time.Hour
+	}
 	resp := meResponse{
-		User:        u,
-		FeverAPIKey: u.FeverToken,
-		Version:     Version,
+		User:               u,
+		FeverAPIKey:        u.FeverToken,
+		Version:            Version,
+		FreshWindowSeconds: int64(fw.Seconds()),
 	}
 	writeData(w, http.StatusOK, resp, nil)
 }
