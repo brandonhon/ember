@@ -154,7 +154,7 @@ export interface Branding {
   page_title: string;
   favicon_url: string;
 }
-const DEFAULT_BRANDING: Branding = { name: "Ember", page_title: "Ember", favicon_url: "/favicon.svg" };
+const DEFAULT_BRANDING: Branding = { name: "Ember", page_title: "Ember", favicon_url: "/icon.svg" };
 export const branding = writable<Branding>(DEFAULT_BRANDING);
 export async function refreshBranding(): Promise<void> {
   try {

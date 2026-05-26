@@ -1126,8 +1126,8 @@
           </label>
           <label>
             <span>Favicon URL</span>
-            <input type="text" bind:value={brandingDraft.favicon_url} placeholder="/favicon.svg or data:image/svg+xml;..." data-testid="branding-favicon" />
-            <span class="pref-hint">Public URL (e.g. /favicon.svg, https://…/icon.png) or a data: URI. Hard-refresh after changing.</span>
+            <input type="text" bind:value={brandingDraft.favicon_url} placeholder="/icon.svg or data:image/svg+xml;..." data-testid="branding-favicon" />
+            <span class="pref-hint">Public URL (e.g. /icon.svg, https://…/icon.png) or a data: URI. Hard-refresh after changing.</span>
           </label>
           <div class="actions">
             <button class="ghost" on:click={resetBranding} disabled={brandingBusy}>Reset to defaults</button>

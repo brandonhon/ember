@@ -21,7 +21,7 @@ const (
 )
 
 func (d *Dependencies) currentBranding(r *http.Request) branding {
-	b := branding{Name: "Ember", PageTitle: "Ember", FaviconURL: "/favicon.svg"}
+	b := branding{Name: "Ember", PageTitle: "Ember", FaviconURL: "/icon.svg"}
 	if v, _ := d.Store.GetAppSetting(r.Context(), keyBrandName); v != "" {
 		b.Name = v
 	}
