@@ -215,14 +215,18 @@
   let starterBusy = $state<string>("");
   let starterMsg = $state<string>("");
   let starterErr = $state<string>("");
-  let starterLoaded = false;
+
+  // A pack is "installed" when the user is subscribed to every feed in it;
+  // the button label then flips from Add to Remove.
+  function packInstalled(p: StarterPack): boolean {
+    return p.subscribed >= p.feed_urls.length;
+  }
 
   async function loadStarterPacks() {
-    if (starterLoaded) return;
+    // Always refresh so subscribed counts stay in sync after add/remove.
     try {
       const res = await api.listStarterPacks();
       starterPacks = res.data ?? [];
-      starterLoaded = true;
     } catch (e) {
       starterErr = e instanceof ApiError ? e.message : String(e);
     }
@@ -241,6 +245,31 @@
       if (r.failed_urls?.length) parts.push(`${r.failed_urls.length} failed`);
       starterMsg = parts.join(" · ") || "Nothing to add";
       await refreshSidebar();
+      await loadStarterPacks();
+    } catch (e) {
+      starterErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      starterBusy = "";
+      setTimeout(() => (starterMsg = ""), 4000);
+    }
+  }
+
+  async function removeStarter(slug: string) {
+    if (!confirm("Unsubscribe from every feed in this pack? Feeds you have starred articles in are not deleted.")) {
+      return;
+    }
+    starterBusy = slug;
+    starterMsg = "";
+    starterErr = "";
+    try {
+      const res = await api.removeStarterPack(slug);
+      const r = res.data;
+      const parts: string[] = [];
+      if (r.feeds_removed) parts.push(`${r.feeds_removed} removed`);
+      if (r.not_subscribed) parts.push(`${r.not_subscribed} not subscribed`);
+      starterMsg = parts.join(" · ") || "Nothing to remove";
+      await refreshSidebar();
+      await loadStarterPacks();
     } catch (e) {
       starterErr = e instanceof ApiError ? e.message : String(e);
     } finally {
@@ -870,22 +899,36 @@
           {#if starterMsg}<p class="ok" data-testid="starter-msg">{starterMsg}</p>{/if}
           <div class="pack-list">
             {#each starterPacks as p (p.slug)}
+              {@const installed = packInstalled(p)}
               <div class="pack">
                 <div>
                   <div class="pack-name">
                     <span class="pack-dot" style="background:{p.color}"></span>
                     {p.name}
                   </div>
-                  <div class="pack-hint">{p.feed_urls.length} feeds</div>
+                  <div class="pack-hint">
+                    {p.feed_urls.length} feeds{#if p.subscribed > 0 && !installed} · {p.subscribed} subscribed{/if}
+                  </div>
                 </div>
-                <button
-                  on:click={() => importStarter(p.slug)}
-                  disabled={starterBusy === p.slug}
-                  data-testid="starter-import-{p.slug}"
-                  class="pack-btn"
-                >
-                  {starterBusy === p.slug ? "Adding…" : "Add pack"}
-                </button>
+                {#if installed}
+                  <button
+                    on:click={() => removeStarter(p.slug)}
+                    disabled={starterBusy === p.slug}
+                    data-testid="starter-remove-{p.slug}"
+                    class="pack-btn pack-btn-remove"
+                  >
+                    {starterBusy === p.slug ? "Removing…" : "Remove pack"}
+                  </button>
+                {:else}
+                  <button
+                    on:click={() => importStarter(p.slug)}
+                    disabled={starterBusy === p.slug}
+                    data-testid="starter-import-{p.slug}"
+                    class="pack-btn"
+                  >
+                    {starterBusy === p.slug ? "Adding…" : "Add pack"}
+                  </button>
+                {/if}
               </div>
             {/each}
           </div>
@@ -1470,6 +1513,16 @@
   }
   .pack-btn:hover:not(:disabled) { background: var(--ember-soft); }
   .pack-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  /* Remove variant: muted background so it doesn't read as the primary CTA. */
+  .pack-btn-remove {
+    background: transparent;
+    color: var(--ember);
+    border: 1px solid var(--ember);
+  }
+  .pack-btn-remove:hover:not(:disabled) {
+    background: var(--ember);
+    color: #fff;
+  }
 
   .rec-row {
     display: flex;

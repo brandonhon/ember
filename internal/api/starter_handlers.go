@@ -81,16 +81,49 @@ var starterPacks = []StarterPack{
 	},
 }
 
-func (d *Dependencies) handleListStarterPacks(w http.ResponseWriter, _ *http.Request) {
-	writeData(w, http.StatusOK, starterPacks, nil)
+// starterPackView is the per-user list response: the pack metadata plus how
+// many of its feeds the caller is currently subscribed to. The UI uses
+// `subscribed == len(feed_urls)` to flip the button between Add and Remove.
+type starterPackView struct {
+	StarterPack
+	Subscribed int `json:"subscribed"`
+}
+
+func (d *Dependencies) handleListStarterPacks(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.FromContext(r.Context())
+	subs, err := d.Store.ListFeedsForUser(r.Context(), u.ID)
+	if mapStoreError(w, err) {
+		return
+	}
+	have := make(map[string]bool, len(subs))
+	for _, f := range subs {
+		have[f.URL] = true
+	}
+	views := make([]starterPackView, len(starterPacks))
+	for i, p := range starterPacks {
+		v := starterPackView{StarterPack: p}
+		for _, url := range p.FeedURLs {
+			if have[url] {
+				v.Subscribed++
+			}
+		}
+		views[i] = v
+	}
+	writeData(w, http.StatusOK, views, nil)
 }
 
 type starterImportResult struct {
-	Pack        string `json:"pack"`
-	CategoryID  int64  `json:"category_id"`
-	FeedsAdded  int    `json:"feeds_added"`
-	AlreadyHad  int    `json:"already_had"`
-	FailedURLs  []string `json:"failed_urls,omitempty"`
+	Pack       string   `json:"pack"`
+	CategoryID int64    `json:"category_id"`
+	FeedsAdded int      `json:"feeds_added"`
+	AlreadyHad int      `json:"already_had"`
+	FailedURLs []string `json:"failed_urls,omitempty"`
+}
+
+type starterRemoveResult struct {
+	Pack         string `json:"pack"`
+	FeedsRemoved int    `json:"feeds_removed"`
+	NotSubscribed int   `json:"not_subscribed"`
 }
 
 // handleImportStarterPack creates the named category (or reuses an existing
@@ -179,5 +212,54 @@ func (d *Dependencies) handleImportStarterPack(w http.ResponseWriter, r *http.Re
 		}
 	}
 
+	writeData(w, http.StatusOK, result, nil)
+}
+
+// handleRemoveStarterPack unsubscribes the user from every feed in the pack
+// that they currently have a subscription to. Idempotent — calling it twice
+// (or on a pack they never installed) is harmless. Orphan feed rows are
+// cleaned up automatically by Store.Unsubscribe when the user was the sole
+// subscriber. The category created by import is left alone — the user may
+// have added their own feeds to it.
+func (d *Dependencies) handleRemoveStarterPack(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.FromContext(r.Context())
+	slug := chi.URLParam(r, "slug")
+	var pack *StarterPack
+	for i := range starterPacks {
+		if starterPacks[i].Slug == slug {
+			pack = &starterPacks[i]
+			break
+		}
+	}
+	if pack == nil {
+		writeError(w, http.StatusNotFound, "not_found", "starter pack not found")
+		return
+	}
+
+	ctx := r.Context()
+	subs, err := d.Store.ListFeedsForUser(ctx, u.ID)
+	if mapStoreError(w, err) {
+		return
+	}
+	subByURL := make(map[string]int64, len(subs))
+	for _, f := range subs {
+		subByURL[f.URL] = f.SubscriptionID
+	}
+
+	result := starterRemoveResult{Pack: pack.Slug}
+	for _, url := range pack.FeedURLs {
+		subID, ok := subByURL[url]
+		if !ok {
+			result.NotSubscribed++
+			continue
+		}
+		if err := d.Store.Unsubscribe(ctx, u.ID, subID); err != nil {
+			// Surface DB-level failures; partial removals on a malformed
+			// pack are user-visible and worth knowing about.
+			internalError(w, "starter/remove", err)
+			return
+		}
+		result.FeedsRemoved++
+	}
 	writeData(w, http.StatusOK, result, nil)
 }

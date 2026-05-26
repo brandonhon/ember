@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -32,18 +33,26 @@ type harness struct {
 }
 
 type fakePoller struct {
+	// mu guards the slices/counter — handlers launch detached refresh
+	// goroutines from starter-pack import, so reads in tests can race
+	// the writes here.
+	mu          sync.Mutex
 	calls       int
 	feeds       []int64
 	enqueuedIDs []int64
 }
 
 func (f *fakePoller) RefreshFeed(_ context.Context, id int64) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.calls++
 	f.feeds = append(f.feeds, id)
 	return nil
 }
 
 func (f *fakePoller) EnqueueSummary(id int64) bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.enqueuedIDs = append(f.enqueuedIDs, id)
 	return true
 }
@@ -714,6 +723,111 @@ func makeMultipart(field, filename string, data []byte) ([]byte, string) {
 func mustJSON(v any) []byte {
 	b, _ := json.Marshal(v)
 	return b
+}
+
+// delJSON sends a DELETE and decodes the response body. Used by tests that
+// need both the status and the parsed payload (the plain `del` helper above
+// only returns the status).
+func delJSON(t *testing.T, c *http.Client, url string, dst any) int {
+	t.Helper()
+	req, _ := http.NewRequest(http.MethodDelete, url, nil)
+	echoCSRF(c, url, req)
+	resp, err := c.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if dst != nil {
+		_ = json.NewDecoder(resp.Body).Decode(dst)
+	}
+	return resp.StatusCode
+}
+
+func TestStarterPack_AddListRemoveCycle(t *testing.T) {
+	h := newHarness(t)
+	h.seedUser(t, "alice", "hunter2", false)
+	cl := h.login(t, "alice", "hunter2")
+
+	const slug = "technology"
+
+	// 1. List shows subscribed=0 before import.
+	var packs1 struct {
+		Data []map[string]any `json:"data"`
+	}
+	if code := get(t, cl, h.srv.URL+"/api/starter-packs", &packs1); code != http.StatusOK {
+		t.Fatalf("list before: %d", code)
+	}
+	tech := findPack(t, packs1.Data, slug)
+	feedURLs := tech["feed_urls"].([]any)
+	wantCount := len(feedURLs)
+	if got := int(tech["subscribed"].(float64)); got != 0 {
+		t.Fatalf("subscribed before import = %d, want 0", got)
+	}
+
+	// 2. Import.
+	var imp struct {
+		Data starterImportResult `json:"data"`
+	}
+	if code := post(t, cl, h.srv.URL+"/api/starter-packs/"+slug, map[string]any{}, &imp); code != http.StatusOK {
+		t.Fatalf("import: %d", code)
+	}
+	if imp.Data.FeedsAdded != wantCount {
+		t.Errorf("feeds_added = %d, want %d", imp.Data.FeedsAdded, wantCount)
+	}
+
+	// 3. List now reports subscribed == wantCount (pack is fully installed).
+	var packs2 struct {
+		Data []map[string]any `json:"data"`
+	}
+	get(t, cl, h.srv.URL+"/api/starter-packs", &packs2)
+	if got := int(findPack(t, packs2.Data, slug)["subscribed"].(float64)); got != wantCount {
+		t.Errorf("subscribed after import = %d, want %d", got, wantCount)
+	}
+
+	// 4. Remove.
+	var rm struct {
+		Data starterRemoveResult `json:"data"`
+	}
+	if code := delJSON(t, cl, h.srv.URL+"/api/starter-packs/"+slug, &rm); code != http.StatusOK {
+		t.Fatalf("remove: %d", code)
+	}
+	if rm.Data.FeedsRemoved != wantCount {
+		t.Errorf("feeds_removed = %d, want %d", rm.Data.FeedsRemoved, wantCount)
+	}
+	if rm.Data.NotSubscribed != 0 {
+		t.Errorf("not_subscribed after fresh install = %d, want 0", rm.Data.NotSubscribed)
+	}
+
+	// 5. List reports subscribed=0 again.
+	var packs3 struct {
+		Data []map[string]any `json:"data"`
+	}
+	get(t, cl, h.srv.URL+"/api/starter-packs", &packs3)
+	if got := int(findPack(t, packs3.Data, slug)["subscribed"].(float64)); got != 0 {
+		t.Errorf("subscribed after remove = %d, want 0", got)
+	}
+
+	// 6. Remove again is idempotent: feeds_removed=0, not_subscribed=wantCount.
+	var rm2 struct {
+		Data starterRemoveResult `json:"data"`
+	}
+	if code := delJSON(t, cl, h.srv.URL+"/api/starter-packs/"+slug, &rm2); code != http.StatusOK {
+		t.Fatalf("remove (idempotent): %d", code)
+	}
+	if rm2.Data.FeedsRemoved != 0 || rm2.Data.NotSubscribed != wantCount {
+		t.Errorf("second remove = %+v, want feeds_removed=0 not_subscribed=%d", rm2.Data, wantCount)
+	}
+}
+
+func findPack(t *testing.T, packs []map[string]any, slug string) map[string]any {
+	t.Helper()
+	for _, p := range packs {
+		if p["slug"] == slug {
+			return p
+		}
+	}
+	t.Fatalf("pack %q not found in list of %d", slug, len(packs))
+	return nil
 }
 
 func TestDigest_EmailOverrideValidation(t *testing.T) {
