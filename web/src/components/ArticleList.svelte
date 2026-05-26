@@ -77,6 +77,12 @@
     selectedArticleId.set(id);
   }
 
+  function clearActiveSearch() {
+    const fresh = { kind: "smart" as const, view: "fresh" as const };
+    activeView.set(fresh);
+    void loadArticles(fresh);
+  }
+
   // When the user scrolls to the top of the list, they've "seen" the new
   // articles — clear the favicon-dot counter.
   function onScroll() {
@@ -180,7 +186,18 @@
   <div class="list-header">
     <div class="list-title-row">
       <div>
-        <div class="list-title">{headerTitle}</div>
+        <div class="list-title">
+          {headerTitle}
+          {#if $activeView.kind === "search"}
+            <button
+              class="clear-search-inline"
+              on:click={clearActiveSearch}
+              aria-label="Clear search"
+              title="Back to Fresh"
+              data-testid="list-clear-search"
+            >×</button>
+          {/if}
+        </div>
         <div class="list-sub"><span class="poll-dot" aria-hidden="true"></span>{headerSub}</div>
       </div>
     </div>
@@ -347,6 +364,20 @@
     font-weight: 500;
     letter-spacing: -0.01em;
   }
+  .clear-search-inline {
+    background: var(--line-soft);
+    border: 1px solid var(--line);
+    color: var(--ink-soft);
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    margin-left: 8px;
+    vertical-align: 4px;
+  }
+  .clear-search-inline:hover { color: var(--ember); border-color: var(--ember); }
   .list-sub {
     font-size: 11.5px;
     color: var(--ink-faint);

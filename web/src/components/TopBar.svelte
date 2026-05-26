@@ -68,6 +68,19 @@
     showResults = false;
   }
 
+  // Clear the search input, the dropdown, and the search view in one click.
+  // Snaps back to Fresh so the user always lands somewhere sensible.
+  function clearSearch() {
+    searchQ = "";
+    searchResults = [];
+    showResults = false;
+    if (get(activeView).kind === "search") {
+      const fresh = { kind: "smart" as const, view: "fresh" as const };
+      activeView.set(fresh);
+      void loadArticles(fresh);
+    }
+  }
+
   // Live typeahead preview (top-3 hits) shown under the input until the
   // user submits.
   let searchTimer: ReturnType<typeof setTimeout> | undefined;
@@ -167,10 +180,24 @@
     <input
       bind:value={searchQ}
       on:input={onSearchInput}
-      placeholder="Search all articles, sources, and notes…"
+      on:keydown={(e) => { if (e.key === "Escape") clearSearch(); }}
+      placeholder={mobile ? "Search…" : "Search all articles, sources, and notes…"}
       data-testid="search-input"
     />
-    <span class="kbd">/</span>
+    {#if searchQ}
+      <button
+        type="button"
+        class="search-clear"
+        on:click={clearSearch}
+        aria-label="Clear search"
+        title="Clear search (Esc)"
+        data-testid="search-clear"
+      >
+        ×
+      </button>
+    {:else}
+      <span class="kbd">/</span>
+    {/if}
   </form>
 
   <div class="topbar-actions">
@@ -309,23 +336,32 @@
     padding-right: 18px;
   }
   .topbar.mobile {
-    grid-template-columns: auto 1fr auto;
-    gap: 8px;
-    padding-right: 10px;
+    /* Three slots: nav icon, brand (collapses), search. The brand text gets
+       hidden entirely below ~520px so the search input gets enough room to
+       show a real placeholder. */
+    grid-template-columns: auto auto 1fr;
+    gap: 6px;
+    padding-right: 8px;
   }
   .topbar.mobile .brand {
     padding-left: 0;
-    font-size: 17px;
+    font-size: 16px;
   }
   .topbar.mobile .brand .kite { display: none; }
   .topbar.mobile .search {
-    /* On narrow screens, drop the input padding and shrink so it fits next
-       to the brand + actions. */
     max-width: none;
     padding: 6px 10px;
+    gap: 6px;
   }
-  .topbar.mobile .search input::placeholder { color: transparent; }
+  .topbar.mobile .search input {
+    /* Show a short placeholder on mobile so the bar doesn't look like a
+       blank slot. */
+    font-size: 13px;
+  }
   .topbar.mobile .search .kbd { display: none; }
+  @media (max-width: 520px) {
+    .topbar.mobile .brand { display: none; }
+  }
   .mobile-icon-btn {
     background: transparent;
     border: 0;
@@ -343,7 +379,7 @@
   .brand {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 4px;
     padding-left: 22px;
     font-family: var(--font-display);
     font-weight: 600;
@@ -392,6 +428,17 @@
     padding: 1px 6px;
     color: var(--ink-faint);
   }
+  .search-clear {
+    background: transparent;
+    border: 0;
+    color: var(--ink-faint);
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    padding: 2px 6px;
+    border-radius: 6px;
+  }
+  .search-clear:hover { background: var(--line-soft); color: var(--ember); }
 
   .topbar-actions { display: flex; align-items: center; gap: 6px; }
   .icon-btn {

@@ -226,33 +226,19 @@ export async function pollForNewArticles(): Promise<number> {
     const q = queryForView(view);
     const res = await api.listArticles({ ...q });
     const fresh = res.data ?? [];
-    if (fresh.length === 0) return 0;
-    // Dedupe-merge: any id in `fresh` that the current list doesn't have is
-    // new. We rebuild the list as (new items in fresh order) + (current
-    // items not in fresh, to preserve already-loaded older pages). This
-    // handles the edge case where the previous-top isn't in the fresh page
-    // anymore (e.g. >50 articles arrived between polls), which the old
-    // cursor-based merge silently dropped.
+    if (fresh.length === 0 && current.items.length === 0) return 0;
+
+    // Replacement semantics. Counting how many ids are new (not in current)
+    // drives the favicon-dot counter; everything else (read/star state of
+    // existing items, dropped-off-the-page rows) just becomes the new list.
     const have = new Set(current.items.map((a) => a.id));
-    const incoming = fresh.filter((a) => !have.has(a.id));
-    if (incoming.length === 0) {
-      // No NEW ids — but feed/article state may have changed (read/star).
-      // Patch existing items in place from the fresh copies so e.g. read
-      // toggles from another tab become visible.
-      const byID = new Map(fresh.map((a) => [a.id, a] as const));
-      articles.update((s) => ({
-        ...s,
-        items: s.items.map((a) => byID.get(a.id) ?? a),
-      }));
-      return 0;
+    const newCount = fresh.reduce((n, a) => (have.has(a.id) ? n : n + 1), 0);
+    articles.update((s) => ({ ...s, items: fresh, loading: false, err: undefined }));
+    if (newCount > 0) {
+      newArticleCount.update((n) => n + newCount);
+      void refreshSidebar();
     }
-    articles.update((s) => ({
-      ...s,
-      items: [...incoming, ...s.items.filter((a) => !incoming.find((n) => n.id === a.id))],
-    }));
-    newArticleCount.update((n) => n + incoming.length);
-    void refreshSidebar();
-    return incoming.length;
+    return newCount;
   } catch {
     return 0;
   }
