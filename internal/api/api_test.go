@@ -897,6 +897,29 @@ func findPack(t *testing.T, packs []map[string]any, slug string) map[string]any 
 	return nil
 }
 
+// /api/auth/passkey/exists is the public probe Login.svelte uses to gate the
+// "Sign in with passkey" button. Returns any_registered:false when no users
+// have set up passkeys yet so the button stays hidden on a fresh install.
+func TestPasskeyExists_Public(t *testing.T) {
+	h := newHarness(t)
+
+	// Default harness has no WebAuthn configured, so we expect false even
+	// before any user exists.
+	jar, _ := newJar()
+	anon := h.newClient(jar)
+	var r1 struct {
+		Data struct {
+			AnyRegistered bool `json:"any_registered"`
+		} `json:"data"`
+	}
+	if code := get(t, anon, h.srv.URL+"/api/auth/passkey/exists", &r1); code != http.StatusOK {
+		t.Fatalf("unauth GET = %d", code)
+	}
+	if r1.Data.AnyRegistered {
+		t.Errorf("expected any_registered=false (WebAuthn unconfigured), got true")
+	}
+}
+
 func TestDigest_EmailOverrideValidation(t *testing.T) {
 	h := newHarness(t)
 	h.seedUser(t, "alice", "hunter2", false)

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import { login, refreshMe } from "../lib/stores";
   import { api, ApiError } from "../lib/api";
   import { getPasskey, passkeySupported } from "../lib/passkey";
@@ -8,7 +9,25 @@
   let error = $state("");
   let busy = $state(false);
   let passkeyBusy = $state(false);
-  const canPasskey = passkeySupported();
+  // Two preconditions for showing the "Sign in with passkey" button:
+  //   1) Browser supports WebAuthn (passkeySupported()).
+  //   2) At least one passkey is registered on this server. Avoids dangling
+  //      the option in front of fresh users on a brand-new install.
+  // The server-wide check stays system-wide (not per-username) — see
+  // /api/auth/passkey/exists for why.
+  const browserSupportsPasskey = passkeySupported();
+  let anyPasskeyRegistered = $state(false);
+  onMount(async () => {
+    if (!browserSupportsPasskey) return;
+    try {
+      const res = await api.passkeyAnyRegistered();
+      anyPasskeyRegistered = !!res.data?.any_registered;
+    } catch {
+      // Network error / pre-login probe failure → leave button hidden.
+      anyPasskeyRegistered = false;
+    }
+  });
+  const canPasskey = $derived(browserSupportsPasskey && anyPasskeyRegistered);
 
   async function onSubmit(e: Event) {
     e.preventDefault();

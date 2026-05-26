@@ -26,8 +26,12 @@ import (
 // CookieName is the session cookie name. Lowercase, no underscores.
 const CookieName = "ember_session"
 
-// SessionTTL is how long a freshly-issued session remains valid.
-const SessionTTL = 30 * 24 * time.Hour
+// DefaultSessionTTL is the default lifetime of a fresh session. Operators
+// override via EMBER_SESSION_TTL in cfg. 24h matches "log in once per day"
+// expectations and is short enough that stolen cookies have a small window
+// while staying long enough that the average reader doesn't bounce to login
+// every visit.
+const DefaultSessionTTL = 24 * time.Hour
 
 // Params holds argon2id parameters. Defaults are interactive-friendly. Tests
 // override these for speed.
@@ -63,6 +67,25 @@ type Auth struct {
 	// SecureCookies sets the Secure flag on issued cookies. Defaults to true.
 	// Set to false in test mode where the server runs over plain HTTP.
 	SecureCookies bool
+	// SessionTTL is how long a freshly-issued session remains valid. Defaults
+	// to DefaultSessionTTL; main.go can override from EMBER_SESSION_TTL.
+	SessionTTL time.Duration
+	// sc keeps a reference so SessionTTL changes after New() take effect on
+	// the securecookie MaxAge guard.
+	sc *securecookie.SecureCookie
+}
+
+// SetSessionTTL adjusts the active session lifetime. Affects newly-issued
+// cookies; existing sessions in the DB keep their original expires_at until
+// they expire on their own or are swept.
+func (a *Auth) SetSessionTTL(d time.Duration) {
+	if d <= 0 {
+		return
+	}
+	a.SessionTTL = d
+	if a.sc != nil {
+		a.sc.MaxAge(int(d.Seconds()))
+	}
 }
 
 // New constructs an Auth instance. sessionKey must be at least 32 bytes. The
@@ -74,13 +97,15 @@ func New(st *store.Store, sessionKey string) (*Auth, error) {
 	// Use the same key for both the hash and the (block) cipher. We do not
 	// encrypt the value (just sign), so the second key argument is nil.
 	sc := securecookie.New([]byte(sessionKey), nil)
-	sc.MaxAge(int(SessionTTL.Seconds()))
+	sc.MaxAge(int(DefaultSessionTTL.Seconds()))
 	return &Auth{
 		Store:         st,
 		Cookie:        sc,
 		Params:        DefaultParams,
 		Now:           time.Now,
 		SecureCookies: true,
+		SessionTTL:    DefaultSessionTTL,
+		sc:            sc,
 	}, nil
 }
 
@@ -152,7 +177,7 @@ func (a *Auth) CreateSession(ctx context.Context, w http.ResponseWriter, r *http
 		ID:        sessionID,
 		UserID:    userID,
 		CreatedAt: now.Unix(),
-		ExpiresAt: now.Add(SessionTTL).Unix(),
+		ExpiresAt: now.Add(a.SessionTTL).Unix(),
 		UserAgent: r.UserAgent(),
 	}
 	if _, err := a.Store.DB.ExecContext(ctx, `
@@ -172,8 +197,8 @@ func (a *Auth) CreateSession(ctx context.Context, w http.ResponseWriter, r *http
 		HttpOnly: true,
 		Secure:   a.SecureCookies,
 		SameSite: http.SameSiteStrictMode,
-		Expires:  now.Add(SessionTTL),
-		MaxAge:   int(SessionTTL.Seconds()),
+		Expires:  now.Add(a.SessionTTL),
+		MaxAge:   int(a.SessionTTL.Seconds()),
 	})
 	return sess, nil
 }

@@ -21,6 +21,26 @@ type PasskeySummary struct {
 	LastUsedAt int64  `json:"last_used_at"`
 }
 
+// handlePasskeyExists is a PUBLIC endpoint (no auth) returning a single
+// boolean: does this server have at least one passkey registered? Drives
+// the login UI gate so the "Sign in with passkey" button only renders when
+// trying a passkey could plausibly succeed. Intentionally NOT per-username
+// to avoid an enumeration oracle. WebAuthn must also be configured (i.e.
+// EMBER_PUBLIC_URL is set) — otherwise even an existing passkey can't be
+// used to sign in.
+func (d *Dependencies) handlePasskeyExists(w http.ResponseWriter, r *http.Request) {
+	if d.WebAuthn == nil {
+		writeData(w, http.StatusOK, map[string]bool{"any_registered": false}, nil)
+		return
+	}
+	exists, err := d.Store.AnyPasskeyExists(r.Context())
+	if err != nil {
+		internalError(w, "passkeys/exists", err)
+		return
+	}
+	writeData(w, http.StatusOK, map[string]bool{"any_registered": exists}, nil)
+}
+
 func (d *Dependencies) handleListPasskeys(w http.ResponseWriter, r *http.Request) {
 	u, _ := auth.FromContext(r.Context())
 	pks, err := d.Store.ListPasskeys(r.Context(), u.ID)

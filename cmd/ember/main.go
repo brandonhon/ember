@@ -122,6 +122,9 @@ func run() error {
 	if cfg.TestMode {
 		a.SecureCookies = false
 	}
+	// Apply operator-configured session lifetime if EMBER_SESSION_TTL was set.
+	// Zero falls through to auth.DefaultSessionTTL (24h).
+	a.SetSessionTTL(cfg.SessionTTL)
 
 	// WebAuthn (passkeys). Optional — requires EMBER_PUBLIC_URL so the relying
 	// party ID + origin can be set. Passkey endpoints return 503 when absent.
