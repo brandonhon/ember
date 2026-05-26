@@ -2,6 +2,8 @@ package api
 
 import (
 	"net/http"
+	"net/mail"
+	"strings"
 
 	"github.com/brandonhon/ember/internal/auth"
 	"github.com/brandonhon/ember/internal/models"
@@ -50,6 +52,20 @@ func (d *Dependencies) handleSetDigest(w http.ResponseWriter, r *http.Request) {
 	default:
 		writeError(w, http.StatusBadRequest, "bad_request", "view_kind must be smart|feed|category|board")
 		return
+	}
+	// email_override is user-supplied and is written into the `To:` MIME
+	// header by digest.buildMIME. A CRLF in the value would let the user
+	// inject arbitrary headers (e.g. Bcc), so reject malformed addresses and
+	// any embedded newline defensively.
+	if req.EmailOverride != "" {
+		if strings.ContainsAny(req.EmailOverride, "\r\n") {
+			writeError(w, http.StatusBadRequest, "bad_request", "email_override must not contain newlines")
+			return
+		}
+		if _, err := mail.ParseAddress(req.EmailOverride); err != nil {
+			writeError(w, http.StatusBadRequest, "bad_request", "email_override is not a valid address")
+			return
+		}
 	}
 	d2 := models.UserDigest{
 		UserID:        u.ID,
