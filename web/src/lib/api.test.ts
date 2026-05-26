@@ -7,7 +7,7 @@ const fetchMock = vi.fn();
 
 beforeEach(() => {
   fetchMock.mockReset();
-  global.fetch = fetchMock;
+  globalThis.fetch = fetchMock;
 });
 
 function ok<T>(data: T, meta?: Record<string, unknown>) {

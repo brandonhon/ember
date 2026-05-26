@@ -16,7 +16,7 @@ const fetchMock = vi.fn();
 
 beforeEach(() => {
   fetchMock.mockReset();
-  global.fetch = fetchMock;
+  globalThis.fetch = fetchMock;
   user.set(null);
   articles.set({ items: [], loading: false });
   feeds.set([]);
