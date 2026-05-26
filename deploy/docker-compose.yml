@@ -4,9 +4,12 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    # Override EMBER_HTTP_PORT / EMBER_HTTPS_PORT in .env when 80/443 are
+    # already taken on the host. Container-side stays 80/443 so Caddy's
+    # automatic-HTTPS defaults keep working unchanged.
     ports:
-      - "80:80"
-      - "443:443"
+      - "${EMBER_HTTP_PORT:-80}:80"
+      - "${EMBER_HTTPS_PORT:-443}:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data

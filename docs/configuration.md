@@ -73,6 +73,21 @@ Run `ember probe` (or open the admin Language model page) to see a recommendatio
 | 16 GiB+ | — | `qwen2.5:3b` |
 | any | NVIDIA / Apple Silicon | `qwen2.5:7b` |
 
+## Stack-level env vars (docker-compose)
+
+These configure the bundled `deploy/docker-compose.yml` stack rather than the Ember binary itself.
+
+| Var | Default | Notes |
+| --- | --- | --- |
+| `EMBER_HOSTNAME` | `localhost` | Hostname Caddy serves. Real DNS name → automatic Let's Encrypt. |
+| `CADDY_EMAIL` | `admin@localhost` | Email for ACME registration. |
+| `EMBER_HTTP_PORT` | `80` | Host port Caddy publishes for HTTP. Change when 80 is taken locally. |
+| `EMBER_HTTPS_PORT` | `443` | Host port Caddy publishes for HTTPS. Change when 443 is taken locally. |
+
+If you change the ports, reach the site at the mapped port — e.g. `EMBER_HTTPS_PORT=8443` → visit `https://localhost:8443`. Inside the container Caddy still listens on 80/443; only the host-side mapping changes.
+
+**Let's Encrypt caveat:** automatic-HTTPS via Let's Encrypt's HTTP-01 challenge requires the **public** port 80 to be reachable; TLS-ALPN-01 requires public 443. If you remap *and* expect Let's Encrypt to issue certs, ensure your public ingress (router / upstream proxy / Cloudflare) still terminates on 80/443 and forwards to your mapped host ports. For homelab use with `tls internal` in the Caddyfile, any ports work fine.
+
 ## Reverse proxy
 
 Ember expects TLS to be terminated upstream. The reference `Caddyfile` in `deploy/Caddyfile` covers:
