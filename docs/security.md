@@ -9,7 +9,8 @@ For vulnerability reporting, see [SECURITY.md](https://github.com/brandonhon/emb
 - **Passwords**: argon2id (`time=3`, `memory=64 MiB`, `parallelism=2`, salt=16 bytes). Meets OWASP 2024 recommendations.
 - **Sessions**: 64-hex-char random IDs signed via `gorilla/securecookie`. Server-side row in `sessions` table backs every cookie. Expire after 30 days. Destroyed on logout, login (fixation defense), and on password change (both self-service and admin).
 - **Cookies**: `HttpOnly`, `Secure`, `SameSite=Strict`, scoped to `/`.
-- **Rate limiting**: per-IP leaky bucket on `POST /api/auth/login`. Burst 10, refill 1/minute.
+- **Rate limiting**: per-IP leaky bucket on `POST /api/auth/login` and `POST /api/auth/passkey/*`. Burst 10, refill 1/minute.
+- **Passkeys / WebAuthn**: optional second sign-in method (FIDO2). Credentials are bound to a relying-party ID derived from `EMBER_PUBLIC_URL`; ceremonies expire after 5 minutes; a stale `webauthn_sessions` row is reaped on a 15-minute cadence. Credentials never leave the device — only the public key is stored.
 
 ## Authorization
 

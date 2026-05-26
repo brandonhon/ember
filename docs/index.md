@@ -46,6 +46,15 @@ features:
   - icon: 🚀
     title: Auto-refresh + favicon dot
     details: 15-second background poll prepends new articles without a page reload. A green dot on the favicon and (N) prefix in the tab title flag unread items.
+  - icon: 🔑
+    title: Passkey sign-in
+    details: Self-register a FIDO2 passkey per device. Sign in with Touch ID, Face ID, or a hardware key alongside (or instead of) your password.
+  - icon: 📬
+    title: Daily digest email
+    details: Opt-in nightly summary of your fresh / unread / starred articles sent to your inbox. Pick the view, set the time in UTC, point at any SMTP relay.
+  - icon: 🌐
+    title: Subscribe by URL
+    details: Paste the homepage URL — Ember discovers the feed by following &lt;link rel=alternate&gt; and probing common feed paths. No more digging for the orange icon.
 ---
 
 ## Why?

@@ -21,19 +21,21 @@ The single `ember` binary embeds the Svelte SPA via `embed.FS` and serves it und
 ## Package map
 
 ```
-cmd/ember/                    main + probe subcommand + DB maintenance scheduler
+cmd/ember/                    main + probe subcommand + DB maintenance + digest sender
 internal/api/                 chi router, handlers, middleware (CSRF, rate limit, auth context)
-internal/auth/                argon2id passwords, securecookie sessions, RequireAuth/Admin middleware
+internal/auth/                argon2id passwords, securecookie sessions, WebAuthn (passkeys), RequireAuth/Admin middleware
 internal/config/              env-var loading (typed Config)
 internal/db/                  SQLite open, pragmas, embedded migrations (goose)
-internal/feed/                gofeed wrapper + readability fallback fetcher
+internal/digest/              SMTP daily-digest builder + sender (multipart/alt + STARTTLS)
+internal/feed/                gofeed wrapper + readability fallback fetcher + Discover (homepage → feed URL)
 internal/filters/             matcher (field/op/value), apply outcome combiner
 internal/models/              data types shared across packages
 internal/opml/                OPML import + export + discovery → subscribe
 internal/poller/              adaptive scheduler, fetch dispatch, summary queue
-internal/store/               SQLite CRUD, FTS5 search, app_settings KV, dbops (backup/cleanup)
+internal/store/               SQLite CRUD, FTS5 search, app_settings KV, dbops, passkeys, digests
 internal/summarize/           Summarizer interface + Ollama implementation + noop for tests
 internal/sysinfo/             host-detection (RAM/CPU/GPU) + model recommendation
+internal/urlcheck/            SSRF block (scheme allowlist + private-IP refusal)
 internal/web/                 embed.FS handler for the SPA
 web/                          Svelte 5 (runes) source; built via Vite, copied to internal/web/dist
 ```
@@ -56,6 +58,9 @@ SQLite. Migrations in `internal/db/migrations/*.sql`, applied at startup. Key ta
 - `app_settings` — global KV (active model, schedules, branding, tuning).
 - `saved_searches` — persisted FTS queries.
 - `article_tags` — per-user tags on individual articles.
+- `user_digests` — per-user opt-in daily-digest config (view, hour/minute UTC, last-sent timestamp).
+- `passkeys` — WebAuthn credentials (credential_id, public_key, sign_count, name, timestamps).
+- `webauthn_sessions` — short-lived ceremony state for in-flight register/login flows; reaped after 5 min.
 
 WAL mode, 64 MiB page cache, 256 MiB mmap, busy_timeout=5s. Single Go connection — writes are serialized (SQLite single-writer); reads are fast enough that the connection pool isn't the bottleneck at this scale.
 

@@ -57,8 +57,18 @@ You'll land on an onboarding panel that points to starter packs or OPML import. 
 ### Onboarding + organization
 - Five curated starter packs (Technology, Programming, Security, DevOps & Infra, World News).
 - OPML import/export. Optional scheduled OPML export to `/data/exports/`.
+- **Subscribe by URL**: paste either a feed URL or just the homepage. Ember follows `<link rel=alternate>` and probes common feed paths (`/feed`, `/rss`, `/atom.xml`, `/feed.xml`, `/index.xml`).
 - Drag-to-reorder feeds and folders.
 - Mark-all-read at view / feed / category scope.
+
+### Sign-in
+- Password (argon2id) by default.
+- **Passkeys / WebAuthn**: optional. Register from Settings → Passkeys; sign in with Touch ID / Face ID / hardware key. Requires `EMBER_PUBLIC_URL`.
+
+### Daily digest email
+- Opt-in nightly email summarizing your chosen view (Fresh / Today / Unread / Starred / Later).
+- Pick the hour + minute in UTC, optionally override the From / To address.
+- Configured via Settings → Daily digest. Requires the `EMBER_SMTP_*` env vars.
 
 ### Notifications + auto-refresh
 - 30-second polling for new articles while the tab is visible.
@@ -110,6 +120,13 @@ You'll land on an onboarding panel that points to starter packs or OPML import. 
 | `EMBER_POLL_TICK` | `60s` | scheduler tick |
 | `EMBER_LOG_LEVEL` | `info` | slog level |
 | `EMBER_TEST_MODE` | `0` | enables fake fetcher/summarizer for e2e |
+| `EMBER_PUBLIC_URL` | _(unset)_ | canonical `scheme://host` users hit; required to enable passkey sign-in |
+| `EMBER_SMTP_HOST` | _(unset)_ | SMTP host; required to enable daily-digest emails |
+| `EMBER_SMTP_PORT` | `587` | SMTP port |
+| `EMBER_SMTP_USER` | _(unset)_ | SMTP auth user (optional) |
+| `EMBER_SMTP_PASSWORD` | _(unset)_ | SMTP auth password |
+| `EMBER_SMTP_FROM` | _(unset)_ | digest `From:` address |
+| `EMBER_SMTP_STARTTLS` | `1` | enable STARTTLS on submission ports |
 
 ### Runtime-tunable settings (Settings UI)
 
