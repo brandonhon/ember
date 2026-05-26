@@ -159,7 +159,7 @@ func TestSession_ExpiredRejected(t *testing.T) {
 	cookie := extractCookie(t, w)
 
 	// Move the clock past the TTL.
-	a.Now = func() time.Time { return time.Now().Add(SessionTTL + time.Hour) }
+	a.Now = func() time.Time { return time.Now().Add(a.SessionTTL + time.Hour) }
 	r2 := httptest.NewRequest(http.MethodGet, "/", nil)
 	r2.AddCookie(cookie)
 	if _, err := a.VerifySession(ctx, r2); err == nil {

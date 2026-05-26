@@ -9,6 +9,24 @@ import (
 	"github.com/brandonhon/ember/internal/models"
 )
 
+// AnyPasskeyExists returns true if any user has registered at least one
+// passkey. Drives the public login-page gate on the "Sign in with passkey"
+// button: when no passkeys exist server-wide, the button is hidden so users
+// don't try a doomed flow. Reveals exactly one bit ("at least one passkey
+// user on this server") which is intentional — a per-username variant would
+// be a textbook account-enumeration oracle.
+func (s *Store) AnyPasskeyExists(ctx context.Context) (bool, error) {
+	var n int
+	if err := s.DB.QueryRowContext(ctx,
+		`SELECT 1 FROM passkeys LIMIT 1`).Scan(&n); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
 // ListPasskeys returns all passkeys for a user, newest first.
 func (s *Store) ListPasskeys(ctx context.Context, userID int64) ([]models.Passkey, error) {
 	rows, err := s.DB.QueryContext(ctx, `
