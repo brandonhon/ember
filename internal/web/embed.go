@@ -30,7 +30,9 @@ func Handler() (http.Handler, error) {
 	}
 	fileServer := http.FileServer(http.FS(sub))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Long-cache hashed assets in /assets/.
+		// Long-cache hashed assets in /assets/ — Vite gives them content-
+		// hashed names so the URL itself changes on every build, making
+		// immutable caching safe and aggressive.
 		if strings.HasPrefix(r.URL.Path, "/assets/") {
 			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 		}
@@ -45,11 +47,23 @@ func Handler() (http.Handler, error) {
 			w.Header().Set("Cache-Control", "no-cache")
 		}
 		// SPA history fallback: if the path has no extension and the file
-		// doesn't exist, serve index.html.
+		// doesn't exist, serve index.html. Detect the shell case so we
+		// can also tag it no-cache below.
+		shell := false
 		if !strings.HasPrefix(r.URL.Path, "/assets/") && !strings.Contains(r.URL.Path, ".") {
 			if _, err := fs.Stat(sub, strings.TrimPrefix(r.URL.Path, "/")); err != nil {
 				r.URL.Path = "/"
 			}
+			shell = true
+		}
+		// The shell (index.html and SPA history-mode fallbacks) must never
+		// be heuristic-cached by the browser. Firefox is especially eager
+		// to cache HTML for up to 24h via heuristic when no explicit cache
+		// header is set, which makes shell changes look like nothing
+		// happened from the user's perspective. no-cache forces a
+		// revalidation on every navigation.
+		if shell || r.URL.Path == "/" || strings.HasSuffix(r.URL.Path, "/index.html") {
+			w.Header().Set("Cache-Control", "no-cache, must-revalidate")
 		}
 		fileServer.ServeHTTP(w, r)
 	}), nil
