@@ -16,7 +16,6 @@ const fetchMock = vi.fn();
 
 beforeEach(() => {
   fetchMock.mockReset();
-  // @ts-expect-error overriding global fetch
   global.fetch = fetchMock;
   user.set(null);
   articles.set({ items: [], loading: false });
@@ -42,6 +41,7 @@ function article(over: Partial<ArticleView> = {}): ArticleView {
     is_read: false,
     is_starred: false,
     is_later: false,
+    dup_count: 0,
     ...over,
   };
 }
@@ -55,6 +55,8 @@ function feedRow(over: Partial<FeedWithCounts> = {}): FeedWithCounts {
     error_count: 0,
     created_at: 0,
     subscription_id: 1,
+    muted: false,
+    position: 0,
     unread: 5,
     ...over,
   };
