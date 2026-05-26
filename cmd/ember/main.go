@@ -243,6 +243,25 @@ func run() error {
 				}
 			}
 		}()
+		// Reap expired sessions hourly. Cookies are deleted lazily on access,
+		// but never-revisited rows (logged-out browsers, rotated cookies)
+		// would otherwise accumulate forever.
+		go func() {
+			t := time.NewTicker(1 * time.Hour)
+			defer t.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-t.C:
+					if n, err := a.CleanupExpiredSessions(ctx); err != nil {
+						logger.Warn("session cleanup failed", "err", err)
+					} else if n > 0 {
+						logger.Info("expired sessions reaped", "deleted", n)
+					}
+				}
+			}
+		}()
 	}
 
 	// Embedded static SPA.

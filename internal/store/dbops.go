@@ -99,6 +99,66 @@ func (s *Store) PruneBackups(dir string, keep int) (int, error) {
 	return deleted, nil
 }
 
+// ExportInfo describes a single on-disk OPML export.
+type ExportInfo struct {
+	Path      string `json:"path"`
+	SizeBytes int64  `json:"size_bytes"`
+	CreatedAt int64  `json:"created_at"`
+}
+
+// ListExports returns the OPML exports under dir, newest first.
+func (s *Store) ListExports(dir string) ([]ExportInfo, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var out []ExportInfo
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		if !strings.HasSuffix(e.Name(), ".opml") {
+			continue
+		}
+		fi, err := e.Info()
+		if err != nil {
+			continue
+		}
+		out = append(out, ExportInfo{
+			Path:      filepath.Join(dir, e.Name()),
+			SizeBytes: fi.Size(),
+			CreatedAt: fi.ModTime().Unix(),
+		})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].CreatedAt > out[j].CreatedAt })
+	return out, nil
+}
+
+// PruneExports deletes exports older than the keepCount newest. Used by the
+// scheduled-OPML-export goroutine to avoid filling disk forever.
+func (s *Store) PruneExports(dir string, keep int) (int, error) {
+	if keep <= 0 {
+		return 0, nil
+	}
+	list, err := s.ListExports(dir)
+	if err != nil {
+		return 0, err
+	}
+	if len(list) <= keep {
+		return 0, nil
+	}
+	deleted := 0
+	for _, e := range list[keep:] {
+		if err := os.Remove(e.Path); err == nil {
+			deleted++
+		}
+	}
+	return deleted, nil
+}
+
 // CleanupStats describes what a cleanup pass removed.
 type CleanupStats struct {
 	ArticlesDeleted int   `json:"articles_deleted"`
@@ -132,6 +192,12 @@ func (s *Store) Cleanup(ctx context.Context, olderThan time.Duration) (CleanupSt
 		return CleanupStats{}, fmt.Errorf("cleanup delete: %w", err)
 	}
 	n, _ := res.RowsAffected()
+	// Defragment the FTS5 index. Article deletes leave tombstones in the FTS
+	// shadow tables; optimize merges segments so subsequent searches stay fast.
+	if _, err := s.DB.ExecContext(ctx,
+		`INSERT INTO articles_fts(articles_fts) VALUES('optimize')`); err != nil {
+		return CleanupStats{}, fmt.Errorf("cleanup fts optimize: %w", err)
+	}
 	// Compact the file to actually reclaim disk.
 	if _, err := s.DB.ExecContext(ctx, `VACUUM`); err != nil {
 		return CleanupStats{}, fmt.Errorf("cleanup vacuum: %w", err)
