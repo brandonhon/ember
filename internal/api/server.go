@@ -163,6 +163,7 @@ func NewRouter(d Dependencies) http.Handler {
 		// Starter packs
 		r.With(d.Auth.RequireAuth).Get("/starter-packs", d.handleListStarterPacks)
 		r.With(d.Auth.RequireAuth).Post("/starter-packs/{slug}", d.handleImportStarterPack)
+		r.With(d.Auth.RequireAuth).Delete("/starter-packs/{slug}", d.handleRemoveStarterPack)
 
 		// Articles
 		r.With(d.Auth.RequireAuth).Get("/articles", d.handleListArticles)

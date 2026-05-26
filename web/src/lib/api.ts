@@ -231,6 +231,8 @@ export const api = {
     call<StarterPack[]>("GET", "/api/starter-packs"),
   importStarterPack: (slug: string) =>
     call<StarterImportResult>("POST", `/api/starter-packs/${slug}`),
+  removeStarterPack: (slug: string) =>
+    call<StarterRemoveResult>("DELETE", `/api/starter-packs/${slug}`),
 
   // LLM admin --------------------------------------------------------
   getLLMStatus: () => call<LLMStatus>("GET", "/api/admin/llm"),
@@ -394,6 +396,9 @@ export interface StarterPack {
   name: string;
   color: string;
   feed_urls: string[];
+  // Count of pack feeds the requesting user is already subscribed to. The UI
+  // flips the Add/Remove button on `subscribed === feed_urls.length`.
+  subscribed: number;
 }
 export interface StarterImportResult {
   pack: string;
@@ -401,4 +406,12 @@ export interface StarterImportResult {
   feeds_added: number;
   already_had: number;
   failed_urls?: string[];
+}
+export interface StarterRemoveResult {
+  pack: string;
+  feeds_removed: number;
+  not_subscribed: number;
+  // True when the empty pack-category was deleted after the last feed was
+  // unsubscribed. False if the user had added their own feeds to it (kept).
+  category_removed: boolean;
 }
