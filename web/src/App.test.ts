@@ -6,7 +6,7 @@ const fetchMock = vi.fn();
 
 beforeEach(() => {
   fetchMock.mockReset();
-  global.fetch = fetchMock;
+  globalThis.fetch = fetchMock;
 });
 
 describe("App", () => {
