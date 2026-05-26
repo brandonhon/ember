@@ -42,6 +42,8 @@ Three containers start:
 
 Visit `https://localhost` (accept the self-signed cert in dev). Log in with `admin` + the password you just set. You'll land on an onboarding panel — pick a starter pack and you're off.
 
+> If ports 80/443 are already taken on your machine, set `EMBER_HTTP_PORT` and `EMBER_HTTPS_PORT` in `.env` before `docker compose up -d` and reach the site at the mapped port — e.g. `EMBER_HTTPS_PORT=8443` → `https://localhost:8443`. See [Configuration → Stack-level env vars](/configuration#stack-level-env-vars-docker-compose) for caveats around Let's Encrypt.
+
 ## First-run checklist
 
 1. Log in as the admin you created in `.env`.
