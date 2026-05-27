@@ -229,12 +229,13 @@ func run() error {
 		return urlcheck.Check(ctx, rawURL, cfg.AllowPrivateURLs)
 	})
 	p := poller.New(st, fetcher, sum, poller.Config{
-		Tick:             cfg.PollTick,
-		Concurrency:      cfg.PollConcurrency,
-		SummaryWorker:    !cfg.TestMode && !cfg.DisableSummaries,
-		EnrichOnIngest:   !cfg.TestMode,
-		DisableImages:    cfg.DisableImages,
-		AllowPrivateURLs: cfg.AllowPrivateURLs,
+		Tick:                        cfg.PollTick,
+		Concurrency:                 cfg.PollConcurrency,
+		SummaryWorker:               !cfg.TestMode && !cfg.DisableSummaries,
+		EnrichOnIngest:              !cfg.TestMode,
+		DisableImages:               cfg.DisableImages,
+		AllowPrivateURLs:            cfg.AllowPrivateURLs,
+		InitialBacklogHoursFallback: store.DefaultInitialBacklogHours,
 	}, logger.With("component", "poller"))
 
 	// Background poller. Skipped in test mode — articles are pre-seeded and
@@ -245,18 +246,17 @@ func run() error {
 		// and runs the backup / cleanup actions when their app_setting cadence
 		// says it's time. Failures log and continue.
 		go runDBMaintenance(ctx, st, op, logger.With("component", "db-maintenance"))
-		// Daily digest sender. Skipped when SMTP isn't configured.
-		sender := &digest.Sender{
-			Store: st,
-			SMTP: digest.SMTPConfig{
-				Host: cfg.SMTPHost, Port: cfg.SMTPPort,
-				Username: cfg.SMTPUser, Password: cfg.SMTPPassword,
-				From: cfg.SMTPFrom, StartTLS: cfg.SMTPStartTLS,
-			},
+		// Daily digest sender. Always runs; each tick resolves the live SMTP
+		// config from app_settings overlaid on the env-derived fallback, so
+		// admins can configure SMTP via Settings without restarting. When
+		// SMTP isn't configured (no host/port/from), the tick is a no-op.
+		smtpFallback := store.SMTPSettings{
+			Host: cfg.SMTPHost, Port: cfg.SMTPPort,
+			Username: cfg.SMTPUser, Password: cfg.SMTPPassword,
+			From: cfg.SMTPFrom, StartTLS: cfg.SMTPStartTLS,
 		}
-		if sender.SMTP.Configured() {
-			go runDigestSender(ctx, st, sender, logger.With("component", "digest"))
-		}
+		sender := &digest.Sender{Store: st}
+		go runDigestSender(ctx, st, sender, smtpFallback, logger.With("component", "digest"))
 		// Reap stale WebAuthn ceremony rows (created_at < now-5m). Cheap.
 		go func() {
 			t := time.NewTicker(15 * time.Minute)
@@ -308,6 +308,15 @@ func run() error {
 		// Fresh-view article list, the sidebar's Fresh count, and the
 		// client-side isFresh() all read from this single source.
 		FreshWindow: cfg.FreshWindow,
+		// Env-derived SMTP and backlog defaults. The /api/admin/settings
+		// endpoints overlay app_settings rows on these so an admin can
+		// change them at runtime without restarting.
+		SMTPFallback: store.SMTPSettings{
+			Host: cfg.SMTPHost, Port: cfg.SMTPPort,
+			Username: cfg.SMTPUser, Password: cfg.SMTPPassword,
+			From: cfg.SMTPFrom, StartTLS: cfg.SMTPStartTLS,
+		},
+		InitialBacklogHoursFallback: store.DefaultInitialBacklogHours,
 		// Handlers that spawn detached goroutines (initial feed refresh on
 		// starter-pack import / add-feed) derive their context from this
 		// parent so they don't outlive process shutdown and end up making

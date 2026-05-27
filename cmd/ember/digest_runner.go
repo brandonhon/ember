@@ -13,22 +13,35 @@ import (
 // runDigestSender ticks every 5 minutes and dispatches user digest emails
 // whose scheduled UTC hour/minute is at or just past the current clock.
 // Stops on ctx.Done().
-func runDigestSender(ctx context.Context, st *store.Store, sender *digest.Sender, lg *slog.Logger) {
+//
+// fallback holds the env-derived SMTP defaults; each tick re-resolves the
+// live config from app_settings so an admin edit takes effect on the next
+// tick without a process restart.
+func runDigestSender(ctx context.Context, st *store.Store, sender *digest.Sender, fallback store.SMTPSettings, lg *slog.Logger) {
 	t := time.NewTicker(5 * time.Minute)
 	defer t.Stop()
 	// First tick immediately so restarts don't strand a missed send.
-	tickDigest(ctx, st, sender, lg)
+	tickDigest(ctx, st, sender, fallback, lg)
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-t.C:
-			tickDigest(ctx, st, sender, lg)
+			tickDigest(ctx, st, sender, fallback, lg)
 		}
 	}
 }
 
-func tickDigest(ctx context.Context, st *store.Store, sender *digest.Sender, lg *slog.Logger) {
+func tickDigest(ctx context.Context, st *store.Store, sender *digest.Sender, fallback store.SMTPSettings, lg *slog.Logger) {
+	// Refresh the sender's SMTP config from the live store each tick so admin
+	// edits via /api/admin/settings flow through without a restart. Fallback
+	// is the env-derived config; app_settings rows override.
+	live := st.ResolveSMTPSettings(ctx, fallback)
+	sender.SMTP = digest.SMTPConfig{
+		Host: live.Host, Port: live.Port,
+		Username: live.Username, Password: live.Password,
+		From: live.From, StartTLS: live.StartTLS,
+	}
 	if !sender.SMTP.Configured() {
 		return
 	}

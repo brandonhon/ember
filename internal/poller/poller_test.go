@@ -104,6 +104,121 @@ func TestPoller_TickInsertsArticles(t *testing.T) {
 	}
 }
 
+// TestPoller_InitialBacklogGate verifies the first-ingest gate drops items
+// older than the configured window but keeps recent ones, and that a
+// SECOND poll of the same feed (LastFetched != 0) lets stale items through.
+func TestPoller_InitialBacklogGate(t *testing.T) {
+	// Two items: one ~1h old (within a 48h window) and one ~7d old (outside).
+	freshTime := time.Now().Add(-1 * time.Hour).UTC().Format(time.RFC1123)
+	oldTime := time.Now().Add(-7 * 24 * time.Hour).UTC().Format(time.RFC1123)
+	body := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel>
+<title>Backlog Test</title>
+<link>https://test.local/</link>
+<description>x</description>
+<item>
+  <title>Fresh post</title>
+  <link>https://test.local/fresh</link>
+  <guid isPermaLink="false">backlog-fresh</guid>
+  <pubDate>` + freshTime + `</pubDate>
+  <description>fresh</description>
+</item>
+<item>
+  <title>Ancient post</title>
+  <link>https://test.local/ancient</link>
+  <guid isPermaLink="false">backlog-old</guid>
+  <pubDate>` + oldTime + `</pubDate>
+  <description>old</description>
+</item>
+</channel></rss>`)
+
+	ff := &fakeFetcher{body: body, etag: `"v1"`}
+	st := store.NewTest(t)
+	lg := slog.New(slog.NewTextHandler(io.Discard, nil))
+	p := New(st, ff, summarize.Noop{}, Config{
+		Tick:                        time.Millisecond,
+		Concurrency:                 1,
+		InitialBacklogHoursFallback: 48,
+	}, lg)
+	f := seedFeed(t, p.Store)
+
+	// First ingest: gate should drop the ancient item, keep the fresh one.
+	if err := p.RefreshFeed(context.Background(), f.ID); err != nil {
+		t.Fatal(err)
+	}
+	if got := p.Metrics.NewArticlesTotal.Load(); got != 1 {
+		t.Errorf("first ingest: expected 1 article through the gate, got %d", got)
+	}
+
+	// Second poll (LastFetched != 0 now). Gate is bypassed — but the old
+	// item is already known via dedup, so the count shouldn't bump. Verify
+	// that bypassing the gate is the path by adding a NEW old item.
+	freshTime2 := time.Now().Add(-30 * time.Minute).UTC().Format(time.RFC1123)
+	oldTime2 := time.Now().Add(-30 * 24 * time.Hour).UTC().Format(time.RFC1123)
+	ff.body = []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel>
+<title>Backlog Test</title>
+<link>https://test.local/</link>
+<description>x</description>
+<item>
+  <title>Another fresh</title>
+  <link>https://test.local/fresh2</link>
+  <guid isPermaLink="false">backlog-fresh-2</guid>
+  <pubDate>` + freshTime2 + `</pubDate>
+  <description>fresh2</description>
+</item>
+<item>
+  <title>Another ancient</title>
+  <link>https://test.local/ancient2</link>
+  <guid isPermaLink="false">backlog-old-2</guid>
+  <pubDate>` + oldTime2 + `</pubDate>
+  <description>old2</description>
+</item>
+</channel></rss>`)
+	ff.etag = `"v2"`
+	if err := p.RefreshFeed(context.Background(), f.ID); err != nil {
+		t.Fatal(err)
+	}
+	// First call inserted 1; second call should add both new items (gate off).
+	if got := p.Metrics.NewArticlesTotal.Load(); got != 3 {
+		t.Errorf("second poll should bypass gate: NewArticlesTotal=%d, want 3", got)
+	}
+}
+
+// TestPoller_BacklogGateZeroDisables: when the resolved window is 0, the
+// gate is off even on first ingest.
+func TestPoller_BacklogGateZeroDisables(t *testing.T) {
+	oldTime := time.Now().Add(-30 * 24 * time.Hour).UTC().Format(time.RFC1123)
+	body := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel>
+<title>Backlog Off</title>
+<link>https://test.local/</link>
+<description>x</description>
+<item>
+  <title>Ancient post</title>
+  <link>https://test.local/ancient</link>
+  <guid isPermaLink="false">zero-gate-old</guid>
+  <pubDate>` + oldTime + `</pubDate>
+  <description>old</description>
+</item>
+</channel></rss>`)
+	ff := &fakeFetcher{body: body, etag: `"v1"`}
+	st := store.NewTest(t)
+	lg := slog.New(slog.NewTextHandler(io.Discard, nil))
+	p := New(st, ff, summarize.Noop{}, Config{
+		Tick:                        time.Millisecond,
+		Concurrency:                 1,
+		InitialBacklogHoursFallback: 0, // gate disabled
+	}, lg)
+	f := seedFeed(t, p.Store)
+	if err := p.RefreshFeed(context.Background(), f.ID); err != nil {
+		t.Fatal(err)
+	}
+	if got := p.Metrics.NewArticlesTotal.Load(); got != 1 {
+		t.Errorf("with gate disabled, ancient article should ingest; got %d", got)
+	}
+}
+
 func TestPoller_FetchErrorBacksOff(t *testing.T) {
 	ff := &fakeFetcher{fail: true}
 	p := mkPoller(t, ff)

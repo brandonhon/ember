@@ -42,6 +42,12 @@ type Config struct {
 	DisableImages bool
 	// AllowPrivateURLs disables the SSRF block on outbound fetches.
 	AllowPrivateURLs bool
+	// InitialBacklogHoursFallback is the env-derived default for the first-
+	// ingest backlog window applied when a feed is fetched for the very first
+	// time (f.LastFetched == 0). The poller resolves the live value by
+	// preferring the app_settings row over this fallback. Set 0 to disable
+	// the gate (ingest the feed's full upstream history).
+	InitialBacklogHoursFallback int
 }
 
 // Metrics is an in-memory snapshot for observability/tests.
@@ -264,8 +270,25 @@ func (p *Poller) fetchAndStore(ctx context.Context, f models.Feed) {
 		p.Logger.Warn("poller: list subscribers", "feed_id", f.ID, "err", subErr)
 	}
 
+	// Initial-backlog gate: on a feed's first-ever ingest (LastFetched == 0)
+	// drop entries published more than N hours ago so adding a long-lived feed
+	// doesn't dump months of history into the reader. Subsequent polls of the
+	// same feed never apply the gate. Articles missing published_at are kept
+	// (a feed that doesn't date its entries is more often "new dropped on us"
+	// than "ancient archive"). 0 hours disables the gate entirely.
+	var backlogCutoff int64
+	if f.LastFetched == 0 {
+		hours := p.Store.ResolveBacklogHours(ctx, p.Config.InitialBacklogHoursFallback)
+		if hours > 0 {
+			backlogCutoff = now.Add(-time.Duration(hours) * time.Hour).Unix()
+		}
+	}
+
 	var newCount int
 	for _, a := range parsed.Articles {
+		if backlogCutoff > 0 && a.PublishedAt > 0 && a.PublishedAt < backlogCutoff {
+			continue
+		}
 		// If the feed's body is just a link list (HN-style) or too short to
 		// be useful, fetch readability against the article URL to extract real
 		// content + a lead image. Best-effort: never blocks ingest on failure.
