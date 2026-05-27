@@ -9,7 +9,6 @@
     toggleLater,
     setRead,
     showSummary,
-    showImages,
     summaryCollapsed,
   } from "../lib/stores";
   import type { FeedWithCounts } from "../lib/types";
@@ -46,6 +45,31 @@
   let showMutePicker = $state(false);
   let muteKeyword = $state("");
   let muteBusy = $state(false);
+
+  // Reading pane scroll plumbing (items 2 + 3 from the post-PR-52 batch):
+  //   - readerEl: bound to the scrolling .reader container so we can drive
+  //     scrollTop programmatically and read it for the floater visibility.
+  //   - showScrollTop: true once the user has scrolled > 400px; drives the
+  //     floating "back to top" button at the bottom-right of the pane.
+  //   - The selection effect below resets scrollTop to 0 whenever a new
+  //     article is opened so users never start mid-page from the previous
+  //     article's residual scroll position.
+  let readerEl: HTMLElement | undefined = $state();
+  let showScrollTop = $state(false);
+  function onReaderScroll() {
+    if (!readerEl) return;
+    showScrollTop = readerEl.scrollTop > 400;
+  }
+  function scrollReaderToTop() {
+    if (readerEl) readerEl.scrollTop = 0;
+  }
+  $effect(() => {
+    void $selectedArticleId;
+    // Reset scroll on every selection change — including the no-op case where
+    // selectedArticleId becomes null. Cheap and predictable.
+    if (readerEl) readerEl.scrollTop = 0;
+    showScrollTop = false;
+  });
   // Per-article user tags. Loaded lazily when an article is selected.
   let articleTags = $state<string[]>([]);
   let tagInput = $state("");
@@ -220,7 +244,7 @@
   }
 </script>
 
-<section class="reader" id="reader">
+<section class="reader" id="reader" bind:this={readerEl} on:scroll={onReaderScroll}>
   {#if !selected}
     <div class="reader-empty">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -228,7 +252,7 @@
         <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
       </svg>
       <div class="big">Pick a story</div>
-      <div>Scroll the list to mark items read automatically.</div>
+      <div>Pick an article from the list to read.</div>
     </div>
   {:else}
     <div class="reader-inner">
@@ -389,9 +413,6 @@
           </header>
           {#if !$summaryCollapsed}
             <div class="ai-body" id="ai-body">
-              {#if $showImages && selected.image_url}
-                <img class="ai-thumb" src={selected.image_url} alt="" loading="lazy" on:error={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} />
-              {/if}
               <div class="ai-text">
                 {#if summary.paragraph}
                   {#each summary.paragraph.split(/\n{2,}/) as para}
@@ -430,6 +451,20 @@
         articleTitle={selected.title}
         onClose={() => (showShare = false)}
       />
+    {/if}
+
+    {#if showScrollTop}
+      <button
+        class="scroll-top-btn"
+        on:click={scrollReaderToTop}
+        aria-label="Scroll to top"
+        title="Scroll to top"
+        data-testid="reader-scroll-top"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+          <polyline points="18 15 12 9 6 15" />
+        </svg>
+      </button>
     {/if}
   {/if}
 </section>
@@ -878,4 +913,30 @@
     margin: 14px 0 6px;
   }
   .reader-empty svg { width: 50px; height: 50px; opacity: 0.4; }
+
+  /* Floating scroll-to-top button. Anchored to the reading pane via
+     position:fixed-ish (sticky inside the scroll container) so it follows
+     the user as they read. Bottom-right placement keeps it clear of body
+     text; small enough not to obscure paragraphs at typical widths. */
+  .scroll-top-btn {
+    position: sticky;
+    bottom: 18px;
+    margin-left: auto;
+    margin-right: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    background: var(--ember);
+    color: #fff;
+    border: 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+    cursor: pointer;
+    z-index: 5;
+    transition: background 0.15s, transform 0.12s;
+  }
+  .scroll-top-btn:hover { background: var(--ember-2, var(--ember)); transform: translateY(-1px); }
+  .scroll-top-btn svg { width: 20px; height: 20px; }
 </style>
