@@ -259,12 +259,24 @@ export async function pollForNewArticles(): Promise<number> {
     const fresh = res.data ?? [];
     if (fresh.length === 0 && current.items.length === 0) return 0;
 
-    // Replacement semantics. Counting how many ids are new (not in current)
-    // drives the favicon-dot counter; everything else (read/star state of
-    // existing items, dropped-off-the-page rows) just becomes the new list.
+    // Merge semantics: the server-returned top page (`fresh`) is authoritative
+    // for any article whose id it contains (so read/star/dedup state flows
+    // through). Existing items not in `fresh` are preserved at their natural
+    // sort position — this keeps the user's scrolled-down position AND keeps
+    // a currently-selected reader-pane article from disappearing when the
+    // poll drops it from the top page (or the smart-view filter excludes it).
+    // Sort matches the server's ORDER BY IFNULL(published_at,0) DESC, id DESC.
     const have = new Set(current.items.map((a) => a.id));
     const newCount = fresh.reduce((n, a) => (have.has(a.id) ? n : n + 1), 0);
-    articles.update((s) => ({ ...s, items: fresh, loading: false, err: undefined }));
+    const freshIds = new Set(fresh.map((a) => a.id));
+    const kept = current.items.filter((a) => !freshIds.has(a.id));
+    const merged = [...fresh, ...kept].sort((a, b) => {
+      const aPub = a.published_at ?? 0;
+      const bPub = b.published_at ?? 0;
+      if (bPub !== aPub) return bPub - aPub;
+      return b.id - a.id;
+    });
+    articles.update((s) => ({ ...s, items: merged, loading: false, err: undefined }));
     if (newCount > 0) {
       newArticleCount.update((n) => n + newCount);
       void refreshSidebar();
@@ -323,11 +335,44 @@ export async function loadArticles(view: ActiveView, append = false): Promise<vo
 
 // Read/star toggles update the local list optimistically so the UI feels snappy.
 export async function setRead(ids: number[], read: boolean): Promise<void> {
+  // Capture which items were fresh+unread BEFORE the optimistic flip so we can
+  // bump smartCounts.fresh by the right delta. Fresh-eligibility is computed
+  // the same way ArticleList.isFresh() does it — client-side from
+  // published_at + freshWindowSeconds — so the badge tracks the visible list.
+  const idSet = new Set(ids);
+  const nowSec = Date.now() / 1000;
+  const windowSec = get(freshWindowSeconds);
+  const freshDelta = get(articles).items.reduce((n, a) => {
+    if (!idSet.has(a.id)) return n;
+    if (!a.published_at) return n;
+    if (nowSec - a.published_at >= windowSec) return n;
+    // Only count items whose is_read state is actually changing.
+    if (!!a.is_read === read) return n;
+    return n + 1;
+  }, 0);
+
   articles.update((s) => ({
     ...s,
     items: s.items.map((a) => (ids.includes(a.id) ? { ...a, is_read: read } : a)),
   }));
-  await api.setRead(ids, read);
+  if (freshDelta !== 0) {
+    smartCounts.update((c) => ({
+      ...c,
+      fresh: Math.max(0, c.fresh + (read ? -freshDelta : freshDelta)),
+    }));
+  }
+  try {
+    await api.setRead(ids, read);
+  } catch (err) {
+    // Roll back the fresh-count bump; the feed-unread update below never ran.
+    if (freshDelta !== 0) {
+      smartCounts.update((c) => ({
+        ...c,
+        fresh: Math.max(0, c.fresh + (read ? freshDelta : -freshDelta)),
+      }));
+    }
+    throw err;
+  }
   feeds.update((fs) =>
     fs.map((f) => {
       const delta = ids.filter((id) => {
