@@ -22,7 +22,7 @@ const DOT_R = 11;
 const HALO_R = 14;
 const DOT_X = SIZE - 14;
 const DOT_Y = SIZE - 14;
-const DOT_COLOR = "#4f7a3d"; // matches --green in the default palette
+const DOT_COLOR = "#22c55e"; // bright notification green — vibrant against light + dark favicons
 const HALO_COLOR = "rgba(255, 255, 255, 0.95)";
 
 function key(baseURL: string, dot: boolean): CacheKey {
