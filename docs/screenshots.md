@@ -16,7 +16,7 @@ Summary card sits between the title and the body — paragraph lead + factual bu
 
 ## Settings — preferences
 
-Theme picker (8 presets + custom palette), density toggle, scroll-to-mark-read on/off, AI summary on/off, article images on/off.
+Theme picker (8 presets + custom palette), density toggle, AI summary card on/off.
 
 ![Settings, preferences](/screenshots/settings-preferences-desktop.png)
 
