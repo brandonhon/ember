@@ -255,6 +255,25 @@ func (s *Store) UpdateCleanedHTML(ctx context.Context, articleID int64, html str
 	return err
 }
 
+// UpdateArticleContent replaces the body fields after a re-extract pass. Used
+// by the on-demand readability re-run that backs the reader pane's
+// "Re-extract" button. cleaned_html is intentionally cleared — it was the
+// ad-stripped projection of the OLD body, and stale cleaned_html shown over
+// fresh content_text confuses both the UI and the summarizer.
+func (s *Store) UpdateArticleContent(ctx context.Context, articleID int64, contentText, contentHTML, imageURL string) error {
+	res, err := s.DB.ExecContext(ctx,
+		`UPDATE articles SET content_text = ?, content_html = ?, image_url = ?, cleaned_html = '' WHERE id = ?`,
+		contentText, contentHTML, imageURL, articleID)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 // ListArticlesQuery parameterizes a user article list.
 type ListArticlesQuery struct {
 	View       string // today|fresh|unread|starred|later|shared (optional)

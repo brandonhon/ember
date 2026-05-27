@@ -57,6 +57,12 @@ func (f *fakePoller) EnqueueSummary(id int64) bool {
 	return true
 }
 
+func (f *fakePoller) ExtractArticle(_ context.Context, _ int64) error {
+	// Tests that need real extraction wire a different poller; the default
+	// fake is a no-op.
+	return nil
+}
+
 func newHarness(t *testing.T) *harness {
 	t.Helper()
 	st := store.NewTest(t)

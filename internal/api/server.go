@@ -19,6 +19,10 @@ import (
 type PollerRefresher interface {
 	RefreshFeed(ctx context.Context, feedID int64) error
 	EnqueueSummary(articleID int64) bool
+	// ExtractArticle re-runs the readability extractor against the article's
+	// URL and overwrites content_text + content_html when extraction yields
+	// more text. Backs the "Re-extract" button in the reader pane.
+	ExtractArticle(ctx context.Context, articleID int64) error
 }
 
 // MetricsSnapshotter is implemented by the poller; lets /metrics export
@@ -187,6 +191,7 @@ func NewRouter(d Dependencies) http.Handler {
 		r.With(d.Auth.RequireAuth).Post("/articles/star", d.handleSetStar)
 		r.With(d.Auth.RequireAuth).Post("/articles/later", d.handleSetLater)
 		r.With(d.Auth.RequireAuth).Post("/articles/mark-all-read", d.handleMarkAllRead)
+		r.With(d.Auth.RequireAuth).Post("/articles/{id}/extract", d.handleReExtractArticle)
 
 		// Per-article user tags
 		r.With(d.Auth.RequireAuth).Get("/articles/{id}/tags", d.handleListArticleTags)

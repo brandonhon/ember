@@ -96,6 +96,38 @@
     }
   });
 
+  // Re-extract: re-run the readability pass against the article URL. For
+  // articles whose feed only delivered an excerpt and slipped past
+  // shouldEnrich at ingest time. The button shows a transient message and,
+  // on success, the SPA swaps the article body in-place by patching the
+  // articles store with the returned ArticleView.
+  let extractBusy = $state(false);
+  let extractMsg = $state("");
+  async function reExtractSelected() {
+    if (!selected) return;
+    extractBusy = true;
+    extractMsg = "";
+    try {
+      const id = selected.id;
+      const res = await api.reExtractArticle(id);
+      if (res.meta?.status === "no_change" || (res.data && "status" in res.data && res.data.status === "no_change")) {
+        extractMsg = "No new content found";
+      } else if (res.data && "id" in res.data) {
+        const updated = res.data;
+        articles.update((s) => ({
+          ...s,
+          items: s.items.map((a) => (a.id === id ? { ...a, ...updated } : a)),
+        }));
+        extractMsg = "Updated";
+      }
+    } catch (err) {
+      extractMsg = err instanceof ApiError ? err.message : String(err);
+    } finally {
+      extractBusy = false;
+      setTimeout(() => (extractMsg = ""), 3000);
+    }
+  }
+
   async function createMuteFilter() {
     const kw = muteKeyword.trim();
     if (!kw) return;
@@ -223,6 +255,17 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" /></svg>
           Share
         </button>
+        <button
+          class="ra-btn"
+          on:click={reExtractSelected}
+          disabled={extractBusy}
+          data-testid="reader-reextract"
+          title="Re-run the full-article extractor against the source URL"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 0 1-15.3 6.4L3 21" /><path d="M3 12a9 9 0 0 1 15.3-6.4L21 3" /><polyline points="3 21 3 15 9 15" /><polyline points="21 3 21 9 15 9" /></svg>
+          {extractBusy ? "Extracting…" : "Re-extract"}
+        </button>
+        {#if extractMsg}<span class="board-msg" data-testid="reader-reextract-msg">{extractMsg}</span>{/if}
         <div class="board-wrap">
           <button
             class="ra-btn"
