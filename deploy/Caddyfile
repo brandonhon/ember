@@ -1,10 +1,22 @@
 # Caddyfile — terminates TLS, reverse-proxies to ember.
-# Set EMBER_HOSTNAME in .env (e.g. ember.example.com) for automatic HTTPS.
-# For a homelab without a public DNS name, use `tls internal` instead of the
-# email line to get a self-signed cert.
-
+#
+# Cert acquisition:
+#   - Real DNS name in EMBER_HOSTNAME + valid CADDY_EMAIL +
+#     ports 80/443 publicly reachable → Caddy fetches a free
+#     Let's Encrypt cert automatically (ACME HTTP-01 / TLS-ALPN-01).
+#   - EMBER_HOSTNAME=localhost or any unresolvable name → Caddy issues
+#     a local self-signed cert (no LE attempt). For a homelab cert
+#     trusted by your own machines, see `tls internal` below.
+#
+# HTTP → HTTPS redirect:
+#   - On by default. Caddy auto-binds :80 and 301-redirects to :443
+#     for every site that has managed TLS.
+#   - To opt out (e.g. fronted by another reverse proxy that already
+#     terminates TLS), set EMBER_DISABLE_HTTPS_REDIRECT=1 in your .env;
+#     the snippet below injects `auto_https disable_redirects`.
 {
 	email {$CADDY_EMAIL:admin@localhost}
+	{$EMBER_HTTPS_REDIRECT_DIRECTIVE:}
 }
 
 {$EMBER_HOSTNAME:localhost} {
@@ -15,8 +27,8 @@
 		# mode where Caddy isn't in front.
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 	}
-	# Homelab: comment out `email` and uncomment this line for a self-signed
-	# cert managed by Caddy.
+	# Homelab: uncomment for a self-signed cert managed by Caddy and
+	# trusted via Caddy's local CA root (run `caddy trust` on clients).
 	# tls internal
 	reverse_proxy ember:8080 {
 		header_up Host {host}
