@@ -7,12 +7,10 @@
     density,
     refreshMe,
     showSummary,
-    showImages,
     THEMES,
     customPalette,
     branding,
     refreshBranding,
-    scrollMarksRead,
   } from "../lib/stores";
   import { api, ApiError, type StarterPack, type StarterImportResult, type LLMStatus, type DBStatus, type UserStats, type UserDigest, type PasskeySummary } from "../lib/api";
   import { createPasskey, passkeySupported } from "../lib/passkey";
@@ -971,32 +969,12 @@
           </div>
           <div class="pref-row">
             <div>
-              <div class="pref-label">Scroll-to-mark-read</div>
-              <div class="pref-hint">Articles you scroll past in the list get marked read automatically.</div>
-            </div>
-            <div class="seg">
-              <button class:on={$scrollMarksRead} on:click={() => scrollMarksRead.set(true)} data-testid="pref-scroll-on">On</button>
-              <button class:on={!$scrollMarksRead} on:click={() => scrollMarksRead.set(false)} data-testid="pref-scroll-off">Off</button>
-            </div>
-          </div>
-          <div class="pref-row">
-            <div>
               <div class="pref-label">AI summary card</div>
               <div class="pref-hint">When off, the article body is shown directly with no summary card.</div>
             </div>
             <div class="seg">
               <button class:on={$showSummary} on:click={() => showSummary.set(true)} data-testid="pref-summary-on">On</button>
               <button class:on={!$showSummary} on:click={() => showSummary.set(false)} data-testid="pref-summary-off">Off</button>
-            </div>
-          </div>
-          <div class="pref-row">
-            <div>
-              <div class="pref-label">Article images</div>
-              <div class="pref-hint">Show the main image inline. Images inside article body are kept regardless.</div>
-            </div>
-            <div class="seg">
-              <button class:on={$showImages} on:click={() => showImages.set(true)} data-testid="pref-images-on">On</button>
-              <button class:on={!$showImages} on:click={() => showImages.set(false)} data-testid="pref-images-off">Off</button>
             </div>
           </div>
         {/if}
