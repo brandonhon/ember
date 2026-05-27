@@ -277,6 +277,16 @@ export const api = {
   testEmail: (to?: string) =>
     call<{ sent_to: string }>("POST", "/api/admin/settings/email-test", to ? { to } : {}),
 
+  // Article: on-demand readability re-extract -----------------------
+  // Returns either the updated article (status=ok) OR a no-change marker when
+  // readability ran but produced nothing better than the stored body. Both
+  // come back as 200; the caller checks meta.status to decide UX.
+  reExtractArticle: (id: number) =>
+    call<import("./types").ArticleView | { status: "no_change" }>(
+      "POST",
+      `/api/articles/${id}/extract`,
+    ),
+
   // Passkeys --------------------------------------------------------
   listPasskeys: () => call<PasskeySummary[]>("GET", "/api/me/passkeys"),
   passkeyRegisterBegin: () =>

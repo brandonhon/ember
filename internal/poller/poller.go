@@ -2,6 +2,7 @@ package poller
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -204,6 +205,32 @@ func (p *Poller) EnqueueSummary(articleID int64) bool {
 	default:
 		return false
 	}
+}
+
+// ExtractArticle re-runs the readability extractor against the article's URL
+// and overwrites content_text + content_html when extraction yields more
+// text. Backs the "Re-extract" button in the reader pane — for feeds whose
+// excerpts slipped past shouldEnrich at ingest time. Returns store.ErrNotFound
+// when the article doesn't exist; store.ErrNoNewContent when readability ran
+// but produced no improvement over what's already stored (the handler maps
+// that to a 200 with status=no_change).
+func (p *Poller) ExtractArticle(ctx context.Context, articleID int64) error {
+	a, err := p.Store.GetArticle(ctx, articleID)
+	if err != nil {
+		return err
+	}
+	if a.URL == "" {
+		return errors.New("article has no URL to extract from")
+	}
+	before := strings.TrimSpace(a.ContentText)
+	p.enrichWithReadability(ctx, &a)
+	after := strings.TrimSpace(a.ContentText)
+	if after == before {
+		// enrichWithReadability already bails when readability returns less
+		// text than we had. Same-length / same-content means nothing to write.
+		return store.ErrNoNewContent
+	}
+	return p.Store.UpdateArticleContent(ctx, articleID, a.ContentText, a.ContentHTML, a.ImageURL)
 }
 
 // RefreshFeed forces an immediate fetch of a single feed.
@@ -441,12 +468,19 @@ func firstExternalLink(html, sourceURL string) string {
 // shouldEnrich returns true when the article's parsed body is too thin or
 // looks like a link list — readability against the article URL will usually
 // produce something more useful.
+//
+// Threshold history: the original gate was <200 chars, which missed feeds that
+// wrap a 200-600 char excerpt (Feedburner-relayed sites like TheHackerNews,
+// many Substacks). 400 catches those without over-fetching on legitimately
+// short articles. enrichWithReadability still bails when readability returns
+// less text than we already have, so the cost of a wrong-positive is at most
+// one HTTP round-trip per first-ingest.
 func (p *Poller) shouldEnrich(a models.Article) bool {
 	if a.URL == "" {
 		return false
 	}
 	text := strings.TrimSpace(a.ContentText)
-	if len(text) < 200 {
+	if len(text) < 400 {
 		return true
 	}
 	if linkListRE.MatchString(text) && len(text) < 800 {

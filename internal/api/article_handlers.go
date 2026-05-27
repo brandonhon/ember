@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -188,4 +189,42 @@ func (d *Dependencies) handleMarkAllRead(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	writeData(w, http.StatusOK, map[string]int64{"count": n}, nil)
+}
+
+// handleReExtractArticle re-runs readability extraction against the article's
+// URL and persists the result if it's better than what's currently stored.
+// Auth-required; any subscriber of the article's feed can trigger it. Content
+// updates are shared across users — this fixes the article for everyone, not
+// just the caller, which matches how original ingest works.
+func (d *Dependencies) handleReExtractArticle(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.FromContext(r.Context())
+	id, ok := paramInt(w, r, "id")
+	if !ok {
+		return
+	}
+	// 404 if the user isn't subscribed to the article's feed (or it doesn't
+	// exist). GetArticleForUser does the subscription check.
+	if _, err := d.Store.GetArticleForUser(r.Context(), u.ID, id); mapStoreError(w, err) {
+		return
+	}
+	if d.Poller == nil {
+		writeError(w, http.StatusServiceUnavailable, "unavailable", "extraction not available in this build")
+		return
+	}
+	err := d.Poller.ExtractArticle(r.Context(), id)
+	if errors.Is(err, store.ErrNoNewContent) {
+		// Same as a successful no-op. The UI surfaces "no_change" so it can
+		// disable the button or show a tooltip.
+		writeData(w, http.StatusOK, map[string]any{"status": "no_change"}, nil)
+		return
+	}
+	if mapStoreError(w, err) {
+		return
+	}
+	// Echo the now-updated article so the SPA can swap the body in-place.
+	a, err := d.Store.GetArticleForUser(r.Context(), u.ID, id)
+	if mapStoreError(w, err) {
+		return
+	}
+	writeData(w, http.StatusOK, a, map[string]any{"status": "ok"})
 }
