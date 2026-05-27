@@ -270,6 +270,13 @@ export const api = {
   setSessionTTL: (ttl_seconds: number) =>
     call<SessionTTL>("POST", "/api/admin/session/ttl", { ttl_seconds }),
 
+  // Admin: settings (SMTP + initial backlog window) ----------------
+  getAdminSettings: () => call<AdminSettings>("GET", "/api/admin/settings"),
+  setAdminSettings: (patch: AdminSettingsPatch) =>
+    call<AdminSettings>("PATCH", "/api/admin/settings", patch),
+  testEmail: (to?: string) =>
+    call<{ sent_to: string }>("POST", "/api/admin/settings/email-test", to ? { to } : {}),
+
   // Passkeys --------------------------------------------------------
   listPasskeys: () => call<PasskeySummary[]>("GET", "/api/me/passkeys"),
   passkeyRegisterBegin: () =>
@@ -352,6 +359,36 @@ export interface DBStatus extends DBSchedule {
 export interface SessionTTL {
   ttl_seconds: number;
   source: "admin" | "default";
+}
+
+// AdminSettings is the read-back shape from GET /api/admin/settings. The SMTP
+// password is never echoed; password_set is a boolean so the UI can show
+// "stored ✓" and offer a Clear control.
+export interface AdminSettings {
+  smtp: {
+    host: string;
+    port: number;
+    username: string;
+    password_set: boolean;
+    from: string;
+    starttls: boolean;
+  };
+  initial_backlog_hours: number;
+}
+
+// AdminSettingsPatch mirrors the backend's pointer-bag: only fields included
+// are updated. To clear the SMTP password, send `clear_password: true`.
+export interface AdminSettingsPatch {
+  smtp?: {
+    host?: string;
+    port?: number;
+    username?: string;
+    password?: string;
+    clear_password?: boolean;
+    from?: string;
+    starttls?: boolean;
+  };
+  initial_backlog_hours?: number;
 }
 
 export interface TopFeed {

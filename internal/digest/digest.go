@@ -34,6 +34,25 @@ func (c SMTPConfig) Configured() bool {
 	return c.Host != "" && c.Port != 0 && c.From != ""
 }
 
+// SendTestMessage sends a one-shot diagnostic email to verify the supplied
+// SMTP config end-to-end. Reuses the same transport path as digest delivery
+// so a passing test means the digest sender will work. Returns the underlying
+// error (network, auth, TLS, etc.) so the admin UI can surface it.
+func SendTestMessage(cfg SMTPConfig, to, appName string) error {
+	if appName == "" {
+		appName = "Ember"
+	}
+	subject := appName + " — SMTP test"
+	textBody := appName + " SMTP test message.\n\nIf you're reading this in your inbox, the relay accepted ember's outbound mail.\n"
+	htmlBody := `<!doctype html><html><body style="font-family:Georgia,serif;padding:24px;color:#211d18;background:#f6f2e9;">` +
+		`<h1 style="font-weight:500;font-size:20px;margin:0 0 16px;">` + appName + ` SMTP test</h1>` +
+		`<p style="font-size:14px;line-height:1.55;">If you're reading this in your inbox, the relay accepted ember's outbound mail.</p>` +
+		`</body></html>`
+	msg := buildMIME(cfg.From, to, subject, textBody, htmlBody)
+	s := &Sender{SMTP: cfg, AppName: appName}
+	return s.send(to, msg)
+}
+
 // Sender ties together a store (to fetch articles + mark sent) and an SMTP
 // config (to deliver).
 type Sender struct {
