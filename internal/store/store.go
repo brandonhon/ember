@@ -22,6 +22,12 @@ var ErrForbidden = errors.New("store: forbidden")
 // duplicate category name within a user, etc.).
 var ErrConflict = errors.New("store: conflict")
 
+// ErrNoNewContent is returned by Poller.ExtractArticle when readability ran
+// but the result wasn't an improvement over the stored body. Defined here so
+// the api package can errors.Is without importing poller (which would create
+// a cycle through PollerRefresher).
+var ErrNoNewContent = errors.New("store: re-extract produced no new content")
+
 // Store wraps a sql.DB with all the data-access methods ember needs. Construct
 // once and share — sql.DB is concurrency-safe.
 type Store struct {

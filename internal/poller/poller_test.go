@@ -292,6 +292,47 @@ func TestPoller_RunGracefulShutdown(t *testing.T) {
 	}
 }
 
+// TestPoller_ExtractArticle_NoNewContent verifies that ExtractArticle returns
+// store.ErrNoNewContent when readability can't improve on the stored body.
+// We force this by feeding an article that already has a long body; the
+// noop fakeFetcher means enrichWithReadability would try to fetch an external
+// URL and fail (or return less) — either way, no overwrite.
+func TestPoller_ExtractArticle_NoNewContent(t *testing.T) {
+	ff := &fakeFetcher{body: []byte(""), etag: `"v1"`}
+	st := store.NewTest(t)
+	lg := slog.New(slog.NewTextHandler(io.Discard, nil))
+	p := New(st, ff, summarize.Noop{}, Config{Tick: time.Millisecond, Concurrency: 1, AllowPrivateURLs: true}, lg)
+	f := seedFeed(t, p.Store)
+
+	// Insert an article with a generous body. URL points to a host that won't
+	// resolve in tests; readability will fail and ExtractArticle should detect
+	// "after == before" and return ErrNoNewContent.
+	body := strings.Repeat("paragraph text ", 100)
+	a := models.Article{
+		FeedID: f.ID, GUID: "g-extract", Title: "T", URL: "https://does-not-resolve.test/post",
+		ContentText: body, ContentHash: "h-extract", PublishedAt: time.Now().Unix(),
+	}
+	stored, _, err := st.UpsertArticle(context.Background(), a)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = p.ExtractArticle(context.Background(), stored.ID)
+	if !errors.Is(err, store.ErrNoNewContent) {
+		t.Errorf("expected ErrNoNewContent when readability can't improve body; got %v", err)
+	}
+}
+
+// TestPoller_ExtractArticle_NotFound: missing article → store.ErrNotFound.
+func TestPoller_ExtractArticle_NotFound(t *testing.T) {
+	ff := &fakeFetcher{}
+	p := mkPoller(t, ff)
+	err := p.ExtractArticle(context.Background(), 999999)
+	if !errors.Is(err, store.ErrNotFound) {
+		t.Errorf("expected ErrNotFound for missing article; got %v", err)
+	}
+}
+
 func TestStripCommentsResidue(t *testing.T) {
 	cases := []struct {
 		in, want string
