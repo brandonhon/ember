@@ -70,6 +70,13 @@ async function loginAndCapture(ctx, suffix) {
   const page = await ctx.newPage();
   // Login page
   await page.goto(URL, { waitUntil: "networkidle" });
+  // Pre-dismiss the first-run Welcome modal so it doesn't intercept clicks
+  // on Settings nav buttons during the tour. The modal is keyed off
+  // localStorage["ember:welcome-seen"]; setting it here is identical to
+  // the user having dismissed it once.
+  await page.evaluate(() => {
+    try { localStorage.setItem("ember:welcome-seen", "1"); } catch { /* ignore */ }
+  });
   await page.fill('input[autocomplete="username"]', USER);
   await page.fill('input[autocomplete="current-password"]', PASS);
   await screenshot(page, `login-${suffix}`);
@@ -77,6 +84,20 @@ async function loginAndCapture(ctx, suffix) {
 
   // Wait for the shell to render.
   await page.waitForSelector("[data-testid=article-list]", { timeout: 30000 });
+
+  // If the first-run Welcome modal is still up (e.g. the localStorage
+  // pre-set raced the mount), dismiss it via Escape — the modal's primary
+  // button is "Browse starter packs" which OPENS Settings, not what we
+  // want. Esc + the explicit × close button are the two real "dismiss"
+  // paths in WelcomeModal.svelte.
+  const welcome = page.locator('[data-testid="welcome-modal"]');
+  if (await welcome.count()) {
+    await page.keyboard.press("Escape").catch(() => {});
+    await welcome.waitFor({ state: "hidden", timeout: 5000 }).catch(async () => {
+      // Esc didn't take — fall back to the × button.
+      await welcome.locator('button[aria-label="Close"]').click().catch(() => {});
+    });
+  }
 
   // Reader shell (article list selected)
   await page.waitForTimeout(800);
