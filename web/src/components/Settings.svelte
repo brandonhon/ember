@@ -1617,15 +1617,24 @@
                 <input type="password" bind:value={emailDraft.password} autocomplete="new-password" data-testid="smtp-password" />
               {/if}
             </label>
-            <label>
+            <label style="grid-column: 1 / -1;">
               From address
               <input type="email" bind:value={emailDraft.from} placeholder="ember@example.com" data-testid="smtp-from" />
             </label>
-            <label class="check">
-              <input type="checkbox" bind:checked={emailDraft.starttls} data-testid="smtp-starttls" />
-              Use STARTTLS (recommended for port 587)
-            </label>
           </div>
+          <!-- STARTTLS is a toggle, not a value field — gets its own labeled
+               row outside the input grid so it reads as on/off rather than
+               "one weird item in a column of text inputs." -->
+          <label class="toggle-row">
+            <span class="toggle-label">
+              <span class="toggle-title">Use STARTTLS</span>
+              <span class="toggle-hint">Recommended for submission ports (587). Disable only when targeting a relay that doesn't support it.</span>
+            </span>
+            <span class="switch">
+              <input type="checkbox" bind:checked={emailDraft.starttls} data-testid="smtp-starttls" />
+              <span class="track" aria-hidden="true"></span>
+            </span>
+          </label>
           {#if emailLoaded?.smtp.password_set}
             <label class="check" style="margin-top:8px;">
               <input type="checkbox" bind:checked={emailDraft.clear_password} data-testid="smtp-clear-password" />
@@ -1674,7 +1683,21 @@
         {#if section === "about"}
           <h3>About</h3>
           <dl class="kv">
-            <dt>Version</dt><dd>{$appVersion}</dd>
+            <dt>Version</dt>
+            <dd>
+              {#if $appVersion.startsWith("v")}
+                {@const tag = $appVersion.split("-")[0]}
+                <a
+                  class="version-badge"
+                  href={`https://github.com/brandonhon/ember/releases/tag/${tag}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-testid="about-version"
+                >{$appVersion}</a>
+              {:else}
+                <span class="version-badge version-badge-dev" data-testid="about-version">{$appVersion}</span>
+              {/if}
+            </dd>
             <dt>Project</dt><dd><a href="https://github.com/brandonhon/ember" target="_blank" rel="noopener noreferrer">github.com/brandonhon/ember</a></dd>
             <dt>License</dt><dd>private</dd>
           </dl>
@@ -1963,6 +1986,73 @@
     font-size: 12.5px;
     margin-bottom: 10px;
   }
+  /* Toggle row: label + hint on the left, switch on the right. Used for
+     boolean settings that don't fit the "value input" rhythm of the form
+     grid above (currently STARTTLS in the SMTP section). */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 14px;
+    margin-top: 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--paper-2);
+    cursor: pointer;
+  }
+  .toggle-row:hover { background: var(--line-soft); }
+  .toggle-label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .toggle-title { font-weight: 600; font-size: 13.5px; color: var(--ink); }
+  .toggle-hint { font-size: 12px; color: var(--ink-faint); line-height: 1.4; }
+  .switch {
+    position: relative;
+    flex: 0 0 auto;
+    width: 38px;
+    height: 22px;
+    display: inline-block;
+  }
+  .switch input {
+    /* The actual checkbox sits invisibly on top of the track so clicks +
+       keyboard focus + form-state still work. Visual is the .track span. */
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 1;
+  }
+  .switch .track {
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+    background: var(--line);
+    transition: background 0.18s ease;
+  }
+  .switch .track::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--paper);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+    transition: transform 0.18s ease;
+  }
+  .switch input:checked + .track { background: var(--ember); }
+  .switch input:checked + .track::after { transform: translateX(16px); }
+  .switch input:focus-visible + .track {
+    outline: 2px solid var(--ember);
+    outline-offset: 2px;
+  }
+
   .kv {
     display: grid;
     grid-template-columns: max-content 1fr;
@@ -1973,6 +2063,27 @@
   .kv dd { margin: 0; color: var(--ink); }
   .kv a { color: var(--ember); text-decoration: none; }
   .kv a:hover { text-decoration: underline; }
+  /* Version pill: tagged builds (vX.Y.Z) get a clickable badge linked to
+     the GitHub release. Dev / SHA-only builds get a muted no-link badge
+     so the visual still reads as "this is a version identifier" without
+     implying a release page exists. */
+  .version-badge {
+    display: inline-block;
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--ember-soft);
+    color: var(--ember);
+    border: 1px solid var(--ember-wash);
+    text-decoration: none;
+  }
+  a.version-badge:hover { background: var(--ember-wash); text-decoration: none; }
+  .version-badge-dev {
+    background: var(--line-soft);
+    color: var(--ink-faint);
+    border-color: var(--line);
+  }
 
   .pack-list { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
   .pack {

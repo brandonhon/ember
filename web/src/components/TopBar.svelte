@@ -332,7 +332,12 @@
     align-items: center;
     border-bottom: 1px solid var(--line);
     background: var(--paper-2);
-    gap: 16px;
+    /* No gap between columns: the search column starts exactly at the
+       sidebar's right edge (var(--rail-w)), so the search input's left
+       border lines up with the rail. Mobile keeps its own gap rule below.
+       Actions sit at the right edge via the 1fr search column absorbing
+       leftover space, so removing the gap doesn't visually crowd them. */
+    gap: 0;
     padding-right: 18px;
   }
   .topbar.mobile {
