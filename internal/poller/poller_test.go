@@ -5,6 +5,8 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"sync/atomic"
@@ -331,6 +333,80 @@ func TestPoller_ExtractArticle_NotFound(t *testing.T) {
 	if !errors.Is(err, store.ErrNotFound) {
 		t.Errorf("expected ErrNotFound for missing article; got %v", err)
 	}
+}
+
+// TestPoller_EnrichmentFiresOnMidSizeExcerpt locks in the <600 char threshold
+// from PR #49. A feed delivers a 500-char excerpt (over the original 200 and
+// the intermediate 400 gates; under the current 600) with a link to a real
+// article page; the poller should run readability against that URL during
+// first-ingest and replace the stored body with the longer extracted version.
+func TestPoller_EnrichmentFiresOnMidSizeExcerpt(t *testing.T) {
+	// httptest server serves a long article page at /post. The body is large
+	// enough that go-readability will return many times more text than the
+	// 500-char feed excerpt — so the "after > before" assertion is robust to
+	// readability's whitespace normalization / chrome stripping.
+	longBody := strings.Repeat("The quick brown fox jumps over the lazy dog. ", 80)
+	articleHTML := `<!doctype html><html><head><title>Long article</title></head>` +
+		`<body><article><h1>Long article</h1><p>` + longBody + `</p></article></body></html>`
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write([]byte(articleHTML))
+	}))
+	defer ts.Close()
+
+	// Build a 500-char excerpt. Over the old <400 gate, under the current
+	// <600 gate — exactly the band PR #49 was designed to catch.
+	excerpt := strings.Repeat("excerpt text content ", 30)[:500]
+	if len(excerpt) != 500 {
+		t.Fatalf("test setup: excerpt should be exactly 500 chars, got %d", len(excerpt))
+	}
+
+	body := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel>
+<title>Threshold Test</title>
+<link>` + ts.URL + `</link>
+<description>x</description>
+<item>
+  <title>Mid-size excerpt article</title>
+  <link>` + ts.URL + `/post</link>
+  <guid isPermaLink="false">threshold-mid</guid>
+  <description>` + excerpt + `</description>
+</item>
+</channel></rss>`)
+
+	ff := &fakeFetcher{body: body, etag: `"v1"`}
+	st := store.NewTest(t)
+	lg := slog.New(slog.NewTextHandler(io.Discard, nil))
+	p := New(st, ff, summarize.Noop{}, Config{
+		Tick:        time.Millisecond,
+		Concurrency: 1,
+		// Production parity: enrichment ON, urlcheck allows the loopback
+		// httptest endpoint.
+		EnrichOnIngest:   true,
+		AllowPrivateURLs: true,
+	}, lg)
+	f := seedFeed(t, p.Store)
+
+	if err := p.RefreshFeed(context.Background(), f.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	// Look up the inserted article by guid (no user-scope filter; we're
+	// asserting on the shared articles row).
+	var contentText string
+	err := st.DB.QueryRowContext(context.Background(),
+		`SELECT IFNULL(content_text,'') FROM articles WHERE feed_id = ? AND guid = ?`,
+		f.ID, "threshold-mid").Scan(&contentText)
+	if err != nil {
+		t.Fatalf("look up ingested article: %v", err)
+	}
+
+	if len(contentText) <= len(excerpt) {
+		t.Errorf("readability didn't run: content_text len=%d, excerpt len=%d — gate should have fired at 500 < 600",
+			len(contentText), len(excerpt))
+	}
+	t.Logf("excerpt=%d chars, content_text after enrich=%d chars (Δ=+%d)",
+		len(excerpt), len(contentText), len(contentText)-len(excerpt))
 }
 
 func TestStripCommentsResidue(t *testing.T) {
