@@ -57,6 +57,14 @@ type Dependencies struct {
 	// starter-pack import). Cancelled at process shutdown; nil falls back
 	// to context.Background so tests that don't wire shutdown still work.
 	BackgroundCtx context.Context
+	// SMTPFallback is the env-derived SMTP config. The admin settings endpoints
+	// resolve the live config by overlaying app_settings rows on top of this
+	// fallback. Set from cfg at boot; never mutated after.
+	SMTPFallback store.SMTPSettings
+	// InitialBacklogHoursFallback is the env-derived default for the
+	// first-ingest backlog window. The poller resolves the live value by
+	// preferring an app_settings row over this fallback.
+	InitialBacklogHoursFallback int
 }
 
 // backgroundCtx returns d.BackgroundCtx or context.Background if unset.
@@ -194,6 +202,12 @@ func NewRouter(d Dependencies) http.Handler {
 		// supported — see internal/api/session_handlers.go for rationale.
 		r.With(d.Auth.RequireAdmin).Get("/admin/session", d.handleGetSessionTTL)
 		r.With(d.Auth.RequireAdmin).Post("/admin/session/ttl", d.handleSetSessionTTL)
+
+		// Admin settings: SMTP + first-ingest backlog window. SMTP password
+		// is write-only — GET returns whether one is set, not the value.
+		r.With(d.Auth.RequireAdmin).Get("/admin/settings", d.handleGetAdminSettings)
+		r.With(d.Auth.RequireAdmin).Patch("/admin/settings", d.handleSetAdminSettings)
+		r.With(d.Auth.RequireAdmin).Post("/admin/settings/email-test", d.handleTestEmail)
 
 		// Boards
 		r.With(d.Auth.RequireAuth).Get("/boards", d.handleListBoards)

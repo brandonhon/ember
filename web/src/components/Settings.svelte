@@ -43,7 +43,7 @@
 
   let { onClose }: { onClose: () => void } = $props();
 
-  type Section = "profile" | "passkeys" | "preferences" | "stats" | "digest" | "mobile" | "filters" | "users" | "starter" | "llm" | "branding" | "database" | "session" | "about";
+  type Section = "profile" | "passkeys" | "preferences" | "stats" | "digest" | "mobile" | "filters" | "users" | "starter" | "llm" | "branding" | "database" | "session" | "email" | "about";
   let section = $state<Section>("profile");
 
   // Daily digest state -------------------------------------------------
@@ -470,6 +470,7 @@
     if (section === "branding" && $user?.is_admin) loadBrandingDraft();
     if (section === "database" && $user?.is_admin) void loadDB();
     if (section === "session" && $user?.is_admin) void loadSessionTTL();
+    if (section === "email" && $user?.is_admin) void loadEmailSettings();
     if (section === "users" && $user?.is_admin) void loadUsers();
     if (section === "stats") void loadStats();
     if (section === "digest") void loadDigest();
@@ -524,6 +525,100 @@
       section = "starter";
     }
   });
+
+  // Admin: Email / SMTP --------------------------------------------------
+  // The SMTP password is write-only: GET returns whether one is stored, never
+  // the value. To keep it: leave the field blank on save. To change: type the
+  // new password. To remove: tick "Clear stored password" and save.
+  type EmailDraft = {
+    host: string;
+    port: number;
+    username: string;
+    password: string;
+    clear_password: boolean;
+    from: string;
+    starttls: boolean;
+    initial_backlog_hours: number;
+  };
+  let emailDraft = $state<EmailDraft>({
+    host: "", port: 587, username: "", password: "", clear_password: false,
+    from: "", starttls: true, initial_backlog_hours: 48,
+  });
+  let emailLoaded = $state<import("../lib/api").AdminSettings | null>(null);
+  let emailBusy = $state(false);
+  let emailMsg = $state("");
+  let emailErr = $state("");
+  let testRecipient = $state("");
+  let testBusy = $state(false);
+
+  async function loadEmailSettings() {
+    emailErr = "";
+    try {
+      const res = await api.getAdminSettings();
+      emailLoaded = res.data;
+      emailDraft = {
+        host: res.data.smtp.host,
+        port: res.data.smtp.port,
+        username: res.data.smtp.username,
+        password: "",
+        clear_password: false,
+        from: res.data.smtp.from,
+        starttls: res.data.smtp.starttls,
+        initial_backlog_hours: res.data.initial_backlog_hours,
+      };
+    } catch (e) {
+      emailErr = e instanceof ApiError ? e.message : String(e);
+    }
+  }
+  async function saveEmailSettings() {
+    emailBusy = true;
+    emailMsg = "";
+    emailErr = "";
+    try {
+      const patch: import("../lib/api").AdminSettingsPatch = {
+        smtp: {
+          host: emailDraft.host.trim(),
+          port: Number(emailDraft.port) || 0,
+          username: emailDraft.username.trim(),
+          from: emailDraft.from.trim(),
+          starttls: !!emailDraft.starttls,
+        },
+        initial_backlog_hours: Math.max(0, Number(emailDraft.initial_backlog_hours) || 0),
+      };
+      // Only send the password when the admin actually typed one, OR when
+      // they're explicitly clearing the stored value. Otherwise the server
+      // leaves the existing password alone.
+      if (emailDraft.clear_password) {
+        patch.smtp!.clear_password = true;
+      } else if (emailDraft.password) {
+        patch.smtp!.password = emailDraft.password;
+      }
+      const res = await api.setAdminSettings(patch);
+      emailLoaded = res.data;
+      emailDraft.password = "";
+      emailDraft.clear_password = false;
+      emailMsg = "Saved";
+    } catch (e) {
+      emailErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      emailBusy = false;
+      setTimeout(() => (emailMsg = ""), 3000);
+    }
+  }
+  async function sendTestEmail() {
+    testBusy = true;
+    emailMsg = "";
+    emailErr = "";
+    try {
+      const res = await api.testEmail(testRecipient.trim() || undefined);
+      emailMsg = `Test sent to ${res.data.sent_to}`;
+    } catch (e) {
+      emailErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      testBusy = false;
+      setTimeout(() => (emailMsg = ""), 4000);
+    }
+  }
 
   // Password change state.
   let oldPassword = $state("");
@@ -704,6 +799,7 @@
           <button class:active={section === "branding"} on:click={() => (section = "branding")} data-testid="settings-branding">Branding</button>
           <button class:active={section === "database"} on:click={() => (section = "database")} data-testid="settings-database">Database</button>
           <button class:active={section === "session"} on:click={() => (section = "session")} data-testid="settings-session">Sessions</button>
+          <button class:active={section === "email"} on:click={() => (section = "email")} data-testid="settings-email">Email / SMTP</button>
           <button class:active={section === "users"} on:click={() => (section = "users")} data-testid="settings-users">Users</button>
         {/if}
         <button class:active={section === "about"} on:click={() => (section = "about")}>About</button>
@@ -1489,6 +1585,88 @@
           <div class="actions">
             <button on:click={saveSessionTTL} disabled={sessionBusy} data-testid="session-save">
               {sessionBusy ? "Saving…" : "Save"}
+            </button>
+          </div>
+        {/if}
+
+        {#if section === "email" && $user?.is_admin}
+          <h3>Email / SMTP</h3>
+          <p class="hint">
+            Configure the relay used for daily digest emails. These fields override the
+            corresponding <code>EMBER_SMTP_*</code> environment variables at runtime;
+            changes take effect on the next digest tick (~5 minutes).
+          </p>
+          <div class="form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;">
+            <label>
+              SMTP host
+              <input type="text" bind:value={emailDraft.host} placeholder="smtp.example.com" data-testid="smtp-host" />
+            </label>
+            <label>
+              Port
+              <input type="number" min="1" max="65535" bind:value={emailDraft.port} data-testid="smtp-port" />
+            </label>
+            <label>
+              Username
+              <input type="text" bind:value={emailDraft.username} autocomplete="off" data-testid="smtp-user" />
+            </label>
+            <label>
+              Password
+              {#if emailLoaded?.smtp.password_set && !emailDraft.password && !emailDraft.clear_password}
+                <input type="password" bind:value={emailDraft.password} placeholder="•••• stored — leave blank to keep" autocomplete="new-password" data-testid="smtp-password" />
+              {:else}
+                <input type="password" bind:value={emailDraft.password} autocomplete="new-password" data-testid="smtp-password" />
+              {/if}
+            </label>
+            <label>
+              From address
+              <input type="email" bind:value={emailDraft.from} placeholder="ember@example.com" data-testid="smtp-from" />
+            </label>
+            <label class="check">
+              <input type="checkbox" bind:checked={emailDraft.starttls} data-testid="smtp-starttls" />
+              Use STARTTLS (recommended for port 587)
+            </label>
+          </div>
+          {#if emailLoaded?.smtp.password_set}
+            <label class="check" style="margin-top:8px;">
+              <input type="checkbox" bind:checked={emailDraft.clear_password} data-testid="smtp-clear-password" />
+              Clear stored password on save
+            </label>
+          {/if}
+          {#if emailMsg}<p class="ok" data-testid="email-msg">{emailMsg}</p>{/if}
+          {#if emailErr}<p class="err" data-testid="email-err">{emailErr}</p>{/if}
+          <div class="actions" style="margin-top:12px;">
+            <button on:click={saveEmailSettings} disabled={emailBusy} data-testid="email-save">
+              {emailBusy ? "Saving…" : "Save"}
+            </button>
+          </div>
+
+          <hr style="margin:18px 0;border:0;border-top:1px solid var(--line);" />
+          <h4>Send test email</h4>
+          <p class="hint">Uses the live SMTP settings above. Save first if you've made changes.</p>
+          <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+            <label style="flex:1 1 240px;">
+              Recipient (defaults to your account email)
+              <input type="email" bind:value={testRecipient} placeholder="you@example.com" data-testid="smtp-test-to" />
+            </label>
+            <button on:click={sendTestEmail} disabled={testBusy} data-testid="smtp-test-send">
+              {testBusy ? "Sending…" : "Send test"}
+            </button>
+          </div>
+
+          <hr style="margin:18px 0;border:0;border-top:1px solid var(--line);" />
+          <h4>Initial backlog window</h4>
+          <p class="hint">
+            When a new feed (or starter pack) is added, articles published more than this
+            many hours ago are skipped. Subsequent polls of the feed are unaffected.
+            Set to <code>0</code> to disable the gate and ingest a feed's full upstream history.
+          </p>
+          <label>
+            Hours
+            <input type="number" min="0" max="8760" bind:value={emailDraft.initial_backlog_hours} data-testid="backlog-hours" style="width:140px;" />
+          </label>
+          <div class="actions" style="margin-top:12px;">
+            <button on:click={saveEmailSettings} disabled={emailBusy} data-testid="backlog-save">
+              {emailBusy ? "Saving…" : "Save"}
             </button>
           </div>
         {/if}
