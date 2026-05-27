@@ -17,7 +17,7 @@
   import { api, ApiError, type StarterPack, type StarterImportResult, type LLMStatus, type DBStatus, type UserStats, type UserDigest, type PasskeySummary } from "../lib/api";
   import { createPasskey, passkeySupported } from "../lib/passkey";
   import { onMount } from "svelte";
-  import { refreshSidebar } from "../lib/stores";
+  import { refreshSidebar, loadArticles, activeView } from "../lib/stores";
   import FilterManager from "./FilterManager.svelte";
   import ConfirmDialog from "./ConfirmDialog.svelte";
 
@@ -244,6 +244,11 @@
       if (r.failed_urls?.length) parts.push(`${r.failed_urls.length} failed`);
       starterMsg = parts.join(" · ") || "Nothing to add";
       await refreshSidebar();
+      // Starter-pack ingest runs in detached goroutines; the first refresh
+      // sees the new feeds but not yet the articles/summary-queue. Pull the
+      // current view immediately and re-poll counts a bit later.
+      await loadArticles($activeView);
+      setTimeout(() => { void refreshSidebar(); }, 2000);
       await loadStarterPacks();
     } catch (e) {
       starterErr = e instanceof ApiError ? e.message : String(e);
