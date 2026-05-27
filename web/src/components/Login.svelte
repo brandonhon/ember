@@ -198,7 +198,7 @@
   .mark {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 4px;
     font-family: var(--font-display);
     font-weight: 600;
     font-size: 20px;

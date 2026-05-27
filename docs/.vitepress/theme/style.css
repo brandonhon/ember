@@ -100,3 +100,9 @@ h1, h2, h3, .VPHero .name, .VPHero .text {
 
 /* Soften the sidebar to match. */
 .VPSidebar { background: var(--vp-c-bg-alt); }
+
+/* Match the app top-bar's tight wordmark spacing. VitePress defaults the
+   logo's margin-right to 8px; the reader pane and login page use 4px. */
+.VPNavBarTitle .title .logo {
+  margin-right: 4px !important;
+}

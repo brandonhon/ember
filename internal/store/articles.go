@@ -518,7 +518,11 @@ func (s *Store) CountSmartViews(ctx context.Context, userID int64, freshWindow t
 	if freshWindow <= 0 {
 		freshWindow = 6 * time.Hour
 	}
-	// Fresh: unread, summarized, published within the configured window.
+	// Fresh: unread + published within the configured window. The summary_model
+	// gate was dropped so the badge matches the time-based "Fresh" pill on
+	// article cards — recent articles that haven't been summarized yet still
+	// count. Pair with the handler override that drops OnlySummarized for the
+	// Fresh list view so the badge and the list stay in sync.
 	err := s.DB.QueryRowContext(ctx, `
 SELECT COUNT(*)
 FROM articles a
@@ -526,7 +530,6 @@ JOIN subscriptions sub ON sub.feed_id = a.feed_id AND sub.user_id = ?
 LEFT JOIN article_state st ON st.article_id = a.id AND st.user_id = ?
 WHERE IFNULL(st.is_read,0) = 0
   AND sub.muted = 0
-  AND a.summary_model IS NOT NULL AND a.summary_model <> ''
   AND IFNULL(a.published_at,0) >= ?`,
 		userID, userID, s.nowUnix()-int64(freshWindow.Seconds())).Scan(&c.Fresh)
 	if err != nil {
