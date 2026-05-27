@@ -131,17 +131,11 @@
     let out = $articles.items;
     if (freshOnly) out = out.filter((a) => isFresh(a.published_at));
     if (unreadOnly) out = out.filter((a) => !a.is_read);
-    // Fresh view: re-sort read items to the bottom (while keeping their
-    // natural published_at order within each group). Articles stay in Fresh
-    // as long as they're within the window — the user reads through new
-    // ones at the top, and read-but-still-fresh items sink to the bottom
-    // greyed out (see the .read class on .story below). Other views keep
-    // the server's order unchanged.
-    if ($activeView.kind === "smart" && $activeView.view === "fresh") {
-      const unread = out.filter((a) => !a.is_read);
-      const read = out.filter((a) => a.is_read);
-      out = [...unread, ...read];
-    }
+    // Note: Fresh view used to re-sort read items to the bottom (PR #54),
+    // but the user found the position-shifting jarring. Now read-fresh
+    // items just visually fade via .story.read (opacity 0.62) and lose the
+    // Fresh pill — they stay in their published_at position so the list
+    // doesn't reflow under the cursor when an article gets marked read.
     return out;
   });
 
