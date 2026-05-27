@@ -19,7 +19,8 @@ For vulnerability reporting, see [SECURITY.md](https://github.com/brandonhon/emb
 | `/healthz` | none |
 | `POST /api/auth/login` | none (login is the bootstrap) |
 | All other `/api/*` | session cookie |
-| `POST /api/users`, `PATCH /api/users/{id}`, admin LLM, branding, DB | `is_admin = 1` |
+| `POST /api/users`, `PATCH /api/users/{id}`, admin LLM, branding, DB, settings | `is_admin = 1` |
+| `GET /api/admin/settings`, `PATCH /api/admin/settings`, `POST /api/admin/settings/email-test` | `is_admin = 1` |
 | `/metrics` | `is_admin = 1` |
 | `GET /api/users` | returns `{id, username}` projection for non-admins |
 
@@ -51,6 +52,9 @@ Surfaces covered:
 - `POST /api/feeds/import` (OPML import — each `xmlUrl` is filtered)
 - Poller readability enrichment (Lobsters / HN aggregator → external link)
 - Feed fetcher redirects
+- `POST /api/articles/{id}/extract` (on-demand Re-extract) — runs the same `urlcheck.Check` before fetching the article URL through readability.
+
+The admin-only `POST /api/admin/settings/email-test` opens an SMTP TCP connection to the admin-supplied `host:port`. This is **by design**: the same connection happens every 5 minutes from the digest sender when SMTP is configured. Access is gated by `is_admin = 1` so a non-admin can't use it as a port-scan or relay-probe primitive.
 
 ## Body limits
 
@@ -75,6 +79,16 @@ Ollama upstream errors (502 from `/api/admin/llm/pull` etc.) return generic "Oll
 - SQLite WAL with single-writer semantics. `MaxOpenConns=1` to avoid `SQLITE_BUSY` storms.
 - `synchronous=NORMAL` (safe with WAL), `busy_timeout=5s`, 64 MiB cache, 256 MiB mmap.
 - Backups via `VACUUM INTO` are safe to run live and produce a compacted snapshot.
+
+## Secrets at rest
+
+Admin-editable secrets — currently the SMTP password (`smtp_password` key in `app_settings`) — are stored **as plaintext** in the SQLite database. This matches the storage model when the same value is supplied via `EMBER_SMTP_PASSWORD` (env vars are also plaintext, just in `.env` rather than `ember.db`).
+
+Protect the SQLite file at the filesystem layer:
+
+- Docker compose mounts `ember-data:/data` (root-owned inside the container).
+- Backups produced by `/api/admin/db/backup` inherit those permissions. Don't ship them to anywhere less trustworthy than the host.
+- Database-encryption-at-rest (SQLCipher) is not currently wired; if you need it, a future change would belong here.
 
 ## Fever shim
 

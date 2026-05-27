@@ -147,6 +147,13 @@ Active model + tunables held in `atomic.Value`/`atomic.Pointer` on the `Ollama` 
 - `GET /api/admin/db` — size, page count, recent backups, schedules.
 - `POST /api/admin/db/backup` / `…/cleanup` / `…/schedule` — manual + scheduled maintenance.
 - `POST /api/feeds/resummarize-all` — re-process every article after a prompt change.
+- `GET /api/admin/session` / `POST /api/admin/session/ttl` — server-wide session cookie lifetime.
+- `GET /api/admin/settings` / `PATCH /api/admin/settings` — SMTP relay config + initial-backlog window. Overlays env-derived defaults at runtime; digest sender re-resolves every tick.
+- `POST /api/admin/settings/email-test` — send a one-off diagnostic message through the live SMTP config.
+
+Auth-required (not admin-only):
+
+- `POST /api/articles/{id}/extract` — on-demand readability re-run for the reader pane's "Re-extract" button. Subject to the same SSRF check as the poller's automatic enrichment.
 
 ## E2E
 
