@@ -469,18 +469,19 @@ func firstExternalLink(html, sourceURL string) string {
 // looks like a link list — readability against the article URL will usually
 // produce something more useful.
 //
-// Threshold history: the original gate was <200 chars, which missed feeds that
-// wrap a 200-600 char excerpt (Feedburner-relayed sites like TheHackerNews,
-// many Substacks). 400 catches those without over-fetching on legitimately
-// short articles. enrichWithReadability still bails when readability returns
-// less text than we already have, so the cost of a wrong-positive is at most
-// one HTTP round-trip per first-ingest.
+// Threshold history: original gate was <200, bumped to <400 in PR #48 after
+// TheHackerNews / Feedburner excerpts slipped through, then to <600 (this
+// change) after a live test confirmed a 396-char excerpt was *just* under
+// the previous gate. 600 keeps us safely below where linkListRE takes over
+// at <800. enrichWithReadability already bails when readability returns
+// less text than we have, so a wrong-positive only costs one HTTP round-trip
+// per first-ingest.
 func (p *Poller) shouldEnrich(a models.Article) bool {
 	if a.URL == "" {
 		return false
 	}
 	text := strings.TrimSpace(a.ContentText)
-	if len(text) < 400 {
+	if len(text) < 600 {
 		return true
 	}
 	if linkListRE.MatchString(text) && len(text) < 800 {
