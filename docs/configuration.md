@@ -80,20 +80,34 @@ These configure the bundled `deploy/docker-compose.yml` stack rather than the Em
 | Var | Default | Notes |
 | --- | --- | --- |
 | `EMBER_HOSTNAME` | `localhost` | Hostname Caddy serves. Real DNS name → automatic Let's Encrypt. |
-| `CADDY_EMAIL` | `admin@localhost` | Email for ACME registration. |
+| `CADDY_EMAIL` | `admin@localhost` | Email registered with Let's Encrypt for ACME notifications. Set this when using a real hostname. |
 | `EMBER_HTTP_PORT` | `80` | Host port Caddy publishes for HTTP. Change when 80 is taken locally. |
 | `EMBER_HTTPS_PORT` | `443` | Host port Caddy publishes for HTTPS. Change when 443 is taken locally. |
+| `EMBER_DISABLE_HTTPS_REDIRECT` | _(unset)_ | Set to `1` to turn off Caddy's default 80 → 443 redirect. Use when an upstream proxy already terminates TLS. |
 
 If you change the ports, reach the site at the mapped port — e.g. `EMBER_HTTPS_PORT=8443` → visit `https://localhost:8443`. Inside the container Caddy still listens on 80/443; only the host-side mapping changes.
 
-**Let's Encrypt caveat:** automatic-HTTPS via Let's Encrypt's HTTP-01 challenge requires the **public** port 80 to be reachable; TLS-ALPN-01 requires public 443. If you remap *and* expect Let's Encrypt to issue certs, ensure your public ingress (router / upstream proxy / Cloudflare) still terminates on 80/443 and forwards to your mapped host ports. For homelab use with `tls internal` in the Caddyfile, any ports work fine.
+### Let's Encrypt
+
+Caddy fetches a free Let's Encrypt cert automatically when **all three** of these are true:
+
+1. `EMBER_HOSTNAME` is a real DNS name that resolves to this server (e.g. `ember.example.com`).
+2. `CADDY_EMAIL` is a valid email address.
+3. The public internet can reach port `80` (HTTP-01 challenge) or port `443` (TLS-ALPN-01 challenge) on this host.
+
+If you remap `EMBER_HTTP_PORT` / `EMBER_HTTPS_PORT` *and* expect Let's Encrypt to issue certs, ensure your public ingress (router / upstream proxy / Cloudflare) still terminates on 80/443 and forwards to your mapped host ports. For homelab use with `tls internal` in the Caddyfile, any ports work fine.
+
+### HTTP → HTTPS redirect
+
+Caddy redirects port 80 to 443 by default for any site with managed TLS. Set `EMBER_DISABLE_HTTPS_REDIRECT=1` in `.env` to turn this off — needed when Ember sits behind another reverse proxy (Traefik, nginx, Cloudflare Tunnel, etc.) that already handles the redirect or terminates TLS upstream.
 
 ## Reverse proxy
 
 Ember expects TLS to be terminated upstream. The reference `Caddyfile` in `deploy/Caddyfile` covers:
 
-- Automatic Let's Encrypt for a real hostname.
+- Automatic Let's Encrypt for a real hostname (default).
 - `tls internal` for self-signed homelab certs.
+- `EMBER_DISABLE_HTTPS_REDIRECT` toggle for the 80 → 443 redirect.
 - Forwarding `X-Real-IP` (Ember honors this header **only** when the immediate peer is loopback / Docker / LAN).
 
 If you front Ember with Cloudflare, set the [authenticated origin pull](https://developers.cloudflare.com/ssl/origin-configuration/authenticated-origin-pull/) so only Cloudflare can reach your origin.
