@@ -10,6 +10,18 @@ services:
     ports:
       - "${EMBER_HTTP_PORT:-80}:80"
       - "${EMBER_HTTPS_PORT:-443}:443"
+    environment:
+      # Hostname + ACME email are substituted into the Caddyfile at runtime.
+      # Real DNS name + valid email + public 80/443 → automatic Let's Encrypt.
+      EMBER_HOSTNAME: ${EMBER_HOSTNAME:-localhost}
+      CADDY_EMAIL: ${CADDY_EMAIL:-admin@localhost}
+      # Translate a boolean .env knob into a Caddyfile directive. When
+      # EMBER_DISABLE_HTTPS_REDIRECT is set to anything non-empty the
+      # substitution expands to `auto_https disable_redirects`, turning off
+      # the default 80 → 443 redirect (useful when fronted by another
+      # reverse proxy that already terminates TLS). Empty / unset → no
+      # change, default redirect stays on.
+      EMBER_HTTPS_REDIRECT_DIRECTIVE: ${EMBER_DISABLE_HTTPS_REDIRECT:+auto_https disable_redirects}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
