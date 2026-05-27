@@ -542,6 +542,14 @@ func (s *Store) CountSmartViews(ctx context.Context, userID int64, freshWindow t
 	// article cards — recent articles that haven't been summarized yet still
 	// count. Pair with the handler override that drops OnlySummarized for the
 	// Fresh list view so the badge and the list stay in sync.
+	//
+	// Cross-feed dedup: when two of the user's feeds publish the same article
+	// URL (e.g. Krebs on Security is in both a "security" pack and a
+	// "news" pack), the article-list query keeps only the lowest-id row.
+	// Without the same dedup here, the badge would over-count by the size of
+	// the overlap. The NOT EXISTS clause mirrors the one in ListArticles
+	// (articles.go around line 376).
+	freshCutoff := s.nowUnix() - int64(freshWindow.Seconds())
 	err := s.DB.QueryRowContext(ctx, `
 SELECT COUNT(*)
 FROM articles a
@@ -549,8 +557,15 @@ JOIN subscriptions sub ON sub.feed_id = a.feed_id AND sub.user_id = ?
 LEFT JOIN article_state st ON st.article_id = a.id AND st.user_id = ?
 WHERE IFNULL(st.is_read,0) = 0
   AND sub.muted = 0
-  AND IFNULL(a.published_at,0) >= ?`,
-		userID, userID, s.nowUnix()-int64(freshWindow.Seconds())).Scan(&c.Fresh)
+  AND IFNULL(a.published_at,0) >= ?
+  AND (
+    IFNULL(a.url,'') = '' OR NOT EXISTS (
+      SELECT 1 FROM articles a2
+      JOIN subscriptions sub2 ON sub2.feed_id = a2.feed_id AND sub2.user_id = ?
+      WHERE a2.url = a.url AND IFNULL(a2.url,'') <> '' AND sub2.muted = 0 AND a2.id < a.id
+    )
+  )`,
+		userID, userID, freshCutoff, userID).Scan(&c.Fresh)
 	if err != nil {
 		return c, fmt.Errorf("count fresh: %w", err)
 	}
