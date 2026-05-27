@@ -49,10 +49,11 @@ Visit `https://localhost` (accept the self-signed cert in dev). Log in with `adm
 1. Log in as the admin you created in `.env`.
 2. Open **Settings → Language model** and confirm the recommendation matches your hardware. The `ember probe` subcommand (or that section) reports detected RAM/CPU/GPU and the suggested model.
 3. Open **Settings → Database**, schedule a daily backup, and pick a cleanup cadence.
-4. Open **Settings → Preferences**, pick your theme and (optionally) disable scroll-to-mark-read.
+4. Open **Settings → Preferences** and pick your theme + article density.
 5. Click **Browse starter packs** or paste a feed URL — or a homepage URL — into the sidebar "+ Add feed". Ember auto-discovers the feed link.
 6. (Optional) **Settings → Passkeys** to register a passkey for password-less sign-in. Requires `EMBER_PUBLIC_URL` to be set.
 7. (Optional) Configure SMTP env vars (see [Configuration](/configuration#optional-env-vars)) and enable a daily digest email from your profile.
+8. (Optional) Install Ember as a PWA — Chrome / Edge / Safari "Install app" menu. Once installed, new articles trigger an OS-level numeric badge on the app icon (taskbar / dock / launcher) in addition to the in-tab favicon dot.
 
 ## Build from source
 
