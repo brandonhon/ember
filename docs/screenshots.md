@@ -4,13 +4,13 @@ Captured against the live docker stack via `make docs-screenshots` (a Playwright
 
 ## Three-pane reader
 
-The default layout: sidebar of folders + feeds, the article list, and the reader. Scroll-to-mark-read, keyboard navigation (`j` / `k` / `r` / `m` / `s` / `?`), drag-to-reorder folders and feeds within them.
+The default layout: sidebar of folders + feeds, the article list, and the reader. Keyboard navigation (`j` / `k` / `r` / `m` / `s` / `?`), drag-to-reorder folders and feeds within them.
 
 ![Reader, desktop](/screenshots/reader-desktop.png)
 
 ## Article view
 
-Summary card sits between the title and the body — paragraph lead + factual bullets with an inline thumbnail. AI ad-stripping removes newsletter signups, podcast promos, and "Comments" trailers from the body before display.
+Summary card sits between the title and the body — paragraph lead + factual bullets. AI ad-stripping removes newsletter signups, podcast promos, and "Comments" trailers from the body before display.
 
 ![Article, desktop](/screenshots/article-desktop.png)
 

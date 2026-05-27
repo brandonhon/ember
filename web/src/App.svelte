@@ -222,6 +222,24 @@
     document.title = $newArticleCount > 0 ? `(${$newArticleCount}) ${base}` : base;
   });
 
+  // PWA badge via the Badging API (Chrome/Edge/Safari for installed PWAs).
+  // Renders an OS-level numbered badge on the app icon — taskbar, dock,
+  // launcher — same surface a native mail/chat app uses. No-op on browsers
+  // without the API (Firefox as of writing, regular non-PWA tabs); the
+  // canvas favicon-dot + title prefix above remain the universal fallback.
+  $effect(() => {
+    if (typeof navigator === "undefined") return;
+    const nav = navigator as Navigator & {
+      setAppBadge?: (count?: number) => Promise<void>;
+      clearAppBadge?: () => Promise<void>;
+    };
+    if ($newArticleCount > 0 && typeof nav.setAppBadge === "function") {
+      void nav.setAppBadge($newArticleCount).catch(() => { /* not installed / not permitted */ });
+    } else if (typeof nav.clearAppBadge === "function") {
+      void nav.clearAppBadge().catch(() => { /* ignore */ });
+    }
+  });
+
   // Theme application:
   //   - "auto" → resolve to "light" or "dark" via matchMedia.
   //   - any other value → applied as-is.

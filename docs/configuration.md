@@ -57,9 +57,7 @@ Each user also has client-side preferences stored in browser `localStorage`:
 | Article density | Cards | `ember:density` |
 | Sidebar collapsed | Open | `ember:sidebar` |
 | AI summary card visible | On | `ember:show-summary` |
-| Article images visible | On | `ember:show-images` |
 | Summary card collapsed | Open | `ember:summary-collapsed` |
-| Scroll-to-mark-read | On | `ember:scroll-mark-read` |
 | Custom theme palette | n/a | `ember:custom` |
 
 ## Hardware-aware model recommendation

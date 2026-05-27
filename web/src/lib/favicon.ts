@@ -13,14 +13,17 @@ type CacheKey = string;
 const cache = new Map<CacheKey, string>();
 
 const SIZE = 64;
-// Dot proportions: ~30% diameter in the top-right corner, with a halo for
-// contrast against busy favicons.
-const DOT_R = 14;
-const HALO_R = 18;
-const DOT_X = SIZE - 16;
-const DOT_Y = 16;
+// Dot proportions: small, clean, bottom-right corner — mirrors the OS-level
+// app badge that Chrome/Edge/Safari render for installed PWAs via the
+// Badging API. The earlier ~30%-diameter top-right design felt heavy; this
+// is ~22% with a thin contrast ring so it pops on busy favicons without
+// dominating them.
+const DOT_R = 11;
+const HALO_R = 14;
+const DOT_X = SIZE - 14;
+const DOT_Y = SIZE - 14;
 const DOT_COLOR = "#4f7a3d"; // matches --green in the default palette
-const HALO_COLOR = "rgba(255, 255, 255, 0.92)";
+const HALO_COLOR = "rgba(255, 255, 255, 0.95)";
 
 function key(baseURL: string, dot: boolean): CacheKey {
   return `${baseURL}|${dot ? 1 : 0}`;

@@ -21,7 +21,7 @@ hero:
 features:
   - icon: 📰
     title: Three-pane reader
-    details: Sidebar of feeds and folders, the article list, and a focused reader. Scroll-to-mark-read, keyboard navigation (j/k/r/m/s/?), drag-to-reorder.
+    details: Sidebar of feeds and folders, the article list, and a focused reader. Keyboard navigation (j/k/r/m/s/?), drag-to-reorder.
   - icon: 🧠
     title: Local AI summaries
     details: Optional Ollama integration produces a paragraph + bullet summary for each article. Pull, swap, and tune models from the admin UI. Strips newsletter / podcast promos from the body.

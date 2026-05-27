@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onDestroy, tick } from "svelte";
   import {
     activeView,
     articles,
@@ -10,11 +9,9 @@
     loadArticles,
     refreshSidebar,
     selectedArticleId,
-    setRead,
     toggleStar,
     toggleLater,
     newArticleCount,
-    scrollMarksRead,
     freshWindowSeconds,
   } from "../lib/stores";
   import { api } from "../lib/api";
@@ -24,85 +21,15 @@
   let containerEl: HTMLElement | undefined = $state();
   let freshOnly = $state(false);
   let unreadOnly = $state(false);
-  const pendingRead = new Set<number>();
-  let flushTimer: ReturnType<typeof setTimeout> | undefined;
 
-  function flush() {
-    if (pendingRead.size === 0) return;
-    const ids = Array.from(pendingRead);
-    pendingRead.clear();
-    void setRead(ids, true);
-  }
-  function scheduleFlush() {
-    if (flushTimer) clearTimeout(flushTimer);
-    flushTimer = setTimeout(flush, 350);
-  }
-
-  let io: IntersectionObserver | undefined;
-  // sawVisible tracks article IDs that have been in-view at least once during
-  // this session. We intentionally do NOT clear it when items change — that
-  // way, when the poller prepends new articles, the ones the user has already
-  // scrolled past keep their "seen" state and still mark-read when scrolled
-  // out of view. The set is bounded by total articles touched per session,
-  // which stays small in practice.
-  const sawVisible = new Set<string>();
-  // observed tracks DOM elements currently attached to the IO so we don't
-  // re-observe on every items refresh (which kept dropping the "seen" state
-  // before this fix).
-  const observed = new WeakSet<HTMLElement>();
-
-  // Clear the seen-set when the active view changes — different feed/folder/
-  // search means a different population of articles, and stale "seen" entries
-  // from a previous view shouldn't mark anything read here.
+  // Reset scroll to the top whenever the active view changes (item 8 — user
+  // clicks Today/Fresh/All Unread/Starred/feed/folder). Instant scroll matches
+  // "be taken to the top." Touching $activeView gets Svelte 5 to react to the
+  // store change. We re-read containerEl each time because the effect may run
+  // before bind:this resolves on first paint.
   $effect(() => {
     void $activeView;
-    sawVisible.clear();
-  });
-
-  $effect(() => {
-    if (!containerEl) return;
-    // Touch the items signal so the effect re-runs whenever the list mutates
-    // (initial load, polling prepend, filter switch). Reading by index forces
-    // Svelte 5 to track the array reference itself.
-    void $articles.items.length;
-
-    if (!io) {
-      io = new IntersectionObserver(
-        (entries) => {
-          for (const entry of entries) {
-            const target = entry.target as HTMLElement;
-            const idAttr = target.dataset.articleId;
-            const isRead = target.dataset.isRead === "1";
-            if (!idAttr) continue;
-            if (entry.isIntersecting) {
-              sawVisible.add(idAttr);
-            } else if (sawVisible.has(idAttr) && !isRead && get(scrollMarksRead)) {
-              pendingRead.add(Number(idAttr));
-              scheduleFlush();
-            }
-          }
-        },
-        { root: containerEl, threshold: 0 },
-      );
-    }
-
-    // After Svelte flushes the DOM for the new items, observe every card we
-    // haven't already attached to. New elements get tracked; existing ones
-    // stay attached so their seen-state survives across renders.
-    void tick().then(() => {
-      if (!containerEl || !io) return;
-      const els = containerEl.querySelectorAll<HTMLElement>("[data-article-id]");
-      els.forEach((el) => {
-        if (observed.has(el)) return;
-        io!.observe(el);
-        observed.add(el);
-      });
-    });
-  });
-
-  onDestroy(() => {
-    flush();
-    io?.disconnect();
+    if (containerEl) containerEl.scrollTop = 0;
   });
 
   function select(id: number) {
@@ -204,6 +131,17 @@
     let out = $articles.items;
     if (freshOnly) out = out.filter((a) => isFresh(a.published_at));
     if (unreadOnly) out = out.filter((a) => !a.is_read);
+    // Fresh view: re-sort read items to the bottom (while keeping their
+    // natural published_at order within each group). Articles stay in Fresh
+    // as long as they're within the window — the user reads through new
+    // ones at the top, and read-but-still-fresh items sink to the bottom
+    // greyed out (see the .read class on .story below). Other views keep
+    // the server's order unchanged.
+    if ($activeView.kind === "smart" && $activeView.view === "fresh") {
+      const unread = out.filter((a) => !a.is_read);
+      const read = out.filter((a) => a.is_read);
+      out = [...unread, ...read];
+    }
     return out;
   });
 
@@ -313,7 +251,7 @@
             {#if a.tags}
               <span class="tag-badge">{a.tags.split(",")[0].trim()}</span>
             {/if}
-            {#if isFresh(a.published_at)}<span class="fresh-tag">Fresh</span>{/if}
+            {#if isFresh(a.published_at) && !a.is_read}<span class="fresh-tag">Fresh</span>{/if}
             {#if a.dup_count > 0}
               <span class="dup-tag" title="Also published in other feeds you subscribe to" data-testid="dup-tag-{a.id}">
                 Also in {a.dup_count + 1}
@@ -484,6 +422,11 @@
     box-shadow: 0 0 0 1px var(--ember), var(--shadow-card);
   }
   .story.read .story-title { color: var(--ink-faint); font-weight: 500; }
+  /* Read-but-still-in-Fresh-window cards (PR-B item 7): visibly desaturated
+     so the user can tell at a glance what's already been consumed. The card
+     still opens normally; greying is informational, not interactive. */
+  .story.read { opacity: 0.62; }
+  .story.read:hover { opacity: 0.85; }
   .story-link {
     display: block;
     width: 100%;
