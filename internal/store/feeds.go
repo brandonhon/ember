@@ -319,6 +319,12 @@ func (s *Store) ListSubscriberIDs(ctx context.Context, feedID int64) ([]int64, e
 // ListFeedsForUser returns the user's subscriptions joined with feed metadata
 // and unread counts.
 func (s *Store) ListFeedsForUser(ctx context.Context, userID int64) ([]models.FeedWithCounts, error) {
+	// Per-feed unread count: every unread article counts, including those the
+	// summarizer hasn't touched yet. PR #45 dropped the same summary_model
+	// gate from the Fresh smart-view count + list so the badge matches what
+	// the user actually sees in the list; this query is the analogous fix for
+	// the sidebar's per-feed and per-category counts (which derive from this
+	// row's `unread` column via `feeds[].category_id` aggregation client-side).
 	rows, err := s.DB.QueryContext(ctx, `
 		SELECT f.id, f.url, IFNULL(f.site_url,''), f.title, IFNULL(f.favicon_url,''),
 		       IFNULL(f.etag,''), IFNULL(f.last_modified,''),
@@ -330,7 +336,6 @@ func (s *Store) ListFeedsForUser(ctx context.Context, userID int64) ([]models.Fe
 		          LEFT JOIN article_state st ON st.article_id = a.id AND st.user_id = s.user_id
 		         WHERE a.feed_id = f.id
 		           AND IFNULL(st.is_read,0) = 0
-		           AND a.summary_model IS NOT NULL AND a.summary_model <> ''
 		           ) AS unread
 		FROM feeds f
 		JOIN subscriptions s ON s.feed_id = f.id
