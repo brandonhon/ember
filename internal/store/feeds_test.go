@@ -68,6 +68,42 @@ func TestFeeds_SubscriptionPerUser(t *testing.T) {
 	}
 }
 
+// TestListFeedsForUser_UnreadCountsIncludeUnsummarized locks in that the
+// sidebar's per-feed unread count (which the SPA also aggregates into the
+// per-category and "All Unread" totals) reflects every unread article,
+// including those the summarizer hasn't touched yet. Pairs with the parallel
+// fix to the Fresh-view query in PR #45.
+func TestListFeedsForUser_UnreadCountsIncludeUnsummarized(t *testing.T) {
+	s := NewTest(t)
+	ctx := context.Background()
+	u, _ := s.CreateUser(ctx, models.User{Username: "u", PasswordHash: "h"})
+	f, _ := s.UpsertFeed(ctx, models.Feed{URL: "https://x.test/feed", Title: "X"})
+	_, _ = s.Subscribe(ctx, models.Subscription{UserID: u.ID, FeedID: f.ID})
+
+	// Three articles: one finalized by the summarizer, one stamped 'disabled'
+	// (EMBER_DISABLE_SUMMARIES path), one not yet touched. All three are unread.
+	a1, _, _ := s.UpsertArticle(ctx, mkArticle(f.ID, "a1", "summarized", "h1", 1000))
+	if err := s.UpdateSummary(ctx, a1.ID, "bullet", "qwen2.5:0.5b"); err != nil {
+		t.Fatal(err)
+	}
+	a2, _, _ := s.UpsertArticle(ctx, mkArticle(f.ID, "a2", "disabled", "h2", 1500))
+	if err := s.UpdateSummary(ctx, a2.ID, "", "disabled"); err != nil {
+		t.Fatal(err)
+	}
+	_, _, _ = s.UpsertArticle(ctx, mkArticle(f.ID, "a3", "pending", "h3", 2000))
+
+	list, err := s.ListFeedsForUser(ctx, u.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 1 {
+		t.Fatalf("expected 1 feed, got %d", len(list))
+	}
+	if list[0].Unread != 3 {
+		t.Errorf("unread should include un-summarized articles: got %d, want 3", list[0].Unread)
+	}
+}
+
 func TestFeeds_UnsubscribeKeepsFeedWhenOthersSubscribed(t *testing.T) {
 	s := NewTest(t)
 	ctx := context.Background()

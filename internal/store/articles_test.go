@@ -428,3 +428,57 @@ func TestCountSmartViews(t *testing.T) {
 		t.Errorf("got %+v, want %+v", got, want)
 	}
 }
+
+// TestCountSmartViews_FreshAppliesCrossFeedDedup locks in the dedup behavior
+// added so the Fresh badge doesn't over-count when the user has subscribed to
+// the same article URL via two different feeds (typical when starter packs
+// overlap, e.g. a "security" and a "news" pack both bundling Krebs).
+func TestCountSmartViews_FreshAppliesCrossFeedDedup(t *testing.T) {
+	s := NewTest(t)
+	now := time.Unix(1_700_000_000, 0)
+	s.Now = func() time.Time { return now }
+	ctx := context.Background()
+
+	u, _ := s.CreateUser(ctx, models.User{Username: "alice", PasswordHash: "h"})
+	// Two feeds with overlapping URLs — same canonical article from each.
+	primary, _ := s.UpsertFeed(ctx, models.Feed{URL: "https://primary.test/feed", Title: "Primary"})
+	mirror, _ := s.UpsertFeed(ctx, models.Feed{URL: "https://mirror.test/feed", Title: "Mirror"})
+	_, _ = s.Subscribe(ctx, models.Subscription{UserID: u.ID, FeedID: primary.ID})
+	_, _ = s.Subscribe(ctx, models.Subscription{UserID: u.ID, FeedID: mirror.ID})
+
+	freshSec := now.Add(-1 * time.Hour).Unix()
+
+	// Same URL, two different feed-id rows. ListArticles would only return one
+	// (lowest id); the Fresh badge must agree.
+	dupArt := func(feedID int64, guid string) models.Article {
+		a := mkArticle(feedID, guid, "Shared headline", "h-"+guid, freshSec)
+		a.URL = "https://news.example/shared-story"
+		return a
+	}
+	_, _, err := s.UpsertArticle(ctx, dupArt(primary.ID, "p-1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, err = s.UpsertArticle(ctx, dupArt(mirror.ID, "m-1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// One uniquely-URL'd fresh article from primary so we know the query
+	// returns something other than zero.
+	soloPrimary := mkArticle(primary.ID, "solo", "Solo", "h-solo", freshSec)
+	soloPrimary.URL = "https://news.example/solo"
+	if _, _, err := s.UpsertArticle(ctx, soloPrimary); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := s.CountSmartViews(ctx, u.ID, 6*time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Fresh = 2: the dup pair counts as one (dedup keeps the lower-id row);
+	// solo is the second. Without dedup this would be 3.
+	if got.Fresh != 2 {
+		t.Errorf("Fresh count not deduped: got %d, want 2", got.Fresh)
+	}
+}
