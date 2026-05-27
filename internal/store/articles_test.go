@@ -380,9 +380,9 @@ func TestCountSmartViews(t *testing.T) {
 	// Alice gets a second account to receive shares.
 	bob, _ := s.CreateUser(ctx, models.User{Username: "bob", PasswordHash: "h"})
 
-	// Three articles: one fresh+summarized (counts), one too old, one fresh
-	// but no summary model (doesn't count toward Fresh badge — matches the
-	// sidebar Fresh-view filter).
+	// Three articles: one fresh+summarized, one too old, one fresh but not
+	// yet summarized. The Fresh badge no longer gates on summary_model so
+	// both fresh articles count regardless of summarizer state.
 	mk := func(guid string, publishedDelta time.Duration, summary string) models.Article {
 		a := mkArticle(feedID, guid, "t-"+guid, "h-"+guid, now.Add(publishedDelta).Unix())
 		a.SummaryModel = summary
@@ -390,7 +390,7 @@ func TestCountSmartViews(t *testing.T) {
 	}
 	a1, _, _ := s.UpsertArticle(ctx, mk("a1", -1*time.Hour, "qwen2.5:0.5b")) // fresh, summarized → Fresh++
 	_, _, _ = s.UpsertArticle(ctx, mk("a2", -12*time.Hour, "qwen2.5:0.5b"))  // too old
-	a3, _, _ := s.UpsertArticle(ctx, mk("a3", -2*time.Hour, ""))             // not yet summarized
+	a3, _, _ := s.UpsertArticle(ctx, mk("a3", -2*time.Hour, ""))             // fresh, un-summarized → Fresh++
 
 	// Star a1, save a3 for later.
 	if err := s.SetStarred(ctx, aliceID, a1.ID, true); err != nil {
@@ -420,9 +420,10 @@ func TestCountSmartViews(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CountSmartViews: %v", err)
 	}
-	// PendingSummary = 1: only a3 has summary_model="". a1, a2, a6 are
-	// finalized; a4/a5 belong to bob, not alice.
-	want := SmartViewCounts{Fresh: 1, Starred: 1, Later: 1, Shared: 1, PendingSummary: 1}
+	// Fresh = 2: a1 (fresh+summarized) and a3 (fresh+un-summarized) both
+	// count. a2 is outside the window; a4/a5 belong to bob; a6 is outside
+	// the window. PendingSummary = 1: only a3 has summary_model="".
+	want := SmartViewCounts{Fresh: 2, Starred: 1, Later: 1, Shared: 1, PendingSummary: 1}
 	if got != want {
 		t.Errorf("got %+v, want %+v", got, want)
 	}
