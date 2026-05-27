@@ -105,6 +105,16 @@ async function loginAndCapture(ctx, suffix) {
     await page.waitForTimeout(400);
     await screenshot(page, `settings-llm-${suffix}`);
   }
+
+  // Settings → Email / SMTP (admin only). Added in PR #47 — the panel
+  // surfaces SMTP overrides (host/port/from/STARTTLS), the test-send
+  // button, and the initial-backlog window.
+  const emailBtn = page.getByTestId("settings-email");
+  if (await emailBtn.count()) {
+    await emailBtn.click();
+    await page.waitForTimeout(400);
+    await screenshot(page, `settings-email-${suffix}`);
+  }
 }
 
 async function screenshot(page, name) {

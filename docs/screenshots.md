@@ -26,6 +26,12 @@ Host probe (RAM/CPU/GPU) with a model recommendation. Installed-model table with
 
 ![Settings, LLM](/screenshots/settings-llm-desktop.png)
 
+## Settings — email / SMTP (admin)
+
+Overlay the `EMBER_SMTP_*` env defaults with admin-edited values that take effect at runtime (digest sender re-resolves each tick). Send a one-off test email to verify the relay. Below it, the initial-backlog window controls how much history is ingested when a new feed is added.
+
+![Settings, Email / SMTP](/screenshots/settings-email-desktop.png)
+
 ## Login
 
 Paper-and-ink split layout. Branding (app name, page title, favicon) is admin-configurable from Settings → Branding.
