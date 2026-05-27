@@ -48,6 +48,15 @@ func (d *Dependencies) handleListArticles(w http.ResponseWriter, r *http.Request
 		}
 	}
 
+	// Hide articles the LLM hasn't touched yet — they appear once the poller
+	// stamps a summary_model (success or 'skipped'). Admin/debug callers can
+	// pass ?all=1 to bypass. The Fresh view also bypasses the gate so the
+	// sidebar Fresh badge and the Fresh article list show the same recent-
+	// publication set (un-summarized recent items still count and appear).
+	onlySummarized := !atoB("all")
+	if view == "fresh" {
+		onlySummarized = false
+	}
 	query := store.ListArticlesQuery{
 		View:            view,
 		FeedID:          atoi("feed_id"),
@@ -60,11 +69,8 @@ func (d *Dependencies) handleListArticles(w http.ResponseWriter, r *http.Request
 		Limit:           limit,
 		PublishedBefore: atoi("cursor_pub"),
 		IDBefore:        atoi("cursor_id"),
-		// Hide articles the LLM hasn't touched yet — they appear once the
-		// poller stamps a summary_model (success or 'skipped'). Admin/debug
-		// callers can pass ?all=1 to bypass.
-		OnlySummarized: !atoB("all"),
-		Tag:            q.Get("tag"),
+		OnlySummarized:  onlySummarized,
+		Tag:             q.Get("tag"),
 	}
 	articles, err := d.Store.ListArticles(r.Context(), u.ID, query)
 	if mapStoreError(w, err) {
