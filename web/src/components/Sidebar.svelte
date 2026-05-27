@@ -459,6 +459,12 @@
       newFeedURL = "";
       addFormOpen = false;
       await refreshSidebar();
+      // The backend ingests synchronously, but the article list isn't reloaded
+      // by refreshSidebar(). Pull the current view so new items appear without
+      // the user having to navigate. A delayed second refresh catches the
+      // summarizer pending count once Ollama starts chewing the new feed.
+      await loadArticles($activeView);
+      setTimeout(() => { void refreshSidebar(); }, 2000);
     } catch (err) {
       addError = err instanceof ApiError ? err.message : String(err);
     } finally {
@@ -1267,7 +1273,7 @@
     background: transparent;
     border: none;
     color: var(--ink-faint);
-    opacity: 0;
+    opacity: 0.5;
     cursor: pointer;
     line-height: 1;
     font-size: 14px;
