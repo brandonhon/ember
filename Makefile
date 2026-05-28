@@ -121,6 +121,10 @@ docs-install: ## install docs site deps (one-time)
 docs-screenshots: ## capture UI screenshots into docs/public/screenshots (requires running docker stack)
 	cd $(WEB_DIR) && node scripts/screenshots.mjs
 
+.PHONY: docs-social-preview
+docs-social-preview: ## regenerate docs/public/social-preview.png (1280x640 GitHub OG card)
+	cd $(WEB_DIR) && node scripts/social-preview.mjs
+
 .PHONY: docs-dev
 docs-dev: ## VitePress dev server (hot reload)
 	cd $(DOCS_DIR) && $(NPM) run docs:dev
