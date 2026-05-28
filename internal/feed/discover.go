@@ -26,10 +26,22 @@ var DiscoveryFallbacks = []string{"/feed", "/rss", "/atom.xml", "/feed.xml", "/i
 //  3. Probe each entry in DiscoveryFallbacks at the same origin and return the
 //     first that responds 2xx with a feed-shaped content type.
 //
+// validate is required and is called against every URL Discover is about to
+// fetch (the starting URL and each probe). Pass an SSRF guard such as
+// internal/urlcheck.Check; if validate returns an error, the request is
+// skipped. Without it Discover would be a request-forgery primitive — the
+// caller would need to wrap every transport / redirect / probe themselves.
+//
 // Returns ErrNoFeed if nothing is discovered.
-func Discover(ctx context.Context, c *http.Client, target string) (string, error) {
+func Discover(ctx context.Context, c *http.Client, target string, validate func(rawURL string) error) (string, error) {
 	if c == nil {
 		c = http.DefaultClient
+	}
+	if validate == nil {
+		return "", errors.New("feed: Discover requires a non-nil validate function")
+	}
+	if err := validate(target); err != nil {
+		return "", fmt.Errorf("feed: validate target: %w", err)
 	}
 	parsedTarget, err := url.Parse(target)
 	if err != nil {
@@ -67,7 +79,7 @@ func Discover(ctx context.Context, c *http.Client, target string) (string, error
 		probe.Path = p
 		probe.RawQuery = ""
 		probe.Fragment = ""
-		ok, err := probeFeed(ctx, c, probe.String())
+		ok, err := probeFeed(ctx, c, probe.String(), validate)
 		if err == nil && ok {
 			return probe.String(), nil
 		}
@@ -128,7 +140,10 @@ func resolveRef(base *url.URL, ref string) (string, error) {
 	return base.ResolveReference(u).String(), nil
 }
 
-func probeFeed(ctx context.Context, c *http.Client, target string) (bool, error) {
+func probeFeed(ctx context.Context, c *http.Client, target string, validate func(rawURL string) error) (bool, error) {
+	if err := validate(target); err != nil {
+		return false, nil
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
 	if err != nil {
 		return false, err
