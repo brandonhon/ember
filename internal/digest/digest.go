@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"html"
+	"net/mail"
 	"net/smtp"
 	"strconv"
 	"strings"
@@ -17,6 +18,44 @@ import (
 	"github.com/brandonhon/ember/internal/models"
 	"github.com/brandonhon/ember/internal/store"
 )
+
+// errBadHeader and errBadAddress flag header-injection-shaped inputs. The
+// digest package defends against CRLF in any value that ends up in an SMTP
+// header (To/From/Subject) so a future caller that forgets to pre-validate
+// can't smuggle Bcc / extra headers / a fake body through.
+var (
+	errBadHeader  = errors.New("digest: header value contains CR/LF")
+	errBadAddress = errors.New("digest: invalid email address")
+)
+
+// sanitizeAddress validates an email address for SMTP envelope + To header
+// use. Rejects CR/LF (header injection) and anything mail.ParseAddress
+// won't accept. Returns the canonical "addr-spec" form so the caller can
+// pass it straight to smtp.Rcpt / write into "To: ".
+func sanitizeAddress(addr string) (string, error) {
+	addr = strings.TrimSpace(addr)
+	if addr == "" {
+		return "", errBadAddress
+	}
+	if strings.ContainsAny(addr, "\r\n") {
+		return "", errBadHeader
+	}
+	parsed, err := mail.ParseAddress(addr)
+	if err != nil {
+		return "", fmt.Errorf("%w: %v", errBadAddress, err)
+	}
+	return parsed.Address, nil
+}
+
+// sanitizeHeader strips CR/LF from a free-form header value (Subject, app
+// name). Returns an error rather than silently mangling so the caller
+// surfaces the bug instead of shipping a broken header.
+func sanitizeHeader(v string) (string, error) {
+	if strings.ContainsAny(v, "\r\n") {
+		return "", errBadHeader
+	}
+	return v, nil
+}
 
 // SMTPConfig is what the sender needs to talk to an upstream SMTP relay.
 type SMTPConfig struct {
@@ -42,15 +81,30 @@ func SendTestMessage(cfg SMTPConfig, to, appName string) error {
 	if appName == "" {
 		appName = "Ember"
 	}
-	subject := appName + " — SMTP test"
-	textBody := appName + " SMTP test message.\n\nIf you're reading this in your inbox, the relay accepted ember's outbound mail.\n"
+	cleanTo, err := sanitizeAddress(to)
+	if err != nil {
+		return err
+	}
+	cleanFrom, err := sanitizeAddress(cfg.From)
+	if err != nil {
+		return fmt.Errorf("digest: from: %w", err)
+	}
+	cleanApp, err := sanitizeHeader(appName)
+	if err != nil {
+		return fmt.Errorf("digest: app name: %w", err)
+	}
+	subject, err := sanitizeHeader(cleanApp + " — SMTP test")
+	if err != nil {
+		return err
+	}
+	textBody := cleanApp + " SMTP test message.\n\nIf you're reading this in your inbox, the relay accepted ember's outbound mail.\n"
 	htmlBody := `<!doctype html><html><body style="font-family:Georgia,serif;padding:24px;color:#211d18;background:#f6f2e9;">` +
-		`<h1 style="font-weight:500;font-size:20px;margin:0 0 16px;">` + appName + ` SMTP test</h1>` +
+		`<h1 style="font-weight:500;font-size:20px;margin:0 0 16px;">` + html.EscapeString(cleanApp) + ` SMTP test</h1>` +
 		`<p style="font-size:14px;line-height:1.55;">If you're reading this in your inbox, the relay accepted ember's outbound mail.</p>` +
 		`</body></html>`
-	msg := buildMIME(cfg.From, to, subject, textBody, htmlBody)
-	s := &Sender{SMTP: cfg, AppName: appName}
-	return s.send(to, msg)
+	msg := buildMIME(cleanFrom, cleanTo, subject, textBody, htmlBody)
+	s := &Sender{SMTP: cfg, AppName: cleanApp}
+	return s.send(cleanTo, msg)
 }
 
 // Sender ties together a store (to fetch articles + mark sent) and an SMTP
@@ -78,6 +132,14 @@ func (s *Sender) SendForUser(ctx context.Context, u models.User, d models.UserDi
 	if to == "" {
 		return 0, errors.New("digest: user has no email")
 	}
+	cleanTo, err := sanitizeAddress(to)
+	if err != nil {
+		return 0, err
+	}
+	cleanFrom, err := sanitizeAddress(s.SMTP.From)
+	if err != nil {
+		return 0, fmt.Errorf("digest: from: %w", err)
+	}
 
 	articles, err := s.fetchArticles(ctx, d)
 	if err != nil {
@@ -90,14 +152,21 @@ func (s *Sender) SendForUser(ctx context.Context, u models.User, d models.UserDi
 	if appName == "" {
 		appName = "Ember"
 	}
-	subject := fmt.Sprintf("%s digest — %d new article%s",
-		appName, len(articles), plural(len(articles)))
+	cleanApp, err := sanitizeHeader(appName)
+	if err != nil {
+		return 0, fmt.Errorf("digest: app name: %w", err)
+	}
+	subject, err := sanitizeHeader(fmt.Sprintf("%s digest — %d new article%s",
+		cleanApp, len(articles), plural(len(articles))))
+	if err != nil {
+		return 0, err
+	}
 
-	htmlBody := renderHTML(appName, s.SiteURL, articles)
-	textBody := renderText(appName, s.SiteURL, articles)
-	msg := buildMIME(s.SMTP.From, to, subject, textBody, htmlBody)
+	htmlBody := renderHTML(cleanApp, s.SiteURL, articles)
+	textBody := renderText(cleanApp, s.SiteURL, articles)
+	msg := buildMIME(cleanFrom, cleanTo, subject, textBody, htmlBody)
 
-	if err := s.send(to, msg); err != nil {
+	if err := s.send(cleanTo, msg); err != nil {
 		return 0, fmt.Errorf("digest: send: %w", err)
 	}
 	return len(articles), nil
