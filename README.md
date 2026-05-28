@@ -4,12 +4,14 @@ Self-hosted RSS/Atom reader. A single Go binary serving an embedded Svelte SPA, 
 
 ## Install
 
-Three options, in order of effort:
+Three options, in order of effort. Each has a walkthrough in [docs/getting-started.md](docs/getting-started.md):
 
-1. **Pre-built container** — `ghcr.io/brandonhon/ember:latest` (multi-arch: linux/amd64 + linux/arm64). The `deploy/docker-compose.yml` stack still builds from the local Dockerfile by default; swap the `ember` service's `build:` block for `image: ghcr.io/brandonhon/ember:latest` if you'd rather pull the released image.
-2. **Pre-built binary** — download from [Releases](https://github.com/brandonhon/ember/releases). Tarballs for linux/{amd64,arm64} and darwin/{amd64,arm64}, with `SHA256SUMS`.
+1. **Pre-built container** ([docs](https://brandonhon.github.io/ember/getting-started#run-from-the-released-container-image)) — `ghcr.io/brandonhon/ember:vX.Y.Z` (also `:X.Y`, `:X`, `:latest`). Multi-arch linux/amd64 + linux/arm64. Either `docker run` a single container to kick the tires, or swap the `build:` block in `deploy/docker-compose.yml` for `image: ghcr.io/brandonhon/ember:vX.Y.Z` to pull instead of building.
+2. **Pre-built binary** ([docs](https://brandonhon.github.io/ember/getting-started#run-from-a-pre-built-binary)) — download from [Releases](https://github.com/brandonhon/ember/releases). Four tarballs (`linux-{amd64,arm64}`, `darwin-{amd64,arm64}`) + `SHA256SUMS`. Includes a sample `systemd` unit.
    ```sh
-   curl -L -o ember.tar.gz https://github.com/brandonhon/ember/releases/latest/download/ember-vX.Y.Z-linux-amd64.tar.gz
+   VERSION=v0.6.0
+   curl -L -o ember.tar.gz \
+     "https://github.com/brandonhon/ember/releases/download/${VERSION}/ember-${VERSION}-linux-amd64.tar.gz"
    tar -xzf ember.tar.gz && ./ember --version
    ```
 3. **From source** — see [Local development](#local-development).
