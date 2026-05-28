@@ -95,6 +95,22 @@ run: build ## build then run with seeded test data
 docker: ## build the docker image
 	docker build -t ember:$(VERSION) -f Dockerfile .
 
+.PHONY: release-local
+release-local: embed ## cross-compile release binaries to dist/ (no upload, mirrors CI)
+	@rm -rf dist
+	@mkdir -p dist
+	@for platform in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do \
+		os=$${platform%/*}; arch=$${platform#*/}; \
+		echo ">>> $$os/$$arch"; \
+		CGO_ENABLED=0 GOOS=$$os GOARCH=$$arch \
+			$(GO) build -trimpath -ldflags "$(LDFLAGS)" \
+			-o dist/ember ./cmd/ember || exit 1; \
+		tar -czf dist/ember-$(VERSION)-$$os-$$arch.tar.gz -C dist ember; \
+		rm dist/ember; \
+	done
+	@cd dist && shasum -a 256 ember-*.tar.gz | sort -k2 > SHA256SUMS
+	@ls -la dist/
+
 # ----- Docs site (VitePress) --------------------------------------------
 
 .PHONY: docs-install
