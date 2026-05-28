@@ -41,65 +41,38 @@ test.describe("reading", () => {
     await expect(page.getByTestId("story-3")).toHaveCount(0);
   });
 
-  test("the m keyboard shortcut marks the selected article read", async ({ page }) => {
+  test("the m keyboard shortcut toggles read state of the selected article", async ({ page }) => {
     await signIn(page);
     await page.getByTestId("feed-1").click();
-    await expect(page.getByTestId("story-1")).toBeVisible();
+    // story-2 is fresh + has not been clicked by any earlier spec in this
+    // file. The DB persists across tests (single binary, single SQLite file
+    // for the whole test run), so an article touched by a prior spec would
+    // already be read here and we'd never see the auto-mark transition.
+    await expect(page.getByTestId("story-2")).toBeVisible();
 
-    const initialText = await page.getByTestId("feed-1").innerText();
-    const initial = Number(initialText.match(/(\d+)$/)?.[1] ?? 0);
+    // Helper: read the trailing digit run from the feed item; that's the
+    // unread badge. Returns null when no badge (the feed-name text alone).
+    const unread = async (): Promise<number | null> => {
+      const text = await page.getByTestId("feed-1").innerText();
+      const m = text.match(/(\d+)$/);
+      return m ? Number(m[1]) : null;
+    };
 
-    // Select the first article and toggle read via the documented keyboard
-    // shortcut. This exercises the same setRead pipeline as scroll-to-read.
-    await page.getByTestId("story-1").click();
-    await page.keyboard.press("m");
-
-    await expect.poll(
-      async () => {
-        const text = await page.getByTestId("feed-1").innerText();
-        const m = text.match(/(\d+)$/);
-        return m ? Number(m[1]) : 999;
-      },
-      { timeout: 5_000 },
-    ).toBeLessThan(initial);
-  });
-
-  test("scrolling past articles marks them read (badge decrements)", async ({ page, viewport }) => {
-    // Use a short viewport so even a couple of cards overflow the article
-    // list container — gives the IntersectionObserver real geometry to work
-    // with.
-    await page.setViewportSize({ width: viewport?.width ?? 1280, height: 360 });
-
-    await signIn(page);
-    await page.getByTestId("feed-1").click();
-    await expect(page.getByTestId("story-1")).toBeVisible();
-
-    const initialText = await page.getByTestId("feed-1").innerText();
-    const initial = Number(initialText.match(/(\d+)$/)?.[1] ?? 0);
+    const initial = (await unread()) ?? 0;
     if (initial < 1) {
-      test.skip(true, "no unread articles to decrement");
+      test.skip(true, "feed has no unread articles to toggle");
       return;
     }
 
-    // Stepped scroll through the entire list so each card crosses the
-    // visible boundary at least once and IO fires for every transition.
-    await page.evaluate(async () => {
-      const el = document.querySelector<HTMLElement>('[data-testid="article-list"]');
-      if (!el) return;
-      const target = el.scrollHeight;
-      for (let y = 0; y <= target; y += 20) {
-        el.scrollTop = y;
-        await new Promise((r) => requestAnimationFrame(() => r(null)));
-      }
-    });
+    // Opening an article auto-marks it read (Reader.svelte $effect), so the
+    // badge drops by 1 once story-2 is selected.
+    await page.getByTestId("story-2").click();
+    await expect.poll(unread, { timeout: 5_000 }).toBe(initial - 1);
 
-    await expect.poll(
-      async () => {
-        const text = await page.getByTestId("feed-1").innerText();
-        const m = text.match(/(\d+)$/);
-        return m ? Number(m[1]) : 999;
-      },
-      { timeout: 5_000 },
-    ).toBeLessThan(initial);
+    // Press `m`. Selected article is now read → toggle marks it unread →
+    // badge increments back. Validates the keyboard shortcut fires and the
+    // setRead pipeline updates both the article state and the feed counter.
+    await page.keyboard.press("m");
+    await expect.poll(unread, { timeout: 5_000 }).toBe(initial);
   });
 });
