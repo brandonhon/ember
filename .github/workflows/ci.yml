@@ -1,22 +1,19 @@
 name: CI
 
-# === CI IS PAUSED ON THIS REPO ===
+# Real validation gate for PRs to main. Branch protection requires these
+# four check names (must stay exact): Detect changes, Go (vet + test + vuln),
+# Web (typecheck + build), E2E (Playwright). Each downstream job is path-
+# filtered — a docs-only PR skips them all and the names still resolve as
+# "skipped" (which branch protection treats as passing).
 #
-# The remote CI workflow is intentionally a no-op. All validation runs locally
-# before push:
-#
-#   GO111MODULE=on make embed build
-#   GO111MODULE=on go vet ./...
-#   GO111MODULE=on go test -race -count=1 ./...
-#   (cd web && npm run check && npm run build)
-#
-# Branch protection on `main` still requires the four status checks below by
-# name (Detect changes / Go / Web / E2E). They each exit 0 in seconds so PRs
-# can merge without burning CI minutes; the real gate is the local chain.
-#
-# TO UN-PAUSE: revert this file to the commit before the "ci: pause on main"
-# change. The dorny/paths-filter logic + real Go/Web/E2E jobs come back as a
-# unit; nothing else needs touching.
+# Local equivalent of the chain (run before push):
+#   make verify         # go vet + race tests
+#   make vulncheck      # govulncheck
+#   make web-check      # svelte-check
+#   make web-build      # vite build
+#   make web-test       # vitest
+#   make embed build    # produces ./bin/ember (also what release.yml does)
+#   make e2e            # playwright
 
 on:
   push:
@@ -36,31 +33,152 @@ jobs:
     name: Detect changes
     runs-on: ubuntu-latest
     outputs:
-      app: ${{ steps.filter.outputs.app }}
+      go: ${{ steps.filter.outputs.go }}
+      web: ${{ steps.filter.outputs.web }}
+      e2e: ${{ steps.filter.outputs.e2e }}
     steps:
-      - id: filter
-        run: echo "app=false" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590  # v3.0.3
+        id: filter
+        with:
+          filters: |
+            go:
+              - '**/*.go'
+              - 'go.mod'
+              - 'go.sum'
+              - 'cmd/**'
+              - 'internal/**'
+              - 'web/**'
+              - 'Makefile'
+              - 'Dockerfile'
+              - '.github/workflows/ci.yml'
+            web:
+              - 'web/**'
+              - 'Makefile'
+              - '.github/workflows/ci.yml'
+            e2e:
+              - 'cmd/**'
+              - 'internal/**'
+              - 'web/**'
+              - 'go.mod'
+              - 'go.sum'
+              - 'Makefile'
+              - '.github/workflows/ci.yml'
 
   go:
     name: Go (vet + test + vuln)
     needs: changes
-    if: needs.changes.outputs.app == 'true'
+    if: needs.changes.outputs.go == 'true'
     runs-on: ubuntu-latest
     steps:
-      - run: 'true'
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff  # v5.6.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      # internal/web/embed.go uses //go:embed all:dist — vet/test/build all
+      # need dist/ populated with index.html or the embed package's test
+      # fails ("web: dist/index.html not embedded").
+      - name: Install SPA deps
+        run: npm ci --no-audit --no-fund
+        working-directory: web
+
+      - name: Build SPA + embed
+        run: make embed
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go test (race)
+        run: go test -race -count=1 -timeout=5m ./...
+
+      - name: govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
 
   web:
     name: Web (typecheck + build)
     needs: changes
-    if: needs.changes.outputs.app == 'true'
+    if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     steps:
-      - run: 'true'
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+        working-directory: web
+
+      - name: svelte-check (TS + a11y)
+        run: npm run check
+        working-directory: web
+
+      - name: Build
+        run: npm run build
+        working-directory: web
+
+      - name: Unit tests (vitest)
+        run: npm run test:run
+        working-directory: web
 
   e2e:
     name: E2E (Playwright)
     needs: [changes, go, web]
-    if: needs.changes.outputs.app == 'true'
+    if: needs.changes.outputs.e2e == 'true'
     runs-on: ubuntu-latest
     steps:
-      - run: 'true'
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff  # v5.6.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install SPA deps
+        run: npm ci --no-audit --no-fund
+        working-directory: web
+
+      - name: Build SPA + embed + binary
+        run: make embed build
+
+      - name: Install Playwright + chromium
+        run: npm run e2e:install
+        working-directory: web
+
+      - name: Playwright
+        run: npm run e2e
+        working-directory: web
+        env:
+          CI: '1'
+
+      - name: Upload Playwright artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: playwright-report
+          path: |
+            web/playwright-report/
+            web/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
