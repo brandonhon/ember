@@ -1,0 +1,163 @@
+<!doctype html>
+<!--
+  Source for docs/public/social-preview.png — the 1280×640 OG card that
+  shows when github.com/brandonhon/ember is shared on Twitter, Slack,
+  Discord, etc. Rendered by web/scripts/social-preview.mjs (Playwright).
+  Brand colors match the dark theme in web/src/App.svelte.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..900&family=Bricolage+Grotesque:opsz,wght@12..96,400..700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --paper: #15130f;
+    --paper-2: #1d1a14;
+    --ink: #f0e9da;
+    --muted: #b8ac95;
+    --ember: #e8643a;
+    --ember-deep: #c2451d;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1280px; height: 640px; overflow: hidden; }
+  body {
+    background:
+      radial-gradient(ellipse at 22% 35%, rgba(232, 100, 58, 0.22), transparent 55%),
+      radial-gradient(ellipse at 100% 100%, rgba(194, 69, 29, 0.18), transparent 60%),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Bricolage Grotesque", system-ui, sans-serif;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    padding: 64px 72px;
+  }
+  .left { display: flex; flex-direction: column; gap: 24px; }
+  .brand { display: flex; align-items: center; gap: 24px; }
+  .logo { width: 96px; height: 96px; }
+  .wordmark {
+    font-family: "Fraunces", "Times New Roman", serif;
+    font-size: 128px;
+    font-weight: 600;
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+    color: var(--ink);
+  }
+  .tagline {
+    font-family: "Fraunces", "Times New Roman", serif;
+    font-size: 40px;
+    font-weight: 400;
+    font-style: italic;
+    line-height: 1.15;
+    color: var(--ink);
+    margin-top: 8px;
+    max-width: 520px;
+  }
+  .subline {
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.01em;
+    margin-top: 16px;
+  }
+  .subline .dot {
+    color: var(--ember);
+    margin: 0 10px;
+    font-weight: 700;
+  }
+  .footer {
+    margin-top: 28px;
+    font-size: 18px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .footer .accent { color: var(--ember); }
+
+  /* Right column: stylized "feed cards" abstracting the reader UI without
+     needing a real screenshot. Three stacked cards with offset perspective
+     so the eye reads them as "list of articles". */
+  .right { position: relative; height: 480px; }
+  .card {
+    position: absolute;
+    width: 520px;
+    background: var(--paper-2);
+    border: 1px solid rgba(240, 233, 218, 0.08);
+    border-radius: 18px;
+    padding: 28px 32px;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+  }
+  .card .meta {
+    font-size: 14px;
+    color: var(--ember);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .card .title {
+    font-family: "Fraunces", serif;
+    font-size: 26px;
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--ink);
+    margin-bottom: 12px;
+  }
+  .card .summary {
+    font-size: 15px;
+    line-height: 1.45;
+    color: var(--muted);
+  }
+  .card.c1 { top: 0;   right: -20px; transform: rotate(2.5deg); }
+  .card.c2 { top: 150px; right: 30px;  transform: rotate(-1.5deg); z-index: 2; }
+  .card.c3 { top: 300px; right: -10px; transform: rotate(1.5deg); opacity: 0.85; }
+</style>
+</head>
+<body>
+  <div class="left">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="emb" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#e8643a"/>
+            <stop offset="1" stop-color="#c2451d"/>
+          </linearGradient>
+        </defs>
+        <circle cx="13" cy="15" r="6.5" fill="url(#emb)"/>
+        <rect x="25" y="11.5" width="31" height="8" rx="4" fill="#f0e9da"/>
+        <rect x="8"  y="28"   width="48" height="8" rx="4" fill="#f0e9da"/>
+        <rect x="8"  y="44.5" width="34" height="8" rx="4" fill="url(#emb)"/>
+      </svg>
+      <div class="wordmark">Ember</div>
+    </div>
+    <div class="tagline">A reader for people who read.</div>
+    <div class="subline">
+      Self-hosted RSS <span class="dot">·</span>
+      On-device AI summaries <span class="dot">·</span>
+      Single Go binary
+    </div>
+    <div class="footer">github.com/brandonhon/<span class="accent">ember</span></div>
+  </div>
+
+  <div class="right">
+    <div class="card c1">
+      <div class="meta">Hacker News · 4 min ago</div>
+      <div class="title">Show HN: A new approach to per-feed dedup in FTS5</div>
+      <div class="summary">SQLite full-text search at scale. The poller picks the canonical article when the same item shows up in multiple feeds…</div>
+    </div>
+    <div class="card c2">
+      <div class="meta">Verge · 12 min ago</div>
+      <div class="title">The case for self-hosting your reading life</div>
+      <div class="summary">Cloud RSS readers used to be the default. With a single binary and Docker, hosting your own feed reader is now a Sunday-afternoon project…</div>
+    </div>
+    <div class="card c3">
+      <div class="meta">LWN · 1 h ago</div>
+      <div class="title">Go 1.26 lands modernc.org/sqlite improvements</div>
+      <div class="summary">Pure-Go SQLite gets meaningful FTS5 wins. We benchmark against the cgo build under realistic mixed read/write workloads…</div>
+    </div>
+  </div>
+</body>
+</html>
