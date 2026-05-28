@@ -77,11 +77,11 @@ jobs:
           - os: darwin
             arch: arm64
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: '22'
           cache: npm
@@ -91,6 +91,10 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+
+      - name: Install SPA deps
+        run: npm ci --no-audit --no-fund
+        working-directory: web
 
       - name: Build SPA and embed
         run: make embed
@@ -161,7 +165,7 @@ jobs:
     needs: prepare
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
 
@@ -213,7 +217,7 @@ jobs:
     needs: [prepare, checksums, docker]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
           fetch-depth: 0   # full history so generate_release_notes can diff
