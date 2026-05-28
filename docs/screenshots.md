@@ -6,37 +6,37 @@ Captured against the live docker stack via `make docs-screenshots` (a Playwright
 
 The default layout: sidebar of folders + feeds, the article list, and the reader. Keyboard navigation (`j` / `k` / `r` / `m` / `s` / `?`), drag-to-reorder folders and feeds within them.
 
-![Reader, desktop](/screenshots/reader-desktop.png)
+![Reader, desktop](./public/screenshots/reader-desktop.png)
 
 ## Article view
 
 Summary card sits between the title and the body — paragraph lead + factual bullets. AI ad-stripping removes newsletter signups, podcast promos, and "Comments" trailers from the body before display.
 
-![Article, desktop](/screenshots/article-desktop.png)
+![Article, desktop](./public/screenshots/article-desktop.png)
 
 ## Settings — preferences
 
 Theme picker (8 presets + custom palette), density toggle, AI summary card on/off.
 
-![Settings, preferences](/screenshots/settings-preferences-desktop.png)
+![Settings, preferences](./public/screenshots/settings-preferences-desktop.png)
 
 ## Settings — language model (admin)
 
 Host probe (RAM/CPU/GPU) with a model recommendation. Installed-model table with per-row switch + delete. Pull form for new models. Sliders for temperature, top_p, num_ctx.
 
-![Settings, LLM](/screenshots/settings-llm-desktop.png)
+![Settings, LLM](./public/screenshots/settings-llm-desktop.png)
 
 ## Settings — email / SMTP (admin)
 
 Overlay the `EMBER_SMTP_*` env defaults with admin-edited values that take effect at runtime (digest sender re-resolves each tick). Send a one-off test email to verify the relay. Below it, the initial-backlog window controls how much history is ingested when a new feed is added.
 
-![Settings, Email / SMTP](/screenshots/settings-email-desktop.png)
+![Settings, Email / SMTP](./public/screenshots/settings-email-desktop.png)
 
 ## Login
 
 Paper-and-ink split layout. Branding (app name, page title, favicon) is admin-configurable from Settings → Branding.
 
-![Login, desktop](/screenshots/login-desktop.png)
+![Login, desktop](./public/screenshots/login-desktop.png)
 
 ## Mobile
 
@@ -44,9 +44,9 @@ Paper-and-ink split layout. Branding (app name, page title, favicon) is admin-co
 
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin: 24px 0;">
 
-![Reader, mobile](/screenshots/reader-mobile.png)
+![Reader, mobile](./public/screenshots/reader-mobile.png)
 
-![Article, mobile](/screenshots/article-mobile.png)
+![Article, mobile](./public/screenshots/article-mobile.png)
 
 </div>
 

@@ -2,8 +2,6 @@
 
 Self-hosted RSS/Atom reader. A single Go binary serving an embedded Svelte SPA, a JSON API + Fever shim, and a background poller that ingests feeds into SQLite (FTS5) and summarizes articles with a small local LLM via Ollama. Everything runs in containers.
 
-See `EMBER_BUILD_PLAN.md` for the original implementation specification; this README is the current state of the project.
-
 ## Quickstart (Docker)
 
 ```
@@ -30,13 +28,12 @@ You'll land on an onboarding panel that points to starter packs or OPML import. 
 - Folders (categories) with rename, color, drag-to-reorder.
 - Mute feeds; per-feed and aggregate unread badges; "!" badge on errored feeds.
 - Cross-feed article dedup with "Also in N feeds" pill.
-- Scroll-to-read auto-marks articles as you scroll past them.
 - Article actions: star, save for later, share (user / email / copy link), board pick.
 - Reading-time estimate (200 wpm) on cards and in the reader.
 
 ### AI summaries
-- Paragraph + bullet-point summary card in the reader, with inline article thumbnail.
-- Per-user toggles for summary card and images, plus install-time
+- Paragraph + bullet-point summary card in the reader.
+- Per-user toggle for the summary card, plus install-time
   `EMBER_DISABLE_SUMMARIES` / `EMBER_DISABLE_IMAGES`.
 - Admin-only LLM controls (Settings → Language model):
   - Auto-detected hardware recommendation (`ember probe`).
@@ -71,9 +68,10 @@ You'll land on an onboarding panel that points to starter packs or OPML import. 
 - Configured via Settings → Daily digest. Requires the `EMBER_SMTP_*` env vars.
 
 ### Notifications + auto-refresh
-- 30-second polling for new articles while the tab is visible.
-- Green-dot favicon (`/icon-new.svg`) when unread items arrive.
+- 15-second polling for new articles while the tab is visible (also fires on tab refocus).
+- Canvas-rendered favicon with a green notification dot when unread items arrive.
 - Page-title prefix `(N) Ember` so narrow tab strips show the count too.
+- Installed as a PWA, new articles trigger an OS-level numeric badge on the app icon.
 
 ### Themes + branding
 - 8 themes: Auto (matches OS), Light, Dark, Solarized, Sepia, Nord, Gruvbox, High contrast.
@@ -91,7 +89,6 @@ You'll land on an onboarding panel that points to starter packs or OPML import. 
 - Reading stats: today/week/30-day, totals, top feeds.
 - All confirmations use an in-app modal (no `window.confirm`).
 - Fever-compatible mobile clients via `/fever`.
-- Server-Sent fresh-article notifications.
 - WCAG 2.1 AA passes (axe-core via Playwright).
 - PWA: manifest + service worker (cache-first assets, network-first `/api`).
 
@@ -118,6 +115,7 @@ You'll land on an onboarding panel that points to starter packs or OPML import. 
 | `EMBER_FRESH_WINDOW` | `6h` | "Fresh" cutoff |
 | `EMBER_POLL_CONCURRENCY` | `8` | poller workers |
 | `EMBER_POLL_TICK` | `60s` | scheduler tick |
+| `EMBER_SESSION_TTL` | `24h` | session cookie lifetime (5m–90d); Settings → Sessions overrides at runtime |
 | `EMBER_LOG_LEVEL` | `info` | slog level |
 | `EMBER_TEST_MODE` | `0` | enables fake fetcher/summarizer for e2e |
 | `EMBER_PUBLIC_URL` | _(unset)_ | canonical `scheme://host` users hit; required to enable passkey sign-in |
@@ -137,6 +135,9 @@ Stored in the `app_settings` KV; persist across restarts:
 - DB backup schedule (off | daily | weekly) + keep-N
 - DB cleanup schedule (off | weekly | monthly) + window in days
 - OPML export schedule (off | weekly | monthly)
+- Session cookie TTL (overrides `EMBER_SESSION_TTL`)
+- SMTP relay (host / port / user / password / from / STARTTLS) for the daily digest
+- Initial feed-backlog window (default 48h)
 
 ## Local development
 
@@ -178,4 +179,4 @@ Migration files live under `internal/db/migrations/` and are embedded into the b
 
 ## Architecture
 
-See `docs/ARCHITECTURE.md` for the request lifecycle, poller state machine, and summarizer pipeline.
+See `docs/architecture.md` for the request lifecycle, poller state machine, and summarizer pipeline.
