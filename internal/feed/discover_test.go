@@ -10,6 +10,10 @@ import (
 	"testing"
 )
 
+// allowAll is the no-op validator used in tests where the SSRF guard isn't
+// the subject under test — Discover requires a non-nil validator.
+var allowAll = func(string) error { return nil }
+
 func TestDiscover_FromLinkAlternate(t *testing.T) {
 	body, err := os.ReadFile("testdata/site_with_feed.html")
 	if err != nil {
@@ -21,7 +25,7 @@ func TestDiscover_FromLinkAlternate(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	got, err := Discover(context.Background(), srv.Client(), srv.URL)
+	got, err := Discover(context.Background(), srv.Client(), srv.URL, allowAll)
 	if err != nil {
 		t.Fatalf("Discover: %v", err)
 	}
@@ -42,7 +46,7 @@ func TestDiscover_DirectFeedContentType(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	got, err := Discover(context.Background(), srv.Client(), srv.URL)
+	got, err := Discover(context.Background(), srv.Client(), srv.URL, allowAll)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +69,7 @@ func TestDiscover_FallbackPathHit(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	got, err := Discover(context.Background(), srv.Client(), srv.URL+"/")
+	got, err := Discover(context.Background(), srv.Client(), srv.URL+"/", allowAll)
 	if err != nil {
 		t.Fatalf("Discover fallback: %v", err)
 	}
@@ -89,8 +93,62 @@ func TestDiscover_NoFeedFound(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	_, err := Discover(context.Background(), srv.Client(), srv.URL+"/")
+	_, err := Discover(context.Background(), srv.Client(), srv.URL+"/", allowAll)
 	if !errors.Is(err, ErrNoFeed) {
 		t.Errorf("expected ErrNoFeed, got %v", err)
+	}
+}
+
+func TestDiscover_NilValidateRejected(t *testing.T) {
+	_, err := Discover(context.Background(), http.DefaultClient, "https://example.com", nil)
+	if err == nil || !strings.Contains(err.Error(), "validate") {
+		t.Errorf("nil validate should error with mention of validate, got %v", err)
+	}
+}
+
+func TestDiscover_ValidateBlocksTarget(t *testing.T) {
+	// Validator returns an error -> no request should fire.
+	blocked := errors.New("blocked by SSRF guard")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		t.Errorf("server should not have been hit; validator should reject first")
+		w.WriteHeader(500)
+	}))
+	defer srv.Close()
+	_, err := Discover(context.Background(), srv.Client(), srv.URL, func(string) error { return blocked })
+	if err == nil || !errors.Is(err, blocked) {
+		t.Errorf("want wrapped blocked error, got %v", err)
+	}
+}
+
+func TestDiscover_ValidateBlocksProbe(t *testing.T) {
+	// First fetch (the homepage) is allowed and returns plain HTML with no
+	// alternate link. The probes should be attempted but the validator
+	// rejects them, so we expect ErrNoFeed without /feed et al being hit.
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte("<html><body>nothing</body></html>"))
+	})
+	for _, p := range DiscoveryFallbacks {
+		mux.HandleFunc(p, func(w http.ResponseWriter, _ *http.Request) {
+			t.Errorf("probe %s should have been blocked by validator", p)
+			w.WriteHeader(500)
+		})
+	}
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	// Allow the homepage, reject anything else.
+	first := true
+	validate := func(string) error {
+		if first {
+			first = false
+			return nil
+		}
+		return errors.New("probe blocked")
+	}
+	_, err := Discover(context.Background(), srv.Client(), srv.URL+"/", validate)
+	if !errors.Is(err, ErrNoFeed) {
+		t.Errorf("want ErrNoFeed (all probes blocked), got %v", err)
 	}
 }

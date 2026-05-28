@@ -61,7 +61,10 @@ func (d *Dependencies) handleAddFeed(w http.ResponseWriter, r *http.Request) {
 			return urlcheck.Check(dctx, rawURL, d.AllowPrivateURLs)
 		}),
 	}
-	if discovered, derr := feed.Discover(dctx, disco, req.URL); derr == nil && discovered != "" {
+	discoValidate := func(rawURL string) error {
+		return urlcheck.Check(dctx, rawURL, d.AllowPrivateURLs)
+	}
+	if discovered, derr := feed.Discover(dctx, disco, req.URL, discoValidate); derr == nil && discovered != "" {
 		if err := urlcheck.Check(dctx, discovered, d.AllowPrivateURLs); err != nil {
 			writeError(w, http.StatusBadRequest, "bad_request", "discovered feed URL rejected: "+err.Error())
 			return
