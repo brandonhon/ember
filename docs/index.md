@@ -6,7 +6,7 @@ titleTemplate: Self-hosted RSS reader with on-device AI summaries
 hero:
   name: Ember
   text: A reader for people who read.
-  tagline: Self-hosted RSS aggregation, on-device AI summaries, and a paper-and-ink interface. One Go binary, one container, one tab.
+  tagline: Self-hosted RSS aggregation with an optional on-device LLM and a paper-and-ink interface. One Go binary, one container, one tab.
   image:
     src: /icon.svg
     alt: Ember
@@ -57,9 +57,13 @@ features:
     details: Paste the homepage URL — Ember discovers the feed by following &lt;link rel=alternate&gt; and probing common feed paths. No more digging for the orange icon.
 ---
 
+::: tip AI is fully optional
+The summary card, model picker, and Ollama sidecar are an opt-out feature, not a dependency. Set `EMBER_DISABLE_SUMMARIES=1` (or run the stack without the `ollama` container) and the reader works exactly the same — minus the summary card. No model download, no inference, no LLM code paths run. Even when enabled, everything stays on your box; no article content leaves the host.
+:::
+
 ## Why?
 
-Most RSS readers are either bloated cloud services that mine your reading habits, or unmaintained scripts from the Google Reader exodus. Ember is what an opinionated 2026 reader looks like: a single Go binary you run on your own box, optional small-local-LLM summaries for the days you can't read 300 articles, and an interface that feels like a printed daily.
+Most RSS readers are either bloated cloud services that mine your reading habits, or unmaintained scripts from the Google Reader exodus. Ember is what an opinionated 2026 reader looks like: a single Go binary you run on your own box, a paper-and-ink interface, and — only if you want it — small-local-LLM summaries for the days you can't read 300 articles.
 
 ## Quick install
 
