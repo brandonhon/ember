@@ -31,6 +31,7 @@ Ember reads configuration from environment variables at startup. A handful of se
 | `EMBER_FRESH_WINDOW` | `6h` | How recent an article must be to appear in the "Fresh" smart view. |
 | `EMBER_POLL_CONCURRENCY` | `8` | Number of feed-fetch worker goroutines. |
 | `EMBER_POLL_TICK` | `60s` | How often the poller scans for feeds due to fetch. |
+| `EMBER_SESSION_TTL` | `24h` | Lifetime of a freshly-issued session cookie. Go duration (e.g. `30m`, `12h`, `168h`). Range-validated (5m–90d). Admin UI override in **Settings → Sessions** takes precedence when set. |
 | `EMBER_LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error`. |
 | `EMBER_TEST_MODE` | `0` | Seeds fake admin + articles; loosens cookie Secure flag. Don't enable in production. |
 
@@ -42,6 +43,7 @@ Stored in the `app_settings` KV. Edit via the admin UI in **Settings → ...**.
 | --- | --- |
 | Active LLM model | Language model |
 | Temperature / Top P / Context window | Language model → Tuning |
+| Session cookie TTL (overrides `EMBER_SESSION_TTL`) | Sessions |
 | App name, page title, favicon URL | Branding |
 | Backup schedule + retention (`db_backup_keep`, default 7) | Database |
 | Cleanup schedule + window (`db_cleanup_older_days`, default 90) | Database |

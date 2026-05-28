@@ -1,0 +1,235 @@
+name: Release
+
+# Fires on semver tag pushes (v0.6.0, v1.0.0-rc.1, ...) and produces:
+#   1. Cross-compiled binaries for linux/{amd64,arm64} and darwin/{amd64,arm64}
+#      packaged as tarballs with SHA256SUMS, attached to a GitHub Release.
+#   2. Multi-arch (linux/amd64 + linux/arm64) container image pushed to
+#      ghcr.io/<owner>/ember with the tag matrix below.
+#
+# Tag matrix (Docker):
+#   release tag vX.Y.Z   -> vX.Y.Z, X.Y.Z, X.Y, X, latest, sha-<short>
+#   prerelease vX.Y.Z-*  -> vX.Y.Z, X.Y.Z-*, sha-<short>   (no floating tags)
+#
+# Re-run a release without re-tagging by using "workflow_dispatch" from the
+# Actions tab and passing the tag name as input.
+#
+# One-time setup after the first successful run: flip the GHCR package from
+# Private to Public so unauthenticated `docker pull` works.
+#   https://github.com/users/<owner>/packages/container/ember/settings
+
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to (re-)release (must already exist, e.g. v0.6.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write   # create GitHub Releases + upload binaries
+  packages: write   # push to ghcr.io
+
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Parse tag
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.parse.outputs.version }}
+      version_no_v: ${{ steps.parse.outputs.version_no_v }}
+      is_prerelease: ${{ steps.parse.outputs.is_prerelease }}
+    steps:
+      - id: parse
+        run: |
+          set -euo pipefail
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::tag must match v<major>.<minor>.<patch>[-prerelease], got: $TAG"
+            exit 1
+          fi
+          IS_PRERELEASE=false
+          [[ "$TAG" == *-* ]] && IS_PRERELEASE=true
+          {
+            echo "version=$TAG"
+            echo "version_no_v=${TAG#v}"
+            echo "is_prerelease=$IS_PRERELEASE"
+          } >> "$GITHUB_OUTPUT"
+
+  build-binaries:
+    name: Binary (${{ matrix.os }}/${{ matrix.arch }})
+    needs: prepare
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+          - os: linux
+            arch: arm64
+          - os: darwin
+            arch: amd64
+          - os: darwin
+            arch: arm64
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build SPA and embed
+        run: make embed
+
+      - name: Verify SPA embedded
+        run: |
+          if [ -z "$(ls -A internal/web/dist 2>/dev/null)" ]; then
+            echo "::error::internal/web/dist is empty after make embed"
+            exit 1
+          fi
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+          CGO_ENABLED: '0'
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          mkdir -p dist
+          go build -trimpath \
+            -ldflags "-s -w -X main.version=${VERSION}" \
+            -o dist/ember ./cmd/ember
+
+      - name: Package tarball
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          ARCHIVE="ember-${VERSION}-${{ matrix.os }}-${{ matrix.arch }}.tar.gz"
+          tar -czf "dist/${ARCHIVE}" -C dist ember
+          rm dist/ember
+          ls -la dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.os }}-${{ matrix.arch }}
+          path: dist/*.tar.gz
+          retention-days: 1
+          if-no-files-found: error
+
+  checksums:
+    name: Collect artifacts + SHA256SUMS
+    needs: build-binaries
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: binary-*
+          path: dist
+          merge-multiple: true
+
+      - name: Generate SHA256SUMS
+        run: |
+          set -euo pipefail
+          cd dist
+          sha256sum ember-*.tar.gz | sort -k2 > SHA256SUMS
+          cat SHA256SUMS
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: dist/*
+          retention-days: 1
+          if-no-files-found: error
+
+  docker:
+    name: Multi-arch image -> ghcr.io
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: docker/setup-qemu-action@v3
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          flavor: latest=false
+          tags: |
+            type=raw,value=${{ needs.prepare.outputs.version }}
+            type=raw,value=${{ needs.prepare.outputs.version_no_v }}
+            type=sha,prefix=sha-,format=short
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.prepare.outputs.version }},enable=${{ needs.prepare.outputs.is_prerelease == 'false' }}
+            type=semver,pattern={{major}},value=${{ needs.prepare.outputs.version }},enable=${{ needs.prepare.outputs.is_prerelease == 'false' }}
+            type=raw,value=latest,enable=${{ needs.prepare.outputs.is_prerelease == 'false' }}
+          labels: |
+            org.opencontainers.image.title=ember
+            org.opencontainers.image.description=Self-hosted RSS reader with on-device AI summaries
+            org.opencontainers.image.url=https://github.com/${{ github.repository }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ needs.prepare.outputs.version }}
+            org.opencontainers.image.licenses=MIT
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: |
+            VERSION=${{ needs.prepare.outputs.version }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  release:
+    name: GitHub Release
+    needs: [prepare, checksums, docker]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+          fetch-depth: 0   # full history so generate_release_notes can diff
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts
+          path: dist
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.version }}
+          name: ${{ needs.prepare.outputs.version }}
+          prerelease: ${{ needs.prepare.outputs.is_prerelease == 'true' }}
+          generate_release_notes: true
+          files: |
+            dist/ember-*.tar.gz
+            dist/SHA256SUMS
+          fail_on_unmatched_files: true

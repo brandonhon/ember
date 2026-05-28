@@ -136,7 +136,7 @@ Active model + tunables held in `atomic.Value`/`atomic.Pointer` on the `Ollama` 
 - Vite 5 build, output copied to `internal/web/dist`, served via `embed.FS`.
 - Typed fetch client in `web/src/lib/api.ts` (throws `ApiError`).
 - Stores in `web/src/lib/stores.ts` for user, feeds, categories, boards, articles, themes, branding, new-article counter, etc.
-- 30s auto-refresh poll while the tab is visible; SSE not used — REST polling is simpler and fits the cadence.
+- 15s auto-refresh poll while the tab is visible; SSE not used — REST polling is simpler and fits the cadence.
 - Service worker (`web/public/sw.js`) caches assets immutably and falls back to cached shell when offline.
 
 ## Admin endpoints (admin-only)

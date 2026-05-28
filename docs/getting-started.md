@@ -2,6 +2,16 @@
 
 Ember runs as a Docker stack (`ember` + `caddy` + `ollama`) or as a standalone Go binary if you'd rather host Ollama elsewhere.
 
+## Install options
+
+| Option | When to use |
+| --- | --- |
+| **Pre-built container** (`ghcr.io/brandonhon/ember:vX.Y.Z`, also `:latest`, `:X`, `:X.Y`) | You want a stable release without a local build step. Multi-arch (`linux/amd64`, `linux/arm64`). |
+| **Pre-built binary** ([Releases](https://github.com/brandonhon/ember/releases)) | You're running outside Docker — bare metal, VM, systemd, NAS. Tarballs for `linux-{amd64,arm64}` and `darwin-{amd64,arm64}`. Verify via the bundled `SHA256SUMS`. |
+| **Build from source** (`make embed build`) | You're contributing, or you need a tip-of-main change. See [Build from source](#build-from-source). |
+
+The default `deploy/docker-compose.yml` still builds locally from the `Dockerfile` so a fresh clone Just Works. To switch to the released image, replace the `ember` service's `build:` block with `image: ghcr.io/brandonhon/ember:latest`.
+
 ## Prerequisites
 
 - Docker + docker-compose (or Podman) for the stack flow.
@@ -54,6 +64,26 @@ Visit `https://localhost` (accept the self-signed cert in dev). Log in with `adm
 6. (Optional) **Settings → Passkeys** to register a passkey for password-less sign-in. Requires `EMBER_PUBLIC_URL` to be set.
 7. (Optional) Configure SMTP env vars (see [Configuration](/configuration#optional-env-vars)) and enable a daily digest email from your profile.
 8. (Optional) Install Ember as a PWA — Chrome / Edge / Safari "Install app" menu. Once installed, new articles trigger an OS-level numeric badge on the app icon (taskbar / dock / launcher) in addition to the in-tab favicon dot.
+
+## Run from a pre-built binary
+
+Grab a tarball from [Releases](https://github.com/brandonhon/ember/releases) — pick the asset matching your OS + arch:
+
+```sh
+VERSION=v0.6.0   # or 'latest' redirect: /releases/latest/download/...
+curl -L -o ember.tar.gz \
+  "https://github.com/brandonhon/ember/releases/download/${VERSION}/ember-${VERSION}-linux-amd64.tar.gz"
+
+# Verify against SHA256SUMS shipped on the same release
+curl -L -o SHA256SUMS \
+  "https://github.com/brandonhon/ember/releases/download/${VERSION}/SHA256SUMS"
+shasum -a 256 -c SHA256SUMS --ignore-missing
+
+tar -xzf ember.tar.gz
+./ember --version   # should print the tag you downloaded
+```
+
+Then set the env vars from [Configuration](/configuration#required-env-vars) and run `./ember`. Front it with Caddy / Nginx / Cloudflare for TLS.
 
 ## Build from source
 
