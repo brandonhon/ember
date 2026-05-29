@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"html"
+	"net"
 	"net/mail"
 	"net/smtp"
 	"strconv"
@@ -216,7 +217,14 @@ func (s *Sender) fetchArticles(ctx context.Context, d models.UserDigest) ([]mode
 func (s *Sender) send(to string, msg []byte) error {
 	addr := fmt.Sprintf("%s:%d", s.SMTP.Host, s.SMTP.Port)
 	if !s.SMTP.StartTLS {
-		// Plain SMTP — only sensible on the same host or inside a VPN.
+		// Plain SMTP sends credentials + message body unencrypted. Only allow
+		// it to a loopback host (a local relay / sidecar). For any other host
+		// require StartTLS so a misconfiguration can't silently ship the SMTP
+		// password and digest content in the clear across the network.
+		if !isLoopbackHost(s.SMTP.Host) {
+			return errors.New("digest: plain SMTP (StartTLS off) is only allowed to a loopback host; " +
+				"enable StartTLS for a remote relay")
+		}
 		auth := s.smtpAuth()
 		return smtp.SendMail(addr, auth, s.SMTP.From, []string{to}, msg)
 	}
@@ -267,6 +275,20 @@ func (s *Sender) smtpAuth() smtp.Auth {
 		return nil
 	}
 	return smtp.PlainAuth("", s.SMTP.Username, s.SMTP.Password, s.SMTP.Host)
+}
+
+// isLoopbackHost reports whether host is the local machine — "localhost"
+// (case-insensitive) or a loopback IP literal. Used to gate plain (non-TLS)
+// SMTP so credentials only ever traverse the loopback interface in the clear.
+func isLoopbackHost(host string) bool {
+	host = strings.TrimSpace(host)
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	if ip := net.ParseIP(host); ip != nil {
+		return ip.IsLoopback()
+	}
+	return false
 }
 
 func buildMIME(from, to, subject, textBody, htmlBody string) []byte {

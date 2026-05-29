@@ -154,3 +154,39 @@ func TestSend_StartTLSRequiredButNotOffered(t *testing.T) {
 		t.Errorf("expected STARTTLS error, got %v", err)
 	}
 }
+
+func TestIsLoopbackHost(t *testing.T) {
+	cases := map[string]bool{
+		"localhost":   true,
+		"LocalHost":   true,
+		"127.0.0.1":   true,
+		"127.0.0.53":  true,
+		"::1":         true,
+		"  localhost": true,
+		"smtp.example.com": false,
+		"10.0.0.5":         false,
+		"192.168.1.1":      false,
+		"":                 false,
+	}
+	for host, want := range cases {
+		if got := isLoopbackHost(host); got != want {
+			t.Errorf("isLoopbackHost(%q) = %v, want %v", host, got, want)
+		}
+	}
+}
+
+func TestSend_PlainRejectsNonLoopbackHost(t *testing.T) {
+	// StartTLS off + a remote host must be refused before any dial, so the
+	// SMTP password + body never go out in the clear over the network.
+	s := &Sender{SMTP: SMTPConfig{
+		Host: "smtp.example.com", Port: 25, From: "ember@example.com",
+		Username: "u", Password: "p", StartTLS: false,
+	}}
+	err := s.send("user@example.com", []byte("test"))
+	if err == nil {
+		t.Fatal("expected plain-SMTP-to-remote-host to be rejected, got nil")
+	}
+	if !strings.Contains(err.Error(), "loopback") {
+		t.Errorf("expected loopback guard error, got %v", err)
+	}
+}
