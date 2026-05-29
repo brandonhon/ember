@@ -1,6 +1,7 @@
 package api
 
 import (
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -130,10 +131,14 @@ func (d *Dependencies) handleTestEmail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := digest.SendTestMessage(cfg, to, "Ember"); err != nil {
-		// Surface the failure verbatim so admins can diagnose (auth fail, DNS,
-		// TLS handshake). We don't 500 because the user input + their config
-		// are the most likely culprits.
-		writeError(w, http.StatusBadGateway, "smtp_send_failed", err.Error())
+		// Log the full error server-side for diagnosis; return a generic message.
+		// Raw net/smtp / TLS errors can carry server banners, internal
+		// hostnames, or AUTH-exchange fragments that shouldn't cross the API
+		// boundary even to an admin. 502 (not 500) since the upstream relay /
+		// config is the likely culprit, not ember itself.
+		slog.Default().Warn("smtp test send failed", "host", cfg.Host, "port", cfg.Port, "err", err)
+		writeError(w, http.StatusBadGateway, "smtp_send_failed",
+			"SMTP test failed — check the server logs for details (auth, DNS, or TLS).")
 		return
 	}
 	writeData(w, http.StatusOK, map[string]any{"sent_to": to}, nil)

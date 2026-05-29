@@ -27,7 +27,7 @@ Ember reads configuration from environment variables at startup. A handful of se
 | `EMBER_SMTP_USER` | — | SMTP auth username (optional; omit for relays without auth). Overrideable in **Settings → Email / SMTP**. |
 | `EMBER_SMTP_PASSWORD` | — | SMTP auth password. Overrideable in **Settings → Email / SMTP** (stored write-only — never echoed back to the UI). |
 | `EMBER_SMTP_FROM` | — | `From:` address used on digest emails. Overrideable in **Settings → Email / SMTP**. |
-| `EMBER_SMTP_STARTTLS` | `1` | STARTTLS on submission ports (587). Set `0` only when targeting a server that doesn't support it. Overrideable in **Settings → Email / SMTP**. |
+| `EMBER_SMTP_STARTTLS` | `1` | STARTTLS on submission ports (587). When on, the server **must** offer STARTTLS or the send fails (no silent plaintext downgrade). Set `0` only for a **loopback** relay (`localhost` / `127.0.0.1` / `::1`) — plain SMTP to any remote host is refused so credentials never cross the network in the clear. Overrideable in **Settings → Email / SMTP**. |
 | `EMBER_FRESH_WINDOW` | `6h` | How recent an article must be to appear in the "Fresh" smart view. |
 | `EMBER_POLL_CONCURRENCY` | `8` | Number of feed-fetch worker goroutines. |
 | `EMBER_POLL_TICK` | `60s` | How often the poller scans for feeds due to fetch. |

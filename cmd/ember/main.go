@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strconv"
+	"sync"
 	"syscall"
 	"time"
 
@@ -238,14 +239,26 @@ func run() error {
 		InitialBacklogHoursFallback: store.DefaultInitialBacklogHours,
 	}, logger.With("component", "poller"))
 
+	// Background workers are tracked in a WaitGroup so shutdown can wait for an
+	// in-flight DB backup / digest send to finish its current iteration instead
+	// of the process exiting mid-write. Each worker already returns on ctx.Done().
+	var bgWG sync.WaitGroup
+	runBG := func(fn func()) {
+		bgWG.Add(1)
+		go func() {
+			defer bgWG.Done()
+			fn()
+		}()
+	}
+
 	// Background poller. Skipped in test mode — articles are pre-seeded and
 	// the fake feed URL doesn't resolve.
 	if !cfg.TestMode {
-		go p.Run(ctx)
+		runBG(func() { p.Run(ctx) })
 		// Scheduled DB maintenance: a single goroutine that ticks every hour
 		// and runs the backup / cleanup actions when their app_setting cadence
 		// says it's time. Failures log and continue.
-		go runDBMaintenance(ctx, st, op, logger.With("component", "db-maintenance"))
+		runBG(func() { runDBMaintenance(ctx, st, op, logger.With("component", "db-maintenance")) })
 		// Daily digest sender. Always runs; each tick resolves the live SMTP
 		// config from app_settings overlaid on the env-derived fallback, so
 		// admins can configure SMTP via Settings without restarting. When
@@ -256,9 +269,9 @@ func run() error {
 			From: cfg.SMTPFrom, StartTLS: cfg.SMTPStartTLS,
 		}
 		sender := &digest.Sender{Store: st}
-		go runDigestSender(ctx, st, sender, smtpFallback, logger.With("component", "digest"))
+		runBG(func() { runDigestSender(ctx, st, sender, smtpFallback, logger.With("component", "digest")) })
 		// Reap stale WebAuthn ceremony rows (created_at < now-5m). Cheap.
-		go func() {
+		runBG(func() {
 			t := time.NewTicker(15 * time.Minute)
 			defer t.Stop()
 			for {
@@ -269,11 +282,11 @@ func run() error {
 					_ = st.CleanupWebAuthnSessions(ctx)
 				}
 			}
-		}()
+		})
 		// Reap expired sessions hourly. Cookies are deleted lazily on access,
 		// but never-revisited rows (logged-out browsers, rotated cookies)
 		// would otherwise accumulate forever.
-		go func() {
+		runBG(func() {
 			t := time.NewTicker(1 * time.Hour)
 			defer t.Stop()
 			for {
@@ -288,7 +301,7 @@ func run() error {
 					}
 				}
 			}
-		}()
+		})
 	}
 
 	// Embedded static SPA.
@@ -353,6 +366,21 @@ func run() error {
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		logger.Warn("http shutdown error", "err", err)
 	}
+
+	// Wait for background workers to finish their current iteration (e.g. an
+	// in-flight DB backup / VACUUM or digest send) before exiting, bounded so a
+	// stuck worker can't hang shutdown forever.
+	bgDone := make(chan struct{})
+	go func() {
+		bgWG.Wait()
+		close(bgDone)
+	}()
+	select {
+	case <-bgDone:
+	case <-time.After(15 * time.Second):
+		logger.Warn("background workers did not stop within timeout")
+	}
+
 	logger.Info("ember stopped")
 	return nil
 }

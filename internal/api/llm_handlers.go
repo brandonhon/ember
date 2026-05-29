@@ -178,9 +178,11 @@ func (d *Dependencies) handlePullLLMModel(w http.ResponseWriter, r *http.Request
 	deadline := time.Now().Add(35 * time.Minute)
 	_ = rc.SetWriteDeadline(deadline)
 	_ = rc.SetReadDeadline(deadline)
-	// Detach from the request context: the pull should still complete if the
-	// browser tab closes mid-download. Cap at 30 minutes total.
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+	// Detach from the request context so the pull survives the browser tab
+	// closing mid-download, but derive from the process background context (not
+	// context.Background()) so SIGTERM still cancels it and graceful shutdown
+	// isn't blocked for up to 30 minutes. Cap at 30 minutes total.
+	ctx, cancel := context.WithTimeout(d.backgroundCtx(), 30*time.Minute)
 	defer cancel()
 	if err := d.Ollama.Pull(ctx, req.Model); err != nil {
 		slog.Default().Warn("api: ollama pull failed", "model", req.Model, "err", err)

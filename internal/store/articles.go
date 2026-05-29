@@ -68,9 +68,13 @@ func (s *Store) UpsertArticle(ctx context.Context, a models.Article) (models.Art
 		nullableInt(a.PublishedAt), a.FetchedAt, a.ContentHash, a.Tags)
 	if err != nil {
 		if isUniqueViolation(err) {
-			// Race: someone else inserted between our check and write. Fetch and
-			// return as a non-insert.
-			_ = tx.Commit()
+			// Race: someone else inserted between our check and write. The INSERT
+			// failed so this tx has no work to commit — release it explicitly and
+			// propagate a rollback error (a swallowed commit/rollback failure here
+			// would otherwise mask DB-level problems like context cancellation).
+			if rbErr := tx.Rollback(); rbErr != nil && !errors.Is(rbErr, sql.ErrTxDone) {
+				return models.Article{}, false, fmt.Errorf("UpsertArticle: rollback race path: %w", rbErr)
+			}
 			var id int64
 			rerr := s.DB.QueryRowContext(ctx,
 				`SELECT id FROM articles WHERE feed_id = ? AND guid = ?`, a.FeedID, a.GUID).Scan(&id)
