@@ -15,6 +15,10 @@ import (
 // `api_key` form value, which is md5("username:password") — same as the spec.
 // We compute that on demand for each user instead of storing it.
 func (d *Dependencies) handleFever(w http.ResponseWriter, r *http.Request) {
+	// Cap the form body — ParseForm reads it fully into memory. The Fever shim
+	// only needs a handful of small fields; 64 KiB is generous. Without a
+	// fronting proxy this is the only guard against a giant-body memory hog.
+	r.Body = http.MaxBytesReader(w, r.Body, 64<<10)
 	if err := r.ParseForm(); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"auth": 0, "api_version": 3})
 		return
