@@ -19,6 +19,18 @@ type userMini struct {
 	Username string `json:"username"`
 }
 
+// adminUserView is the admin-list projection. It deliberately omits
+// SettingsJSON — a user's private preference blob is no business of another
+// account, even an admin's. The owning user reads their own settings via
+// /api/me.
+type adminUserView struct {
+	ID        int64  `json:"id"`
+	Username  string `json:"username"`
+	Email     string `json:"email,omitempty"`
+	IsAdmin   bool   `json:"is_admin"`
+	CreatedAt int64  `json:"created_at"`
+}
+
 func (d *Dependencies) handleListUsers(w http.ResponseWriter, r *http.Request) {
 	users, err := d.Store.ListUsers(r.Context())
 	if mapStoreError(w, err) {
@@ -26,7 +38,14 @@ func (d *Dependencies) handleListUsers(w http.ResponseWriter, r *http.Request) {
 	}
 	caller, _ := auth.FromContext(r.Context())
 	if caller.IsAdmin {
-		writeData(w, http.StatusOK, users, nil)
+		out := make([]adminUserView, 0, len(users))
+		for _, u := range users {
+			out = append(out, adminUserView{
+				ID: u.ID, Username: u.Username, Email: u.Email,
+				IsAdmin: u.IsAdmin, CreatedAt: u.CreatedAt,
+			})
+		}
+		writeData(w, http.StatusOK, out, nil)
 		return
 	}
 	// Non-admin caller: minimal projection only.
@@ -51,6 +70,12 @@ func (d *Dependencies) handleCreateUser(w http.ResponseWriter, r *http.Request) 
 	}
 	if req.Username == "" || req.Password == "" {
 		writeError(w, http.StatusBadRequest, "bad_request", "username and password required")
+		return
+	}
+	// Match the 8-char minimum enforced on the change-password path so the admin
+	// create-user route can't seed a zero-entropy account.
+	if len(req.Password) < 8 {
+		writeError(w, http.StatusBadRequest, "weak_password", "password must be at least 8 characters")
 		return
 	}
 	hash, err := d.Auth.HashPassword(req.Password)

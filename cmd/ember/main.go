@@ -114,7 +114,14 @@ func run() error {
 
 	sessionKey := cfg.SessionKey
 	if sessionKey == "" && cfg.TestMode {
+		// Test mode falls back to a hardcoded, publicly-known signing key so
+		// e2e runs don't need a generated key. Anyone with this key can forge
+		// session cookies — so this path must NEVER be hit in production. Warn
+		// loudly; the operator should see it even at default log level.
 		sessionKey = "00000000000000000000000000000000-ember-test-mode-key"
+		logger.Warn("TEST MODE: using a hardcoded, publicly-known session signing key — " +
+			"session cookies are forgeable. Never run EMBER_TEST_MODE in production. " +
+			"Set EMBER_SESSION_KEY and unset EMBER_TEST_MODE for any real deployment.")
 	}
 	a, err := auth.New(st, sessionKey)
 	if err != nil {

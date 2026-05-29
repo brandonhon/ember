@@ -33,7 +33,7 @@ Ember reads configuration from environment variables at startup. A handful of se
 | `EMBER_POLL_TICK` | `60s` | How often the poller scans for feeds due to fetch. |
 | `EMBER_SESSION_TTL` | `24h` | Lifetime of a freshly-issued session cookie. Go duration (e.g. `30m`, `12h`, `168h`). Range-validated (5m–90d). Admin UI override in **Settings → Sessions** takes precedence when set. |
 | `EMBER_LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error`. |
-| `EMBER_TEST_MODE` | `0` | Seeds fake admin + articles; loosens cookie Secure flag. Don't enable in production. |
+| `EMBER_TEST_MODE` | `0` | Seeds fake admin + articles; loosens cookie Secure flag; and (when `EMBER_SESSION_KEY` is unset) falls back to a **hardcoded, publicly-known session signing key** — session cookies become forgeable. Logs a loud warning at startup. **Never enable in production.** |
 
 ## Runtime settings (persist across restarts)
 
