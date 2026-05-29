@@ -33,6 +33,9 @@ func TestDefaults(t *testing.T) {
 	if d.LogLevel != slog.LevelInfo {
 		t.Errorf("default LogLevel = %v, want info", d.LogLevel)
 	}
+	if !d.SecureCookies {
+		t.Error("default SecureCookies = false, want true")
+	}
 }
 
 func TestLoad_DefaultsWithSessionKey(t *testing.T) {
@@ -217,5 +220,62 @@ func TestLoad_TestModeBooleanForms(t *testing.T) {
 				t.Errorf("TestMode should be false for %q", v)
 			}
 		})
+	}
+}
+
+func TestLoad_SecureCookies(t *testing.T) {
+	// Defaults to true.
+	cfg, err := LoadFromMap(map[string]string{"EMBER_SESSION_KEY": strings.Repeat("a", 32)})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !cfg.SecureCookies {
+		t.Error("SecureCookies should default to true")
+	}
+	// Explicit opt-out.
+	cfg, err = LoadFromMap(map[string]string{
+		"EMBER_SESSION_KEY":    strings.Repeat("a", 32),
+		"EMBER_SECURE_COOKIES": "false",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.SecureCookies {
+		t.Error("SecureCookies should be false when EMBER_SECURE_COOKIES=false")
+	}
+}
+
+func TestLoad_TrustedProxies(t *testing.T) {
+	// Default: empty (trust nobody).
+	cfg, err := LoadFromMap(map[string]string{"EMBER_SESSION_KEY": strings.Repeat("a", 32)})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cfg.TrustedProxies) != 0 {
+		t.Errorf("TrustedProxies should default empty, got %v", cfg.TrustedProxies)
+	}
+	// CIDRs + bare IPs (bare IPs normalized to /32 //128), comma+space split.
+	cfg, err = LoadFromMap(map[string]string{
+		"EMBER_SESSION_KEY":     strings.Repeat("a", 32),
+		"EMBER_TRUSTED_PROXIES": "172.16.0.0/12, 10.0.0.1 ::1",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := []string{"172.16.0.0/12", "10.0.0.1/32", "::1/128"}
+	if len(cfg.TrustedProxies) != len(want) {
+		t.Fatalf("TrustedProxies = %v, want %v", cfg.TrustedProxies, want)
+	}
+	for i := range want {
+		if cfg.TrustedProxies[i] != want[i] {
+			t.Errorf("TrustedProxies[%d] = %q, want %q", i, cfg.TrustedProxies[i], want[i])
+		}
+	}
+	// Invalid entry → error.
+	if _, err := LoadFromMap(map[string]string{
+		"EMBER_SESSION_KEY":     strings.Repeat("a", 32),
+		"EMBER_TRUSTED_PROXIES": "not-an-ip",
+	}); err == nil {
+		t.Error("expected error for invalid EMBER_TRUSTED_PROXIES")
 	}
 }

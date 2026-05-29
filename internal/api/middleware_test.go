@@ -9,7 +9,7 @@ import (
 )
 
 func TestSecurityHeaders(t *testing.T) {
-	h := SecurityHeaders(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	h := SecurityHeaders(nil)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	w := httptest.NewRecorder()
@@ -27,10 +27,69 @@ func TestSecurityHeaders(t *testing.T) {
 			t.Errorf("%s = %q, want substring %q", k, got, prefix)
 		}
 	}
+	// Plain HTTP, no trusted proxy → no HSTS (RFC 6797: ignored over non-HTTPS).
+	if got := w.Header().Get("Strict-Transport-Security"); got != "" {
+		t.Errorf("HSTS should be absent over plain HTTP, got %q", got)
+	}
+}
+
+func TestSecurityHeaders_HSTSGating(t *testing.T) {
+	trusted := ParseTrustedProxies([]string{"10.0.0.0/8"})
+	h := SecurityHeaders(trusted)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	// Trusted proxy reports HTTPS → HSTS set.
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	r.RemoteAddr = "10.1.2.3:5000"
+	r.Header.Set("X-Forwarded-Proto", "https")
+	h.ServeHTTP(w, r)
+	if w.Header().Get("Strict-Transport-Security") == "" {
+		t.Error("HSTS should be set when a trusted proxy reports https")
+	}
+
+	// Untrusted peer with the same header → ignored, no HSTS.
+	w2 := httptest.NewRecorder()
+	r2 := httptest.NewRequest(http.MethodGet, "/", nil)
+	r2.RemoteAddr = "8.8.8.8:5000"
+	r2.Header.Set("X-Forwarded-Proto", "https")
+	h.ServeHTTP(w2, r2)
+	if got := w2.Header().Get("Strict-Transport-Security"); got != "" {
+		t.Errorf("untrusted X-Forwarded-Proto must not trigger HSTS, got %q", got)
+	}
+}
+
+func TestRemoteIP_TrustBoundary(t *testing.T) {
+	trusted := ParseTrustedProxies([]string{"10.0.0.0/8"})
+
+	// Trusted peer → X-Real-IP honored.
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	r.RemoteAddr = "10.0.0.5:1234"
+	r.Header.Set("X-Real-IP", "1.2.3.4")
+	if got := remoteIP(r, trusted); got != "1.2.3.4" {
+		t.Errorf("trusted peer: got %q, want forwarded 1.2.3.4", got)
+	}
+
+	// Untrusted peer → X-Real-IP ignored, connection peer used.
+	r2 := httptest.NewRequest(http.MethodGet, "/", nil)
+	r2.RemoteAddr = "203.0.113.9:1234"
+	r2.Header.Set("X-Real-IP", "1.2.3.4")
+	if got := remoteIP(r2, trusted); got != "203.0.113.9" {
+		t.Errorf("untrusted peer: got %q, want connection peer 203.0.113.9", got)
+	}
+
+	// No trusted set → never honor the header.
+	r3 := httptest.NewRequest(http.MethodGet, "/", nil)
+	r3.RemoteAddr = "10.0.0.5:1234"
+	r3.Header.Set("X-Real-IP", "1.2.3.4")
+	if got := remoteIP(r3, nil); got != "10.0.0.5" {
+		t.Errorf("no trusted set: got %q, want connection peer 10.0.0.5", got)
+	}
 }
 
 func TestRateLimiter_AllowAndDeny(t *testing.T) {
-	rl := NewRateLimiter(3, time.Minute)
+	rl := NewRateLimiter(3, time.Minute, nil)
 	for range 3 {
 		if !rl.Allow("ip-1") {
 			t.Errorf("should allow within burst")
@@ -46,7 +105,7 @@ func TestRateLimiter_AllowAndDeny(t *testing.T) {
 }
 
 func TestRateLimiter_Middleware(t *testing.T) {
-	rl := NewRateLimiter(2, time.Minute)
+	rl := NewRateLimiter(2, time.Minute, nil)
 	inner := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
@@ -181,5 +240,27 @@ func TestHealthEndpoints(t *testing.T) {
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("/readyz = %d", resp.StatusCode)
+	}
+}
+
+// TestMethodNotAllowedHasSecurityHeaders verifies the 405 path (a known route
+// hit with the wrong method) goes through SecurityHeaders rather than chi's
+// bare default handler.
+func TestMethodNotAllowedHasSecurityHeaders(t *testing.T) {
+	h := newHarness(t)
+	// /api/auth/login is POST-only; a GET should 405.
+	resp, err := h.srv.Client().Get(h.srv.URL + "/api/auth/login")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusMethodNotAllowed {
+		t.Fatalf("GET /api/auth/login = %d, want 405", resp.StatusCode)
+	}
+	if got := resp.Header.Get("X-Content-Type-Options"); got != "nosniff" {
+		t.Errorf("405 missing security headers: X-Content-Type-Options = %q", got)
+	}
+	if got := resp.Header.Get("Content-Security-Policy"); got == "" {
+		t.Error("405 missing Content-Security-Policy header")
 	}
 }

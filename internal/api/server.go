@@ -51,6 +51,10 @@ type Dependencies struct {
 	// AllowPrivateURLs disables the SSRF block on outbound HTTP fetches for
 	// homelab users who subscribe to LAN feeds. Off by default.
 	AllowPrivateURLs bool
+	// TrustedProxies is the set of proxy CIDRs (strings) whose X-Real-IP /
+	// X-Forwarded-Proto headers are honored. Empty = the app is the edge and
+	// trusts only the connection peer.
+	TrustedProxies []string
 	// FreshWindow is the cutoff for the Fresh smart view — articles
 	// published within this window count as "fresh". Surfaced to the
 	// frontend via /api/me so isFresh() agrees with the server's
@@ -84,13 +88,23 @@ func (d *Dependencies) backgroundCtx() context.Context {
 // All other /api/* require RequireAuth; /api/users/* admin actions require
 // RequireAdmin. Non-/api routes fall back to the SPA.
 func NewRouter(d Dependencies) http.Handler {
+	trusted := ParseTrustedProxies(d.TrustedProxies)
+
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Compress(5))
 	r.Use(middleware.Timeout(60 * time.Second))
-	r.Use(SecurityHeaders)
+	r.Use(SecurityHeaders(trusted))
 	r.Use(CSRFIssue(!d.TestMode))
+
+	// 405 responses must carry the security headers too. chi's default
+	// MethodNotAllowed handler runs outside the middleware chain, so register
+	// one that re-applies SecurityHeaders before writing the JSON error.
+	methodNotAllowed := SecurityHeaders(trusted)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
+	}))
+	r.MethodNotAllowed(methodNotAllowed.ServeHTTP)
 
 	// Health endpoints — fast, no auth, no DB hit on /healthz; /readyz pings
 	// DB. /healthz stays public because Caddy uses it for liveness probes.
@@ -110,7 +124,17 @@ func NewRouter(d Dependencies) http.Handler {
 	if d.TestMode {
 		loginBurst = 1000
 	}
-	loginLimiter := NewRateLimiter(loginBurst, time.Minute)
+	loginLimiter := NewRateLimiter(loginBurst, time.Minute, trusted)
+
+	// Separate, higher-burst limiter for expensive authenticated endpoints
+	// (outbound-fetch / goroutine-spawning / FTS work). Without a fronting
+	// proxy to absorb floods, these are the cheapest way for a logged-in
+	// client to pin CPU / open many outbound connections, so cap them.
+	expensiveBurst := 30
+	if d.TestMode {
+		expensiveBurst = 1000
+	}
+	expensiveLimiter := NewRateLimiter(expensiveBurst, time.Minute, trusted)
 
 	r.Route("/api", func(r chi.Router) {
 		r.Use(CSRFVerify)
@@ -156,13 +180,13 @@ func NewRouter(d Dependencies) http.Handler {
 
 		// Feeds / subscriptions
 		r.With(d.Auth.RequireAuth).Get("/feeds", d.handleListFeeds)
-		r.With(d.Auth.RequireAuth).Post("/feeds", d.handleAddFeed)
+		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/feeds", d.handleAddFeed)
 		r.With(d.Auth.RequireAuth).Post("/feeds/reorder", d.handleReorderFeeds)
 		r.With(d.Auth.RequireAuth).Patch("/feeds/{id}", d.handleUpdateFeed)
 		r.With(d.Auth.RequireAuth).Delete("/feeds/{id}", d.handleDeleteFeed)
-		r.With(d.Auth.RequireAuth).Post("/feeds/{id}/refresh", d.handleRefreshFeed)
-		r.With(d.Auth.RequireAuth).Post("/feeds/{id}/resummarize", d.handleResummarizeFeed)
-		r.With(d.Auth.RequireAdmin).Post("/feeds/resummarize-all", d.handleResummarizeAll)
+		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/feeds/{id}/refresh", d.handleRefreshFeed)
+		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/feeds/{id}/resummarize", d.handleResummarizeFeed)
+		r.With(d.Auth.RequireAdmin, expensiveLimiter.LimitMiddleware).Post("/feeds/resummarize-all", d.handleResummarizeAll)
 
 		// LLM admin
 		r.With(d.Auth.RequireAdmin).Get("/admin/llm", d.handleGetLLM)
@@ -176,12 +200,12 @@ func NewRouter(d Dependencies) http.Handler {
 		r.With(d.Auth.RequireAdmin).Post("/admin/db/backup", d.handleDBBackup)
 		r.With(d.Auth.RequireAdmin).Post("/admin/db/cleanup", d.handleDBCleanup)
 		r.With(d.Auth.RequireAdmin).Post("/admin/db/schedule", d.handleDBSchedule)
-		r.With(d.Auth.RequireAuth).Post("/feeds/import", d.handleOPMLImport)
+		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/feeds/import", d.handleOPMLImport)
 		r.With(d.Auth.RequireAuth).Get("/feeds/export", d.handleOPMLExport)
 
 		// Starter packs
 		r.With(d.Auth.RequireAuth).Get("/starter-packs", d.handleListStarterPacks)
-		r.With(d.Auth.RequireAuth).Post("/starter-packs/{slug}", d.handleImportStarterPack)
+		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/starter-packs/{slug}", d.handleImportStarterPack)
 		r.With(d.Auth.RequireAuth).Delete("/starter-packs/{slug}", d.handleRemoveStarterPack)
 
 		// Articles
@@ -191,7 +215,7 @@ func NewRouter(d Dependencies) http.Handler {
 		r.With(d.Auth.RequireAuth).Post("/articles/star", d.handleSetStar)
 		r.With(d.Auth.RequireAuth).Post("/articles/later", d.handleSetLater)
 		r.With(d.Auth.RequireAuth).Post("/articles/mark-all-read", d.handleMarkAllRead)
-		r.With(d.Auth.RequireAuth).Post("/articles/{id}/extract", d.handleReExtractArticle)
+		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/articles/{id}/extract", d.handleReExtractArticle)
 
 		// Per-article user tags
 		r.With(d.Auth.RequireAuth).Get("/articles/{id}/tags", d.handleListArticleTags)
@@ -233,7 +257,7 @@ func NewRouter(d Dependencies) http.Handler {
 		r.With(d.Auth.RequireAuth).Delete("/filters/{id}", d.handleDeleteFilter)
 
 		// Search
-		r.With(d.Auth.RequireAuth).Get("/search", d.handleSearch)
+		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Get("/search", d.handleSearch)
 		r.With(d.Auth.RequireAuth).Get("/saved-searches", d.handleListSavedSearches)
 		r.With(d.Auth.RequireAuth).Post("/saved-searches", d.handleCreateSavedSearch)
 		r.With(d.Auth.RequireAuth).Delete("/saved-searches/{id}", d.handleDeleteSavedSearch)
