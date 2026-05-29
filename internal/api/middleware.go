@@ -2,6 +2,7 @@ package api
 
 import (
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/hex"
 	"net"
 	"net/http"
@@ -222,7 +223,9 @@ func CSRFVerify(next http.Handler) http.Handler {
 			return
 		}
 		header := r.Header.Get(CSRFHeaderName)
-		if header == "" || header != cookie.Value {
+		// Constant-time compare: the CSRF token is a secret, so avoid leaking
+		// match progress via timing on the != comparison.
+		if header == "" || subtle.ConstantTimeCompare([]byte(header), []byte(cookie.Value)) != 1 {
 			writeError(w, http.StatusForbidden, "csrf_mismatch", "csrf token invalid")
 			return
 		}
