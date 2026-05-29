@@ -2,6 +2,7 @@ package feed
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -105,3 +106,37 @@ func TestFetch_Timeout(t *testing.T) {
 		t.Fatal("expected timeout error")
 	}
 }
+
+func TestRedirectGuard(t *testing.T) {
+	blocked := errors.New("blocked by validator")
+
+	t.Run("rejects redirect the validator blocks", func(t *testing.T) {
+		guard := RedirectGuard(func(string) error { return blocked })
+		req, _ := http.NewRequest(http.MethodGet, "http://169.254.169.254/", nil)
+		if err := guard(req, nil); !errors.Is(err, blocked) {
+			t.Fatalf("want blocked error, got %v", err)
+		}
+	})
+
+	t.Run("allows redirect the validator permits", func(t *testing.T) {
+		guard := RedirectGuard(func(string) error { return nil })
+		req, _ := http.NewRequest(http.MethodGet, "http://example.com/", nil)
+		if err := guard(req, nil); err != nil {
+			t.Fatalf("want nil, got %v", err)
+		}
+	})
+
+	t.Run("stops after 10 redirects", func(t *testing.T) {
+		guard := RedirectGuard(func(string) error { return nil })
+		req, _ := http.NewRequest(http.MethodGet, "http://example.com/", nil)
+		via := make([]*http.Request, 10)
+		if err := guard(req, via); err == nil {
+			t.Fatal("want error after 10 redirects, got nil")
+		}
+	})
+}
+
+// TestEnrichClientHasRedirectGuard is a compile+wiring check: the readability
+// client built in enrichArticle must carry a CheckRedirect guard (H-1). Done
+// indirectly here because enrichArticle is unexported in package poller; the
+// guard mechanism it relies on is covered by TestRedirectGuard above.

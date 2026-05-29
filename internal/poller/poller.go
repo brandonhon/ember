@@ -519,7 +519,16 @@ func (p *Poller) enrichWithReadability(ctx context.Context, a *models.Article) {
 		p.Logger.Debug("poller: readability target rejected by urlcheck", "url", target, "err", err)
 		return
 	}
-	client := &http.Client{Timeout: 15 * time.Second}
+	// Re-validate on every redirect hop: the initial urlcheck only covers
+	// `target`, but a publisher-controlled page can 30x to a private/metadata
+	// address. Mirror the SSRF guard wired into the feed Fetcher + discovery
+	// client.
+	client := &http.Client{
+		Timeout: 15 * time.Second,
+		CheckRedirect: feed.RedirectGuard(func(rawURL string) error {
+			return urlcheck.Check(rctx, rawURL, p.Config.AllowPrivateURLs)
+		}),
+	}
 	r, err := feed.ExtractFromURL(rctx, client, target)
 	if err != nil {
 		p.Logger.Debug("poller: readability failed", "url", target, "err", err)

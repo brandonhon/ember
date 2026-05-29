@@ -233,9 +233,11 @@ func CSRFVerify(next http.Handler) http.Handler {
 func mustRandHex(n int) string {
 	b := make([]byte, n)
 	if _, err := rand.Read(b); err != nil {
-		// extremely unlikely; fall back to a known-bad-but-non-zero value so
-		// requests still succeed (the user gets a fresh token next request).
-		return "deadbeef-rand-failed"
+		// A failing CSRF token must fail closed, not open: a static fallback
+		// would hand every session the same forgeable token. crypto/rand
+		// failing is unrecoverable, so panic — middleware.Recoverer catches it
+		// and returns 500, and no broken token is ever issued.
+		panic("api: crypto/rand.Read failed generating CSRF token: " + err.Error())
 	}
 	return hex.EncodeToString(b)
 }
