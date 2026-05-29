@@ -1,7 +1,9 @@
 package digest
 
 import (
+	"bufio"
 	"errors"
+	"net"
 	"strings"
 	"testing"
 )
@@ -92,5 +94,63 @@ func TestBuildMIME_HeadersAreClean(t *testing.T) {
 		if strings.ContainsAny(line, "\r\n") {
 			t.Errorf("header line contains bare CR/LF: %q", line)
 		}
+	}
+}
+
+// fakeSMTPNoSTARTTLS accepts a connection, greets, answers EHLO without
+// advertising STARTTLS, and then just drains. Used to prove send() refuses to
+// proceed in plaintext when StartTLS is required (M-7). Returns the listener
+// address; the listener closes when the test ends.
+func fakeSMTPNoSTARTTLS(t *testing.T) (host string, port int) {
+	t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	t.Cleanup(func() { _ = ln.Close() })
+	go func() {
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			go func(c net.Conn) {
+				defer c.Close()
+				br := bufio.NewReader(c)
+				_, _ = c.Write([]byte("220 fake ESMTP\r\n"))
+				for {
+					line, err := br.ReadString('\n')
+					if err != nil {
+						return
+					}
+					switch {
+					case strings.HasPrefix(line, "EHLO"), strings.HasPrefix(line, "HELO"):
+						// Advertise a capability, but deliberately NOT STARTTLS.
+						_, _ = c.Write([]byte("250-fake greets you\r\n250 SIZE 10240000\r\n"))
+					case strings.HasPrefix(line, "QUIT"):
+						_, _ = c.Write([]byte("221 bye\r\n"))
+						return
+					default:
+						_, _ = c.Write([]byte("250 ok\r\n"))
+					}
+				}
+			}(conn)
+		}
+	}()
+	addr := ln.Addr().(*net.TCPAddr)
+	return "127.0.0.1", addr.Port
+}
+
+func TestSend_StartTLSRequiredButNotOffered(t *testing.T) {
+	host, port := fakeSMTPNoSTARTTLS(t)
+	s := &Sender{SMTP: SMTPConfig{
+		Host: host, Port: port, From: "ember@example.com", StartTLS: true,
+	}}
+	err := s.send("user@example.com", []byte("test"))
+	if err == nil {
+		t.Fatal("expected error when STARTTLS required but server doesn't offer it, got nil (plaintext downgrade!)")
+	}
+	if !strings.Contains(err.Error(), "STARTTLS") {
+		t.Errorf("expected STARTTLS error, got %v", err)
 	}
 }

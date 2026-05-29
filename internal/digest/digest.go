@@ -228,10 +228,15 @@ func (s *Sender) send(to string, msg []byte) error {
 	if err := c.Hello("ember"); err != nil {
 		return err
 	}
-	if ok, _ := c.Extension("STARTTLS"); ok {
-		if err := c.StartTLS(&tls.Config{ServerName: s.SMTP.Host, MinVersion: tls.VersionTLS12}); err != nil {
-			return err
-		}
+	// StartTLS:true means "require TLS or fail" — never silently send
+	// credentials/body in plaintext. A server that doesn't advertise STARTTLS
+	// (or a MitM that stripped it from the EHLO response) must be an error, not
+	// a downgrade.
+	if ok, _ := c.Extension("STARTTLS"); !ok {
+		return errors.New("digest: SMTP server did not offer STARTTLS but StartTLS is required")
+	}
+	if err := c.StartTLS(&tls.Config{ServerName: s.SMTP.Host, MinVersion: tls.VersionTLS12}); err != nil {
+		return err
 	}
 	if auth := s.smtpAuth(); auth != nil {
 		if err := c.Auth(auth); err != nil {
