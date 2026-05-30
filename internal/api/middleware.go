@@ -2,6 +2,7 @@ package api
 
 import (
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/hex"
 	"net"
 	"net/http"
@@ -10,38 +11,65 @@ import (
 	"time"
 )
 
-// SecurityHeaders sets common headers that complement Caddy's own. The chain
-// is layered so even if a reverse proxy is misconfigured, sane defaults apply.
-func SecurityHeaders(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		h := w.Header()
-		h.Set("X-Content-Type-Options", "nosniff")
-		h.Set("X-Frame-Options", "DENY")
-		h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
-		// HSTS — Caddy normally sets this in front, but adding it here means a
-		// misconfigured proxy can't accidentally expose plain HTTP. 2 years +
-		// includeSubDomains is the standard hardened value.
-		h.Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
-		// Disable browser features we never use. Defense in depth against XSS
-		// chains that try to exfil via webcam, geolocation, etc.
-		h.Set("Permissions-Policy", "geolocation=(), microphone=(), camera=(), payment=(), usb=()")
-		h.Set("Cross-Origin-Opener-Policy", "same-origin")
-		h.Set("Cross-Origin-Resource-Policy", "same-origin")
-		// CSP — locked down to the same origin except for the Google Fonts
-		// stylesheets and webfonts. The mockup's typography is critical to
-		// the design language.
-		h.Set("Content-Security-Policy",
-			"default-src 'self'; "+
-				"img-src 'self' data: https:; "+
-				"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "+
-				"font-src 'self' data: https://fonts.gstatic.com; "+
-				"connect-src 'self'; "+
-				"object-src 'none'; "+
-				"base-uri 'self'; "+
-				"form-action 'self'; "+
-				"frame-ancestors 'none'")
-		next.ServeHTTP(w, r)
-	})
+// SecurityHeaders returns middleware that sets common hardening headers. When
+// the app sits behind a TLS-terminating proxy these complement the proxy's
+// own; exposed directly they are the only source. `trusted` is the set of
+// proxy CIDRs whose X-Forwarded-Proto is believed when deciding whether the
+// edge connection is HTTPS (for the HSTS header).
+func SecurityHeaders(trusted []*net.IPNet) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			h := w.Header()
+			h.Set("X-Content-Type-Options", "nosniff")
+			h.Set("X-Frame-Options", "DENY")
+			h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
+			// HSTS only over HTTPS: browsers ignore (and RFC 6797 says to
+			// ignore) HSTS received over plain HTTP, and emitting it there is a
+			// misleading no-op. Detect HTTPS from the connection or from a
+			// trusted proxy's X-Forwarded-Proto. 2 years + includeSubDomains.
+			if httpsDetected(r, trusted) {
+				h.Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
+			}
+			// Disable browser features we never use. Defense in depth against XSS
+			// chains that try to exfil via webcam, geolocation, etc.
+			h.Set("Permissions-Policy", "geolocation=(), microphone=(), camera=(), payment=(), usb=()")
+			h.Set("Cross-Origin-Opener-Policy", "same-origin")
+			h.Set("Cross-Origin-Resource-Policy", "same-origin")
+			// CSP — locked down to the same origin except for the Google Fonts
+			// stylesheets and webfonts. The mockup's typography is critical to
+			// the design language. img-src allows any https: origin because
+			// feeds embed third-party article images; style-src allows
+			// 'unsafe-inline' for the SPA's scoped styles. Both are accepted
+			// trade-offs for a self-hosted reader (documented in security docs).
+			h.Set("Content-Security-Policy",
+				"default-src 'self'; "+
+					"img-src 'self' data: https:; "+
+					"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "+
+					"font-src 'self' data: https://fonts.gstatic.com; "+
+					"connect-src 'self'; "+
+					"object-src 'none'; "+
+					"base-uri 'self'; "+
+					"form-action 'self'; "+
+					"frame-ancestors 'none'")
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// httpsDetected reports whether the edge connection to the user is HTTPS. True
+// when the request reached us over TLS directly, or when a trusted proxy
+// forwarded X-Forwarded-Proto: https. Untrusted X-Forwarded-Proto is ignored
+// so a direct attacker can't fake HTTPS to coax out an HSTS header.
+func httpsDetected(r *http.Request, trusted []*net.IPNet) bool {
+	if r.TLS != nil {
+		return true
+	}
+	if peerTrusted(r, trusted) {
+		if strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https") {
+			return true
+		}
+	}
+	return false
 }
 
 // RateLimiter is a tiny in-memory leaky-bucket keyed by remote IP. Suitable
@@ -51,6 +79,9 @@ type RateLimiter struct {
 	// at MaxBurst / WindowPeriod.
 	MaxBurst     int
 	WindowPeriod time.Duration
+	// trusted is the set of proxy CIDRs whose X-Real-IP is honored when keying
+	// the bucket. Empty = key on the connection peer (the app is the edge).
+	trusted []*net.IPNet
 
 	mu      sync.Mutex
 	buckets map[string]*bucket
@@ -63,11 +94,14 @@ type bucket struct {
 }
 
 // NewRateLimiter returns a limiter that allows `burst` requests instantly and
-// then refills at `burst/window` per second.
-func NewRateLimiter(burst int, window time.Duration) *RateLimiter {
+// then refills at `burst/window` per second. `trusted` is the set of proxy
+// CIDRs whose X-Real-IP header is honored for bucket keying; pass nil to key
+// strictly on the connection peer.
+func NewRateLimiter(burst int, window time.Duration, trusted []*net.IPNet) *RateLimiter {
 	return &RateLimiter{
 		MaxBurst:     burst,
 		WindowPeriod: window,
+		trusted:      trusted,
 		buckets:      map[string]*bucket{},
 	}
 }
@@ -109,7 +143,7 @@ func (rl *RateLimiter) Allow(key string) bool {
 // JSON body.
 func (rl *RateLimiter) LimitMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		key := remoteIP(r)
+		key := remoteIP(r, rl.trusted)
 		if !rl.Allow(key) {
 			writeError(w, http.StatusTooManyRequests, "rate_limited", "too many requests")
 			return
@@ -118,46 +152,58 @@ func (rl *RateLimiter) LimitMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// trustedProxyNets are addresses we accept X-Real-IP from. RemoteAddr must
-// be inside one of these for the header to be honored. Without this check
-// any client that can reach ember on :8080 directly can forge X-Real-IP to
-// bypass the rate limiter (or DoS another IP's bucket).
-var trustedProxyNets = []*net.IPNet{
-	mustCIDR("127.0.0.0/8"),     // loopback
-	mustCIDR("::1/128"),         // loopback IPv6
-	mustCIDR("172.16.0.0/12"),   // Docker default bridge range
-	mustCIDR("10.0.0.0/8"),      // typical compose / k8s overlays
-	mustCIDR("192.168.0.0/16"),  // LAN
-}
-
-func mustCIDR(s string) *net.IPNet {
-	_, n, err := net.ParseCIDR(s)
-	if err != nil {
-		panic(err)
-	}
-	return n
-}
-
-func remoteIP(r *http.Request) string {
-	directHost := r.RemoteAddr
-	if i := strings.LastIndexByte(directHost, ':'); i > 0 {
-		directHost = directHost[:i]
-	}
-	directHost = strings.TrimPrefix(strings.TrimSuffix(directHost, "]"), "[")
-	directIP := net.ParseIP(directHost)
-	// Only honor X-Real-IP if the immediate peer is a trusted proxy (Caddy on
-	// the docker network, in our deployment). Otherwise any client could spoof.
-	if directIP != nil {
-		for _, n := range trustedProxyNets {
-			if n.Contains(directIP) {
-				if v := r.Header.Get("X-Real-IP"); v != "" {
-					return v
-				}
-				break
-			}
+// ParseTrustedProxies converts CIDR strings (already validated by config) into
+// *net.IPNet. Invalid entries are skipped defensively. An empty/nil input
+// yields nil — meaning "trust no proxy": ember is the edge and reads the real
+// client from the connection, ignoring X-Real-IP / X-Forwarded-Proto.
+func ParseTrustedProxies(cidrs []string) []*net.IPNet {
+	out := make([]*net.IPNet, 0, len(cidrs))
+	for _, c := range cidrs {
+		if _, n, err := net.ParseCIDR(c); err == nil {
+			out = append(out, n)
 		}
 	}
-	return directHost
+	return out
+}
+
+// peerTrusted reports whether the immediate connection peer (RemoteAddr) is
+// inside one of the trusted proxy CIDRs.
+func peerTrusted(r *http.Request, trusted []*net.IPNet) bool {
+	if len(trusted) == 0 {
+		return false
+	}
+	ip := net.ParseIP(hostOnly(r.RemoteAddr))
+	if ip == nil {
+		return false
+	}
+	for _, n := range trusted {
+		if n.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+// hostOnly strips the :port (and IPv6 brackets) from a host:port string.
+func hostOnly(hostPort string) string {
+	h := hostPort
+	if i := strings.LastIndexByte(h, ':'); i > 0 {
+		h = h[:i]
+	}
+	return strings.TrimPrefix(strings.TrimSuffix(h, "]"), "[")
+}
+
+// remoteIP returns the rate-limit key for the request: the forwarded X-Real-IP
+// when the connection peer is a trusted proxy, otherwise the connection peer
+// itself. Untrusted X-Real-IP is ignored so a direct client can't forge it to
+// bypass the limiter or poison another IP's bucket.
+func remoteIP(r *http.Request, trusted []*net.IPNet) string {
+	if peerTrusted(r, trusted) {
+		if v := r.Header.Get("X-Real-IP"); v != "" {
+			return v
+		}
+	}
+	return hostOnly(r.RemoteAddr)
 }
 
 // CSRFCookieName is the cookie the API sets carrying the CSRF token.
@@ -222,7 +268,9 @@ func CSRFVerify(next http.Handler) http.Handler {
 			return
 		}
 		header := r.Header.Get(CSRFHeaderName)
-		if header == "" || header != cookie.Value {
+		// Constant-time compare: the CSRF token is a secret, so avoid leaking
+		// match progress via timing on the != comparison.
+		if header == "" || subtle.ConstantTimeCompare([]byte(header), []byte(cookie.Value)) != 1 {
 			writeError(w, http.StatusForbidden, "csrf_mismatch", "csrf token invalid")
 			return
 		}
@@ -233,9 +281,11 @@ func CSRFVerify(next http.Handler) http.Handler {
 func mustRandHex(n int) string {
 	b := make([]byte, n)
 	if _, err := rand.Read(b); err != nil {
-		// extremely unlikely; fall back to a known-bad-but-non-zero value so
-		// requests still succeed (the user gets a fresh token next request).
-		return "deadbeef-rand-failed"
+		// A failing CSRF token must fail closed, not open: a static fallback
+		// would hand every session the same forgeable token. crypto/rand
+		// failing is unrecoverable, so panic — middleware.Recoverer catches it
+		// and returns 500, and no broken token is ever issued.
+		panic("api: crypto/rand.Read failed generating CSRF token: " + err.Error())
 	}
 	return hex.EncodeToString(b)
 }

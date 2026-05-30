@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -108,7 +109,10 @@ func (d *Dependencies) handlePasskeyRegisterFinish(w http.ResponseWriter, r *htt
 		return
 	}
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "registration_failed", err.Error())
+		// The go-webauthn error text leaks internals (CBOR/attestation/origin
+		// detail). Log it; return a generic message.
+		slog.Default().Warn("passkey registration failed", "err", err)
+		writeError(w, http.StatusBadRequest, "registration_failed", "passkey registration failed")
 		return
 	}
 	writeData(w, http.StatusOK, PasskeySummary{
@@ -219,7 +223,10 @@ func (d *Dependencies) handlePasskeyLoginFinish(w http.ResponseWriter, r *http.R
 		return
 	}
 	if err != nil {
-		writeError(w, http.StatusUnauthorized, "passkey_failed", err.Error())
+		// Don't leak go-webauthn internals (sign-count/assertion detail) to the
+		// client; log and return a generic failure.
+		slog.Default().Warn("passkey assertion failed", "err", err)
+		writeError(w, http.StatusUnauthorized, "passkey_failed", "passkey authentication failed")
 		return
 	}
 	// Mirror password login: destroy any prior session cookie, then issue a

@@ -49,6 +49,11 @@ services:
       EMBER_POLL_CONCURRENCY: ${EMBER_POLL_CONCURRENCY:-8}
       EMBER_POLL_TICK: ${EMBER_POLL_TICK:-60s}
       EMBER_LOG_LEVEL: ${EMBER_LOG_LEVEL:-info}
+      # Caddy fronts ember on the compose 'frontend' bridge and forwards
+      # X-Real-IP + X-Forwarded-Proto. Trust that private range so per-client
+      # rate limiting keys on the real client IP and HSTS is emitted for HTTPS.
+      # Docker user-defined bridge subnets live in 172.16.0.0/12 by default.
+      EMBER_TRUSTED_PROXIES: ${EMBER_TRUSTED_PROXIES:-172.16.0.0/12}
     volumes:
       - ember-data:/data
     networks:

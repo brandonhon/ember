@@ -44,7 +44,10 @@ func (d *Dependencies) handleListArticles(w http.ResponseWriter, r *http.Request
 
 	limit := 50
 	if v := q.Get("limit"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil {
+		// Clamp in the handler too (the store also caps at 200): each returned
+		// row drives a correlated dup_count subquery, so an unbounded limit is
+		// a cheap amplification knob without a fronting proxy to rate-limit.
+		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 200 {
 			limit = n
 		}
 	}

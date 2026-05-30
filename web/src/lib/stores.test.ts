@@ -5,7 +5,9 @@ import {
   articles,
   feeds,
   loadArticles,
+  refreshSmartCounts,
   setRead,
+  smartCounts,
   toggleStar,
   totalUnread,
   user,
@@ -131,5 +133,22 @@ describe("totalUnread", () => {
   it("sums across feeds", () => {
     feeds.set([feedRow({ id: 1, unread: 3 }), feedRow({ id: 2, unread: 2, url: "https://y.test/feed" })]);
     expect(get(totalUnread)).toBe(5);
+  });
+});
+
+describe("refreshSmartCounts", () => {
+  it("updates pending_summary from the server (drives the summarizing bar to zero)", async () => {
+    smartCounts.set({ fresh: 0, starred: 0, later: 0, shared: 0, pending_summary: 7 });
+    fetchMock.mockResolvedValueOnce(
+      envelope({ fresh: 2, starred: 1, later: 0, shared: 0, pending_summary: 0 }),
+    );
+    await refreshSmartCounts();
+    const sc = get(smartCounts);
+    expect(sc.pending_summary).toBe(0);
+    expect(sc.fresh).toBe(2);
+    // Only the smart-counts endpoint should have been hit (not the full sidebar).
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url] = fetchMock.mock.calls[0] as [string, unknown];
+    expect(url).toContain("/api/me/smart-counts");
   });
 });

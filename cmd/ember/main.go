@@ -7,11 +7,14 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"strconv"
+	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -81,6 +84,39 @@ func runProbe() {
 	fmt.Printf("  (or set it in your compose env file)\n")
 }
 
+// warnDirectExposure logs a hardening warning when the process looks like it's
+// exposed without the TLS-terminating reverse proxy it's designed to sit
+// behind. ember serves plain HTTP only; the supported deployment puts Caddy in
+// front. Bound to a non-loopback address with Secure cookies on and no trusted
+// proxy configured, browsers will drop the (Secure) session cookie over plain
+// HTTP and auth silently breaks — so surface it at startup rather than letting
+// the operator chase a mystery login loop.
+func warnDirectExposure(cfg config.Config, logger *slog.Logger) {
+	if cfg.TestMode {
+		return
+	}
+	host := cfg.Addr
+	if i := strings.LastIndex(host, ":"); i >= 0 {
+		host = host[:i]
+	}
+	host = strings.TrimPrefix(strings.TrimSuffix(host, "]"), "[")
+	// Empty host (":8080") binds all interfaces; an explicit loopback address
+	// (literal IP or the name "localhost") is the only clearly-safe case.
+	// net.ParseIP("localhost") is nil, so check the name explicitly too.
+	loopback := strings.EqualFold(host, "localhost") ||
+		(host != "" && net.ParseIP(host) != nil && net.ParseIP(host).IsLoopback())
+	if loopback {
+		return
+	}
+	if cfg.SecureCookies && len(cfg.TrustedProxies) == 0 {
+		logger.Warn("ember binds a non-loopback address with Secure cookies and no EMBER_TRUSTED_PROXIES; "+
+			"it serves plain HTTP and expects a TLS-terminating proxy (e.g. Caddy) in front. "+
+			"If exposed directly over HTTP, browsers will drop the Secure session cookie and login will fail. "+
+			"Put a TLS proxy in front (recommended), or set EMBER_SECURE_COOKIES=false for a deliberate plain-HTTP deployment.",
+			"addr", cfg.Addr)
+	}
+}
+
 func run() error {
 	cfg, err := config.Load()
 	if err != nil {
@@ -113,15 +149,30 @@ func run() error {
 
 	sessionKey := cfg.SessionKey
 	if sessionKey == "" && cfg.TestMode {
+		// Test mode falls back to a hardcoded, publicly-known signing key so
+		// e2e runs don't need a generated key. Anyone with this key can forge
+		// session cookies — so this path must NEVER be hit in production. Warn
+		// loudly; the operator should see it even at default log level.
 		sessionKey = "00000000000000000000000000000000-ember-test-mode-key"
+		logger.Warn("TEST MODE: using a hardcoded, publicly-known session signing key — " +
+			"session cookies are forgeable. Never run EMBER_TEST_MODE in production. " +
+			"Set EMBER_SESSION_KEY and unset EMBER_TEST_MODE for any real deployment.")
 	}
 	a, err := auth.New(st, sessionKey)
 	if err != nil {
 		return fmt.Errorf("auth: %w", err)
 	}
+	// Cookie Secure flag: honor EMBER_SECURE_COOKIES (default true); test mode
+	// always forces it off for plain-HTTP e2e runs.
+	a.SecureCookies = cfg.SecureCookies
 	if cfg.TestMode {
 		a.SecureCookies = false
 	}
+	// Direct-exposure guardrail: the app serves plain HTTP and expects a
+	// TLS-terminating proxy in front. Warn loudly if it looks like it's bound
+	// to a public interface with Secure cookies on (→ browsers drop the cookie,
+	// auth breaks) and no trusted proxy configured.
+	warnDirectExposure(cfg, logger)
 	// Apply operator-configured session lifetime if EMBER_SESSION_TTL was set.
 	// Zero (cfg.SessionTTL not parsed) and out-of-range values fall through
 	// to auth.DefaultSessionTTL — SetSessionTTL returns an error rather than
@@ -238,14 +289,26 @@ func run() error {
 		InitialBacklogHoursFallback: store.DefaultInitialBacklogHours,
 	}, logger.With("component", "poller"))
 
+	// Background workers are tracked in a WaitGroup so shutdown can wait for an
+	// in-flight DB backup / digest send to finish its current iteration instead
+	// of the process exiting mid-write. Each worker already returns on ctx.Done().
+	var bgWG sync.WaitGroup
+	runBG := func(fn func()) {
+		bgWG.Add(1)
+		go func() {
+			defer bgWG.Done()
+			fn()
+		}()
+	}
+
 	// Background poller. Skipped in test mode — articles are pre-seeded and
 	// the fake feed URL doesn't resolve.
 	if !cfg.TestMode {
-		go p.Run(ctx)
+		runBG(func() { p.Run(ctx) })
 		// Scheduled DB maintenance: a single goroutine that ticks every hour
 		// and runs the backup / cleanup actions when their app_setting cadence
 		// says it's time. Failures log and continue.
-		go runDBMaintenance(ctx, st, op, logger.With("component", "db-maintenance"))
+		runBG(func() { runDBMaintenance(ctx, st, op, logger.With("component", "db-maintenance")) })
 		// Daily digest sender. Always runs; each tick resolves the live SMTP
 		// config from app_settings overlaid on the env-derived fallback, so
 		// admins can configure SMTP via Settings without restarting. When
@@ -256,9 +319,9 @@ func run() error {
 			From: cfg.SMTPFrom, StartTLS: cfg.SMTPStartTLS,
 		}
 		sender := &digest.Sender{Store: st}
-		go runDigestSender(ctx, st, sender, smtpFallback, logger.With("component", "digest"))
+		runBG(func() { runDigestSender(ctx, st, sender, smtpFallback, logger.With("component", "digest")) })
 		// Reap stale WebAuthn ceremony rows (created_at < now-5m). Cheap.
-		go func() {
+		runBG(func() {
 			t := time.NewTicker(15 * time.Minute)
 			defer t.Stop()
 			for {
@@ -269,11 +332,11 @@ func run() error {
 					_ = st.CleanupWebAuthnSessions(ctx)
 				}
 			}
-		}()
+		})
 		// Reap expired sessions hourly. Cookies are deleted lazily on access,
 		// but never-revisited rows (logged-out browsers, rotated cookies)
 		// would otherwise accumulate forever.
-		go func() {
+		runBG(func() {
 			t := time.NewTicker(1 * time.Hour)
 			defer t.Stop()
 			for {
@@ -288,7 +351,7 @@ func run() error {
 					}
 				}
 			}
-		}()
+		})
 	}
 
 	// Embedded static SPA.
@@ -304,6 +367,9 @@ func run() error {
 		// Test mode uses synthetic .test hostnames that don't resolve; the
 		// SSRF DNS check would reject them. Production stays strict.
 		AllowPrivateURLs: cfg.AllowPrivateURLs || cfg.TestMode,
+		// CIDRs whose X-Real-IP / X-Forwarded-Proto we trust. Empty = the app is
+		// the edge (trust the connection peer, ignore the headers).
+		TrustedProxies: cfg.TrustedProxies,
 		// FreshWindow makes EMBER_FRESH_WINDOW actually take effect — the
 		// Fresh-view article list, the sidebar's Fresh count, and the
 		// client-side isFresh() all read from this single source.
@@ -331,6 +397,10 @@ func run() error {
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      90 * time.Second,
 		IdleTimeout:       120 * time.Second,
+		// Cap request headers at 64 KiB (stdlib default is 1 MiB). Without a
+		// fronting proxy to buffer/limit, this bounds header-bomb memory; no
+		// legitimate request needs anywhere near this.
+		MaxHeaderBytes: 64 << 10,
 	}
 
 	errCh := make(chan error, 1)
@@ -353,6 +423,21 @@ func run() error {
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		logger.Warn("http shutdown error", "err", err)
 	}
+
+	// Wait for background workers to finish their current iteration (e.g. an
+	// in-flight DB backup / VACUUM or digest send) before exiting, bounded so a
+	// stuck worker can't hang shutdown forever.
+	bgDone := make(chan struct{})
+	go func() {
+		bgWG.Wait()
+		close(bgDone)
+	}()
+	select {
+	case <-bgDone:
+	case <-time.After(15 * time.Second):
+		logger.Warn("background workers did not stop within timeout")
+	}
+
 	logger.Info("ember stopped")
 	return nil
 }

@@ -84,6 +84,17 @@ export async function refreshSidebar(): Promise<void> {
   smartCounts.set(sc.data ?? EMPTY_SMART_COUNTS);
 }
 
+// refreshSmartCounts refreshes only the smart-view badge counts (incl.
+// pending_summary). Cheaper than refreshSidebar and used by the poll loop to
+// drive the "Summarizing N…" indicator down to zero while the summary worker
+// chews through a backlog — otherwise the count only refreshes when new
+// articles happen to arrive, leaving the bar stuck after summarization
+// finishes.
+export async function refreshSmartCounts(): Promise<void> {
+  const sc = await api.getSmartCounts();
+  smartCounts.set(sc.data ?? EMPTY_SMART_COUNTS);
+}
+
 export const totalUnread = derived(feeds, ($feeds) =>
   $feeds.reduce((n, f) => n + (f.unread || 0), 0),
 );
