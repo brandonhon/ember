@@ -22,18 +22,20 @@ Ember reads configuration from environment variables at startup. A handful of se
 | `EMBER_DISABLE_IMAGES` | `0` | Drop article hero images at ingest. |
 | `EMBER_ALLOW_PRIVATE_URLS` | `0` | Bypass the SSRF block so feeds on RFC1918 / loopback addresses can be subscribed. **Only set this if you trust every user who can add feeds.** |
 | `EMBER_PUBLIC_URL` | — | Canonical `scheme://host` users hit, e.g. `https://reader.example.com`. Required to enable passkey / WebAuthn sign-in. |
+| `EMBER_SECURE_COOKIES` | `1` | `Secure` flag on the session + CSRF cookies. Ember serves plain HTTP and expects a TLS-terminating proxy in front, so leave this on. Set `0` **only** for a deliberate plain-HTTP deployment (e.g. private VPN) — otherwise browsers drop the cookies over HTTP and login silently fails. |
+| `EMBER_TRUSTED_PROXIES` | — | Comma/space-separated CIDRs or IPs of the proxy in front of Ember. `X-Real-IP` (rate-limit keying) and `X-Forwarded-Proto` (HTTPS detection for HSTS) are honored **only** from these peers. Empty = trust nobody (Ember is the edge; reads the real client from the connection). The bundled compose sets this to the Caddy bridge range. |
 | `EMBER_SMTP_HOST` | — | SMTP server hostname. Required to enable the daily-digest email feature. Can also be set per-server in **Settings → Email / SMTP** (admin), which takes precedence. |
 | `EMBER_SMTP_PORT` | `587` | SMTP port. Overrideable in **Settings → Email / SMTP**. |
 | `EMBER_SMTP_USER` | — | SMTP auth username (optional; omit for relays without auth). Overrideable in **Settings → Email / SMTP**. |
 | `EMBER_SMTP_PASSWORD` | — | SMTP auth password. Overrideable in **Settings → Email / SMTP** (stored write-only — never echoed back to the UI). |
 | `EMBER_SMTP_FROM` | — | `From:` address used on digest emails. Overrideable in **Settings → Email / SMTP**. |
-| `EMBER_SMTP_STARTTLS` | `1` | STARTTLS on submission ports (587). Set `0` only when targeting a server that doesn't support it. Overrideable in **Settings → Email / SMTP**. |
+| `EMBER_SMTP_STARTTLS` | `1` | STARTTLS on submission ports (587). When on, the server **must** offer STARTTLS or the send fails (no silent plaintext downgrade). Set `0` only for a **loopback** relay (`localhost` / `127.0.0.1` / `::1`) — plain SMTP to any remote host is refused so credentials never cross the network in the clear. Overrideable in **Settings → Email / SMTP**. |
 | `EMBER_FRESH_WINDOW` | `6h` | How recent an article must be to appear in the "Fresh" smart view. |
 | `EMBER_POLL_CONCURRENCY` | `8` | Number of feed-fetch worker goroutines. |
 | `EMBER_POLL_TICK` | `60s` | How often the poller scans for feeds due to fetch. |
 | `EMBER_SESSION_TTL` | `24h` | Lifetime of a freshly-issued session cookie. Go duration (e.g. `30m`, `12h`, `168h`). Range-validated (5m–90d). Admin UI override in **Settings → Sessions** takes precedence when set. |
 | `EMBER_LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error`. |
-| `EMBER_TEST_MODE` | `0` | Seeds fake admin + articles; loosens cookie Secure flag. Don't enable in production. |
+| `EMBER_TEST_MODE` | `0` | Seeds fake admin + articles; loosens cookie Secure flag; and (when `EMBER_SESSION_KEY` is unset) falls back to a **hardcoded, publicly-known session signing key** — session cookies become forgeable. Logs a loud warning at startup. **Never enable in production.** |
 
 ## Runtime settings (persist across restarts)
 
@@ -110,6 +112,6 @@ Ember expects TLS to be terminated upstream. The reference `Caddyfile` in `deplo
 - Automatic Let's Encrypt for a real hostname (default).
 - `tls internal` for self-signed homelab certs.
 - `EMBER_DISABLE_HTTPS_REDIRECT` toggle for the 80 → 443 redirect.
-- Forwarding `X-Real-IP` (Ember honors this header **only** when the immediate peer is loopback / Docker / LAN).
+- Forwarding `X-Real-IP` + `X-Forwarded-Proto` (Ember honors these **only** from peers listed in `EMBER_TRUSTED_PROXIES`; the bundled compose sets it to the Caddy bridge range). Without it, Ember treats itself as the edge and ignores both headers.
 
 If you front Ember with Cloudflare, set the [authenticated origin pull](https://developers.cloudflare.com/ssl/origin-configuration/authenticated-origin-pull/) so only Cloudflare can reach your origin.

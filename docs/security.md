@@ -9,7 +9,7 @@ For vulnerability reporting, see [SECURITY.md](https://github.com/brandonhon/emb
 - **Passwords**: argon2id (`time=3`, `memory=64 MiB`, `parallelism=2`, salt=16 bytes). Meets OWASP 2024 recommendations.
 - **Sessions**: 64-hex-char random IDs signed via `gorilla/securecookie`. Server-side row in `sessions` table backs every cookie. Default lifetime 24 hours; override via `EMBER_SESSION_TTL` env var or **Settings → Sessions** (bounded 5 min – 90 days). Destroyed on logout, login (fixation defense), and on password change (both self-service and admin).
 - **Cookies**: `HttpOnly`, `Secure`, `SameSite=Strict`, scoped to `/`.
-- **Rate limiting**: per-IP token bucket on `POST /api/auth/login` and `POST /api/auth/passkey/*`. Burst 10, refill 10 tokens/minute (one every 6s).
+- **Rate limiting**: per-IP token bucket on `POST /api/auth/login` and `POST /api/auth/passkey/*` (burst 10/min). A second, higher-burst bucket (30/min) guards the expensive authenticated endpoints — add-feed, refresh-feed, resummarize(-all), OPML import, starter-pack import, article extract, and search — which spawn outbound fetches / goroutines / FTS work. Buckets key on the real client IP (see Transport / proxy expectations for how that's resolved).
 - **Passkeys / WebAuthn**: optional second sign-in method (FIDO2). Credentials are bound to a relying-party ID derived from `EMBER_PUBLIC_URL`; ceremonies expire after 5 minutes; a stale `webauthn_sessions` row is reaped on a 15-minute cadence. Credentials never leave the device — only the public key is stored.
 
 ## Authorization
@@ -54,13 +54,22 @@ Surfaces covered:
 - Feed fetcher redirects
 - `POST /api/articles/{id}/extract` (on-demand Re-extract) — runs the same `urlcheck.Check` before fetching the article URL through readability.
 
-The admin-only `POST /api/admin/settings/email-test` opens an SMTP TCP connection to the admin-supplied `host:port`. This is **by design**: the same connection happens every 5 minutes from the digest sender when SMTP is configured. Access is gated by `is_admin = 1` so a non-admin can't use it as a port-scan or relay-probe primitive.
+The admin-only `POST /api/admin/settings/email-test` opens an SMTP TCP connection to the admin-supplied `host:port`. This is **by design**: the same connection happens every 5 minutes from the digest sender when SMTP is configured. Access is gated by `is_admin = 1` so a non-admin can't use it as a port-scan or relay-probe primitive. On failure the endpoint returns a **generic** message; the underlying SMTP/TLS/DNS error (which can carry server banners, internal hostnames, or AUTH fragments) is logged server-side only.
+
+## SMTP transport
+
+Outbound mail (digests + the test message) never sends credentials or message bodies in cleartext across the network:
+
+- `EMBER_SMTP_STARTTLS=1` (default) **requires** STARTTLS — if the server doesn't advertise it (or a MitM strips it from the EHLO response), the send fails rather than downgrading to plaintext. The TLS handshake pins `MinVersion: TLS 1.2` and verifies the server certificate.
+- `EMBER_SMTP_STARTTLS=0` (plain SMTP) is permitted **only** to a loopback host (`localhost` / `127.0.0.1` / `::1`) — a local relay or sidecar. Plain SMTP to any remote host is refused before the connection opens.
 
 ## Body limits
 
 - `decodeJSON` wraps the body in `http.MaxBytesReader` capped at **1 MiB**.
-- OPML import body capped at **8 MiB**.
-- `/api/articles/read` (and other bulk endpoints) accept at most **1000** ids per request.
+- OPML import body capped at **8 MiB** (and the parser reads at most 10 MiB).
+- Fever (`/fever`) form body capped at **64 KiB**.
+- Request headers capped at **64 KiB** (`http.Server.MaxHeaderBytes`).
+- `/api/articles/read` (and other bulk endpoints) accept at most **1000** ids per request; `/api/articles?limit=` is clamped to **200**.
 
 ## Error responses
 
@@ -70,9 +79,12 @@ Ollama upstream errors (502 from `/api/admin/llm/pull` etc.) return generic "Oll
 
 ## Transport / proxy expectations
 
-- TLS is terminated upstream by Caddy (or your proxy). Ember's `:8080` should never be reachable directly from the internet.
-- `X-Real-IP` is **only** honored when the immediate peer (`r.RemoteAddr`) is loopback, Docker (`172.16/12`), or LAN (`10/8`, `192.168/16`). Spoof attempts from outside fail through to `RemoteAddr`.
-- HSTS, `Permissions-Policy`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, COOP, CORP, and a locked-down CSP (`default-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'`) are set on every response.
+Ember serves **plain HTTP only** — it has no TLS listener. The supported deployment terminates TLS in a fronting proxy (Caddy, in the bundled compose) and forwards to `:8080`. Ember's `:8080` should never be reachable directly from the internet.
+
+- **Trusted proxies**: `X-Real-IP` (rate-limit keying) and `X-Forwarded-Proto` (HTTPS detection) are honored **only** from peers in `EMBER_TRUSTED_PROXIES`. The default is **empty — trust nobody**: Ember treats itself as the edge and reads the real client from the connection, ignoring those headers. Set `EMBER_TRUSTED_PROXIES` to your proxy's address/range (the bundled compose sets it to the Caddy bridge range). This closes the spoofing gap where a same-LAN or same-Docker-network peer could forge `X-Real-IP` to bypass the limiter or poison logs.
+- **HSTS** is emitted **only over HTTPS** — when the request arrives over TLS, or a trusted proxy reports `X-Forwarded-Proto: https`. Browsers ignore HSTS received over plain HTTP (RFC 6797), so it is never sent on a bare-HTTP connection.
+- **Cookies** carry `Secure` by default. Behind a TLS proxy that's correct. For a deliberate plain-HTTP deployment (e.g. private VPN) set `EMBER_SECURE_COOKIES=false`, otherwise browsers drop the cookie over HTTP and login silently fails. Ember logs a startup warning when it's bound to a non-loopback address with `Secure` cookies on and no trusted proxy configured.
+- `Permissions-Policy`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, COOP, CORP, and a locked-down CSP (`default-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'`) are set on every response, including 404/405 and error responses. The CSP intentionally allows `img-src https:` (third-party feed images) and `style-src 'unsafe-inline'` (the SPA's scoped styles) — accepted trade-offs for a self-hosted reader.
 
 ## Database
 

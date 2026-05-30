@@ -16,6 +16,8 @@
     customPalette,
     refreshBranding,
     pollForNewArticles,
+    refreshSmartCounts,
+    smartCounts,
     newArticleCount,
     branding,
   } from "./lib/stores";
@@ -116,6 +118,14 @@
     pollTimer = setInterval(() => {
       if (document.hidden) return;
       void pollForNewArticles();
+      // While the summary worker is chewing through a backlog, refresh the
+      // counts each tick so the "Summarizing N…" indicator counts down and
+      // disappears when it hits zero. pollForNewArticles only refreshes the
+      // sidebar when NEW articles arrive, so without this the bar stays stuck
+      // at its last value after summarization finishes on existing articles.
+      if (get(smartCounts).pending_summary > 0) {
+        void refreshSmartCounts();
+      }
     }, 15_000);
   }
   function stopPolling() {

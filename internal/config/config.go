@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -50,6 +51,19 @@ type Config struct {
 	// Required for WebAuthn registration so the RP ID + origin can be set.
 	// Optional otherwise.
 	PublicURL string
+	// SecureCookies sets the Secure flag on the session + CSRF cookies.
+	// Defaults true (the app expects TLS, normally terminated by a fronting
+	// proxy). Set EMBER_SECURE_COOKIES=false ONLY for a deliberate plain-HTTP
+	// deployment (e.g. behind a VPN) — otherwise browsers drop Secure cookies
+	// over HTTP and auth silently breaks. Forced false in test mode.
+	SecureCookies bool
+	// TrustedProxies is the set of CIDRs whose X-Real-IP / X-Forwarded-Proto
+	// headers ember will trust (for rate-limit keying and HTTPS detection).
+	// Empty = trust nobody: the app is the edge and reads the real peer from
+	// the connection. Set EMBER_TRUSTED_PROXIES to the fronting proxy's address
+	// (e.g. the Caddy container IP/range) when deployed behind one. Comma- or
+	// space-separated CIDRs or bare IPs.
+	TrustedProxies []string
 }
 
 // Defaults returns a Config populated with safe defaults. SessionKey and
@@ -69,6 +83,7 @@ func Defaults() Config {
 		LogLevel:        slog.LevelInfo,
 		SMTPPort:        587,
 		SMTPStartTLS:    true,
+		SecureCookies:   true,
 	}
 }
 
@@ -186,6 +201,22 @@ func loadFrom(get func(string) string) (Config, error) {
 	if v := get("EMBER_PUBLIC_URL"); v != "" {
 		cfg.PublicURL = v
 	}
+	if v := get("EMBER_SECURE_COOKIES"); v != "" {
+		on, err := parseBool(v)
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("EMBER_SECURE_COOKIES %v", err))
+		} else {
+			cfg.SecureCookies = on
+		}
+	}
+	if v := get("EMBER_TRUSTED_PROXIES"); v != "" {
+		proxies, err := parseProxyList(v)
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("EMBER_TRUSTED_PROXIES %v", err))
+		} else {
+			cfg.TrustedProxies = proxies
+		}
+	}
 	if v := get("EMBER_ALLOW_PRIVATE_URLS"); v != "" {
 		on, err := parseBool(v)
 		if err != nil {
@@ -234,6 +265,34 @@ func loadFrom(get func(string) string) (Config, error) {
 		return cfg, errors.New(strings.Join(errs, "; "))
 	}
 	return cfg, nil
+}
+
+// parseProxyList parses a comma/space-separated list of CIDRs or bare IPs into
+// canonical CIDR strings. A bare IPv4 becomes /32, a bare IPv6 /128. Returns an
+// error on any unparseable entry so a typo'd proxy address fails loudly rather
+// than silently trusting nobody (which would mis-key the rate limiter).
+func parseProxyList(v string) ([]string, error) {
+	fields := strings.FieldsFunc(v, func(r rune) bool { return r == ',' || r == ' ' || r == '\t' })
+	out := make([]string, 0, len(fields))
+	for _, f := range fields {
+		if strings.Contains(f, "/") {
+			if _, _, err := net.ParseCIDR(f); err != nil {
+				return nil, fmt.Errorf("invalid CIDR %q: %v", f, err)
+			}
+			out = append(out, f)
+			continue
+		}
+		ip := net.ParseIP(f)
+		if ip == nil {
+			return nil, fmt.Errorf("invalid IP %q", f)
+		}
+		if ip.To4() != nil {
+			out = append(out, f+"/32")
+		} else {
+			out = append(out, f+"/128")
+		}
+	}
+	return out, nil
 }
 
 func parseBool(v string) (bool, error) {

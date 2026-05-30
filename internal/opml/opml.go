@@ -54,8 +54,13 @@ type opmlDoc struct {
 // subscription rows for the user. Existing feeds are reused via UpsertFeed; if
 // the user is already subscribed, the subscription is left alone. Returns the
 // number of *new* subscriptions created.
+// maxOPMLBytes caps the OPML document size to prevent memory exhaustion from a
+// crafted upload. encoding/xml is XXE-safe by default, so size is the only
+// remaining vector. 10 MiB is generous for any real subscription list.
+const maxOPMLBytes = 10 << 20
+
 func (s *Service) Import(ctx context.Context, userID int64, body io.Reader) (int, error) {
-	dec := xml.NewDecoder(body)
+	dec := xml.NewDecoder(io.LimitReader(body, maxOPMLBytes))
 	var doc opmlDoc
 	if err := dec.Decode(&doc); err != nil {
 		return 0, fmt.Errorf("opml: parse: %w", err)
