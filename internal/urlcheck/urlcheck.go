@@ -40,6 +40,8 @@ var privateBlocks = mustParseCIDRs(
 	"::1/128",           // loopback IPv6
 	"fc00::/7",          // unique-local IPv6
 	"fe80::/10",         // link-local IPv6
+	"2002::/16",         // 6to4 — encodes a (possibly private) IPv4 in bits 16-47
+	"64:ff9b::/96",      // NAT64 well-known prefix (RFC 6052) — maps to IPv4
 )
 
 // Resolver lets tests inject a fake DNS lookup. Defaults to net.LookupIP.

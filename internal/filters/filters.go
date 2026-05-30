@@ -9,9 +9,29 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/brandonhon/ember/internal/models"
 )
+
+// reCache memoizes compiled regexps keyed on the final pattern string
+// (including any "(?i)" prefix). Matches runs per-article-per-filter in the
+// poller hot path; without this the same user pattern is recompiled on every
+// article. Patterns are validated at write time and the working set is small
+// and stable, so no eviction is needed.
+var reCache sync.Map // pattern string -> *regexp.Regexp
+
+func cachedRegexp(pattern string) (*regexp.Regexp, error) {
+	if v, ok := reCache.Load(pattern); ok {
+		return v.(*regexp.Regexp), nil
+	}
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil, err
+	}
+	reCache.Store(pattern, re)
+	return re, nil
+}
 
 // Field is the name of the article field the match runs against.
 type Field string
@@ -110,13 +130,13 @@ func Matches(m Match, a models.Article) bool {
 	case OpStartsWith:
 		return strings.HasPrefix(subject, value)
 	case OpMatches:
-		// Validate guarantees this compiles. Recompile here to apply
-		// case-insensitive flag.
+		// Validate guarantees this compiles. The "(?i)" prefix applies the
+		// case-insensitive flag; compiled forms are cached (see reCache).
 		pattern := m.Value
 		if !m.CaseSensitive {
 			pattern = "(?i)" + pattern
 		}
-		re, err := regexp.Compile(pattern)
+		re, err := cachedRegexp(pattern)
 		if err != nil {
 			return false
 		}

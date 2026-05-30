@@ -476,7 +476,7 @@ func TestAdmin_GateOnUserManagement(t *testing.T) {
 	cA := h.login(t, "alice", "p")
 	cR := h.login(t, "root", "p")
 
-	body := map[string]any{"username": "new", "password": "x"}
+	body := map[string]any{"username": "new", "password": "password123"}
 
 	// Non-admin → 403.
 	if code := post(t, cA, h.srv.URL+"/api/users", body, nil); code != http.StatusForbidden {
@@ -495,6 +495,23 @@ func TestAdmin_GateOnUserManagement(t *testing.T) {
 		t.Errorf("anon create user = %d", resp.StatusCode)
 	}
 	resp.Body.Close()
+}
+
+func TestAdmin_CreateUserRejectsWeakPassword(t *testing.T) {
+	h := newHarness(t)
+	h.seedUser(t, "root", "p", true)
+	cR := h.login(t, "root", "p")
+
+	// Under 8 chars → 400 (matches the change-password minimum).
+	weak := map[string]any{"username": "weakling", "password": "short"}
+	if code := post(t, cR, h.srv.URL+"/api/users", weak, nil); code != http.StatusBadRequest {
+		t.Errorf("create user with weak password = %d, want 400", code)
+	}
+	// 8 chars → 201.
+	ok := map[string]any{"username": "stronger", "password": "12345678"}
+	if code := post(t, cR, h.srv.URL+"/api/users", ok, nil); code != http.StatusCreated {
+		t.Errorf("create user with valid password = %d, want 201", code)
+	}
 }
 
 func TestOPMLRoundtrip(t *testing.T) {

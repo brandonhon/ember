@@ -140,15 +140,27 @@ func (s *Store) setStateFlag(ctx context.Context, userID int64, articleIDs []int
 			" = 1 THEN excluded." + timeCol + " ELSE article_state." + timeCol + " END"
 	}
 
+	// Authorization gate: only write state for articles the user is actually
+	// subscribed to. Without the EXISTS check a user could write article_state
+	// rows for any article ID (existence oracle + count pollution). Mirror the
+	// subscription join used by the read paths (GetArticleForUser, MarkAllRead).
+	// The column-list still names a timestamp column even for is_later (timeCol
+	// == ""); read_at is the harmless filler there.
+	// SQLite auto-names VALUES columns column1..columnN; it does not support
+	// the PostgreSQL `AS v(col,...)` alias list, so reference them positionally:
+	// column1=user_id, column2=article_id, column3=flag_val, column4=ts.
 	q := fmt.Sprintf(`
 INSERT INTO article_state (user_id, article_id, %s, %s)
-VALUES %s
+SELECT v.column1, v.column2, v.column3, v.column4
+FROM (VALUES %s) AS v
+WHERE EXISTS (
+	SELECT 1 FROM subscriptions sub
+	JOIN articles a ON a.feed_id = sub.feed_id
+	WHERE a.id = v.column2 AND sub.user_id = v.column1
+)
 ON CONFLICT(user_id, article_id) DO UPDATE SET %s`,
 		flagCol, ifEmpty(timeCol, "read_at"), strings.Join(placeholders, ","), setExpr)
 
-	// When no timestamp column applies (is_later), the column-list above still
-	// needs to insert SOMETHING for the placeholder; use read_at (it stays
-	// NULL via the default ON CONFLICT path).
 	_, err := s.DB.ExecContext(ctx, q, args...)
 	return err
 }
