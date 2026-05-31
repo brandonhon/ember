@@ -616,6 +616,12 @@
   .mobile-drawer.open { transform: translateX(0); }
   @media (max-width: 900px) {
     :global(:root) { --topbar-h: 52px; }
+    /* Hide scrollbars on every scroll container under the mobile breakpoint.
+       Touch scrolling still works; the visible 10px track was eating
+       horizontal space and pushing edge content out of alignment with the
+       16px column gutter. Standard mobile-native behavior. */
+    :global(*) { scrollbar-width: none; }
+    :global(*)::-webkit-scrollbar { display: none; width: 0; height: 0; }
   }
 
   .boot {

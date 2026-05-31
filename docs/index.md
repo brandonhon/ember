@@ -8,7 +8,8 @@ hero:
   text: A reader for people who read.
   tagline: Self-hosted RSS aggregation with an optional on-device LLM and a paper-and-ink interface. One Go binary, one container, one tab.
   image:
-    src: /icon.svg
+    light: /icon.svg
+    dark: /icon-dark.svg
     alt: Ember
   actions:
     - theme: brand

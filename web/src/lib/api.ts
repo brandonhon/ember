@@ -194,6 +194,8 @@ export const api = {
   deleteBoard: (id: number) => call<unknown>("DELETE", `/api/boards/${id}`),
   addToBoard: (boardId: number, articleId: number) =>
     call<unknown>("POST", `/api/boards/${boardId}/articles`, { article_id: articleId }),
+  removeFromBoard: (boardId: number, articleId: number) =>
+    call<unknown>("DELETE", `/api/boards/${boardId}/articles/${articleId}`),
 
   // Shares ------------------------------------------------------------
   createShare: (article_id: number, to_user: number, note?: string) =>

@@ -10,6 +10,8 @@
     setRead,
     showSummary,
     summaryCollapsed,
+    activeView,
+    loadArticles,
   } from "../lib/stores";
   import type { FeedWithCounts } from "../lib/types";
   import { api, ApiError } from "../lib/api";
@@ -199,6 +201,31 @@
       setTimeout(() => (boardMsg = ""), 4000);
     }
   }
+  // Remove the current article from a board. Surfaced in the picker only
+  // when the user is currently viewing that board (the only context where
+  // "remove" is the natural action — outside a board view the picker is for
+  // adding). After success: if the user is on the board's view, reload the
+  // article list so the now-removed article disappears, and clear the
+  // reader selection (otherwise the reader keeps showing an article that's
+  // not in the list above).
+  async function removeFromBoard(boardID: number, boardName: string) {
+    if (!selected) return;
+    showBoardPicker = false;
+    const articleId = selected.id;
+    try {
+      await api.removeFromBoard(boardID, articleId);
+      boardMsg = `Removed from "${boardName}"`;
+      setTimeout(() => (boardMsg = ""), 2400);
+      const v = $activeView;
+      if (v.kind === "board" && v.id === boardID) {
+        selectedArticleId.set(null);
+        void loadArticles(v);
+      }
+    } catch (err) {
+      boardMsg = err instanceof ApiError ? err.message : String(err);
+      setTimeout(() => (boardMsg = ""), 4000);
+    }
+  }
 
   const FAV_COLORS = ["#ff6154", "#0a0a0a", "#e63946", "#1d4ed8", "#623ce6", "#ee0000", "#326ce5", "#111", "#cc0000", "#bb1919"];
   function favColor(feedID: number): string {
@@ -302,6 +329,20 @@
           </button>
           {#if showBoardPicker}
             <div class="board-picker" data-board-picker>
+              {#if $activeView.kind === "board"}
+                {@const curBoardId = $activeView.id}
+                {@const curBoard = $boards.find((x) => x.id === curBoardId)}
+                {#if curBoard}
+                  <button
+                    class="board-picker-remove"
+                    on:click={() => removeFromBoard(curBoard.id, curBoard.name)}
+                    data-testid="picker-board-remove"
+                  >
+                    Remove from "{curBoard.name}"
+                  </button>
+                  <div class="board-picker-sep"></div>
+                {/if}
+              {/if}
               {#if $boards.length === 0}
                 <div class="board-picker-empty">No boards yet. Create one in the sidebar.</div>
               {:else}
@@ -472,8 +513,15 @@
 <style>
   .reader {
     overflow-y: auto;
+    /* Belt-and-braces: even though .article-body caps every descendant at
+       max-width:100%, publishers occasionally inject inline `style="width:Npx"`
+       or `min-width` on wrappers that ignore the cap. overflow-x:hidden on
+       the scroll container guarantees nothing forces sideways scroll on
+       mobile (where horizontal scroll == reading hell). */
+    overflow-x: hidden;
     background: var(--paper);
     min-height: 0;
+    min-width: 0;
   }
   /* Reader column grows with the pane (and gains width when the sidebar
      is collapsed), but caps for readability on very wide displays. Side
@@ -487,22 +535,48 @@
   @media (max-width: 900px) {
     .reader-inner { padding: 16px 16px 80px; }
     .article-h1 { font-size: 24px; }
-    /* Action buttons wrap onto multiple rows instead of overflowing the
-       viewport (which used to clip the red "Original" button into a stub
-       at the top edge). */
+    /* Action buttons grow to fill each row and the rows themselves are
+       centered. flex:1 1 auto on .ra-btn lets each button share row width
+       evenly (so 3 buttons on a row are equal-thirds), and clamp() on the
+       horizontal padding keeps it tight on tiny phones, comfortable on
+       tablets. min-width:0 lets buttons shrink past their intrinsic label
+       width when needed instead of forcing horizontal overflow. */
     .reader-actions {
       flex-wrap: wrap;
-      gap: 4px;
+      justify-content: center;
+      gap: 6px;
       padding: 10px 12px;
       margin: 0 -16px 6px;
       background: var(--paper);
     }
     .reader-actions .ra-btn {
-      font-size: 11.5px;
-      padding: 5px 9px;
+      flex: 1 1 auto;
+      min-width: 0;
+      justify-content: center;
+      padding: 7px clamp(8px, 2vw, 14px);
+      font-size: 12px;
     }
-    /* Don't push the "Original" button to the far right on a wrapped row. */
+    /* .board-wrap is an inline-flex container around a .ra-btn — it has
+       to grow too, otherwise its child can't expand to match siblings. */
+    .reader-actions .board-wrap { flex: 1 1 auto; min-width: 0; }
+    .reader-actions .board-wrap > .ra-btn { width: 100%; }
+    /* Transient status text (extractMsg / boardMsg) should NOT grow — it
+       would otherwise eat a whole row. Pin to content width. */
+    .reader-actions .board-msg,
+    .reader-actions > span[data-msg] { flex: 0 0 auto; }
+    /* Drop the desktop "push Original right" spacer — incompatible with
+       centered wrapped rows. */
     .reader-actions > span[style*="flex:1"] { display: none; }
+    /* Popovers anchored to .board-wrap need to clamp to the viewport once
+       the wrap grows; without the cap a wide .board-wrap on a tablet would
+       let the picker drift past the right edge. */
+    .reader-actions .board-picker,
+    .reader-actions .mute-picker {
+      left: 0;
+      right: auto;
+      min-width: 200px;
+      max-width: calc(100vw - 32px);
+    }
   }
   .reader-actions {
     position: sticky;
@@ -568,6 +642,23 @@
     cursor: pointer;
   }
   .board-picker button:hover { background: var(--line-soft); }
+  /* "Remove from {currentBoard}" — surfaced at the top of the picker when
+     the user is viewing that board. ember-toned (matches destructive
+     accents elsewhere in the app, e.g. .pop-item sign-out) without going
+     full red, to keep the warm editorial palette. */
+  .board-picker .board-picker-remove {
+    color: var(--ember);
+    font-weight: 600;
+  }
+  .board-picker .board-picker-remove:hover {
+    background: var(--ember-wash);
+    color: var(--ember);
+  }
+  .board-picker-sep {
+    height: 1px;
+    background: var(--line-soft);
+    margin: 4px 2px;
+  }
   .board-picker-empty {
     color: var(--ink-faint);
     font-size: 12px;
@@ -885,17 +976,57 @@
     display: block;
     max-width: 100%;
     overflow-x: auto;
+    /* Smooth touch-scroll for the table-only horizontal pane on phones. */
+    -webkit-overflow-scrolling: touch;
   }
   /* Last line of defense: never let any descendant force horizontal scroll
-     on the column itself. */
+     on the column itself. overflow-wrap handles long words inside flowing
+     text; word-break: break-word lets long URLs/identifiers split when no
+     space character is available to break on. */
   .article-body { overflow-wrap: break-word; word-break: break-word; }
   .article-body :global(*) { max-width: 100%; }
+  /* Long anchor text (typical of publishers who use the URL itself as the
+     link label) is the #1 source of horizontal-overflow on phones. */
+  .article-body :global(a) { word-break: break-word; overflow-wrap: anywhere; }
   .article-body :global(code) {
     font-family: ui-monospace, monospace;
     font-size: 0.9em;
     background: var(--line-soft);
     padding: 1px 5px;
     border-radius: 4px;
+    /* Inline <code> tokens are often long identifiers — let them break so
+       they don't push the column wider than the viewport. */
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+  /* Code blocks: scroll horizontally inside the block instead of forcing
+     the page to scroll. white-space: pre preserves indentation/formatting
+     that wrapping would destroy. */
+  .article-body :global(pre) {
+    max-width: 100%;
+    overflow-x: auto;
+    white-space: pre;
+    background: var(--line-soft);
+    padding: 12px 14px;
+    border-radius: 8px;
+    font-size: 0.92em;
+    -webkit-overflow-scrolling: touch;
+  }
+  .article-body :global(pre code) {
+    background: transparent;
+    padding: 0;
+    word-break: normal;
+    overflow-wrap: normal;
+  }
+  /* Some publishers wrap embeds (Twitter, YouTube, iframes) in containers
+     with hardcoded inline pixel widths. Force them back into the column. */
+  .article-body :global(iframe) { width: 100%; }
+
+  @media (max-width: 720px) {
+    .article-body { font-size: 16px; }
+    /* Tighten the hero/AI summary visuals so they don't dominate a phone
+       viewport. */
+    .article-body :global(figure) { margin: 14px -4px; }
   }
 
   .reader-empty {
