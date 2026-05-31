@@ -209,61 +209,67 @@
       style="display:none"
       data-testid="opml-input"
     />
-    <button
-      class="icon-btn"
-      title={$sidebarCollapsed ? "Show sidebar" : "Hide sidebar"}
-      on:click={() => {
-        sidebarCollapsed.update((v) => !v);
-        try { localStorage.setItem("ember:sidebar", $sidebarCollapsed ? "closed" : "open"); } catch {}
-      }}
-      data-testid="toggle-sidebar"
-    >
-      {#if $sidebarCollapsed}
+    {#if !mobile}
+      <button
+        class="icon-btn"
+        title={$sidebarCollapsed ? "Show sidebar" : "Hide sidebar"}
+        on:click={() => {
+          sidebarCollapsed.update((v) => !v);
+          try { localStorage.setItem("ember:sidebar", $sidebarCollapsed ? "closed" : "open"); } catch {}
+        }}
+        data-testid="toggle-sidebar"
+      >
+        {#if $sidebarCollapsed}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="16" rx="2" />
+            <path d="M9 4v16" />
+            <path d="M14 12l3-3M14 12l3 3" />
+          </svg>
+        {:else}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="16" rx="2" />
+            <path d="M9 4v16" />
+          </svg>
+        {/if}
+      </button>
+      <button
+        class="icon-btn"
+        title="Refresh feeds now"
+        on:click={refreshAll}
+        class:spinning={polling}
+      >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="4" width="18" height="16" rx="2" />
-          <path d="M9 4v16" />
-          <path d="M14 12l3-3M14 12l3 3" />
+          <path d="M21 12a9 9 0 1 1-3-6.7L21 8" />
+          <path d="M21 3v5h-5" />
         </svg>
-      {:else}
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="4" width="18" height="16" rx="2" />
-          <path d="M9 4v16" />
-        </svg>
-      {/if}
-    </button>
-    <button
-      class="icon-btn"
-      title="Refresh feeds now"
-      on:click={refreshAll}
-      class:spinning={polling}
-    >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M21 12a9 9 0 1 1-3-6.7L21 8" />
-        <path d="M21 3v5h-5" />
-      </svg>
-    </button>
-    <button class="icon-btn" title="Toggle theme" on:click={toggleTheme}>
-      {#if $theme === "dark"}
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="4" />
-          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
-        </svg>
-      {:else}
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
-        </svg>
-      {/if}
-    </button>
+      </button>
+      <button class="icon-btn" title="Toggle theme" on:click={toggleTheme}>
+        {#if $theme === "dark"}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+          </svg>
+        {:else}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
+          </svg>
+        {/if}
+      </button>
+    {/if}
     <button
       class="user-chip"
+      class:icon-only={mobile}
       on:click={() => (popoverOpen = !popoverOpen)}
       data-user-chip
+      aria-label={mobile ? "Account menu" : undefined}
     >
       {#if $user}
         <span class="avatar">{initials($user.username)}</span>
-        <span class="who">
-          {$user.username}<small>{$user.is_admin ? "Administrator" : "Reader"}</small>
-        </span>
+        {#if !mobile}
+          <span class="who">
+            {$user.username}<small>{$user.is_admin ? "Administrator" : "Reader"}</small>
+          </span>
+        {/if}
       {/if}
     </button>
   </div>
@@ -289,6 +295,30 @@
           <div class="pop-mail">{$user?.email || "—"}</div>
         </div>
       </div>
+      {#if mobile}
+        <button
+          class="pop-item"
+          on:click={() => { popoverOpen = false; void refreshAll(); }}
+          data-testid="mobile-refresh"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8" /><path d="M21 3v5h-5" /></svg>
+          Refresh feeds
+        </button>
+        <button
+          class="pop-item"
+          on:click={() => { popoverOpen = false; toggleTheme(); }}
+          data-testid="mobile-theme"
+        >
+          {#if $theme === "dark"}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" /></svg>
+            Switch to light
+          {:else}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" /></svg>
+            Switch to dark
+          {/if}
+        </button>
+        <div class="pop-sep"></div>
+      {/if}
       <button
         class="pop-item"
         on:click={() => {
@@ -341,10 +371,12 @@
     padding-right: 18px;
   }
   .topbar.mobile {
-    /* Three slots: nav icon, brand (collapses), search. The brand text gets
-       hidden entirely below ~520px so the search input gets enough room to
-       show a real placeholder. */
-    grid-template-columns: auto auto 1fr;
+    /* Four slots: nav icon | brand (collapses ≤520) | search 1fr | actions
+       auto. Without the trailing `auto` column the .topbar-actions div
+       (now containing only the user-chip on mobile) would wrap to an
+       implicit row 2 — that's the bug where the avatar appeared below the
+       search bar instead of beside it. */
+    grid-template-columns: auto auto 1fr auto;
     gap: 6px;
     padding-right: 8px;
   }
@@ -365,6 +397,11 @@
   }
   .topbar.mobile .search .kbd { display: none; }
   @media (max-width: 520px) {
+    .topbar.mobile {
+      /* No brand column at this width — collapse the grid so an empty
+         auto column doesn't add a 6px gap. Three slots only. */
+      grid-template-columns: auto 1fr auto;
+    }
     .topbar.mobile .brand { display: none; }
   }
   .mobile-icon-btn {
@@ -471,6 +508,11 @@
     transition: border-color 0.15s;
   }
   .user-chip:hover { border-color: var(--ink-faint); }
+  .user-chip.icon-only {
+    padding: 2px;
+    border-radius: 50%;
+  }
+  .user-chip.icon-only .avatar { width: 32px; height: 32px; }
   .avatar {
     width: 28px;
     height: 28px;
@@ -488,7 +530,7 @@
   .popover {
     position: absolute;
     top: calc(var(--topbar-h) - 4px);
-    right: 18px;
+    right: 8px;
     /* Above ShortcutHelp / Settings / WelcomeModal backdrops (z-index 100)
        so the user can always reach Settings from the chip menu, even if
        another modal is somehow open. */

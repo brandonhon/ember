@@ -44,6 +44,51 @@
   type Section = "profile" | "passkeys" | "preferences" | "stats" | "digest" | "mobile" | "filters" | "users" | "starter" | "llm" | "branding" | "database" | "session" | "email" | "about";
   let section = $state<Section>("profile");
 
+  // Mobile detection (matches App.svelte's 900px breakpoint). On mobile the
+  // settings modal switches to a drill-down: section list → section detail.
+  // sectionPicked tracks whether the user has tapped into a section yet.
+  let isMobile = $state(
+    typeof window !== "undefined" && window.matchMedia?.("(max-width: 900px)").matches
+  );
+  let sectionPicked = $state(false);
+  $effect(() => {
+    if (typeof window === "undefined") return;
+    const m = window.matchMedia("(max-width: 900px)");
+    const handler = (e: MediaQueryListEvent) => {
+      isMobile = e.matches;
+      if (!e.matches) sectionPicked = false;
+    };
+    m.addEventListener("change", handler);
+    return () => m.removeEventListener("change", handler);
+  });
+  function pickSection(s: Section) {
+    section = s;
+    if (isMobile) sectionPicked = true;
+  }
+  function mobileBackToList() { sectionPicked = false; }
+
+  // Human-readable label for the active section, used in the mobile drill-down
+  // header. Keeps in sync with the nav button text.
+  const sectionLabel = $derived.by((): string => {
+    switch (section) {
+      case "profile": return "Profile";
+      case "passkeys": return "Passkeys";
+      case "preferences": return "Preferences";
+      case "mobile": return "Mobile clients";
+      case "filters": return "Filters";
+      case "stats": return "Reading stats";
+      case "digest": return "Daily digest";
+      case "starter": return "Starter packs";
+      case "llm": return "Language model";
+      case "branding": return "Branding";
+      case "database": return "Database";
+      case "session": return "Sessions";
+      case "email": return "Email / SMTP";
+      case "users": return "Users";
+      case "about": return "About";
+    }
+  });
+
   // Daily digest state -------------------------------------------------
   let digest = $state<UserDigest | null>(null);
   let digestErr = $state("");
@@ -776,31 +821,38 @@
   on:click={onCloseAll}
   data-testid="settings"
 >
-  <div class="modal" on:click|stopPropagation>
+  <div class="modal" class:mobile={isMobile} on:click|stopPropagation>
     <header>
-      <h2 id="settings-title">Settings</h2>
+      {#if isMobile && sectionPicked}
+        <button class="back-btn" on:click={mobileBackToList} aria-label="Back to settings menu" data-testid="settings-back">
+          <svg viewBox="0 0 24 24" width="22" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <h2 id="settings-title">{sectionLabel}</h2>
+      {:else}
+        <h2 id="settings-title">Settings</h2>
+      {/if}
       <button class="close" on:click={onCloseAll} aria-label="Close">×</button>
     </header>
 
-    <div class="layout">
+    <div class="layout" data-view={isMobile ? (sectionPicked ? "detail" : "list") : "split"}>
       <nav class="nav" aria-label="Settings sections">
-        <button class:active={section === "profile"} on:click={() => (section = "profile")} data-testid="settings-profile">Profile</button>
-        <button class:active={section === "passkeys"} on:click={() => (section = "passkeys")} data-testid="settings-passkeys">Passkeys</button>
-        <button class:active={section === "preferences"} on:click={() => (section = "preferences")}>Preferences</button>
-        <button class:active={section === "mobile"} on:click={() => (section = "mobile")}>Mobile clients</button>
-        <button class:active={section === "filters"} on:click={() => (section = "filters")}>Filters</button>
-        <button class:active={section === "stats"} on:click={() => (section = "stats")} data-testid="settings-stats">Reading stats</button>
-        <button class:active={section === "digest"} on:click={() => (section = "digest")} data-testid="settings-digest">Daily digest</button>
-        <button class:active={section === "starter"} on:click={() => (section = "starter")} data-testid="settings-starter">Starter packs</button>
+        <button class:active={section === "profile"} on:click={() => pickSection("profile")} data-testid="settings-profile">Profile</button>
+        <button class:active={section === "passkeys"} on:click={() => pickSection("passkeys")} data-testid="settings-passkeys">Passkeys</button>
+        <button class:active={section === "preferences"} on:click={() => pickSection("preferences")}>Preferences</button>
+        <button class:active={section === "mobile"} on:click={() => pickSection("mobile")}>Mobile clients</button>
+        <button class:active={section === "filters"} on:click={() => pickSection("filters")}>Filters</button>
+        <button class:active={section === "stats"} on:click={() => pickSection("stats")} data-testid="settings-stats">Reading stats</button>
+        <button class:active={section === "digest"} on:click={() => pickSection("digest")} data-testid="settings-digest">Daily digest</button>
+        <button class:active={section === "starter"} on:click={() => pickSection("starter")} data-testid="settings-starter">Starter packs</button>
         {#if $user?.is_admin}
-          <button class:active={section === "llm"} on:click={() => (section = "llm")} data-testid="settings-llm">Language model</button>
-          <button class:active={section === "branding"} on:click={() => (section = "branding")} data-testid="settings-branding">Branding</button>
-          <button class:active={section === "database"} on:click={() => (section = "database")} data-testid="settings-database">Database</button>
-          <button class:active={section === "session"} on:click={() => (section = "session")} data-testid="settings-session">Sessions</button>
-          <button class:active={section === "email"} on:click={() => (section = "email")} data-testid="settings-email">Email / SMTP</button>
-          <button class:active={section === "users"} on:click={() => (section = "users")} data-testid="settings-users">Users</button>
+          <button class:active={section === "llm"} on:click={() => pickSection("llm")} data-testid="settings-llm">Language model</button>
+          <button class:active={section === "branding"} on:click={() => pickSection("branding")} data-testid="settings-branding">Branding</button>
+          <button class:active={section === "database"} on:click={() => pickSection("database")} data-testid="settings-database">Database</button>
+          <button class:active={section === "session"} on:click={() => pickSection("session")} data-testid="settings-session">Sessions</button>
+          <button class:active={section === "email"} on:click={() => pickSection("email")} data-testid="settings-email">Email / SMTP</button>
+          <button class:active={section === "users"} on:click={() => pickSection("users")} data-testid="settings-users">Users</button>
         {/if}
-        <button class:active={section === "about"} on:click={() => (section = "about")}>About</button>
+        <button class:active={section === "about"} on:click={() => pickSection("about")}>About</button>
       </nav>
 
       <div class="content">
@@ -1749,6 +1801,7 @@
     grid-template-columns: 180px 1fr;
     flex: 1;
     overflow: hidden;
+    min-width: 0;
   }
   .nav {
     background: var(--paper-2);
@@ -1776,7 +1829,73 @@
     color: var(--ember);
     font-weight: 600;
   }
-  .content { padding: 22px 26px; overflow-y: auto; }
+  .content { padding: 22px 26px; overflow-y: auto; min-width: 0; }
+
+  /* Mobile (≤900px): full-screen takeover with drill-down navigation.
+     The 180px+1fr grid would crush both columns on a phone, so the modal
+     becomes single-pane: show .nav OR .content, never both. Driven by
+     data-view on .layout. The drilled-in section gets a back chevron in
+     the header (rendered in JSX). */
+  .modal.mobile {
+    width: 100%;
+    height: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+    border: 0;
+  }
+  .modal.mobile header {
+    padding: 14px 16px;
+    gap: 6px;
+  }
+  .modal.mobile .back-btn {
+    background: transparent;
+    border: 0;
+    padding: 6px 8px;
+    margin-right: 2px;
+    color: var(--ink);
+    display: grid;
+    place-items: center;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .modal.mobile .back-btn:hover { background: var(--line-soft); }
+  .modal.mobile h2 { font-size: 18px; flex: 1; }
+  .modal.mobile .layout { grid-template-columns: 1fr; }
+  .modal.mobile .layout[data-view="list"] .content,
+  .modal.mobile .layout[data-view="detail"] .nav { display: none; }
+  .modal.mobile .layout[data-view="list"] .nav {
+    border-right: 0;
+    padding: 8px 8px 24px;
+    background: var(--card);
+  }
+  .modal.mobile .nav button {
+    padding: 14px 16px;
+    font-size: 15px;
+    border-radius: 10px;
+    /* Subtle chevron at the right edge so the affordance reads as "tap to
+       open a sub-screen", matching the iOS-style drill-down. */
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23847a68' stroke-width='2'><path d='M9 6l6 6-6 6'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    background-size: 14px 14px;
+    padding-right: 36px;
+  }
+  .modal.mobile .nav button.active {
+    /* On mobile, "active" only matters momentarily before the detail view
+       slides in — keep it subtle so it doesn't read as a permanent state. */
+    background-color: var(--ember-wash);
+  }
+  .modal.mobile .content { padding: 18px 16px 48px; }
+
+  /* Form scaffolding — collapse two-column grids and side-by-side rows so
+     fields stop overflowing the screen on a phone. */
+  @media (max-width: 600px) {
+    .row { flex-direction: column; gap: 8px; }
+    /* The inline form-grid at L1577 uses style="grid-template-columns:1fr 1fr"
+       — override via attribute selector since we can't edit the style attr
+       from here without touching every form section. */
+    [style*="grid-template-columns:1fr 1fr"] { grid-template-columns: 1fr !important; }
+  }
 
   h3 {
     font-family: var(--font-display);
