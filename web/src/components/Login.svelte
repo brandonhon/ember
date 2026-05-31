@@ -219,11 +219,24 @@
     color: var(--ember-soft);
   }
   .message p {
-    color: rgba(246, 242, 233, 0.6);
+    /* Was rgba(...,0.6) — too soft against --ink on narrow viewports where
+       the panel is still visible (e.g. phone landscape between 800 and
+       1100px). 0.82 keeps the "subdued tagline" look without forcing
+       readers to squint. */
+    color: rgba(246, 242, 233, 0.82);
     max-width: 38ch;
     line-height: 1.6;
     margin-top: 18px;
-    font-size: 13.5px;
+    font-size: 15px;
+  }
+  @media (max-width: 1100px) {
+    /* Between the 800px panel-hide breakpoint and ~1100px the brand panel
+       shares the screen with the form card and gets narrow — the H1 and
+       tagline crowd each other. Tighten padding and bump body text so the
+       tagline stays legible on phone-landscape and small tablets. */
+    .login-brand { padding: 36px 32px; }
+    .message h1 { font-size: clamp(30px, 5vw, 44px); }
+    .message p { font-size: 15.5px; line-height: 1.55; }
   }
 
   .foot {
