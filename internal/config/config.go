@@ -47,6 +47,13 @@ type Config struct {
 	SMTPPassword string
 	SMTPFrom     string
 	SMTPStartTLS bool
+	// Email inbox (inbound newsletter feature). When EmailDomain is
+	// empty the SMTP listener doesn't start and the inbox endpoints
+	// return enabled=false. EmailListenAddr defaults to :2525; operators
+	// fronting the bind via Caddy / haproxy can pick another port.
+	EmailDomain     string
+	EmailListenAddr string
+	EmailMaxBytes   int64
 	// PublicURL is the canonical scheme://host[:port] users hit the app on.
 	// Required for WebAuthn registration so the RP ID + origin can be set.
 	// Optional otherwise.
@@ -251,6 +258,23 @@ func loadFrom(get func(string) string) (Config, error) {
 			errs = append(errs, fmt.Sprintf("EMBER_SMTP_STARTTLS %v", err))
 		} else {
 			cfg.SMTPStartTLS = on
+		}
+	}
+	// Inbound email-inbox feature.
+	if v := get("EMBER_EMAIL_DOMAIN"); v != "" {
+		cfg.EmailDomain = v
+	}
+	cfg.EmailListenAddr = ":2525"
+	if v := get("EMBER_EMAIL_LISTEN_ADDR"); v != "" {
+		cfg.EmailListenAddr = v
+	}
+	cfg.EmailMaxBytes = 25 * 1024 * 1024
+	if v := get("EMBER_EMAIL_MAX_BYTES"); v != "" {
+		n, err := strconv.ParseInt(v, 10, 64)
+		if err != nil || n <= 0 {
+			errs = append(errs, "EMBER_EMAIL_MAX_BYTES invalid")
+		} else {
+			cfg.EmailMaxBytes = n
 		}
 	}
 
