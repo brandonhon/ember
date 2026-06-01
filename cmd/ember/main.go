@@ -235,7 +235,7 @@ func run() error {
 		// VAPID subject contact — fall back to SMTPFrom (operator already
 		// configured it as a deliverability contact for outbound email).
 		// Empty falls through to NewNotifier's localhost default + warn.
-		pushNotifier = push.NewNotifier(keys, cfg.SMTPFrom, st, logger)
+		pushNotifier = push.NewNotifier(keys, cfg.SMTPFrom, st, logger, cfg.AllowPrivateURLs)
 		logger.Info("push notifications enabled")
 	}
 

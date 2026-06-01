@@ -5,6 +5,7 @@ import (
 
 	"github.com/brandonhon/ember/internal/auth"
 	"github.com/brandonhon/ember/internal/push"
+	"github.com/brandonhon/ember/internal/urlcheck"
 )
 
 // handleGetVapidKey returns the public VAPID key the SPA needs to call
@@ -38,6 +39,14 @@ func (d *Dependencies) handleCreatePushSubscription(w http.ResponseWriter, r *ht
 	}
 	if req.Endpoint == "" || req.P256dh == "" || req.Auth == "" {
 		writeError(w, http.StatusBadRequest, "bad_request", "endpoint, p256dh, auth required")
+		return
+	}
+	// SSRF guard: the endpoint is fetched server-side on every push fan-out,
+	// so a malicious value (e.g. http://169.254.169.254/...) would let an
+	// authenticated user probe internal services. Reject private/loopback
+	// targets at registration; redirects are re-checked by the push client.
+	if err := urlcheck.Check(r.Context(), req.Endpoint, d.AllowPrivateURLs); err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", "endpoint rejected: "+err.Error())
 		return
 	}
 	id, err := d.Store.CreatePushSubscription(r.Context(), u.ID, req.Endpoint, req.P256dh, req.Auth, req.UserAgent)
