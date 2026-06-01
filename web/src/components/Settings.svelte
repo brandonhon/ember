@@ -13,7 +13,7 @@
     refreshBranding,
   } from "../lib/stores";
   import { api, ApiError, type StarterPack, type StarterImportResult, type LLMStatus, type DBStatus, type UserStats, type UserDigest, type PasskeySummary } from "../lib/api";
-  import type { PushSubscriptionSummary } from "../lib/types";
+  import type { PushSubscriptionSummary, EmailInbox } from "../lib/types";
   import { createPasskey, passkeySupported } from "../lib/passkey";
   import { enablePush, pushSupported } from "../lib/push";
   import { onMount } from "svelte";
@@ -43,7 +43,7 @@
 
   let { onClose }: { onClose: () => void } = $props();
 
-  type Section = "profile" | "passkeys" | "notifications" | "preferences" | "stats" | "digest" | "mobile" | "filters" | "users" | "starter" | "import" | "llm" | "branding" | "database" | "session" | "email" | "about";
+  type Section = "profile" | "inbox" | "passkeys" | "notifications" | "preferences" | "stats" | "digest" | "mobile" | "filters" | "users" | "starter" | "import" | "llm" | "branding" | "database" | "session" | "email" | "about";
   let section = $state<Section>("profile");
 
   // Mobile detection (matches App.svelte's 900px breakpoint). On mobile the
@@ -173,6 +173,7 @@
       case "profile": return "Profile";
       case "passkeys": return "Passkeys";
       case "notifications": return "Notifications";
+      case "inbox": return "Email inbox";
       case "preferences": return "Preferences";
       case "mobile": return "Mobile clients";
       case "filters": return "Filters";
@@ -549,6 +550,45 @@
     return (bytes / (1024 * 1024)).toFixed(0) + " MiB";
   }
 
+  // Email inbox state ------------------------------------------------
+  let inbox = $state<EmailInbox | null>(null);
+  let inboxErr = $state("");
+  let inboxMsg = $state("");
+  let inboxBusy = $state(false);
+  async function loadInbox() {
+    inboxErr = "";
+    try {
+      const res = await api.getInbox();
+      inbox = res.data ?? null;
+    } catch (e) {
+      inboxErr = e instanceof ApiError ? e.message : String(e);
+    }
+  }
+  async function copyInboxAddress() {
+    if (!inbox?.address) return;
+    try {
+      await navigator.clipboard.writeText(inbox.address);
+      inboxMsg = "Address copied to clipboard.";
+      setTimeout(() => (inboxMsg = ""), 2500);
+    } catch (e) {
+      inboxErr = e instanceof Error ? e.message : String(e);
+    }
+  }
+  async function onRotateInbox() {
+    inboxErr = "";
+    inboxBusy = true;
+    try {
+      const res = await api.rotateInbox();
+      inbox = res.data ?? inbox;
+      inboxMsg = "New address generated. Old address still works for 7 days.";
+      setTimeout(() => (inboxMsg = ""), 4000);
+    } catch (e) {
+      inboxErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      inboxBusy = false;
+    }
+  }
+
   // Push notifications state ----------------------------------------
   const canPush = pushSupported();
   let pushSubs = $state<PushSubscriptionSummary[]>([]);
@@ -675,6 +715,7 @@
     if (section === "digest") void loadDigest();
     if (section === "passkeys") void loadPasskeys();
     if (section === "notifications") void loadPushSubs();
+    if (section === "inbox") void loadInbox();
   });
 
   // Admin session TTL ------------------------------------------------
@@ -998,6 +1039,7 @@
           <button class:active={section === "profile"} on:click={() => pickSection("profile")} data-testid="settings-profile">Profile</button>
           <button class:active={section === "passkeys"} on:click={() => pickSection("passkeys")} data-testid="settings-passkeys">Passkeys</button>
           <button class:active={section === "notifications"} on:click={() => pickSection("notifications")} data-testid="settings-notifications">Notifications</button>
+          <button class:active={section === "inbox"} on:click={() => pickSection("inbox")} data-testid="settings-inbox">Email inbox</button>
         </div>
         <div class="nav-group">
           <div class="nav-label">Reading</div>
@@ -1127,6 +1169,45 @@
                 {/each}
               </ul>
             {/if}
+          {/if}
+        {/if}
+
+        {#if section === "inbox"}
+          <h3>Email inbox</h3>
+          <p class="hint">
+            Each user gets a unique address. Mail sent to it lands in a
+            "Newsletters" feed — useful for Substack, Beehiiv, or any
+            newsletter that doesn't expose an RSS feed.
+          </p>
+          {#if inbox && !inbox.enabled}
+            <div class="hint">
+              The administrator hasn't configured an email domain
+              (<code>EMBER_EMAIL_DOMAIN</code>). See
+              <a href="/docs/email-inbox" target="_blank" rel="noopener noreferrer">the setup docs</a>.
+            </div>
+          {:else if inbox && inbox.address}
+            <div class="kv" style="grid-template-columns: 1fr auto;">
+              <dt>Your address</dt>
+              <dd>
+                <code data-testid="inbox-address">{inbox.address}</code>
+              </dd>
+            </div>
+            <div class="actions" style="margin-top: 12px;">
+              <button on:click={copyInboxAddress} data-testid="inbox-copy">Copy address</button>
+              <button class="ghost" on:click={onRotateInbox} disabled={inboxBusy} data-testid="inbox-rotate">
+                {inboxBusy ? "Rotating…" : "Rotate address"}
+              </button>
+            </div>
+            {#if inboxErr}<p class="error" data-testid="inbox-err">{inboxErr}</p>{/if}
+            {#if inboxMsg}<p class="ok" data-testid="inbox-msg">{inboxMsg}</p>{/if}
+            <p class="hint" style="margin-top: 14px;">
+              Sign up for a newsletter using this address. New issues
+              show up in the Newsletters feed within seconds of arrival.
+              Rotate the address if it gets sold or leaked — the old
+              address keeps working for 7 days.
+            </p>
+          {:else}
+            <p class="hint">Loading…</p>
           {/if}
         {/if}
 

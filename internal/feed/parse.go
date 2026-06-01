@@ -160,7 +160,7 @@ func resolveLink(base *url.URL, ref string) string {
 
 // HTMLToText returns a plain-text representation of an HTML fragment,
 // extracting text nodes only. Exported for ingest paths that store a text
-// rendering alongside the HTML body (e.g. the TT-RSS import).
+// rendering alongside the HTML body (e.g. the TT-RSS import, email inbox).
 func HTMLToText(s string) string { return htmlToText(s) }
 
 // htmlToText returns a plain-text representation of an HTML fragment by
