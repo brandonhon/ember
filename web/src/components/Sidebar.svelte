@@ -42,6 +42,11 @@
   let collapsedCategories = $state<Record<number, boolean>>({});
   let collapsedUncategorized = $state(false);
   let addFormOpen = $state(false);
+  // Cursor jumps into the URL field the moment the add-feed form expands —
+  // saves a click for the common case (user clicked "Add feed" because
+  // they want to paste a URL right now).
+  let addFeedInputEl: HTMLInputElement | undefined = $state();
+  $effect(() => { if (addFormOpen) addFeedInputEl?.focus(); });
   let addingFeed = $state(false);
   let newFeedURL = $state("");
   let addError = $state("");
@@ -723,6 +728,7 @@
           <input
             type="url"
             bind:value={newFeedURL}
+            bind:this={addFeedInputEl}
             placeholder="https://example.com/feed.xml"
             disabled={addingFeed}
             data-testid="add-feed-input"
