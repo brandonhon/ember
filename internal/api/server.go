@@ -10,6 +10,7 @@ import (
 
 	"github.com/brandonhon/ember/internal/auth"
 	"github.com/brandonhon/ember/internal/opml"
+	"github.com/brandonhon/ember/internal/push"
 	"github.com/brandonhon/ember/internal/store"
 	"github.com/brandonhon/ember/internal/summarize"
 )
@@ -73,6 +74,9 @@ type Dependencies struct {
 	// first-ingest backlog window. The poller resolves the live value by
 	// preferring an app_settings row over this fallback.
 	InitialBacklogHoursFallback int
+	// Push fans out Web Push notifications. Nil disables the feature
+	// (the /api/me/push-* endpoints return 503).
+	Push *push.Notifier
 }
 
 // backgroundCtx returns d.BackgroundCtx or context.Background if unset.
@@ -212,6 +216,13 @@ func NewRouter(d Dependencies) http.Handler {
 		r.With(d.Auth.RequireAuth).Get("/articles", d.handleListArticles)
 		r.With(d.Auth.RequireAuth).Get("/articles/{id}", d.handleGetArticle)
 		r.With(d.Auth.RequireAuth).Get("/articles/{id}/cluster", d.handleGetArticleCluster)
+		// Web Push (VAPID) — public key fetch, subscription CRUD, test send.
+		// All 503 if d.Push is nil. See internal/push.
+		r.With(d.Auth.RequireAuth).Get("/me/push-vapid-public-key", d.handleGetVapidKey)
+		r.With(d.Auth.RequireAuth).Get("/me/push-subscriptions", d.handleListPushSubscriptions)
+		r.With(d.Auth.RequireAuth).Post("/me/push-subscriptions", d.handleCreatePushSubscription)
+		r.With(d.Auth.RequireAuth).Delete("/me/push-subscriptions/{id}", d.handleDeletePushSubscription)
+		r.With(d.Auth.RequireAuth).Post("/me/push-subscriptions/test", d.handleTestPushNotification)
 		r.With(d.Auth.RequireAuth).Post("/articles/read", d.handleSetRead)
 		r.With(d.Auth.RequireAuth).Post("/articles/star", d.handleSetStar)
 		r.With(d.Auth.RequireAuth).Post("/articles/later", d.handleSetLater)
