@@ -95,6 +95,12 @@ type Article struct {
 	// empty. Drives the cross-feed dedup join and identifies the "this
 	// article also appears in N other feeds" sibling set.
 	ClusterID string `json:"-"`
+	// TitleFingerprint is a normalized form of Title used for soft
+	// clustering when canonical URLs differ but headlines match (typical
+	// wire-story syndication). Empty for titles that are too short /
+	// generic to be reliable cluster keys (e.g. "Re:", "News update").
+	// Internal only; never exposed via the API.
+	TitleFingerprint string `json:"-"`
 }
 
 // ArticleState is per-user read/star/later state for an article.

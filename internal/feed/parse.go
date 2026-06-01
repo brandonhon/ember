@@ -125,6 +125,10 @@ func normalizeItem(it *gofeed.Item, feedID int64, base *url.URL) models.Article 
 	// same value and get falsely clustered.
 	a.CanonicalURL = CanonicalURL(a.URL)
 	a.ClusterID = ClusterID(a.CanonicalURL)
+	// Title fingerprint: secondary dedup signal for syndicated wire stories
+	// that get republished under different URLs. Empty for too-short /
+	// generic titles so they don't false-cluster.
+	a.TitleFingerprint = TitleFingerprint(a.Title)
 	return a
 }
 
