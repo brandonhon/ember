@@ -9,13 +9,15 @@ import (
 	"github.com/brandonhon/ember/internal/feed"
 )
 
-// BackfillClusters populates canonical_url and cluster_id for articles
-// that were inserted before the 0013_dedup_canonical migration. Walks
-// rows in batches so a large historical corpus doesn't block startup.
+// BackfillClusters populates canonical_url, cluster_id, and
+// title_fingerprint for articles that were inserted before the 0013 /
+// 0014 dedup migrations. Walks rows in batches so a large historical
+// corpus doesn't block startup.
 //
-// Idempotent: rows that already have a cluster_id are skipped. Safe to
-// call on every boot — once the corpus is fully backfilled it's a
-// no-op single SELECT.
+// Idempotent: rows with both cluster_id (or marker for URL-less rows) AND
+// title_fingerprint (or empty for untitled rows) are skipped. Safe to
+// call on every boot — once the corpus is fully backfilled it's a no-op
+// single SELECT.
 //
 // Returns the total number of rows updated.
 func (s *Store) BackfillClusters(ctx context.Context, batchSize int) (int, error) {
@@ -27,27 +29,32 @@ func (s *Store) BackfillClusters(ctx context.Context, batchSize int) (int, error
 		if err := ctx.Err(); err != nil {
 			return total, err
 		}
-		// Pick a batch of empty-cluster rows. We could ORDER BY id but
-		// the cluster_id index is partial and the unscanned rows are
-		// effectively random — order doesn't matter for correctness and
-		// adding it would force a table scan for sort.
+		// Pick a batch of rows missing either dedup column. The cluster_id
+		// fill covers URL-bearing rows; the title_fingerprint fill covers
+		// every row with a non-empty title. A row missing both gets both
+		// in the same UPDATE.
 		rows, err := s.DB.QueryContext(ctx, `
-			SELECT id, IFNULL(url,'')
+			SELECT id, IFNULL(url,''), IFNULL(title,''),
+			       IFNULL(cluster_id,''), IFNULL(title_fingerprint,'')
 			FROM articles
-			WHERE cluster_id = '' AND IFNULL(url,'') <> ''
+			WHERE (cluster_id = '' AND IFNULL(url,'') <> '')
+			   OR (title_fingerprint = '' AND IFNULL(title,'') <> '')
 			LIMIT ?`, batchSize)
 		if err != nil {
 			return total, fmt.Errorf("backfill clusters: select: %w", err)
 		}
 
 		type row struct {
-			id  int64
-			url string
+			id           int64
+			url          string
+			title        string
+			curCluster   string
+			curFingerprint string
 		}
 		var batch []row
 		for rows.Next() {
 			var r row
-			if err := rows.Scan(&r.id, &r.url); err != nil {
+			if err := rows.Scan(&r.id, &r.url, &r.title, &r.curCluster, &r.curFingerprint); err != nil {
 				rows.Close()
 				return total, fmt.Errorf("backfill clusters: scan: %w", err)
 			}
@@ -65,7 +72,10 @@ func (s *Store) BackfillClusters(ctx context.Context, batchSize int) (int, error
 		if err != nil {
 			return total, fmt.Errorf("backfill clusters: begin tx: %w", err)
 		}
-		stmt, err := tx.PrepareContext(ctx, `UPDATE articles SET canonical_url = ?, cluster_id = ? WHERE id = ?`)
+		stmt, err := tx.PrepareContext(ctx, `
+			UPDATE articles
+			SET canonical_url = ?, cluster_id = ?, title_fingerprint = ?
+			WHERE id = ?`)
 		if err != nil {
 			_ = tx.Rollback()
 			return total, fmt.Errorf("backfill clusters: prepare: %w", err)
@@ -73,14 +83,14 @@ func (s *Store) BackfillClusters(ctx context.Context, batchSize int) (int, error
 		for _, r := range batch {
 			canon := feed.CanonicalURL(r.url)
 			cid := feed.ClusterID(canon)
-			if cid == "" {
+			if cid == "" && r.url != "" {
 				// URL parsed to empty canonical — set cluster_id to a
 				// stable marker so we don't pick this row up next pass.
-				// Using the raw URL preserves uniqueness.
 				cid = feed.ClusterID(r.url)
 				canon = r.url
 			}
-			if _, err := stmt.ExecContext(ctx, canon, cid, r.id); err != nil {
+			fp := feed.TitleFingerprint(r.title)
+			if _, err := stmt.ExecContext(ctx, canon, cid, fp, r.id); err != nil {
 				stmt.Close()
 				_ = tx.Rollback()
 				return total, fmt.Errorf("backfill clusters: update id=%d: %w", r.id, err)
@@ -91,8 +101,6 @@ func (s *Store) BackfillClusters(ctx context.Context, batchSize int) (int, error
 			return total, fmt.Errorf("backfill clusters: commit: %w", err)
 		}
 		total += len(batch)
-		// If we got less than a full batch, we're done. Avoids one extra
-		// empty SELECT at the end.
 		if len(batch) < batchSize {
 			return total, nil
 		}
