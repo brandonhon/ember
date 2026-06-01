@@ -8,8 +8,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/brandonhon/ember/internal/models"
 )
@@ -37,10 +40,14 @@ func cachedRegexp(pattern string) (*regexp.Regexp, error) {
 type Field string
 
 const (
-	FieldTitle   Field = "title"
-	FieldContent Field = "content"
-	FieldAuthor  Field = "author"
-	FieldURL     Field = "url"
+	FieldTitle       Field = "title"
+	FieldContent     Field = "content"
+	FieldAuthor      Field = "author"
+	FieldURL         Field = "url"
+	FieldFeedID      Field = "feed_id"      // numeric: equals
+	FieldTags        Field = "tags"         // string: contains
+	FieldPublishedAt Field = "published_at" // duration: newer_than
+	FieldHasImage    Field = "has_image"    // bool: equals "true"/"false"
 )
 
 // Op is the comparison operator.
@@ -51,15 +58,23 @@ const (
 	OpEquals     Op = "equals"
 	OpStartsWith Op = "starts_with"
 	OpMatches    Op = "matches" // regex
+	// OpNewerThan compares a duration value ("24h", "7d") against the
+	// published_at field. Only valid with FieldPublishedAt.
+	OpNewerThan Op = "newer_than"
 )
 
 // Action is what to do when a filter matches.
 type Action string
 
 const (
-	ActionMarkRead Action = "mark_read"
-	ActionStar     Action = "star"
-	ActionHide     Action = "hide" // implemented as mark_read for now
+	ActionMarkRead   Action = "mark_read"
+	ActionStar       Action = "star"
+	ActionHide       Action = "hide" // implemented as mark_read for now
+	// ActionTag attaches a tag (from action_value) to the article.
+	ActionTag Action = "tag"
+	// ActionAddToBoard adds the article to a board (board id, decimal,
+	// in action_value).
+	ActionAddToBoard Action = "add_to_board"
 )
 
 // Match is the JSON shape stored in filters.match_json.
@@ -82,17 +97,41 @@ func ParseMatch(s string) (Match, error) {
 	return m, nil
 }
 
-// Validate returns an error if the match is malformed.
+// Validate returns an error if the match is malformed. Enforces
+// field-op compatibility: numeric / bool / duration fields don't accept
+// the string ops, and vice versa.
 func (m Match) Validate() error {
 	switch m.Field {
-	case FieldTitle, FieldContent, FieldAuthor, FieldURL:
+	case FieldTitle, FieldContent, FieldAuthor, FieldURL, FieldTags:
+		// string fields — any string op
+		switch m.Op {
+		case OpContains, OpEquals, OpStartsWith, OpMatches:
+		default:
+			return fmt.Errorf("filters: op %q not supported on field %q", m.Op, m.Field)
+		}
+	case FieldFeedID:
+		if m.Op != OpEquals {
+			return fmt.Errorf("filters: feed_id only supports equals")
+		}
+		if _, err := strconv.ParseInt(m.Value, 10, 64); err != nil {
+			return fmt.Errorf("filters: feed_id value must be int: %w", err)
+		}
+	case FieldHasImage:
+		if m.Op != OpEquals {
+			return fmt.Errorf("filters: has_image only supports equals")
+		}
+		if m.Value != "true" && m.Value != "false" {
+			return fmt.Errorf("filters: has_image value must be \"true\" or \"false\"")
+		}
+	case FieldPublishedAt:
+		if m.Op != OpNewerThan {
+			return fmt.Errorf("filters: published_at only supports newer_than")
+		}
+		if _, err := time.ParseDuration(m.Value); err != nil {
+			return fmt.Errorf("filters: published_at value must be a duration (e.g. 24h, 7d): %w", err)
+		}
 	default:
 		return fmt.Errorf("filters: invalid field %q", m.Field)
-	}
-	switch m.Op {
-	case OpContains, OpEquals, OpStartsWith, OpMatches:
-	default:
-		return fmt.Errorf("filters: invalid op %q", m.Op)
 	}
 	if m.Value == "" {
 		return fmt.Errorf("filters: value required")
@@ -105,17 +144,67 @@ func (m Match) Validate() error {
 	return nil
 }
 
-// ValidateAction returns an error for unknown action strings.
+// ValidateAction returns an error for unknown action strings. Some
+// actions require action_value; callers that have access to the value
+// should use ValidateActionWithValue to also enforce that constraint.
 func ValidateAction(a string) error {
 	switch Action(a) {
-	case ActionMarkRead, ActionStar, ActionHide:
+	case ActionMarkRead, ActionStar, ActionHide, ActionTag, ActionAddToBoard:
 		return nil
 	}
 	return fmt.Errorf("filters: invalid action %q", a)
 }
 
-// Matches returns true if the article satisfies the match.
-func Matches(m Match, a models.Article) bool {
+// ValidateActionWithValue is the action-validator that knows about the
+// payload (action_value). Used at the API layer where the value is in
+// hand; the engine's Apply silently skips bad payloads.
+func ValidateActionWithValue(a, value string) error {
+	if err := ValidateAction(a); err != nil {
+		return err
+	}
+	switch Action(a) {
+	case ActionTag:
+		if strings.TrimSpace(value) == "" {
+			return fmt.Errorf("filters: tag action requires a tag name in action_value")
+		}
+	case ActionAddToBoard:
+		if _, err := strconv.ParseInt(value, 10, 64); err != nil {
+			return fmt.Errorf("filters: add_to_board action_value must be a board id: %w", err)
+		}
+	}
+	return nil
+}
+
+// Matches returns true if the article satisfies the match. now is the
+// reference clock for relative-date ops (FieldPublishedAt + OpNewerThan);
+// callers in the poller hot path pass time.Now(); tests inject a fixed
+// value.
+func Matches(m Match, a models.Article, now time.Time) bool {
+	// Numeric / boolean / duration fields branch first — they don't share
+	// the string-comparison plumbing below.
+	switch m.Field {
+	case FieldFeedID:
+		want, err := strconv.ParseInt(m.Value, 10, 64)
+		if err != nil {
+			return false
+		}
+		return a.FeedID == want
+	case FieldHasImage:
+		want := m.Value == "true"
+		got := strings.TrimSpace(a.ImageURL) != ""
+		return got == want
+	case FieldPublishedAt:
+		// OpNewerThan only — Validate enforces.
+		d, err := time.ParseDuration(m.Value)
+		if err != nil {
+			return false
+		}
+		if a.PublishedAt == 0 {
+			return false
+		}
+		return now.Add(-d).Unix() <= a.PublishedAt
+	}
+
 	subject := fieldValue(m.Field, a)
 	value := m.Value
 	if !m.CaseSensitive {
@@ -155,26 +244,57 @@ func fieldValue(f Field, a models.Article) string {
 		return a.Author
 	case FieldURL:
 		return a.URL
+	case FieldTags:
+		return a.Tags
 	}
 	return ""
 }
 
 // Outcome is what the engine wants applied for a given article+user pair.
+// Tags and BoardIDs are additive: every matching rule contributes — an
+// article can pick up multiple tags or land on multiple boards in one
+// pass. The boolean fields are sticky: once true, they stay true.
 type Outcome struct {
 	MarkRead bool
 	Star     bool
 	Hide     bool
+	// Tags carries every distinct tag name from matched ActionTag rules.
+	Tags []string
+	// BoardIDs carries every distinct board id from matched ActionAddToBoard
+	// rules. The poller resolves each id against the user's actual boards
+	// — cross-user safety.
+	BoardIDs []int64
 }
 
 // Any returns true if any action would be applied.
-func (o Outcome) Any() bool { return o.MarkRead || o.Star || o.Hide }
+func (o Outcome) Any() bool {
+	return o.MarkRead || o.Star || o.Hide || len(o.Tags) > 0 || len(o.BoardIDs) > 0
+}
 
-// Apply runs all enabled filters against the article and returns the combined
-// outcome. Bad match_json or unknown action is silently skipped — filters are
-// not allowed to break ingest.
-func Apply(filters []models.Filter, a models.Article) Outcome {
+// Apply runs all enabled filters against the article in priority order
+// (lower priority numbers first; ties broken by filter id ascending) and
+// returns the combined outcome. Bad match_json, unknown action, or bad
+// action_value is silently skipped — filters are never allowed to break
+// ingest. now is the reference clock for relative-date matches.
+func Apply(rules []models.Filter, a models.Article, now time.Time) Outcome {
+	// Sort by priority (asc), then id (asc) so the engine is deterministic
+	// regardless of how the caller ordered rules. Higher-priority rules
+	// see "earlier" state and can short-circuit downstream by setting
+	// MarkRead/Hide (though the boolean fields are additive, not
+	// preemptive — we keep semantics simple for v1).
+	sorted := make([]models.Filter, len(rules))
+	copy(sorted, rules)
+	sort.SliceStable(sorted, func(i, j int) bool {
+		if sorted[i].Priority != sorted[j].Priority {
+			return sorted[i].Priority < sorted[j].Priority
+		}
+		return sorted[i].ID < sorted[j].ID
+	})
+
 	var out Outcome
-	for _, f := range filters {
+	tagsSeen := map[string]struct{}{}
+	boardsSeen := map[int64]struct{}{}
+	for _, f := range sorted {
 		if !f.Enabled {
 			continue
 		}
@@ -182,7 +302,7 @@ func Apply(filters []models.Filter, a models.Article) Outcome {
 		if err != nil {
 			continue
 		}
-		if !Matches(m, a) {
+		if !Matches(m, a, now) {
 			continue
 		}
 		switch Action(f.Action) {
@@ -193,6 +313,26 @@ func Apply(filters []models.Filter, a models.Article) Outcome {
 		case ActionHide:
 			out.Hide = true
 			out.MarkRead = true // hide also reads (until is_hidden column exists)
+		case ActionTag:
+			tag := strings.TrimSpace(f.ActionValue)
+			if tag == "" {
+				continue
+			}
+			if _, dup := tagsSeen[tag]; dup {
+				continue
+			}
+			tagsSeen[tag] = struct{}{}
+			out.Tags = append(out.Tags, tag)
+		case ActionAddToBoard:
+			id, perr := strconv.ParseInt(f.ActionValue, 10, 64)
+			if perr != nil || id <= 0 {
+				continue
+			}
+			if _, dup := boardsSeen[id]; dup {
+				continue
+			}
+			boardsSeen[id] = struct{}{}
+			out.BoardIDs = append(out.BoardIDs, id)
 		}
 	}
 	return out

@@ -155,6 +155,16 @@ type Filter struct {
 	Action    string `json:"action"`
 	Enabled   bool   `json:"enabled"`
 	CreatedAt int64  `json:"created_at"`
+	// Priority orders rule evaluation — lower numbers win when two rules
+	// would set conflicting state on the same article. Default 100;
+	// arbitrary positive integers allowed.
+	Priority int `json:"priority"`
+	// ActionValue carries the payload for actions that need one. For
+	// ActionTag it's the tag name to attach. For ActionAddToBoard it's
+	// the board id as a decimal string (stringly typed to keep the
+	// schema simple and forward-compatible). Empty for actions that
+	// don't need a payload (mark_read, star, hide).
+	ActionValue string `json:"action_value"`
 }
 
 // Share is one article shared from one user to another.
