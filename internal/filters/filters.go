@@ -67,9 +67,9 @@ const (
 type Action string
 
 const (
-	ActionMarkRead   Action = "mark_read"
-	ActionStar       Action = "star"
-	ActionHide       Action = "hide" // implemented as mark_read for now
+	ActionMarkRead Action = "mark_read"
+	ActionStar     Action = "star"
+	ActionHide     Action = "hide" // implemented as mark_read for now
 	// ActionTag attaches a tag (from action_value) to the article.
 	ActionTag Action = "tag"
 	// ActionAddToBoard adds the article to a board (board id, decimal,
@@ -127,7 +127,7 @@ func (m Match) Validate() error {
 		if m.Op != OpNewerThan {
 			return fmt.Errorf("filters: published_at only supports newer_than")
 		}
-		if _, err := time.ParseDuration(m.Value); err != nil {
+		if _, err := parseDuration(m.Value); err != nil {
 			return fmt.Errorf("filters: published_at value must be a duration (e.g. 24h, 7d): %w", err)
 		}
 	default:
@@ -142,6 +142,22 @@ func (m Match) Validate() error {
 		}
 	}
 	return nil
+}
+
+// parseDuration extends time.ParseDuration with a day unit ("7d"), which
+// the stdlib doesn't support but our docs and UI advertise for the
+// published_at/newer_than filter. A bare "Nd" is converted to N*24h; any
+// other input falls through to time.ParseDuration unchanged.
+func parseDuration(s string) (time.Duration, error) {
+	if n, ok := strings.CutSuffix(s, "d"); ok {
+		days, err := strconv.Atoi(n)
+		if err == nil {
+			return time.Duration(days) * 24 * time.Hour, nil
+		}
+		// Not a plain integer day count (e.g. "1.5d", "1d12h") — let
+		// time.ParseDuration produce the canonical error message.
+	}
+	return time.ParseDuration(s)
 }
 
 // ValidateAction returns an error for unknown action strings. Some
@@ -195,7 +211,7 @@ func Matches(m Match, a models.Article, now time.Time) bool {
 		return got == want
 	case FieldPublishedAt:
 		// OpNewerThan only — Validate enforces.
-		d, err := time.ParseDuration(m.Value)
+		d, err := parseDuration(m.Value)
 		if err != nil {
 			return false
 		}
