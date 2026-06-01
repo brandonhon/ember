@@ -10,6 +10,7 @@ import type {
   Filter,
   ListArticlesQuery,
   MeResponse,
+  PushSubscriptionSummary,
   SavedSearch,
   SearchResult,
   Share,
@@ -332,6 +333,22 @@ export const api = {
       "POST",
       `/api/articles/${id}/extract`,
     ),
+
+  // Web Push (VAPID) ------------------------------------------------
+  pushVapidKey: () =>
+    call<{ public_key: string }>("GET", "/api/me/push-vapid-public-key"),
+  pushSubscriptions: () =>
+    call<PushSubscriptionSummary[]>("GET", "/api/me/push-subscriptions"),
+  pushSubscribe: (req: {
+    endpoint: string;
+    p256dh: string;
+    auth: string;
+    user_agent: string;
+  }) => call<{ id: number }>("POST", "/api/me/push-subscriptions", req),
+  pushUnsubscribe: (id: number) =>
+    call<{ ok: boolean }>("DELETE", `/api/me/push-subscriptions/${id}`),
+  pushTest: () =>
+    call<{ sent: number; removed: number }>("POST", "/api/me/push-subscriptions/test"),
 
   // Passkeys --------------------------------------------------------
   listPasskeys: () => call<PasskeySummary[]>("GET", "/api/me/passkeys"),

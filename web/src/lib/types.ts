@@ -134,6 +134,15 @@ export interface ClusterSibling {
   is_starred: boolean;
 }
 
+// Web Push subscription summary. The cryptographic fields (endpoint /
+// p256dh / auth) are deliberately omitted from the API response so a
+// session token can't be used to harvest other devices' push tokens.
+export interface PushSubscriptionSummary {
+  id: number;
+  user_agent: string;
+  created_at: number;
+}
+
 export interface Share {
   id: number;
   article_id: number;
