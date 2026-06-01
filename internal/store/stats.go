@@ -7,13 +7,13 @@ import (
 
 // UserStats is a snapshot of the user's reading activity.
 type UserStats struct {
-	ArticlesReadToday int          `json:"articles_read_today"`
-	ArticlesReadWeek  int          `json:"articles_read_week"`
-	ArticlesReadMonth int          `json:"articles_read_month"`
-	StarredTotal      int          `json:"starred_total"`
-	LaterTotal        int          `json:"later_total"`
-	Subscriptions     int          `json:"subscriptions"`
-	TopFeeds          []TopFeed    `json:"top_feeds"`
+	ArticlesReadToday int       `json:"articles_read_today"`
+	ArticlesReadWeek  int       `json:"articles_read_week"`
+	ArticlesReadMonth int       `json:"articles_read_month"`
+	StarredTotal      int       `json:"starred_total"`
+	LaterTotal        int       `json:"later_total"`
+	Subscriptions     int       `json:"subscriptions"`
+	TopFeeds          []TopFeed `json:"top_feeds"`
 }
 
 // TopFeed is a feed + the user's read count in the last 30 days. Sorted

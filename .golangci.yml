@@ -24,8 +24,13 @@ linters:
       exclude-functions:
         - (*database/sql.Rows).Close
         - (*database/sql.DB).Close
+        - (*database/sql.Stmt).Close
         - (io.Closer).Close
         - (net/http.ResponseWriter).Write
+        # Cleanup-only closers on the read/teardown path — same rationale as
+        # the SQL closers above: the error is not actionable.
+        - (*mime/multipart.Part).Close
+        - (*net/smtp.Client).Close
     revive:
       rules:
         - name: exported

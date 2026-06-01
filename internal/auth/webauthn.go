@@ -60,9 +60,9 @@ func (u *waUser) WebAuthnID() []byte {
 	return []byte(fmt.Sprintf("%d", u.user.ID))
 }
 
-func (u *waUser) WebAuthnName() string                  { return u.user.Username }
-func (u *waUser) WebAuthnDisplayName() string           { return u.user.Username }
-func (u *waUser) WebAuthnCredentials() []wa.Credential  { return u.credentials }
+func (u *waUser) WebAuthnName() string                 { return u.user.Username }
+func (u *waUser) WebAuthnDisplayName() string          { return u.user.Username }
+func (u *waUser) WebAuthnCredentials() []wa.Credential { return u.credentials }
 
 // loadUser materializes the webauthn.User for the given account, including all
 // of their currently-registered passkeys.

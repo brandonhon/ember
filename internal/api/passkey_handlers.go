@@ -238,4 +238,3 @@ func (d *Dependencies) handlePasskeyLoginFinish(w http.ResponseWriter, r *http.R
 	}
 	writeData(w, http.StatusOK, u, nil)
 }
-

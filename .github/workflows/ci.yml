@@ -10,6 +10,8 @@ name: CI
 #
 # Local equivalent of the chain (run before push):
 #   make verify         # go vet + race tests
+#   gofmt -l cmd internal  # must print nothing (gofmt gate)
+#   make lint           # golangci-lint run
 #   make vulncheck      # govulncheck
 #   make web-check      # svelte-check
 #   make web-build      # vite build
@@ -99,6 +101,20 @@ jobs:
 
       - name: go vet
         run: go vet ./...
+
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l cmd internal)
+          if [ -n "$unformatted" ]; then
+            echo "These files are not gofmt-clean (run 'gofmt -w' or 'make lint'):"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: golangci-lint
+        run: |
+          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.11.4
+          golangci-lint run ./...
 
       - name: go test (race)
         run: go test -race -count=1 -timeout=5m ./...

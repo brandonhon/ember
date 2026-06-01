@@ -30,18 +30,18 @@ var ErrScheme = errors.New("urlcheck: only http and https URLs are allowed")
 // privateBlocks are the CIDRs we refuse to make outbound requests against.
 // Pulled from RFC1918, RFC4193, and common metadata/loopback ranges.
 var privateBlocks = mustParseCIDRs(
-	"10.0.0.0/8",        // RFC1918
-	"172.16.0.0/12",     // RFC1918
-	"192.168.0.0/16",    // RFC1918
-	"127.0.0.0/8",       // loopback
-	"169.254.0.0/16",    // link-local + AWS/GCP metadata
-	"100.64.0.0/10",     // CGNAT
-	"0.0.0.0/8",         // "this network"
-	"::1/128",           // loopback IPv6
-	"fc00::/7",          // unique-local IPv6
-	"fe80::/10",         // link-local IPv6
-	"2002::/16",         // 6to4 — encodes a (possibly private) IPv4 in bits 16-47
-	"64:ff9b::/96",      // NAT64 well-known prefix (RFC 6052) — maps to IPv4
+	"10.0.0.0/8",     // RFC1918
+	"172.16.0.0/12",  // RFC1918
+	"192.168.0.0/16", // RFC1918
+	"127.0.0.0/8",    // loopback
+	"169.254.0.0/16", // link-local + AWS/GCP metadata
+	"100.64.0.0/10",  // CGNAT
+	"0.0.0.0/8",      // "this network"
+	"::1/128",        // loopback IPv6
+	"fc00::/7",       // unique-local IPv6
+	"fe80::/10",      // link-local IPv6
+	"2002::/16",      // 6to4 — encodes a (possibly private) IPv4 in bits 16-47
+	"64:ff9b::/96",   // NAT64 well-known prefix (RFC 6052) — maps to IPv4
 )
 
 // Resolver lets tests inject a fake DNS lookup. Defaults to net.LookupIP.

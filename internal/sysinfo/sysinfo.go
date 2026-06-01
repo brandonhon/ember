@@ -42,7 +42,7 @@ func detectRAM() uint64 {
 	if err != nil {
 		return 0
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // read-only file; close error is not actionable
 	sc := bufio.NewScanner(f)
 	for sc.Scan() {
 		line := sc.Text()
@@ -86,9 +86,9 @@ func detectGPU() string {
 // Recommendation is the suggested model for the detected system plus a one-
 // line explanation.
 type Recommendation struct {
-	Model         string `json:"model"`
-	Reason        string `json:"reason"`
-	DisableLLM    bool   `json:"disable_llm"`
+	Model      string `json:"model"`
+	Reason     string `json:"reason"`
+	DisableLLM bool   `json:"disable_llm"`
 }
 
 // Recommend picks an Ollama model based on the detected system. Ranking:

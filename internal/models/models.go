@@ -67,14 +67,14 @@ type Subscription struct {
 
 // Article is a single item ingested from a feed. Shared storage across users.
 type Article struct {
-	ID           int64  `json:"id"`
-	FeedID       int64  `json:"feed_id"`
-	GUID         string `json:"guid"`
-	URL          string `json:"url,omitempty"`
-	Title        string `json:"title"`
-	Author       string `json:"author,omitempty"`
-	ContentHTML  string `json:"content_html,omitempty"`
-	ContentText  string `json:"content_text,omitempty"`
+	ID          int64  `json:"id"`
+	FeedID      int64  `json:"feed_id"`
+	GUID        string `json:"guid"`
+	URL         string `json:"url,omitempty"`
+	Title       string `json:"title"`
+	Author      string `json:"author,omitempty"`
+	ContentHTML string `json:"content_html,omitempty"`
+	ContentText string `json:"content_text,omitempty"`
 	// CleanedHTML is the LLM-produced version of ContentHTML with promo
 	// content (newsletter signups, podcast/app promos) stripped. Empty when
 	// summaries are disabled or the model didn't return a CLEANED section.
