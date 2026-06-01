@@ -8,9 +8,9 @@ name: CodeQL
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
-    branches: [main]
+    branches: [main, develop]
   schedule:
     # Weekly run on Mondays at 06:00 UTC — matches the cadence default
     # setup used. Catches advisories that ship between commits.
