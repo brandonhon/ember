@@ -163,6 +163,15 @@ export interface PushSubscriptionSummary {
   created_at: number;
 }
 
+// Per-user email-inbox descriptor. enabled=false means the operator
+// hasn't configured EMBER_EMAIL_DOMAIN; the SPA shows a notice and
+// the rotate endpoint returns 503.
+export interface EmailInbox {
+  enabled: boolean;
+  address?: string;
+  feed_id?: number;
+}
+
 export interface Share {
   id: number;
   article_id: number;
