@@ -1,10 +1,12 @@
 name: CI
 
-# Real validation gate for PRs to main. Branch protection requires these
-# four check names (must stay exact): Detect changes, Go (vet + test + vuln),
-# Web (typecheck + build), E2E (Playwright). Each downstream job is path-
-# filtered — a docs-only PR skips them all and the names still resolve as
-# "skipped" (which branch protection treats as passing).
+# Real validation gate for PRs to main and develop. Branch protection
+# requires these four check names (must stay exact): Detect changes,
+# Go (vet + test + vuln), Web (typecheck + build), E2E (Playwright). Each
+# downstream job is path-filtered — a docs-only PR skips them all and the
+# names still resolve as "skipped" (which branch protection treats as
+# passing). develop is the integration branch (small fixes land there
+# first via PR), main is the release branch.
 #
 # Local equivalent of the chain (run before push):
 #   make verify         # go vet + race tests
@@ -17,9 +19,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
-    branches: [main]
+    branches: [main, develop]
 
 permissions:
   contents: read
