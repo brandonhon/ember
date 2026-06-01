@@ -10,10 +10,12 @@ import (
 )
 
 type filterReq struct {
-	Name      string `json:"name"`
-	MatchJSON string `json:"match_json"`
-	Action    string `json:"action"`
-	Enabled   *bool  `json:"enabled,omitempty"`
+	Name        string `json:"name"`
+	MatchJSON   string `json:"match_json"`
+	Action      string `json:"action"`
+	Enabled     *bool  `json:"enabled,omitempty"`
+	Priority    *int   `json:"priority,omitempty"`
+	ActionValue string `json:"action_value,omitempty"`
 }
 
 func (d *Dependencies) handleListFilters(w http.ResponseWriter, r *http.Request) {
@@ -40,7 +42,7 @@ func (d *Dependencies) handleCreateFilter(w http.ResponseWriter, r *http.Request
 		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
-	if err := filters.ValidateAction(req.Action); err != nil {
+	if err := filters.ValidateActionWithValue(req.Action, req.ActionValue); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
@@ -48,9 +50,14 @@ func (d *Dependencies) handleCreateFilter(w http.ResponseWriter, r *http.Request
 	if req.Enabled != nil {
 		enabled = *req.Enabled
 	}
+	priority := 100
+	if req.Priority != nil {
+		priority = *req.Priority
+	}
 	f, err := d.Store.CreateFilter(r.Context(), models.Filter{
 		UserID: u.ID, Name: req.Name, MatchJSON: req.MatchJSON,
 		Action: req.Action, Enabled: enabled,
+		Priority: priority, ActionValue: req.ActionValue,
 	})
 	if mapStoreError(w, err) {
 		return
@@ -80,7 +87,7 @@ func (d *Dependencies) handleUpdateFilter(w http.ResponseWriter, r *http.Request
 		patch.MatchJSON = &req.MatchJSON
 	}
 	if req.Action != "" {
-		if err := filters.ValidateAction(req.Action); err != nil {
+		if err := filters.ValidateActionWithValue(req.Action, req.ActionValue); err != nil {
 			writeError(w, http.StatusBadRequest, "bad_request", err.Error())
 			return
 		}
@@ -89,10 +96,44 @@ func (d *Dependencies) handleUpdateFilter(w http.ResponseWriter, r *http.Request
 	if req.Enabled != nil {
 		patch.Enabled = req.Enabled
 	}
+	if req.Priority != nil {
+		patch.Priority = req.Priority
+	}
+	// Treat any non-empty action_value as an intentional update; an empty
+	// string means "no change" rather than "clear it" (avoids accidentally
+	// wiping the payload on a PATCH that only touches name / enabled).
+	if req.ActionValue != "" {
+		patch.ActionValue = &req.ActionValue
+	}
 	if mapStoreError(w, d.Store.UpdateFilter(r.Context(), u.ID, id, patch)) {
 		return
 	}
 	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
+}
+
+// handlePreviewFilter returns the count of articles over the last
+// `since_days` (default 7) that would have matched the supplied
+// match_json. Used by the rule-builder UI to give an at-a-glance
+// "would have hit N items" before saving.
+func (d *Dependencies) handlePreviewFilter(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.FromContext(r.Context())
+	var req struct {
+		MatchJSON string `json:"match_json"`
+		SinceDays int    `json:"since_days,omitempty"`
+	}
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	m, err := filters.ParseMatch(req.MatchJSON)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
+		return
+	}
+	count, err := d.Store.PreviewFilter(r.Context(), u.ID, m, req.SinceDays)
+	if mapStoreError(w, err) {
+		return
+	}
+	writeData(w, http.StatusOK, map[string]int{"count": count}, nil)
 }
 
 func (d *Dependencies) handleDeleteFilter(w http.ResponseWriter, r *http.Request) {

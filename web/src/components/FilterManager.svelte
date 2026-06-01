@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import type { Filter, FilterMatch } from "../lib/types";
   import { api, ApiError } from "../lib/api";
+  import { boards, feeds } from "../lib/stores";
 
   let { onClose }: { onClose: () => void } = $props();
 
@@ -17,8 +18,10 @@
     op: FilterMatch["op"];
     value: string;
     case_sensitive: boolean;
-    action: "mark_read" | "star" | "hide";
+    action: Filter["action"];
     enabled: boolean;
+    priority: number;
+    action_value: string;
   };
   const emptyDraft = (): Draft => ({
     id: null,
@@ -29,8 +32,50 @@
     case_sensitive: false,
     action: "mark_read",
     enabled: true,
+    priority: 100,
+    action_value: "",
   });
   let draft = $state<Draft>(emptyDraft());
+
+  // Preview state: how many of the last 7 days' articles would have hit
+  // this rule. Cached for the current draft until the user changes any
+  // match field; recomputes on a manual button press.
+  let previewCount = $state<number | null>(null);
+  let previewBusy = $state(false);
+  let previewErr = $state("");
+
+  // Reset preview whenever the match changes.
+  $effect(() => {
+    void draft.field;
+    void draft.op;
+    void draft.value;
+    void draft.case_sensitive;
+    previewCount = null;
+    previewErr = "";
+  });
+
+  async function runPreview() {
+    if (!draft.value.trim()) {
+      previewErr = "value required to preview";
+      return;
+    }
+    previewBusy = true;
+    previewErr = "";
+    try {
+      const match: FilterMatch = {
+        field: draft.field,
+        op: draft.op,
+        value: draft.value,
+        case_sensitive: draft.case_sensitive,
+      };
+      const res = await api.previewFilter(JSON.stringify(match), 7);
+      previewCount = res.data?.count ?? 0;
+    } catch (e) {
+      previewErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      previewBusy = false;
+    }
+  }
 
   async function refresh() {
     loading = true;
@@ -58,6 +103,8 @@
       case_sensitive: m.case_sensitive ?? false,
       action: f.action,
       enabled: f.enabled,
+      priority: f.priority ?? 100,
+      action_value: f.action_value ?? "",
     };
   }
 
@@ -77,6 +124,8 @@
       match_json: JSON.stringify(match),
       action: draft.action,
       enabled: draft.enabled,
+      priority: draft.priority,
+      action_value: draft.action_value.trim(),
     };
     error = "";
     try {
@@ -151,26 +200,70 @@
             <option value="content">Content</option>
             <option value="author">Author</option>
             <option value="url">URL</option>
+            <option value="tags">Tags</option>
+            <option value="feed_id">Feed</option>
+            <option value="published_at">Published</option>
+            <option value="has_image">Has image</option>
           </select>
         </label>
         <label>
           <span>Op</span>
           <select bind:value={draft.op} data-testid="filter-op">
-            <option value="contains">contains</option>
-            <option value="equals">equals</option>
-            <option value="starts_with">starts with</option>
-            <option value="matches">matches (regex)</option>
+            {#if draft.field === "feed_id" || draft.field === "has_image"}
+              <option value="equals">equals</option>
+            {:else if draft.field === "published_at"}
+              <option value="newer_than">newer than</option>
+            {:else}
+              <option value="contains">contains</option>
+              <option value="equals">equals</option>
+              <option value="starts_with">starts with</option>
+              <option value="matches">matches (regex)</option>
+            {/if}
           </select>
         </label>
       </div>
       <label>
-        <span>Value</span>
-        <input bind:value={draft.value} placeholder="crypto" data-testid="filter-value" />
+        <span>
+          {#if draft.field === "feed_id"}Feed
+          {:else if draft.field === "has_image"}Image present
+          {:else if draft.field === "published_at"}Within (e.g. 24h, 7d)
+          {:else}Value{/if}
+        </span>
+        {#if draft.field === "feed_id"}
+          <select bind:value={draft.value} data-testid="filter-value">
+            <option value="">— pick a feed —</option>
+            {#each $feeds as feed (feed.id)}
+              <option value={String(feed.id)}>{feed.title || feed.url}</option>
+            {/each}
+          </select>
+        {:else if draft.field === "has_image"}
+          <select bind:value={draft.value} data-testid="filter-value">
+            <option value="true">true</option>
+            <option value="false">false</option>
+          </select>
+        {:else}
+          <input bind:value={draft.value} placeholder={draft.field === "published_at" ? "24h" : "crypto"} data-testid="filter-value" />
+        {/if}
       </label>
-      <label class="checkbox">
-        <input type="checkbox" bind:checked={draft.case_sensitive} />
-        <span>Case sensitive</span>
-      </label>
+      {#if draft.field !== "feed_id" && draft.field !== "has_image" && draft.field !== "published_at"}
+        <label class="checkbox">
+          <input type="checkbox" bind:checked={draft.case_sensitive} />
+          <span>Case sensitive</span>
+        </label>
+      {/if}
+      <div class="row" style="align-items: flex-end;">
+        <button type="button" on:click={runPreview} disabled={previewBusy} data-testid="filter-preview">
+          {previewBusy ? "Counting…" : "Preview matches (last 7 days)"}
+        </button>
+        {#if previewCount !== null}
+          <span class="preview-result" data-testid="filter-preview-result">
+            Would match {previewCount} article{previewCount === 1 ? "" : "s"}
+          </span>
+        {/if}
+        {#if previewErr}
+          <span class="preview-result" style="color: var(--ember);">{previewErr}</span>
+        {/if}
+      </div>
       <div class="row">
         <label>
           <span>Action</span>
@@ -178,7 +271,31 @@
             <option value="mark_read">Mark read</option>
             <option value="star">Star</option>
             <option value="hide">Hide (mark read)</option>
+            <option value="tag">Tag</option>
+            <option value="add_to_board">Add to board</option>
           </select>
+        </label>
+        {#if draft.action === "tag"}
+          <label>
+            <span>Tag name</span>
+            <input bind:value={draft.action_value} placeholder="newsletters" data-testid="filter-action-value" />
+          </label>
+        {:else if draft.action === "add_to_board"}
+          <label>
+            <span>Board</span>
+            <select bind:value={draft.action_value} data-testid="filter-action-value">
+              <option value="">— pick a board —</option>
+              {#each $boards as b (b.id)}
+                <option value={String(b.id)}>{b.name}</option>
+              {/each}
+            </select>
+          </label>
+        {/if}
+      </div>
+      <div class="row">
+        <label>
+          <span>Priority (lower = earlier)</span>
+          <input type="number" min="0" max="999" bind:value={draft.priority} data-testid="filter-priority" />
         </label>
         <label class="checkbox">
           <input type="checkbox" bind:checked={draft.enabled} />
@@ -290,6 +407,11 @@
   }
   .row { display: flex; gap: 0.75rem; }
   .row label { flex: 1; }
+  .preview-result {
+    font-size: 0.85rem;
+    color: var(--ink-faint);
+    margin-left: 8px;
+  }
   .actions {
     margin-top: 0.5rem;
     display: flex;

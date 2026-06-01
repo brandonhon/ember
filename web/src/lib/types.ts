@@ -96,14 +96,34 @@ export interface Filter {
   user_id: number;
   name: string;
   match_json: string;
-  action: "mark_read" | "star" | "hide";
+  action: "mark_read" | "star" | "hide" | "tag" | "add_to_board";
   enabled: boolean;
   created_at: number;
+  // Priority orders rule evaluation — lower numbers fire first when
+  // multiple rules would set conflicting state. Default 100.
+  priority: number;
+  // Payload for actions that need one (tag name for "tag"; board id
+  // as decimal string for "add_to_board"). Empty for the boolean
+  // actions (mark_read, star, hide).
+  action_value: string;
 }
 
 export interface FilterMatch {
-  field: "title" | "content" | "author" | "url";
-  op: "contains" | "equals" | "starts_with" | "matches";
+  field:
+    | "title"
+    | "content"
+    | "author"
+    | "url"
+    | "feed_id"
+    | "tags"
+    | "published_at"
+    | "has_image";
+  op:
+    | "contains"
+    | "equals"
+    | "starts_with"
+    | "matches"
+    | "newer_than";
   value: string;
   case_sensitive?: boolean;
 }

@@ -559,7 +559,7 @@ func (p *Poller) applyFiltersForUser(ctx context.Context, userID int64, a models
 	if len(fs) == 0 {
 		return
 	}
-	out := filters.Apply(fs, a)
+	out := filters.Apply(fs, a, time.Now())
 	if !out.Any() {
 		return
 	}
@@ -571,6 +571,20 @@ func (p *Poller) applyFiltersForUser(ctx context.Context, userID int64, a models
 	if out.Star {
 		if err := p.Store.SetStarred(ctx, userID, a.ID, true); err != nil {
 			p.Logger.Warn("poller: filter star", "user_id", userID, "article_id", a.ID, "err", err)
+		}
+	}
+	for _, tag := range out.Tags {
+		if err := p.Store.AddArticleTag(ctx, userID, a.ID, tag); err != nil {
+			p.Logger.Warn("poller: filter tag", "user_id", userID, "article_id", a.ID, "tag", tag, "err", err)
+		}
+	}
+	for _, boardID := range out.BoardIDs {
+		if err := p.Store.AddArticleToBoard(ctx, userID, boardID, a.ID); err != nil {
+			// AddArticleToBoard already checks board ownership — cross-user
+			// safety. A miss returns ErrNotFound which we silently swallow.
+			if !errors.Is(err, store.ErrNotFound) {
+				p.Logger.Warn("poller: filter add_to_board", "user_id", userID, "article_id", a.ID, "board_id", boardID, "err", err)
+			}
 		}
 	}
 }
