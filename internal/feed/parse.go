@@ -158,6 +158,10 @@ func resolveLink(base *url.URL, ref string) string {
 	return base.ResolveReference(u).String()
 }
 
+// HTMLToText is the exported entry point — exposed for the email-inbox
+// path which needs to derive a text body from a HTML-only email.
+func HTMLToText(s string) string { return htmlToText(s) }
+
 // htmlToText returns a plain-text representation of an HTML fragment by
 // extracting text nodes only.
 func htmlToText(s string) string {

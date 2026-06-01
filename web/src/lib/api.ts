@@ -5,6 +5,7 @@ import type {
   Board,
   Category,
   ClusterSibling,
+  EmailInbox,
   FeedWithCounts,
   Filter,
   ListArticlesQuery,
@@ -319,6 +320,10 @@ export const api = {
     call<{ ok: boolean }>("DELETE", `/api/me/push-subscriptions/${id}`),
   pushTest: () =>
     call<{ sent: number; removed: number }>("POST", "/api/me/push-subscriptions/test"),
+
+  // Email newsletter inbox -------------------------------------------
+  getInbox: () => call<EmailInbox>("GET", "/api/me/inbox"),
+  rotateInbox: () => call<EmailInbox>("POST", "/api/me/inbox/rotate"),
 
   // Passkeys --------------------------------------------------------
   listPasskeys: () => call<PasskeySummary[]>("GET", "/api/me/passkeys"),
