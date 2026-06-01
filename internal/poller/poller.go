@@ -395,13 +395,13 @@ var linkListRE = regexp.MustCompile(`(?i)\bcomments\s*url\b|^article\s*url\b`)
 // readability fails to extract anything substantial, we fall back to the
 // first external link found in the original feed body.
 var aggregatorHosts = map[string]bool{
-	"lobste.rs":             true,
-	"news.ycombinator.com":  true,
-	"reddit.com":            true,
-	"old.reddit.com":        true,
-	"www.reddit.com":        true,
-	"hckrnews.com":          true,
-	"feedproxy.google.com":  true,
+	"lobste.rs":            true,
+	"news.ycombinator.com": true,
+	"reddit.com":           true,
+	"old.reddit.com":       true,
+	"www.reddit.com":       true,
+	"hckrnews.com":         true,
+	"feedproxy.google.com": true,
 }
 
 // hrefRE captures URLs from <a href="..."> attributes in raw HTML. Used to

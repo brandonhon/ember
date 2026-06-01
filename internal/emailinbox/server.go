@@ -26,9 +26,9 @@ type Ingester interface {
 // Config controls the SMTP listener. Domain is required; without it
 // the listener doesn't start and the inbox feature is disabled.
 type Config struct {
-	Domain     string        // e.g. "mail.example.com"
-	ListenAddr string        // e.g. ":2525" — default if empty
-	MaxBytes   int64         // per-message cap; default 25 MiB
+	Domain      string        // e.g. "mail.example.com"
+	ListenAddr  string        // e.g. ":2525" — default if empty
+	MaxBytes    int64         // per-message cap; default 25 MiB
 	ReadTimeout time.Duration // default 30s
 }
 
@@ -182,7 +182,7 @@ func parseEnhanced(s string) smtp.EnhancedCode {
 	parts := strings.Split(s, ".")
 	for i := 0; i < len(parts) && i < 3; i++ {
 		// Best-effort; on malformed input the slot stays zero.
-		fmt.Sscanf(parts[i], "%d", &c[i])
+		_, _ = fmt.Sscanf(parts[i], "%d", &c[i])
 	}
 	return c
 }

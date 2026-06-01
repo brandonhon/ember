@@ -29,7 +29,7 @@ type Options struct {
 // API can swap them at runtime without restarting the process.
 type Ollama struct {
 	BaseURL    string
-	model      atomic.Value           // string
+	model      atomic.Value // string
 	options    atomic.Pointer[Options]
 	HTTPClient *http.Client
 	Timeout    time.Duration
@@ -525,7 +525,8 @@ func isPromptEcho(s string) bool {
 // placeholderRE matches lines whose only meaningful content is wrapped in
 // angle brackets — i.e. the model echoed a prompt placeholder instead of
 // generating real content. Examples:
-//   <one short factual point>
-//   <fact 1>
-//   < placeholder text >
+//
+//	<one short factual point>
+//	<fact 1>
+//	< placeholder text >
 var placeholderRE = regexp.MustCompile(`^\s*<[^<>]+>\s*$`)

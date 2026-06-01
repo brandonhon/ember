@@ -96,12 +96,18 @@ func runOPMLExport(ctx context.Context, st *store.Store, op *opml.Service, lg *s
 	}
 	name := time.Now().UTC().Format("ember-2006-01-02-150405.opml")
 	out := filepath.Join(defaultExportDir, name)
-	f, err := os.Create(out)
+	f, err := os.Create(out) //nolint:gosec // G304: out is program-built from a fixed dir + timestamp, never user input.
 	if err != nil {
 		lg.Warn("opml export: create file", "err", err)
 		return
 	}
-	defer f.Close()
+	defer func() {
+		// Close error matters on a write file — a failed flush truncates
+		// the export. Warn so a silently-corrupt backup is visible.
+		if cerr := f.Close(); cerr != nil {
+			lg.Warn("opml export: close file", "err", cerr)
+		}
+	}()
 	if err := op.Export(ctx, adminID, f); err != nil {
 		lg.Warn("opml export: write failed", "err", err)
 		return

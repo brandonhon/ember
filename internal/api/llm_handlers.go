@@ -17,13 +17,13 @@ func intToStr(i int) string       { return strconv.Itoa(i) }
 // llmStatus is the response shape for GET /api/admin/llm. Reports current
 // model, recommended model for the host, and what's installed in Ollama.
 type llmStatus struct {
-	CurrentModel string                       `json:"current_model"`
-	Enabled      bool                         `json:"enabled"`
-	System       sysinfo.SystemInfo           `json:"system"`
-	Recommended  sysinfo.Recommendation       `json:"recommended"`
-	Installed    []summarize.InstalledModel   `json:"installed"`
-	InstalledErr string                       `json:"installed_err,omitempty"`
-	Options      summarize.Options            `json:"options"`
+	CurrentModel string                     `json:"current_model"`
+	Enabled      bool                       `json:"enabled"`
+	System       sysinfo.SystemInfo         `json:"system"`
+	Recommended  sysinfo.Recommendation     `json:"recommended"`
+	Installed    []summarize.InstalledModel `json:"installed"`
+	InstalledErr string                     `json:"installed_err,omitempty"`
+	Options      summarize.Options          `json:"options"`
 }
 
 func (d *Dependencies) handleGetLLM(w http.ResponseWriter, r *http.Request) {
