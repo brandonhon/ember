@@ -13,7 +13,9 @@
     refreshBranding,
   } from "../lib/stores";
   import { api, ApiError, type StarterPack, type StarterImportResult, type LLMStatus, type DBStatus, type UserStats, type UserDigest, type PasskeySummary } from "../lib/api";
+  import type { PushSubscriptionSummary } from "../lib/types";
   import { createPasskey, passkeySupported } from "../lib/passkey";
+  import { enablePush, pushSupported } from "../lib/push";
   import { onMount } from "svelte";
   import { refreshSidebar, loadArticles, activeView } from "../lib/stores";
   import FilterManager from "./FilterManager.svelte";
@@ -41,7 +43,7 @@
 
   let { onClose }: { onClose: () => void } = $props();
 
-  type Section = "profile" | "passkeys" | "preferences" | "stats" | "digest" | "mobile" | "filters" | "users" | "starter" | "llm" | "branding" | "database" | "session" | "email" | "about";
+  type Section = "profile" | "passkeys" | "notifications" | "preferences" | "stats" | "digest" | "mobile" | "filters" | "users" | "starter" | "llm" | "branding" | "database" | "session" | "email" | "about";
   let section = $state<Section>("profile");
 
   // Mobile detection (matches App.svelte's 900px breakpoint). On mobile the
@@ -73,6 +75,7 @@
     switch (section) {
       case "profile": return "Profile";
       case "passkeys": return "Passkeys";
+      case "notifications": return "Notifications";
       case "preferences": return "Preferences";
       case "mobile": return "Mobile clients";
       case "filters": return "Filters";
@@ -448,6 +451,61 @@
     return (bytes / (1024 * 1024)).toFixed(0) + " MiB";
   }
 
+  // Push notifications state ----------------------------------------
+  const canPush = pushSupported();
+  let pushSubs = $state<PushSubscriptionSummary[]>([]);
+  let pushErr = $state("");
+  let pushMsg = $state("");
+  let pushBusy = $state(false);
+  async function loadPushSubs() {
+    pushErr = "";
+    try {
+      const res = await api.pushSubscriptions();
+      pushSubs = res.data ?? [];
+    } catch (e) {
+      pushErr = e instanceof ApiError ? e.message : String(e);
+    }
+  }
+  async function onEnablePush() {
+    pushErr = "";
+    pushMsg = "";
+    pushBusy = true;
+    try {
+      await enablePush();
+      pushMsg = "Notifications enabled on this device.";
+      await loadPushSubs();
+    } catch (e) {
+      pushErr = e instanceof Error ? e.message : String(e);
+    } finally {
+      pushBusy = false;
+      setTimeout(() => (pushMsg = ""), 3500);
+    }
+  }
+  async function onDeletePushSub(id: number) {
+    try {
+      await api.pushUnsubscribe(id);
+      await loadPushSubs();
+    } catch (e) {
+      pushErr = e instanceof ApiError ? e.message : String(e);
+    }
+  }
+  async function onSendTestPush() {
+    pushErr = "";
+    pushMsg = "";
+    try {
+      const res = await api.pushTest();
+      pushMsg = `Sent to ${res.data?.sent ?? 0} device(s).`;
+      if ((res.data?.removed ?? 0) > 0) {
+        // Refresh list — server pruned dead subs.
+        await loadPushSubs();
+      }
+    } catch (e) {
+      pushErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      setTimeout(() => (pushMsg = ""), 3500);
+    }
+  }
+
   // Passkey admin state ----------------------------------------------
   const canPasskey = passkeySupported();
   let passkeys = $state<PasskeySummary[]>([]);
@@ -518,6 +576,7 @@
     if (section === "stats") void loadStats();
     if (section === "digest") void loadDigest();
     if (section === "passkeys") void loadPasskeys();
+    if (section === "notifications") void loadPushSubs();
   });
 
   // Admin session TTL ------------------------------------------------
@@ -838,6 +897,7 @@
       <nav class="nav" aria-label="Settings sections">
         <button class:active={section === "profile"} on:click={() => pickSection("profile")} data-testid="settings-profile">Profile</button>
         <button class:active={section === "passkeys"} on:click={() => pickSection("passkeys")} data-testid="settings-passkeys">Passkeys</button>
+        <button class:active={section === "notifications"} on:click={() => pickSection("notifications")} data-testid="settings-notifications">Notifications</button>
         <button class:active={section === "preferences"} on:click={() => pickSection("preferences")}>Preferences</button>
         <button class:active={section === "mobile"} on:click={() => pickSection("mobile")}>Mobile clients</button>
         <button class:active={section === "filters"} on:click={() => pickSection("filters")}>Filters</button>
@@ -948,6 +1008,44 @@
                     >
                       Remove
                     </button>
+                  </li>
+                {/each}
+              </ul>
+            {/if}
+          {/if}
+        {/if}
+
+        {#if section === "notifications"}
+          <h3>Notifications</h3>
+          <p class="hint">
+            Web Push delivers reminders to your browser or installed PWA
+            even when Ember isn't open. Each device you enable shows up
+            below; revoke any you don't recognize.
+          </p>
+          {#if !canPush}
+            <div class="error" data-testid="push-unsupported">
+              This browser doesn't support Web Push notifications.
+            </div>
+          {:else}
+            <div class="actions" style="margin-bottom: 12px;">
+              <button on:click={onEnablePush} disabled={pushBusy} data-testid="push-enable">
+                {pushBusy ? "Enabling…" : "Enable on this device"}
+              </button>
+              <button class="ghost" on:click={onSendTestPush} disabled={pushSubs.length === 0} data-testid="push-test">
+                Send test notification
+              </button>
+            </div>
+            {#if pushErr}<p class="error" data-testid="push-err">{pushErr}</p>{/if}
+            {#if pushMsg}<p class="ok" data-testid="push-msg">{pushMsg}</p>{/if}
+            <h4>Registered devices</h4>
+            {#if pushSubs.length === 0}
+              <p class="hint">No devices registered yet.</p>
+            {:else}
+              <ul style="list-style:none; padding:0; margin:0;">
+                {#each pushSubs as s (s.id)}
+                  <li style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom: 1px solid var(--line-soft);">
+                    <span style="font-size:13px; color:var(--ink);">{s.user_agent || "Unknown browser"}</span>
+                    <button class="pack-btn-remove" on:click={() => onDeletePushSub(s.id)} aria-label="Revoke device">Revoke</button>
                   </li>
                 {/each}
               </ul>

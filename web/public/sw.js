@@ -8,11 +8,9 @@
 //     reading UI still works offline for the last-seen state).
 //   - Auth endpoints and CSRF-sensitive POSTs are never cached.
 
-// Bumped 2026-05-26 to flush stale shells that still served the old
-// inline "Welcome to Ember" onboarding card (replaced by WelcomeModal in
-// PR #32) and the old favicon defaults (PR #33). Old SHELL_CACHE entries
-// get deleted on activate.
-const VERSION = "ember-v2";
+// Bumped to v3 to flush stale shells that lacked the push event handler.
+// Older shells will be deleted on activate.
+const VERSION = "ember-v3";
 const SHELL_CACHE = `${VERSION}-shell`;
 const ASSET_CACHE = `${VERSION}-assets`;
 const API_CACHE = `${VERSION}-api`;
@@ -94,3 +92,45 @@ async function networkFirst(req, cacheName) {
     throw err;
   }
 }
+
+// Web Push: payload arrives as JSON encoded with the VAPID keys we
+// generated server-side. Body shape matches internal/push.Payload:
+//   { title, body, url?, article_id? }
+self.addEventListener("push", (event) => {
+  let data = { title: "Ember", body: "" };
+  if (event.data) {
+    try { data = { ...data, ...event.data.json() }; }
+    catch { data.body = event.data.text() || data.body; }
+  }
+  const title = data.title || "Ember";
+  const opts = {
+    body: data.body || "",
+    icon: "/icon.svg",
+    badge: "/icon.svg",
+    // Tag collapses repeated notifications about the same article so the
+    // user doesn't get spammed when a rule fires multiple times.
+    tag: data.article_id ? `ember-article-${data.article_id}` : undefined,
+    data: { url: data.url || "/" },
+  };
+  event.waitUntil(self.registration.showNotification(title, opts));
+});
+
+// Click → focus the existing tab if one is open, otherwise open a new
+// one. Standard "single-window" PWA behavior.
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || "/";
+  event.waitUntil(
+    (async () => {
+      const all = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      for (const c of all) {
+        if (c.url.endsWith(target) && "focus" in c) return c.focus();
+      }
+      if (all.length > 0 && "focus" in all[0]) {
+        all[0].postMessage({ type: "navigate", url: target });
+        return all[0].focus();
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(target);
+    })(),
+  );
+});

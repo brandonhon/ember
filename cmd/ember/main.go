@@ -26,6 +26,7 @@ import (
 	"github.com/brandonhon/ember/internal/feed"
 	"github.com/brandonhon/ember/internal/opml"
 	"github.com/brandonhon/ember/internal/poller"
+	"github.com/brandonhon/ember/internal/push"
 	"github.com/brandonhon/ember/internal/store"
 	"github.com/brandonhon/ember/internal/summarize"
 	"github.com/brandonhon/ember/internal/sysinfo"
@@ -221,6 +222,22 @@ func run() error {
 		}
 	}
 
+	// Web Push (VAPID). Generates the keypair on first start, persists to
+	// app_settings. Subject defaults to the admin's email so push services
+	// have a contact for delivery problems; empty falls back to a localhost
+	// address with a warn. Failure here is non-fatal — push endpoints just
+	// return 503 and the rest of the app keeps working.
+	var pushNotifier *push.Notifier
+	if keys, kerr := push.LoadOrCreateKeys(ctx, st); kerr != nil {
+		logger.Warn("push notifications disabled", "err", kerr)
+	} else {
+		// VAPID subject contact — fall back to SMTPFrom (operator already
+		// configured it as a deliverability contact for outbound email).
+		// Empty falls through to NewNotifier's localhost default + warn.
+		pushNotifier = push.NewNotifier(keys, cfg.SMTPFrom, st, logger)
+		logger.Info("push notifications enabled")
+	}
+
 	// Test mode seeds a deterministic admin + feed + articles so the e2e
 	// harness has known data to assert against. In normal mode, do the
 	// usual first-run admin bootstrap.
@@ -395,6 +412,9 @@ func run() error {
 		// parent so they don't outlive process shutdown and end up making
 		// DB calls against a closed handle.
 		BackgroundCtx: ctx,
+		// Web Push fan-out. Nil disables the /api/me/push-* endpoints
+		// (they return 503). Configured above near WebAuthn.
+		Push: pushNotifier,
 	})
 
 	srv := &http.Server{
