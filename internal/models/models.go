@@ -87,6 +87,14 @@ type Article struct {
 	FetchedAt    int64  `json:"fetched_at"`
 	ContentHash  string `json:"content_hash"`
 	Tags         string `json:"tags,omitempty"` // comma-joined gofeed categories; first one used as a badge.
+	// CanonicalURL is the tracking-param-stripped, case-normalized form of
+	// URL used for cross-feed dedup. Populated at ingest by feed.CanonicalURL.
+	// Internal — never exposed to clients (the human-readable URL stays in URL).
+	CanonicalURL string `json:"-"`
+	// ClusterID is a stable short hash of CanonicalURL. Empty when URL is
+	// empty. Drives the cross-feed dedup join and identifies the "this
+	// article also appears in N other feeds" sibling set.
+	ClusterID string `json:"-"`
 }
 
 // ArticleState is per-user read/star/later state for an article.

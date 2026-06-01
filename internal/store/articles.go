@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/brandonhon/ember/internal/feed"
 	"github.com/brandonhon/ember/internal/models"
 )
 
@@ -20,6 +21,15 @@ func (s *Store) UpsertArticle(ctx context.Context, a models.Article) (models.Art
 	}
 	if a.ContentHash == "" {
 		return models.Article{}, false, errors.New("UpsertArticle: ContentHash required")
+	}
+	// Defensive fill for callers that bypass feed.Parse (tests, manual
+	// insertions, future ingest paths). The dedup predicate runs against
+	// cluster_id, so an empty value means the article won't dedup correctly.
+	if a.CanonicalURL == "" && a.URL != "" {
+		a.CanonicalURL = feed.CanonicalURL(a.URL)
+	}
+	if a.ClusterID == "" {
+		a.ClusterID = feed.ClusterID(a.CanonicalURL)
 	}
 
 	tx, err := s.DB.BeginTx(ctx, nil)
@@ -60,12 +70,13 @@ func (s *Store) UpsertArticle(ctx context.Context, a models.Article) (models.Art
 	res, err := tx.ExecContext(ctx, `
 		INSERT INTO articles (feed_id, guid, url, title, author, content_html,
 			content_text, summary, summary_model, image_url, published_at,
-			fetched_at, content_hash, tags)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			fetched_at, content_hash, tags, canonical_url, cluster_id)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		a.FeedID, a.GUID, nullable(a.URL), a.Title, nullable(a.Author),
 		nullable(a.ContentHTML), nullable(a.ContentText), nullable(a.Summary),
 		nullable(a.SummaryModel), nullable(a.ImageURL),
-		nullableInt(a.PublishedAt), a.FetchedAt, a.ContentHash, a.Tags)
+		nullableInt(a.PublishedAt), a.FetchedAt, a.ContentHash, a.Tags,
+		a.CanonicalURL, a.ClusterID)
 	if err != nil {
 		if isUniqueViolation(err) {
 			// Race: someone else inserted between our check and write. The INSERT
@@ -391,17 +402,20 @@ JOIN article_tags atg ON atg.article_id = a.id AND atg.user_id = ? AND atg.tag =
 		conds = append(conds, "s.muted = 0")
 	}
 
-	// Cross-feed dedup: when two feeds the user subscribes to publish the same
-	// article (matched by URL), only the lowest-id row wins. Skipped for the
-	// per-feed view (the user explicitly opened that feed and wants to see its
-	// contents verbatim), the shared view (explicit one-off share), and board
-	// views (explicit curation by the user). Empty-URL rows always pass.
+	// Cross-feed dedup: when two feeds the user subscribes to publish the
+	// same article, only the lowest-id row wins. The match predicate is the
+	// canonical cluster_id (tracking-param-stripped + normalized URL hash)
+	// rather than exact URL — collapses utm_*-tagged variants of the same
+	// link. Skipped for per-feed (user opened the feed and wants its
+	// contents verbatim), shared (explicit one-off share), and board views
+	// (explicit curation). Empty-cluster_id rows always pass (articles
+	// without a URL, or pre-backfill rows).
 	if q.View != "shared" && q.FeedID == 0 && q.BoardID == 0 {
 		conds = append(conds, `(
-			IFNULL(a.url,'') = '' OR NOT EXISTS (
+			IFNULL(a.cluster_id,'') = '' OR NOT EXISTS (
 				SELECT 1 FROM articles a3
 				JOIN subscriptions s3 ON s3.feed_id = a3.feed_id AND s3.user_id = ?
-				WHERE a3.url = a.url AND IFNULL(a3.url,'') <> '' AND s3.muted = 0 AND a3.id < a.id
+				WHERE a3.cluster_id = a.cluster_id AND a3.cluster_id <> '' AND s3.muted = 0 AND a3.id < a.id
 			)
 		)`)
 		args = append(args, userID)
@@ -412,8 +426,8 @@ JOIN article_tags atg ON atg.article_id = a.id AND atg.user_id = ? AND atg.tag =
 		where = "WHERE " + strings.Join(conds, " AND ")
 	}
 
-	// dup_count: when an article URL is non-empty, count how many OTHER
-	// articles with the same URL the user is subscribed to via different
+	// dup_count: when an article has a cluster_id, count how many OTHER
+	// articles in the same cluster the user is subscribed to via different
 	// feeds. The dedup filter above keeps the lowest-id row, so this count
 	// tells the SPA "this article also appeared in N other feeds you follow"
 	// and lets it render a pill.
@@ -424,10 +438,10 @@ SELECT a.id, a.feed_id, a.guid, IFNULL(a.url,''), a.title, IFNULL(a.author,''),
        IFNULL(a.image_url,''), IFNULL(a.published_at,0),
        a.fetched_at, a.content_hash, IFNULL(a.tags,''),
        IFNULL(st.is_read,0), IFNULL(st.is_starred,0), IFNULL(st.is_later,0),
-       CASE WHEN IFNULL(a.url,'') = '' THEN 0 ELSE (
+       CASE WHEN IFNULL(a.cluster_id,'') = '' THEN 0 ELSE (
            SELECT COUNT(*) FROM articles a4
            JOIN subscriptions s4 ON s4.feed_id = a4.feed_id AND s4.user_id = ?
-           WHERE a4.url = a.url AND a4.id <> a.id AND s4.muted = 0
+           WHERE a4.cluster_id = a.cluster_id AND a4.id <> a.id AND s4.muted = 0
        ) END AS dup_count
 %s
 %s
@@ -563,10 +577,10 @@ WHERE IFNULL(st.is_read,0) = 0
   AND sub.muted = 0
   AND IFNULL(a.published_at,0) >= ?
   AND (
-    IFNULL(a.url,'') = '' OR NOT EXISTS (
+    IFNULL(a.cluster_id,'') = '' OR NOT EXISTS (
       SELECT 1 FROM articles a2
       JOIN subscriptions sub2 ON sub2.feed_id = a2.feed_id AND sub2.user_id = ?
-      WHERE a2.url = a.url AND IFNULL(a2.url,'') <> '' AND sub2.muted = 0 AND a2.id < a.id
+      WHERE a2.cluster_id = a.cluster_id AND a2.cluster_id <> '' AND sub2.muted = 0 AND a2.id < a.id
     )
   )`,
 		userID, userID, freshCutoff, userID).Scan(&c.Fresh)
@@ -612,4 +626,77 @@ func scanArticle(row scannable) (models.Article, error) {
 		return models.Article{}, ErrNotFound
 	}
 	return a, err
+}
+
+// ClusterSibling is a peer of the requested article: same cluster_id,
+// reachable via a different subscription owned by the same user.
+type ClusterSibling struct {
+	ArticleID int64  `json:"article_id"`
+	FeedID    int64  `json:"feed_id"`
+	FeedTitle string `json:"feed_title"`
+	URL       string `json:"url"`
+	IsRead    bool   `json:"is_read"`
+	IsStarred bool   `json:"is_starred"`
+}
+
+// ListClusterSiblings returns the other articles in the same cluster as the
+// given article that the user is subscribed to via different feeds. The
+// requested article itself is excluded. Order is feed title asc for stable
+// UI. Returns an empty slice (no error) when the article isn't clustered
+// (no cluster_id) — the caller's "Also in N feeds" pill won't have been
+// shown in that case anyway.
+//
+// Returns ErrNotFound when the article doesn't exist or the user can't see
+// it (no subscription to its feed, or the feed is muted).
+func (s *Store) ListClusterSiblings(ctx context.Context, userID, articleID int64) ([]ClusterSibling, error) {
+	// First confirm the user can see the article and grab its cluster_id.
+	var cid string
+	err := s.DB.QueryRowContext(ctx, `
+		SELECT IFNULL(a.cluster_id,'')
+		FROM articles a
+		JOIN subscriptions sub ON sub.feed_id = a.feed_id AND sub.user_id = ? AND sub.muted = 0
+		WHERE a.id = ?`, userID, articleID).Scan(&cid)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("list cluster siblings: lookup: %w", err)
+	}
+	if cid == "" {
+		return []ClusterSibling{}, nil
+	}
+
+	rows, err := s.DB.QueryContext(ctx, `
+		SELECT a.id, a.feed_id, IFNULL(f.title,''), IFNULL(a.url,''),
+		       IFNULL(st.is_read,0), IFNULL(st.is_starred,0)
+		FROM articles a
+		JOIN feeds f ON f.id = a.feed_id
+		JOIN subscriptions sub ON sub.feed_id = a.feed_id AND sub.user_id = ? AND sub.muted = 0
+		LEFT JOIN article_state st ON st.article_id = a.id AND st.user_id = ?
+		WHERE a.cluster_id = ? AND a.id <> ?
+		ORDER BY f.title ASC, a.id ASC`,
+		userID, userID, cid, articleID)
+	if err != nil {
+		return nil, fmt.Errorf("list cluster siblings: query: %w", err)
+	}
+	defer rows.Close()
+
+	var out []ClusterSibling
+	for rows.Next() {
+		var s ClusterSibling
+		var ir, is int
+		if err := rows.Scan(&s.ArticleID, &s.FeedID, &s.FeedTitle, &s.URL, &ir, &is); err != nil {
+			return nil, fmt.Errorf("list cluster siblings: scan: %w", err)
+		}
+		s.IsRead = ir != 0
+		s.IsStarred = is != 0
+		out = append(out, s)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list cluster siblings: iterate: %w", err)
+	}
+	if out == nil {
+		out = []ClusterSibling{}
+	}
+	return out, nil
 }

@@ -211,6 +211,7 @@ func NewRouter(d Dependencies) http.Handler {
 		// Articles
 		r.With(d.Auth.RequireAuth).Get("/articles", d.handleListArticles)
 		r.With(d.Auth.RequireAuth).Get("/articles/{id}", d.handleGetArticle)
+		r.With(d.Auth.RequireAuth).Get("/articles/{id}/cluster", d.handleGetArticleCluster)
 		r.With(d.Auth.RequireAuth).Post("/articles/read", d.handleSetRead)
 		r.With(d.Auth.RequireAuth).Post("/articles/star", d.handleSetStar)
 		r.With(d.Auth.RequireAuth).Post("/articles/later", d.handleSetLater)
