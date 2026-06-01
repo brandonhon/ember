@@ -30,6 +30,9 @@ Ember reads configuration from environment variables at startup. A handful of se
 | `EMBER_SMTP_PASSWORD` | — | SMTP auth password. Overrideable in **Settings → Email / SMTP** (stored write-only — never echoed back to the UI). |
 | `EMBER_SMTP_FROM` | — | `From:` address used on digest emails. Overrideable in **Settings → Email / SMTP**. |
 | `EMBER_SMTP_STARTTLS` | `1` | STARTTLS on submission ports (587). When on, the server **must** offer STARTTLS or the send fails (no silent plaintext downgrade). Set `0` only for a **loopback** relay (`localhost` / `127.0.0.1` / `::1`) — plain SMTP to any remote host is refused so credentials never cross the network in the clear. Overrideable in **Settings → Email / SMTP**. |
+| `EMBER_EMAIL_DOMAIN` | — | **Inbound** email-inbox feature. When set, each user's Settings → Email inbox panel shows a `<handle>@<this-domain>` address; mail sent there lands as articles in a per-user Newsletters feed. Empty disables the feature and the inbound SMTP listener doesn't start. See [Email inbox](/email-inbox). |
+| `EMBER_EMAIL_LISTEN_ADDR` | `:2525` | Bind for the inbound SMTP listener. Privileged port 25 needs root or `CAP_NET_BIND_SERVICE` — front Ember with Caddy `layer4` or postfix and keep this on `:2525`. |
+| `EMBER_EMAIL_MAX_BYTES` | `26214400` (25 MiB) | Per-message size cap. Mail exceeding this is rejected with `552 5.3.4`. |
 | `EMBER_FRESH_WINDOW` | `6h` | How recent an article must be to appear in the "Fresh" smart view. |
 | `EMBER_POLL_CONCURRENCY` | `8` | Number of feed-fetch worker goroutines. |
 | `EMBER_POLL_TICK` | `60s` | How often the poller scans for feeds due to fetch. |
@@ -52,6 +55,7 @@ Stored in the `app_settings` KV. Edit via the admin UI in **Settings → ...**.
 | OPML export schedule + retention (`opml_keep`, default 12) | Database |
 | SMTP host / port / username / password / from / STARTTLS | Email / SMTP |
 | Initial feed-backlog window (default 48 hours; 0 = no gate) | Email / SMTP → Initial backlog window |
+| VAPID keypair (`vapid_public_key`, `vapid_private_key`) | Auto-generated on first boot; not exposed in the UI. Rotating manually would invalidate every existing browser push subscription. |
 
 Each user also has client-side preferences stored in browser `localStorage`:
 

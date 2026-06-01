@@ -43,6 +43,13 @@ export default defineConfig({
         ],
       },
       {
+        text: 'Features',
+        items: [
+          { text: 'Notifications', link: '/notifications' },
+          { text: 'Email inbox', link: '/email-inbox' },
+        ],
+      },
+      {
         text: 'Reference',
         items: [
           { text: 'Architecture', link: '/architecture' },
