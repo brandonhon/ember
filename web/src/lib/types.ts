@@ -122,6 +122,18 @@ export interface Board {
   created_at: number;
 }
 
+// Siblings of an article in the same cross-feed dedup cluster. Returned
+// by GET /api/articles/{id}/cluster — drives the "Also in N feeds" pill
+// expansion in the article list.
+export interface ClusterSibling {
+  article_id: number;
+  feed_id: number;
+  feed_title: string;
+  url: string;
+  is_read: boolean;
+  is_starred: boolean;
+}
+
 export interface Share {
   id: number;
   article_id: number;

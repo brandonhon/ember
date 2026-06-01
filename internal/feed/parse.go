@@ -120,6 +120,11 @@ func normalizeItem(it *gofeed.Item, feedID int64, base *url.URL) models.Article 
 	}
 
 	a.ContentHash = ContentHash(a.URL, a.Title, a.ContentText)
+	// Canonical URL + cluster_id for cross-feed dedup. Empty in / empty out
+	// so articles without a URL (some feeds omit it) don't all hash to the
+	// same value and get falsely clustered.
+	a.CanonicalURL = CanonicalURL(a.URL)
+	a.ClusterID = ClusterID(a.CanonicalURL)
 	return a
 }
 
