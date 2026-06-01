@@ -300,31 +300,6 @@
   }
   @media (max-width: 900px) {
     .list-col { border-right: 0; }
-    .list-header { padding: 12px 14px 10px; }
-    /* Pills + Cards/Compact seg grow to fill the row and the wrapped rows
-       center, matching the reader-actions treatment on mobile. flex:1 1 auto
-       lets siblings split row width evenly; min-width:0 lets them shrink
-       past intrinsic label width instead of overflowing. */
-    .list-tools {
-      justify-content: center;
-      gap: 6px;
-    }
-    .list-tools .pill,
-    .list-tools .seg {
-      flex: 1 1 auto;
-      min-width: 0;
-    }
-    .list-tools .pill {
-      justify-content: center;
-      padding: 6px clamp(8px, 2vw, 14px);
-      font-size: 12px;
-    }
-    /* The Cards|Compact segment is its own flex container — make both
-       buttons inside split its width too so the two halves match width. */
-    .list-tools .seg { display: flex; }
-    .list-tools .seg button { flex: 1 1 0; padding: 6px clamp(8px, 2vw, 14px); }
-    /* Spacer pushed .seg to the right on desktop; redundant with center. */
-    .list-tools > .spacer { display: none; }
   }
   .list-header {
     position: sticky;
