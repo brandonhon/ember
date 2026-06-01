@@ -183,14 +183,25 @@ export const api = {
   createFilter: (req: {
     name: string;
     match_json: string;
-    action: "mark_read" | "star" | "hide";
+    action: Filter["action"];
     enabled?: boolean;
+    priority?: number;
+    action_value?: string;
   }) => call<Filter>("POST", "/api/filters", req),
   updateFilter: (
     id: number,
-    req: { name?: string; match_json?: string; action?: string; enabled?: boolean },
+    req: {
+      name?: string;
+      match_json?: string;
+      action?: string;
+      enabled?: boolean;
+      priority?: number;
+      action_value?: string;
+    },
   ) => call<unknown>("PATCH", `/api/filters/${id}`, req),
   deleteFilter: (id: number) => call<unknown>("DELETE", `/api/filters/${id}`),
+  previewFilter: (match_json: string, since_days = 7) =>
+    call<{ count: number }>("POST", "/api/filters/preview", { match_json, since_days }),
 
   // Boards ------------------------------------------------------------
   listBoards: () => call<Board[]>("GET", "/api/boards"),
