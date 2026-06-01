@@ -22,13 +22,13 @@ func TestGenerateHandle(t *testing.T) {
 
 func TestValidHandle(t *testing.T) {
 	cases := map[string]bool{
-		"":                false,
-		"ABCDEF":          false,                 // too short
-		"ABCDEFGHIJKLMN":  false,                 // too long
-		"01234ABCDEFG":    true,                  // 12 valid chars
-		"01234abcdefg":    false,                 // lowercase not in alphabet
-		"ZZZZZZZZZZZ!":    false,                 // bad char at end
-		"IOULZZZZZZZZ":    false,                 // I/L/O/U excluded
+		"":               false,
+		"ABCDEF":         false, // too short
+		"ABCDEFGHIJKLMN": false, // too long
+		"01234ABCDEFG":   true,  // 12 valid chars
+		"01234abcdefg":   false, // lowercase not in alphabet
+		"ZZZZZZZZZZZ!":   false, // bad char at end
+		"IOULZZZZZZZZ":   false, // I/L/O/U excluded
 	}
 	for in, want := range cases {
 		if got := ValidHandle(in); got != want {

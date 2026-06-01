@@ -50,7 +50,7 @@ func TestCheck_PrivateIPLiteral(t *testing.T) {
 		"http://[::1]/",
 		"http://0.0.0.0/",
 		"http://100.64.5.5/",
-		"http://[2002:c0a8:0101::]/", // 6to4 encoding 192.168.1.1
+		"http://[2002:c0a8:0101::]/",   // 6to4 encoding 192.168.1.1
 		"http://[64:ff9b::a9fe:a9fe]/", // NAT64 mapping 169.254.169.254 (metadata)
 	}
 	for _, u := range priv {

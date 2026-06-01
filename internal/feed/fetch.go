@@ -112,4 +112,3 @@ func (f *Fetcher) userAgent() string {
 	}
 	return DefaultUserAgent
 }
-

@@ -45,10 +45,10 @@ func (s *Store) BackfillClusters(ctx context.Context, batchSize int) (int, error
 		}
 
 		type row struct {
-			id           int64
-			url          string
-			title        string
-			curCluster   string
+			id             int64
+			url            string
+			title          string
+			curCluster     string
 			curFingerprint string
 		}
 		var batch []row
