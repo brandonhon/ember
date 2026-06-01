@@ -23,6 +23,7 @@ import (
 	"github.com/brandonhon/ember/internal/config"
 	"github.com/brandonhon/ember/internal/db"
 	"github.com/brandonhon/ember/internal/digest"
+	"github.com/brandonhon/ember/internal/emailinbox"
 	"github.com/brandonhon/ember/internal/feed"
 	"github.com/brandonhon/ember/internal/opml"
 	"github.com/brandonhon/ember/internal/poller"
@@ -238,6 +239,23 @@ func run() error {
 		logger.Info("push notifications enabled")
 	}
 
+	// Inbound email inbox (newsletter feature). Only starts when
+	// EMBER_EMAIL_DOMAIN is configured. The listener runs in a goroutine;
+	// we join on it during shutdown alongside the other background workers.
+	emailSrv := emailinbox.NewServer(emailinbox.Config{
+		Domain:     cfg.EmailDomain,
+		ListenAddr: cfg.EmailListenAddr,
+		MaxBytes:   cfg.EmailMaxBytes,
+	}, st, logger)
+	if emailSrv != nil {
+		go func() {
+			if err := emailSrv.Start(); err != nil {
+				logger.Error("smtp listener", "err", err)
+			}
+		}()
+		defer emailSrv.Stop()
+	}
+
 	// Test mode seeds a deterministic admin + feed + articles so the e2e
 	// harness has known data to assert against. In normal mode, do the
 	// usual first-run admin bootstrap.
@@ -415,6 +433,10 @@ func run() error {
 		// Web Push fan-out. Nil disables the /api/me/push-* endpoints
 		// (they return 503). Configured above near WebAuthn.
 		Push: pushNotifier,
+		// Email inbox domain (e.g. mail.example.com). Empty disables the
+		// inbox endpoints. The SMTP listener for this domain is started
+		// above when configured.
+		EmailDomain: cfg.EmailDomain,
 	})
 
 	srv := &http.Server{
