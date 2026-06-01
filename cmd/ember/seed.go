@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/brandonhon/ember/internal/auth"
 	"github.com/brandonhon/ember/internal/models"
@@ -16,14 +17,22 @@ const (
 	testAdminPassword = "admintest"
 	testFeedURL       = "https://example.test/feed"
 	testFeedTitle     = "Example Tech Blog"
-	testCategory      = "Tech"
+	testCategory      = "Technology"
 )
 
-// seedTestData is idempotent: it creates a known admin, a known feed, a
-// category, and a fixed set of articles when the database is empty enough to
-// matter. Tests rely on these exact strings.
+// seedTestData is idempotent: it creates a known admin, then two layers of
+// fixtures when the database is empty.
+//
+//  1. The e2e contract: feed id 1 ("Example Tech Blog") with article ids
+//     1/2/3 — "First fixture article" (summary card), "Second fixture about
+//     espresso" (search target), and a 2-day-old "Third fixture article"
+//     (excluded from the Fresh view). The Playwright suite asserts these
+//     exact strings, ids, and freshness, so do NOT reorder or rename them.
+//  2. A realistic multi-feed/folder set with thumbnails and summaries,
+//     stamped with recent timestamps so it sorts above the contract
+//     fixtures. This is what the docs hero / marketing screenshots capture
+//     (see web/scripts/screenshots.mjs and the dark-mode three-pane shots).
 func seedTestData(ctx context.Context, st *store.Store, a *auth.Auth, logger *slog.Logger) error {
-	// Use a deterministic password so tests can log in.
 	if _, _, err := a.BootstrapAdmin(ctx, testAdminUser, testAdminPassword); err != nil {
 		return fmt.Errorf("bootstrap admin: %w", err)
 	}
@@ -32,101 +41,200 @@ func seedTestData(ctx context.Context, st *store.Store, a *auth.Auth, logger *sl
 		return fmt.Errorf("get admin: %w", err)
 	}
 
-	// Feed + category + subscription.
-	feed, err := st.UpsertFeed(ctx, models.Feed{
-		URL: testFeedURL, Title: testFeedTitle, SiteURL: "https://example.test",
-	})
-	if err != nil {
-		return fmt.Errorf("upsert feed: %w", err)
-	}
-
-	var catID *int64
-	cats, _ := st.ListCategories(ctx, u.ID)
-	for i := range cats {
-		if cats[i].Name == testCategory {
-			catID = &cats[i].ID
-			break
+	// Folders (categories), created on demand and cached by name.
+	catCache := map[string]*int64{}
+	ensureCat := func(name string) (*int64, error) {
+		if id, ok := catCache[name]; ok {
+			return id, nil
 		}
-	}
-	if catID == nil {
-		c, err := st.CreateCategory(ctx, models.Category{UserID: u.ID, Name: testCategory})
+		cats, _ := st.ListCategories(ctx, u.ID)
+		for i := range cats {
+			if cats[i].Name == name {
+				catCache[name] = &cats[i].ID
+				return &cats[i].ID, nil
+			}
+		}
+		c, err := st.CreateCategory(ctx, models.Category{UserID: u.ID, Name: name})
 		if err != nil {
-			return fmt.Errorf("create category: %w", err)
+			return nil, fmt.Errorf("create category %q: %w", name, err)
 		}
-		catID = &c.ID
-	}
-	if _, err := st.Subscribe(ctx, models.Subscription{
-		UserID: u.ID, FeedID: feed.ID, CategoryID: catID,
-	}); err != nil {
-		return fmt.Errorf("subscribe: %w", err)
+		catCache[name] = &c.ID
+		return &c.ID, nil
 	}
 
-	// Articles — deterministic GUIDs so reruns dedup cleanly. The harness
-	// asserts the title of "first" appears in the list and the search hits
-	// the unique word "espresso".
-	type fix struct {
-		guid, title, text, hash string
-		published               int64
-		summary                 string
-	}
-	now := a.Now()
-	fixtures := []fix{
-		{
-			guid:      "fixture-1",
-			title:     "First fixture article",
-			text:      "This is the first article in the test fixture set.",
-			hash:      "h-fixture-1",
-			published: now.Unix() - 3600,
-			summary:   "• Test summary point one\n• Test summary point two\n• Test summary point three",
-		},
-		{
-			guid:      "fixture-2",
-			title:     "Second fixture about espresso",
-			text:      "How to brew espresso at home with a moka pot or a real machine.",
-			hash:      "h-fixture-2",
-			published: now.Unix() - 7200,
-		},
-		{
-			guid:      "fixture-3",
-			title:     "Third fixture article",
-			text:      "An older article from earlier this week.",
-			hash:      "h-fixture-3",
-			published: now.Unix() - 86400*2,
-		},
-		{guid: "fixture-4", title: "Fourth fixture", text: "Lorem ipsum dolor sit amet.", hash: "h-fixture-4", published: now.Unix() - 86400*3},
-		{guid: "fixture-5", title: "Fifth fixture", text: "Consectetur adipiscing elit.", hash: "h-fixture-5", published: now.Unix() - 86400*4},
-		{guid: "fixture-6", title: "Sixth fixture", text: "Sed do eiusmod tempor incididunt.", hash: "h-fixture-6", published: now.Unix() - 86400*5},
-		{guid: "fixture-7", title: "Seventh fixture", text: "Ut labore et dolore magna aliqua.", hash: "h-fixture-7", published: now.Unix() - 86400*6},
-		{guid: "fixture-8", title: "Eighth fixture", text: "Ut enim ad minim veniam.", hash: "h-fixture-8", published: now.Unix() - 86400*7},
-		{guid: "fixture-9", title: "Ninth fixture", text: "Quis nostrud exercitation ullamco.", hash: "h-fixture-9", published: now.Unix() - 86400*8},
-		{guid: "fixture-10", title: "Tenth fixture", text: "Laboris nisi ut aliquip ex ea.", hash: "h-fixture-10", published: now.Unix() - 86400*9},
-		{guid: "fixture-11", title: "Eleventh fixture", text: "Commodo consequat dolor in.", hash: "h-fixture-11", published: now.Unix() - 86400*10},
-		{guid: "fixture-12", title: "Twelfth fixture", text: "Reprehenderit in voluptate velit.", hash: "h-fixture-12", published: now.Unix() - 86400*11},
-	}
-	for _, f := range fixtures {
-		art, _, err := st.UpsertArticle(ctx, models.Article{
-			FeedID:      feed.ID,
-			GUID:        f.guid,
-			URL:         "https://example.test/posts/" + f.guid,
-			Title:       f.title,
-			ContentHTML: "<p>" + f.text + "</p>",
-			ContentText: f.text,
-			ContentHash: f.hash,
-			PublishedAt: f.published,
+	subscribe := func(title, url, site, category string) (int64, error) {
+		f, err := st.UpsertFeed(ctx, models.Feed{
+			URL:        url,
+			Title:      title,
+			SiteURL:    site,
+			FaviconURL: faviconFor(site),
 		})
 		if err != nil {
-			return fmt.Errorf("upsert fixture %s: %w", f.guid, err)
+			return 0, fmt.Errorf("upsert feed %q: %w", title, err)
 		}
-		// Stamp every fixture so it's visible in the UI (OnlySummarized gate).
-		// Articles with an explicit summary string get a real summary card;
-		// the rest get 'skipped' so they show without one.
-		if f.summary != "" {
-			_ = st.UpdateSummary(ctx, art.ID, f.summary, "noop")
+		cid, err := ensureCat(category)
+		if err != nil {
+			return 0, err
+		}
+		if _, err := st.Subscribe(ctx, models.Subscription{UserID: u.ID, FeedID: f.ID, CategoryID: cid}); err != nil {
+			return 0, fmt.Errorf("subscribe %q: %w", title, err)
+		}
+		return f.ID, nil
+	}
+
+	now := a.Now()
+	addArticle := func(feedID int64, guid string, art models.Article, summary string) error {
+		art.FeedID = feedID
+		art.GUID = guid
+		if art.URL == "" {
+			art.URL = "https://example.test/posts/" + guid
+		}
+		if art.ContentText == "" {
+			art.ContentText = stripTags(art.ContentHTML)
+		}
+		art.ContentHash = "h-" + guid
+		a, _, err := st.UpsertArticle(ctx, art)
+		if err != nil {
+			return fmt.Errorf("upsert article %q: %w", guid, err)
+		}
+		// Stamp every article so it clears the OnlySummarized UI gate: a real
+		// summary renders the AI card, "skipped" shows the article without one.
+		if summary != "" {
+			_ = st.UpdateSummary(ctx, a.ID, summary, "noop")
 		} else {
-			_ = st.UpdateSummary(ctx, art.ID, "", "skipped")
+			_ = st.UpdateSummary(ctx, a.ID, "", "skipped")
+		}
+		return nil
+	}
+
+	// --- Layer 1: e2e contract (feed id 1 + article ids 1/2/3) ---
+	exampleID, err := subscribe(testFeedTitle, testFeedURL, "https://example.test", testCategory)
+	if err != nil {
+		return err
+	}
+	if err := addArticle(exampleID, "fixture-1", models.Article{
+		Title:       "First fixture article",
+		ContentHTML: "<p>This is the first article in the test fixture set.</p>",
+		PublishedAt: now.Unix() - 3600,
+	}, "• Test summary point one\n• Test summary point two\n• Test summary point three"); err != nil {
+		return err
+	}
+	if err := addArticle(exampleID, "fixture-2", models.Article{
+		Title:       "Second fixture about espresso",
+		ContentHTML: "<p>How to brew espresso at home with a moka pot or a real machine.</p>",
+		PublishedAt: now.Unix() - 7200,
+	}, ""); err != nil {
+		return err
+	}
+	if err := addArticle(exampleID, "fixture-3", models.Article{
+		Title:       "Third fixture article",
+		ContentHTML: "<p>An older article from earlier this week.</p>",
+		PublishedAt: now.Unix() - 86400*2,
+	}, ""); err != nil {
+		return err
+	}
+
+	// --- Layer 2: realistic feeds + stories for screenshots ---
+	verge, err := subscribe("The Verge", "https://theverge.test/feed.xml", "https://www.theverge.com", "Technology")
+	if err != nil {
+		return err
+	}
+	ars, err := subscribe("Ars Technica", "https://arstechnica.test/feed.xml", "https://arstechnica.com", "Technology")
+	if err != nil {
+		return err
+	}
+	hn, err := subscribe("Hacker News", "https://hackernews.test/rss", "https://news.ycombinator.com", "Technology")
+	if err != nil {
+		return err
+	}
+	smashing, err := subscribe("Smashing Magazine", "https://smashingmag.test/feed", "https://www.smashingmagazine.com", "Design")
+	if err != nil {
+		return err
+	}
+	reuters, err := subscribe("Reuters World", "https://reutersworld.test/feed", "https://www.reuters.com", "World")
+	if err != nil {
+		return err
+	}
+
+	img := func(seed string) string { return "https://picsum.photos/seed/" + seed + "/640/420" }
+	type story struct {
+		feed                                int64
+		title, author, image, summary, body string
+		agoMin                              int64
+	}
+	stories := []story{
+		{verge, "Apple unveils the M5 MacBook Pro with on-device AI cores", "Nilay Patel", img("macbook"),
+			"Apple's new MacBook Pro leans hard into local inference, shipping a neural block that runs small language models entirely offline.\n\n• M5 adds a 32-core Neural Engine tuned for on-device LLMs\n• Battery life jumps to a claimed 24 hours of mixed use\n• Starts at $1,999; ships next month",
+			"<p>Apple today announced the M5 MacBook Pro, a machine built around the idea that the most useful AI is the kind that never leaves your laptop. The headline feature is a redesigned Neural Engine capable of running 7B-parameter models locally at interactive speeds.</p><p>The company framed the launch around privacy: summaries, transcription, and search all happen on-device, with nothing sent to a server.</p>", 6},
+		{ars, "SQLite turns 25: the little database that quietly runs the world", "Jim Salter", img("sqlite"),
+			"A look back at how a public-domain embedded database became the most deployed SQL engine on the planet.\n\n• Ships in every phone, browser, and most apps\n• Single-file, zero-config, serverless by design\n• New JSONB and FTS5 work keep it modern",
+			"<p>Twenty-five years after its first commit, SQLite is everywhere — and almost invisible. This piece traces its design philosophy and why \"just a file\" turned out to be a superpower.</p>", 18},
+		{hn, "Show HN: I built a self-hosted RSS reader with on-device summaries", "throwaway42", img("reader"), "",
+			"<p>I got tired of cloud readers mining my reading habits, so I built my own: a single Go binary with embedded SQLite, an embedded Svelte SPA, and an optional local LLM for summaries. No cloud, no tracking, a paper-and-ink UI.</p>" +
+				"<p>The whole thing runs from one ~25 MB binary behind any reverse proxy. Feeds refresh on a 15-second background poll that prepends new articles without a reload, and a small favicon dot flags unread items. Full-text search is SQLite FTS5; there are folders, saved searches, per-article tags, and a rules engine.</p>" +
+				"<p>The AI is fully optional — point it at a local Ollama model and each article gets a paragraph-plus-bullets summary that never leaves your box, or turn it off entirely and the reader works exactly the same. I'd love feedback on the architecture and the threat model.</p>", 32},
+		{smashing, "Designing calm interfaces: the case for paper-and-ink palettes", "Vitaly Friedman", img("design"),
+			"Why warm, low-contrast palettes reduce reading fatigue and how to build one with CSS color-mix().\n\n• Warm neutrals beat pure black/white for long reads\n• color-mix() derives a full palette from three anchors\n• Respect prefers-color-scheme and prefers-contrast",
+			"<p>The default web is a glaring white rectangle. This article argues for a softer, editorial aesthetic and walks through deriving a themeable palette from a handful of base colors.</p>", 51},
+		{reuters, "Undersea cable consortium announces new trans-Pacific route", "Reuters Staff", img("cable"), "",
+			"<p>A group of carriers will lay a new high-capacity fiber route across the Pacific, aiming to cut latency between Asia and North America.</p>", 74},
+		{verge, "Framework's modular laptop gets a mainboard upgrade", "Sean Hollister", img("framework"), "",
+			"<p>The repairable laptop keeps its promise: a drop-in mainboard breathes new life into three-year-old chassis.</p>", 95},
+		{ars, "Linux 6.18 lands with a major scheduler rework", "Jonathan Corbet", img("linux"), "",
+			"<p>The new release focuses on latency under heavy load and better handling of hybrid CPU topologies.</p>", 140},
+		{hn, "Ask HN: What's your homelab backup strategy in 2026?", "ops_nerd", img("homelab"), "",
+			"<p>A long thread on 3-2-1 backups, ZFS snapshots, and off-site replication for self-hosters.</p>", 190},
+		{smashing, "A practical guide to container queries", "Rachel Andrew", img("css"), "",
+			"<p>Container queries finally let components be responsive to their context, not just the viewport.</p>", 260},
+		{reuters, "Renewables overtake coal in the global electricity mix", "Reuters Staff", img("solar"), "",
+			"<p>For the first time, wind and solar generated more power than coal over a full quarter, a new report finds.</p>", 360},
+		{verge, "The best e-ink tablets for reading and note-taking", "Dan Seifert", img("eink"), "",
+			"<p>Our roundup of the paper-like tablets worth your money this year.</p>", 540},
+		{ars, "Inside the open-source push to replace the password", "Dan Goodin", img("passkey"), "",
+			"<p>Passkeys are spreading fast. We look at the FIDO2 stack and what self-hosters can do today.</p>", 800},
+	}
+	for i, s := range stories {
+		if err := addArticle(s.feed, fmt.Sprintf("hero-%d", i), models.Article{
+			Title:       s.title,
+			Author:      s.author,
+			ImageURL:    s.image,
+			ContentHTML: s.body,
+			PublishedAt: now.Unix() - s.agoMin*60,
+		}, s.summary); err != nil {
+			return err
 		}
 	}
-	logger.Info("test mode: seeded admin + feed + fixtures",
-		"user", testAdminUser, "feed_id", feed.ID, "category", testCategory)
+
+	logger.Info("test mode: seeded fixtures",
+		"user", testAdminUser, "feeds", 6, "articles", 3+len(stories))
 	return nil
+}
+
+// faviconFor returns a DuckDuckGo favicon URL for a feed's site, used only to
+// give the seeded feeds recognizable chips in screenshots.
+func faviconFor(site string) string {
+	host := strings.TrimPrefix(strings.TrimPrefix(site, "https://"), "http://")
+	host = strings.TrimPrefix(host, "www.")
+	if host == "" {
+		return ""
+	}
+	return "https://icons.duckduckgo.com/ip3/" + host + ".ico"
+}
+
+// stripTags returns a rough plain-text rendering of an HTML fragment for the
+// article's content_text (search/excerpt) field.
+func stripTags(s string) string {
+	out := s
+	for {
+		i := strings.IndexByte(out, '<')
+		if i < 0 {
+			break
+		}
+		j := strings.IndexByte(out[i:], '>')
+		if j < 0 {
+			break
+		}
+		out = out[:i] + " " + out[i+j+1:]
+	}
+	return strings.TrimSpace(strings.Join(strings.Fields(out), " "))
 }
