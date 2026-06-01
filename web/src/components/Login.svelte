@@ -9,6 +9,14 @@
   let error = $state("");
   let busy = $state(false);
   let passkeyBusy = $state(false);
+
+  // Cursor lands in the username field on mount and on every re-render of
+  // the login screen (e.g. after the user signs out and we route them back
+  // here). Bare HTML `autofocus` only fires on first paint and stops working
+  // after Svelte un-mounts/re-mounts the component, so we drive focus from
+  // an $effect against the bound element instead.
+  let usernameEl: HTMLInputElement | undefined = $state();
+  $effect(() => { usernameEl?.focus(); });
   // Two preconditions for showing the "Sign in with passkey" button:
   //   1) Browser supports WebAuthn (passkeySupported()).
   //   2) At least one passkey is registered on this server. Avoids dangling
@@ -113,6 +121,7 @@
           id="login-username"
           type="text"
           bind:value={username}
+          bind:this={usernameEl}
           autocomplete="username"
           data-testid="username"
         />
