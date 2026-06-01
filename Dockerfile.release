@@ -1,0 +1,36 @@
+# syntax=docker/dockerfile:1.7
+#
+# Release image used by .github/workflows/release.yml. The `build-binaries`
+# job already produces native linux/amd64 and linux/arm64 binaries; this
+# Dockerfile just packages them — no Go compile, no npm, no QEMU emulation
+# of compilation work. Multi-arch buildx picks the right binary via
+# TARGETARCH (set automatically per platform).
+#
+# For local source builds (`make docker`, `deploy/docker-compose.yml`),
+# the top-level `Dockerfile` (which does the full source-build) is still
+# the right entrypoint.
+
+# Stage 1: seed /data with nonroot (65532) ownership. Distroless has no
+# shell, so we can't `RUN mkdir` in the final stage — but we also don't
+# want this to run under QEMU for the arm64 image. `--platform=$BUILDPLATFORM`
+# pins this stage to the build host's native arch, then the final stage
+# COPYs the prepared directory across as plain data. Multi-arch assembly
+# becomes near-instant.
+FROM --platform=$BUILDPLATFORM busybox:1-musl AS dataprep
+RUN mkdir -p /out/data && chown 65532:65532 /out/data
+
+# Stage 2: runtime. Pre-built binaries are dropped into dist/ by the CI
+# step `Stage binaries for Dockerfile.release`. TARGETARCH expands to
+# amd64 or arm64 depending on which platform buildx is currently building.
+FROM gcr.io/distroless/static-debian12:nonroot
+ARG TARGETARCH
+ARG VERSION=docker
+
+COPY dist/ember-linux-${TARGETARCH} /ember
+COPY --from=dataprep --chown=nonroot:nonroot /out/data /data
+
+EXPOSE 8080
+USER nonroot:nonroot
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+  CMD ["/ember", "version"]
+ENTRYPOINT ["/ember"]
