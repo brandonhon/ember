@@ -147,6 +147,13 @@ func run() error {
 
 	st := store.New(dbh)
 
+	// One-shot backfill for articles inserted before the 0013 migration:
+	// populates canonical_url + cluster_id so cross-feed dedup catches
+	// historical rows too. Runs in a goroutine so server start isn't gated
+	// on a large historical corpus; the dedup query gracefully skips rows
+	// with cluster_id='' until the backfill catches up.
+	st.BackfillClustersAsync(ctx, logger)
+
 	sessionKey := cfg.SessionKey
 	if sessionKey == "" && cfg.TestMode {
 		// Test mode falls back to a hardcoded, publicly-known signing key so

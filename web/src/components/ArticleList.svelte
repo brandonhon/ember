@@ -16,11 +16,51 @@
   } from "../lib/stores";
   import { api } from "../lib/api";
   import { get } from "svelte/store";
-  import type { ArticleView, FeedWithCounts } from "../lib/types";
+  import type { ArticleView, ClusterSibling, FeedWithCounts } from "../lib/types";
 
   let containerEl: HTMLElement | undefined = $state();
   let freshOnly = $state(false);
   let unreadOnly = $state(false);
+
+  // Cluster expansion: clicking the "Also in N" pill opens a popover
+  // listing the cross-feed siblings (other feeds the user is subscribed
+  // to that also published this URL after canonicalization). Lazy-fetched
+  // on first open per article id; cached for the lifetime of the list.
+  let clusterOpenForId = $state<number | null>(null);
+  let clusterSiblingsCache = $state<Record<number, ClusterSibling[] | "loading" | "error">>({});
+  async function openCluster(e: Event, id: number) {
+    e.stopPropagation();
+    e.preventDefault();
+    if (clusterOpenForId === id) {
+      clusterOpenForId = null;
+      return;
+    }
+    clusterOpenForId = id;
+    if (clusterSiblingsCache[id] !== undefined) return;
+    clusterSiblingsCache[id] = "loading";
+    try {
+      const res = await api.getArticleCluster(id);
+      clusterSiblingsCache[id] = res.data?.siblings ?? [];
+    } catch {
+      clusterSiblingsCache[id] = "error";
+    }
+  }
+  function onClusterKey(e: KeyboardEvent, id: number) {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      void openCluster(e, id);
+    } else if (e.key === "Escape") {
+      clusterOpenForId = null;
+    }
+  }
+  // Close popover on any outside click.
+  function onListClick(e: MouseEvent) {
+    if (clusterOpenForId === null) return;
+    const t = e.target as HTMLElement;
+    if (!t.closest("[data-cluster-popover]") && !t.closest("[data-cluster-trigger]")) {
+      clusterOpenForId = null;
+    }
+  }
 
   // Reset scroll to the top whenever the active view changes (item 8 — user
   // clicks Today/Fresh/All Unread/Starred/feed/folder). Instant scroll matches
@@ -150,7 +190,7 @@
   }
 </script>
 
-<section class="list-col" bind:this={containerEl} on:scroll={onScroll} data-testid="article-list">
+<section class="list-col" bind:this={containerEl} on:scroll={onScroll} on:click={onListClick} role="presentation" data-testid="article-list">
   <div class="list-header">
     <div class="list-title-row">
       <div>
@@ -247,6 +287,9 @@
             {/if}
             {#if isFresh(a.published_at) && !a.is_read}<span class="fresh-tag">Fresh</span>{/if}
             {#if a.dup_count > 0}
+              <!-- Visual label inside the story-link button. The interactive
+                   trigger sits in story-foot below as a sibling — nested
+                   buttons inside a button would be invalid HTML / a11y. -->
               <span class="dup-tag" title="Also published in other feeds you subscribe to" data-testid="dup-tag-{a.id}">
                 Also in {a.dup_count + 1}
               </span>
@@ -283,6 +326,44 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>
             {a.is_later ? "Saved" : "Later"}
           </button>
+          {#if a.dup_count > 0}
+            <span class="dup-wrap">
+              <button
+                class="dup-trigger"
+                data-cluster-trigger
+                on:click={(e) => openCluster(e, a.id)}
+                on:keydown={(e) => onClusterKey(e, a.id)}
+                aria-haspopup="true"
+                aria-expanded={clusterOpenForId === a.id}
+                aria-label={`View ${a.dup_count} other feed(s) that published this`}
+                data-testid="dup-trigger-{a.id}"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 7h12M8 12h12M8 17h12M3 7h.01M3 12h.01M3 17h.01"/></svg>
+                Sources
+              </button>
+              {#if clusterOpenForId === a.id}
+                <div class="cluster-popover" data-cluster-popover data-testid="cluster-popover-{a.id}" role="dialog" aria-label="Other feeds with this story">
+                  {#if clusterSiblingsCache[a.id] === "loading"}
+                    <div class="cluster-empty">Loading…</div>
+                  {:else if clusterSiblingsCache[a.id] === "error"}
+                    <div class="cluster-empty">Couldn't load.</div>
+                  {:else if Array.isArray(clusterSiblingsCache[a.id]) && (clusterSiblingsCache[a.id] as ClusterSibling[]).length === 0}
+                    <div class="cluster-empty">No other feeds carry this story.</div>
+                  {:else}
+                    {#each (clusterSiblingsCache[a.id] as ClusterSibling[]) as s (s.article_id)}
+                      <a class="cluster-row" href={s.url || "#"} target="_blank" rel="noopener noreferrer">
+                        <span class="cluster-feed">{s.feed_title || "Untitled feed"}</span>
+                        <span class="cluster-state">
+                          {#if s.is_starred}<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l3 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.9 21l1.2-6.8-5-4.9 6.9-1z"/></svg>{/if}
+                          {s.is_read ? "read" : "unread"}
+                        </span>
+                      </a>
+                    {/each}
+                  {/if}
+                </div>
+              {/if}
+            </span>
+          {/if}
         </div>
       </article>
     {/each}
@@ -591,6 +672,61 @@
   .story-foot button:hover { color: var(--ember); }
   .story-foot button.starred { color: var(--gold); }
   .story-foot svg { width: 14px; height: 14px; }
+
+  /* Cross-feed cluster ("Sources") popover. Anchored to the trigger inside
+     .story-foot and overlays the story card. Width capped so it never
+     overflows a narrow viewport. */
+  .dup-wrap { position: relative; display: inline-flex; }
+  .dup-trigger { /* inherits .story-foot button look */ }
+  .cluster-popover {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 20;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: var(--shadow-pane);
+    padding: 6px;
+    min-width: 220px;
+    max-width: min(360px, 88vw);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .cluster-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 7px 10px;
+    border-radius: 7px;
+    text-decoration: none;
+    color: var(--ink);
+    font-size: 12.5px;
+  }
+  .cluster-row:hover { background: var(--line-soft); }
+  .cluster-feed {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .cluster-state {
+    color: var(--ink-faint);
+    font-size: 11px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .cluster-state svg { width: 11px; height: 11px; color: var(--gold); }
+  .cluster-empty {
+    color: var(--ink-faint);
+    font-size: 12px;
+    padding: 10px 12px;
+    text-align: center;
+  }
 
   .articles.compact .story {
     padding: 10px 13px 10px 15px;
