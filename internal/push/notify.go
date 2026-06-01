@@ -9,6 +9,8 @@ import (
 	"sync"
 
 	webpush "github.com/SherClockHolmes/webpush-go"
+
+	"github.com/brandonhon/ember/internal/urlcheck"
 )
 
 // Subscription mirrors the rows in push_subscriptions. The store package
@@ -30,21 +32,21 @@ type SubStore interface {
 // Payload is the data sent to the browser. The service worker receives
 // it as the .data on the PushEvent.
 type Payload struct {
-	Title      string `json:"title"`
-	Body       string `json:"body"`
-	URL        string `json:"url,omitempty"`
-	ArticleID  int64  `json:"article_id,omitempty"`
+	Title     string `json:"title"`
+	Body      string `json:"body"`
+	URL       string `json:"url,omitempty"`
+	ArticleID int64  `json:"article_id,omitempty"`
 }
 
 // Notifier fans out a payload to every subscription registered by a
 // user. Holds the VAPID keypair + the admin contact "mailto:" subject.
 // Construct once at boot; safe for concurrent use.
 type Notifier struct {
-	keys        Keys
-	subject     string // "mailto:..."
-	store       SubStore
-	logger      *slog.Logger
-	httpClient  *http.Client
+	keys       Keys
+	subject    string // "mailto:..."
+	store      SubStore
+	logger     *slog.Logger
+	httpClient *http.Client
 }
 
 // PublicKey returns the VAPID public key for the SPA to use with
@@ -58,8 +60,10 @@ func (n *Notifier) PublicKey() string {
 
 // NewNotifier returns a configured fan-out. subject must be a valid
 // "mailto:..." or "https://..." per the VAPID spec; falls back to a
-// localhost address (logged warn) if empty.
-func NewNotifier(keys Keys, contactEmail string, store SubStore, logger *slog.Logger) *Notifier {
+// localhost address (logged warn) if empty. allowPrivate disables the
+// SSRF redirect guard (matches the feed fetcher's flag) for homelab setups
+// where push services may live on a private network.
+func NewNotifier(keys Keys, contactEmail string, store SubStore, logger *slog.Logger, allowPrivate bool) *Notifier {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -69,11 +73,18 @@ func NewNotifier(keys Keys, contactEmail string, store SubStore, logger *slog.Lo
 		logger.Warn("VAPID subject defaulted; set EMBER_ADMIN_EMAIL or the admin user's email for better deliverability")
 	}
 	return &Notifier{
-		keys:       keys,
-		subject:    subject,
-		store:      store,
-		logger:     logger.With("component", "push"),
-		httpClient: &http.Client{},
+		keys:    keys,
+		subject: subject,
+		store:   store,
+		logger:  logger.With("component", "push"),
+		// SSRF guard: the subscription endpoint is validated at registration,
+		// but a push service could 30x to a private/metadata address. Re-check
+		// every redirect hop, mirroring the feed fetcher.
+		httpClient: &http.Client{
+			CheckRedirect: func(req *http.Request, _ []*http.Request) error {
+				return urlcheck.Check(req.Context(), req.URL.String(), allowPrivate)
+			},
+		},
 	}
 }
 
@@ -104,8 +115,8 @@ func (n *Notifier) NotifyUser(ctx context.Context, userID int64, p Payload) (sen
 	}
 
 	var (
-		wg       sync.WaitGroup
-		mu       sync.Mutex
+		wg sync.WaitGroup
+		mu sync.Mutex
 	)
 	for _, sub := range subs {
 		wg.Add(1)
