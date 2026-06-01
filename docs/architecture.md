@@ -5,11 +5,14 @@ A reference for contributors. Covers process layout, request lifecycle, and how 
 ## Process layout
 
 ```
-caddy ─┬─> ember (Go binary)
+caddy ─┬─> ember (Go binary, :8080)
        │     ├─ HTTP API + Fever shim + SPA serve
        │     ├─ Background poller (per-feed adaptive ticker)
        │     ├─ Summary worker pool (Ollama HTTP client)
-       │     └─ DB maintenance goroutine (backup / cleanup / OPML / hourly)
+       │     ├─ DB maintenance goroutine (backup / cleanup / OPML / hourly)
+       │     ├─ Cluster backfill goroutine (populates canonical_url / cluster_id / title_fingerprint for pre-migration rows)
+       │     ├─ Web Push notifier (VAPID, fan-out to user's subscriptions)
+       │     └─ Inbound SMTP listener (:2525 by default — only when EMBER_EMAIL_DOMAIN is set)
        │
        └─> SPA (embedded static files served by ember)
 
@@ -27,12 +30,14 @@ internal/auth/                argon2id passwords, securecookie sessions, WebAuth
 internal/config/              env-var loading (typed Config)
 internal/db/                  SQLite open, pragmas, embedded migrations (goose)
 internal/digest/              SMTP daily-digest builder + sender (multipart/alt + STARTTLS)
-internal/feed/                gofeed wrapper + readability fallback fetcher + Discover (homepage → feed URL)
-internal/filters/             matcher (field/op/value), apply outcome combiner
+internal/emailinbox/          inbound SMTP listener (go-smtp), RFC 5322 → Article parser, per-user handle generator
+internal/feed/                gofeed wrapper + readability fallback fetcher + Discover (homepage → feed URL), URL canonicalization + title fingerprinting for cross-feed dedup, YouTube/Mastodon URL rewriters
+internal/filters/             rules engine: 8 fields × 4 ops × 5 actions, priority-ordered Apply with relative-date clock
 internal/models/              data types shared across packages
 internal/opml/                OPML import + export + discovery → subscribe
 internal/poller/              adaptive scheduler, fetch dispatch, summary queue
-internal/store/               SQLite CRUD, FTS5 search, app_settings KV, dbops, passkeys, digests
+internal/push/                Web Push (VAPID) keypair management + fan-out notifier (github.com/SherClockHolmes/webpush-go)
+internal/store/               SQLite CRUD, FTS5 search, app_settings KV, dbops, passkeys, digests, push subscriptions, email inboxes, cluster backfill
 internal/summarize/           Summarizer interface + Ollama implementation + noop for tests
 internal/sysinfo/             host-detection (RAM/CPU/GPU) + model recommendation
 internal/urlcheck/            SSRF block (scheme allowlist + private-IP refusal)
@@ -46,21 +51,23 @@ SQLite. Migrations in `internal/db/migrations/*.sql`, applied at startup. Key ta
 
 - `users` — argon2id-hashed passwords; admin flag.
 - `sessions` — server-side rows backing cookies; pruned periodically.
-- `feeds` — shared across users; URL-unique. Tracks etag/last-modified/error counters.
+- `feeds` — shared across users; URL-unique. Tracks etag/last-modified/error counters. `kind` column distinguishes `'rss'` (default) from `'email'` (synthetic per-user newsletter feed).
 - `subscriptions` — `(user_id, feed_id)` with category, title override, muted flag, and `position` for drag-reorder.
 - `categories` — user-scoped folders with color + position.
-- `articles` — shared across users; per-feed dedup by `guid` and `content_hash`. Carries `cleaned_html` (AI ad-stripped).
+- `articles` — shared across users; per-feed dedup by `guid` and `content_hash`. Carries `cleaned_html` (AI ad-stripped). Cross-feed dedup uses `canonical_url` (tracking-param-stripped) + `cluster_id` (SHA-1 prefix of canonical) and falls back to `title_fingerprint` (lowercase / stopwords removed) within a 48h `published_at` window.
 - `article_state` — per-user read/star/later flags.
 - `articles_fts` — FTS5 virtual table on title/text/author; kept in sync via triggers.
 - `boards` + `board_articles` — user-curated collections.
-- `filters` — rule store; engine in `internal/filters`.
+- `filters` — rule store; engine in `internal/filters`. Rows carry `priority` (lower = earlier; default 100) and `action_value` (tag name for `tag` action, board id for `add_to_board`).
 - `shares` — user-to-user article shares.
-- `app_settings` — global KV (active model, schedules, branding, tuning).
+- `app_settings` — global KV (active model, schedules, branding, tuning, VAPID keypair).
 - `saved_searches` — persisted FTS queries.
 - `article_tags` — per-user tags on individual articles.
 - `user_digests` — per-user opt-in daily-digest config (view, hour/minute UTC, last-sent timestamp).
 - `passkeys` — WebAuthn credentials (credential_id, public_key, sign_count, name, timestamps).
 - `webauthn_sessions` — short-lived ceremony state for in-flight register/login flows; reaped after 5 min.
+- `push_subscriptions` — Web Push endpoints per user (endpoint, p256dh, auth, user_agent). 410/404 from the push service triggers cleanup.
+- `email_inboxes` — per-user newsletter inbox handle (12-char Crockford base32). `superseded_at` is a 7-day grace cutoff for the previous handle after rotation.
 
 WAL mode, 64 MiB page cache, 256 MiB mmap, busy_timeout=5s. Single Go connection — writes are serialized (SQLite single-writer); reads are fast enough that the connection pool isn't the bottleneck at this scale.
 
@@ -137,7 +144,45 @@ Active model + tunables held in `atomic.Value`/`atomic.Pointer` on the `Ollama` 
 - Typed fetch client in `web/src/lib/api.ts` (throws `ApiError`).
 - Stores in `web/src/lib/stores.ts` for user, feeds, categories, boards, articles, themes, branding, new-article counter, etc.
 - 15s auto-refresh poll while the tab is visible; SSE not used — REST polling is simpler and fits the cadence.
-- Service worker (`web/public/sw.js`) caches assets immutably and falls back to cached shell when offline.
+- Service worker (`web/public/sw.js`) caches assets immutably, falls back to cached shell when offline, AND handles `push` / `notificationclick` events from the Web Push subscription.
+
+## Web Push
+
+- VAPID keypair generated at first start (`internal/push/vapid.go`) and persisted to `app_settings` (`vapid_public_key`, `vapid_private_key`). Never auto-rotated — rotation would invalidate every existing browser subscription.
+- SPA flow (`web/src/lib/push.ts`): user clicks Enable → fetch public key → `Notification.requestPermission` → `pushManager.subscribe` → POST the resulting endpoint + ECDH keys to `/api/me/push-subscriptions`.
+- Server fan-out (`internal/push/notify.go`): `Notifier.NotifyUser(userID, payload)` reads the user's subscriptions, sends in parallel via `webpush.SendNotificationWithContext`. 410 / 404 → row deleted, sent-count not incremented.
+- Service workers require a **trusted TLS certificate**. Self-signed / `tls internal` certs cause the browser to refuse `/sw.js`, which breaks push, offline cache, and PWA install. See [Notifications setup](/notifications) for the cert options.
+
+## Email inbox (inbound SMTP)
+
+Opt-in feature enabled by `EMBER_EMAIL_DOMAIN`. Listener lives in `internal/emailinbox/server.go` (built on `github.com/emersion/go-smtp`):
+
+```
+sender@anywhere ──> :25 (firewall / reverse-proxy) ──> ember :2525
+                                                          │
+                                                          ▼
+                                          smtp.Backend{} (per-conn session)
+                                                          │
+                                                          ▼
+                          RCPT → extractHandle → Store.ResolveInbox
+                                                          │
+                                            (active OR within 7d grace)
+                                                          │
+                                                          ▼
+                                          DATA → io.LimitReader → []byte
+                                                          │
+                                                          ▼
+                              emailinbox.ParseMessage → models.Article
+                                                          │
+                                                          ▼
+                            Store.UpsertArticle on synthetic feed (kind='email')
+                                                          │
+                                                          ▼
+                                            poller.applyFiltersForUser
+                                              (tag / board / star / ...)
+```
+
+Mail to any address other than an active handle is rejected with `550 5.1.1 no such mailbox`. The handle alphabet (Crockford base32, ~60 bits) is validated before any DB lookup so unknown addresses don't even touch SQLite.
 
 ## Admin endpoints (admin-only)
 
@@ -154,6 +199,10 @@ Active model + tunables held in `atomic.Value`/`atomic.Pointer` on the `Ollama` 
 Auth-required (not admin-only):
 
 - `POST /api/articles/{id}/extract` — on-demand readability re-run for the reader pane's "Re-extract" button. Subject to the same SSRF check as the poller's automatic enrichment.
+- `GET /api/articles/{id}/cluster` — sibling articles in the same cross-feed cluster (other feeds the user follows that carried the same story).
+- `POST /api/filters/preview` — `{ match_json, since_days }` → `{ count }` of articles over the window that would have matched the rule. Used by the rule-builder UI.
+- `GET /api/me/inbox` / `POST /api/me/inbox/rotate` — per-user newsletter inbox address (creates on first GET). 503 when `EMBER_EMAIL_DOMAIN` is unset.
+- `GET /api/me/push-vapid-public-key`, `GET / POST /api/me/push-subscriptions`, `DELETE /api/me/push-subscriptions/{id}`, `POST /api/me/push-subscriptions/test` — Web Push enrollment, listing, revoke, test-send.
 
 ## E2E
 

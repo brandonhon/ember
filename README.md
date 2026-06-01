@@ -11,7 +11,7 @@ Three options, in order of effort. Each has a walkthrough in [docs/getting-start
 1. **Pre-built container** ([docs](https://brandonhon.github.io/ember/getting-started#run-from-the-released-container-image)) — `ghcr.io/brandonhon/ember:vX.Y.Z` (also `:X.Y`, `:X`, `:latest`). Multi-arch linux/amd64 + linux/arm64. Either `docker run` a single container to kick the tires, or swap the `build:` block in `deploy/docker-compose.yml` for `image: ghcr.io/brandonhon/ember:vX.Y.Z` to pull instead of building.
 2. **Pre-built binary** ([docs](https://brandonhon.github.io/ember/getting-started#run-from-a-pre-built-binary)) — download from [Releases](https://github.com/brandonhon/ember/releases). Four tarballs (`linux-{amd64,arm64}`, `darwin-{amd64,arm64}`) + `SHA256SUMS`. Includes a sample `systemd` unit.
    ```sh
-   VERSION=v0.6.0
+   VERSION=v0.7.2
    curl -L -o ember.tar.gz \
      "https://github.com/brandonhon/ember/releases/download/${VERSION}/ember-${VERSION}-linux-amd64.tar.gz"
    tar -xzf ember.tar.gz && ./ember --version
@@ -29,6 +29,8 @@ docker compose up -d
 
 Open `https://localhost` (Caddy serves the SPA + reverse-proxies the API). Log in with the admin credentials you set in `.env`.
 
+> **Push notifications + self-signed certs:** if you set `EMBER_HOSTNAME` to a LAN-only name with `tls internal` in `deploy/Caddyfile`, browsers will refuse to register the service worker over the resulting self-signed cert (push, offline cache, PWA install all break). Either point a real domain at the host (Caddy will fetch a Let's Encrypt cert automatically) or use Caddy's DNS-01 challenge for an internal name. See [docs/notifications.md](docs/notifications.md).
+
 On first boot:
 1. The `ollama-pull` container fetches the configured model (default `qwen2.5:0.5b`).
 2. The `ember` container creates the admin user from `EMBER_ADMIN_USER` / `EMBER_ADMIN_PASSWORD`.
@@ -43,8 +45,8 @@ You'll land on an onboarding panel that points to starter packs or OPML import. 
 - Smart views: Today, Fresh, All Unread, Starred, Read Later, Shared with me.
 - Folders (categories) with rename, color, drag-to-reorder.
 - Mute feeds; per-feed and aggregate unread badges; "!" badge on errored feeds.
-- Cross-feed article dedup with "Also in N feeds" pill.
-- Article actions: star, save for later, share (user / email / copy link), board pick.
+- **Cross-feed duplicate clustering**: tracking-param-stripped canonical URL plus a title-fingerprint fallback within a 48h window. Reuters / AP wire stories republished by five outlets collapse into one row; the "Also in N feeds" pill expands to a popover listing the sibling feeds with per-feed read/star state.
+- Article actions: star, save for later, share (user / email / copy link), board pick (including **remove from current board**).
 - Reading-time estimate (200 wpm) on cards and in the reader.
 
 ### AI summaries
@@ -63,14 +65,14 @@ You'll land on an onboarding panel that points to starter packs or OPML import. 
 ### Search + filters
 - FTS5 full-text search; submitting from the topbar opens a dedicated results view.
 - Saved searches: persist a query as a sidebar entry.
-- Filter rules with `mark_read`, `star`, or `hide` actions.
+- **Rules engine** with five actions (`mark_read`, `star`, `hide`, `tag`, `add_to_board`), eight match fields (title / content / author / url / tags / feed_id / published_at / has_image), and four ops including regex + `newer_than` duration. Per-rule **priority** orders evaluation; a **Preview** button shows how many of the last 7 days' articles a draft rule would have matched before you save it.
 - "Mute" popover in the reader actions adds a hide-by-keyword rule in one click.
 - Per-article user tags, with a `?tag=…` filter on the list endpoint.
 
 ### Onboarding + organization
 - Five curated starter packs (Technology, Programming, Security, DevOps & Infra, World News).
 - OPML import/export. Optional scheduled OPML export to `/data/exports/`.
-- **Subscribe by URL**: paste either a feed URL or just the homepage. Ember follows `<link rel=alternate>` and probes common feed paths (`/feed`, `/rss`, `/atom.xml`, `/feed.xml`, `/index.xml`).
+- **Subscribe by URL**: paste either a feed URL or just the homepage. Ember follows `<link rel=alternate>` and probes common feed paths (`/feed`, `/rss`, `/atom.xml`, `/feed.xml`, `/index.xml`). Also recognizes YouTube channel / handle / playlist URLs (`youtube.com/@handle`, `/channel/UC…`, `/playlist?list=PL…`) and Mastodon profile URLs (`<instance>/@user`) — resolves them to the right feed automatically.
 - Drag-to-reorder feeds and folders.
 - Mark-all-read at view / feed / category scope.
 
@@ -88,6 +90,10 @@ You'll land on an onboarding panel that points to starter packs or OPML import. 
 - Canvas-rendered favicon with a green notification dot when unread items arrive.
 - Page-title prefix `(N) Ember` so narrow tab strips show the count too.
 - Installed as a PWA, new articles trigger an OS-level numeric badge on the app icon.
+- **Web Push (VAPID)**: opt-in per device from Settings → Notifications. VAPID keypair auto-generated on first boot and persisted; no third-party push gateway. Requires a **trusted TLS certificate** — service workers refuse self-signed certs. See [docs/notifications.md](docs/notifications.md) for the cert + browser setup.
+
+### Email newsletters
+- **Per-user inbox address** at `<handle>@<EMBER_EMAIL_DOMAIN>`. Mail sent there lands as articles in a synthetic "Newsletters" feed — Substack, Beehiiv, mailchimp lists go through the same reader, search, filters, and digest. Off by default; set `EMBER_EMAIL_DOMAIN` to turn on the inbound SMTP listener (port `:2525` by default). See [docs/email-inbox.md](docs/email-inbox.md) for MX / port-25 setup.
 
 ### Themes + branding
 - 8 themes: Auto (matches OS), Light, Dark, Solarized, Sepia, Nord, Gruvbox, High contrast.
@@ -141,6 +147,9 @@ You'll land on an onboarding panel that points to starter packs or OPML import. 
 | `EMBER_SMTP_PASSWORD` | _(unset)_ | SMTP auth password |
 | `EMBER_SMTP_FROM` | _(unset)_ | digest `From:` address |
 | `EMBER_SMTP_STARTTLS` | `1` | enable STARTTLS on submission ports |
+| `EMBER_EMAIL_DOMAIN` | _(unset)_ | enables the email newsletter inbox; host part of `<handle>@<domain>` |
+| `EMBER_EMAIL_LISTEN_ADDR` | `:2525` | bind for the inbound SMTP listener (front with Caddy/postfix for port 25) |
+| `EMBER_EMAIL_MAX_BYTES` | `26214400` (25 MiB) | per-message size cap |
 
 ### Runtime-tunable settings (Settings UI)
 

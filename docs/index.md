@@ -55,7 +55,19 @@ features:
     details: Opt-in nightly summary of your fresh / unread / starred articles sent to your inbox. Pick the view, set the time in UTC, point at any SMTP relay.
   - icon: 🌐
     title: Subscribe by URL
-    details: Paste the homepage URL — Ember discovers the feed by following &lt;link rel=alternate&gt; and probing common feed paths. No more digging for the orange icon.
+    details: Paste the homepage URL — Ember discovers the feed by following &lt;link rel=alternate&gt; and probing common feed paths. Also recognizes YouTube channel/handle/playlist URLs and Mastodon profiles, resolving them to the right feed automatically.
+  - icon: 📧
+    title: Email newsletter inbox
+    details: Each user gets a unique &lt;handle&gt;@&lt;your-domain&gt; address. Mail sent there lands as articles in a synthetic Newsletters feed — Substack, Beehiiv, mailchimp etc. flow through the same reader, filters, and digest. Off by default; opt-in by setting EMBER_EMAIL_DOMAIN.
+  - icon: 🔔
+    title: Web Push notifications
+    details: Opt-in per device. VAPID keypair auto-generated and persisted; no third-party push gateway. Send-test button in Settings → Notifications. Requires a trusted TLS cert (real domain or DNS-01 with Let's Encrypt).
+  - icon: ⚖️
+    title: Smart cross-feed dedup
+    details: Tracking-param-stripped canonical URL + title-fingerprint clustering (48h window) collapse syndicated wire stories into one row. Click the "Also in N feeds" pill to expand the sibling list with per-feed read/star state.
+  - icon: 🎯
+    title: Rules engine
+    details: Five actions (mark_read, star, hide, tag, add_to_board), eight match fields including feed, tags, published_at, has_image. Per-rule priority and a Preview button that counts last-7-day matches before you save.
 ---
 
 ::: tip AI is fully optional

@@ -61,8 +61,8 @@ If you'd rather skip the local build, the release pipeline publishes a multi-arc
 | Tag | What you get |
 | --- | --- |
 | `ghcr.io/brandonhon/ember:vX.Y.Z` | Immutable pin to a specific release. Recommended for production. |
-| `ghcr.io/brandonhon/ember:X.Y` | Latest patch within a minor (e.g. `0.6` → `v0.6.4`). |
-| `ghcr.io/brandonhon/ember:X` | Latest within a major (e.g. `0` → `v0.6.4`). |
+| `ghcr.io/brandonhon/ember:X.Y` | Latest patch within a minor (e.g. `0.7` → `v0.7.2`). |
+| `ghcr.io/brandonhon/ember:X` | Latest within a major (e.g. `0` → `v0.7.2`). |
 | `ghcr.io/brandonhon/ember:latest` | Whatever shipped most recently. Skips pre-releases. |
 | `ghcr.io/brandonhon/ember:sha-abc1234` | Built from a specific commit. |
 
@@ -91,7 +91,7 @@ Use the bundled `deploy/docker-compose.yml` but swap the `ember` service's local
 -    build:
 -      context: ..
 -      dockerfile: Dockerfile
-+    image: ghcr.io/brandonhon/ember:v0.6.0   # pin to a release; or :latest
++    image: ghcr.io/brandonhon/ember:v0.7.2   # pin to a release; or :latest
 ```
 
 Then everything else works as in [Stack install](#stack-install-recommended) — `docker compose up -d` pulls the released image instead of building one locally. Pinning a specific `vX.Y.Z` tag means your stack only updates when you re-pull, which is what you want for a homelab.
@@ -121,6 +121,8 @@ Migrations are embedded in the binary and apply automatically on startup; no man
 6. (Optional) **Settings → Passkeys** to register a passkey for password-less sign-in. Requires `EMBER_PUBLIC_URL` to be set.
 7. (Optional) Configure SMTP env vars (see [Configuration](/configuration#optional-env-vars)) and enable a daily digest email from your profile.
 8. (Optional) Install Ember as a PWA — Chrome / Edge / Safari "Install app" menu. Once installed, new articles trigger an OS-level numeric badge on the app icon (taskbar / dock / launcher) in addition to the in-tab favicon dot.
+9. (Optional) **Settings → Notifications** to enable Web Push on this device. Requires a **trusted TLS cert** (real domain, or DNS-01 with Let's Encrypt for a LAN-only deployment). Self-signed / `tls internal` certs cause the browser to refuse the service worker. See [Notifications](/notifications) for the cert setup.
+10. (Optional) **Settings → Email inbox** to get a per-user newsletter address. Requires the operator to have set `EMBER_EMAIL_DOMAIN` + arranged inbound port 25 (or a reverse-proxy to `:2525`). See [Email inbox](/email-inbox).
 
 ## Run from a pre-built binary
 
@@ -129,7 +131,7 @@ Bare-metal, VM, NAS, systemd — anywhere you'd rather not run Docker. Each rele
 ### Download + verify
 
 ```sh
-VERSION=v0.6.0   # or "latest" via /releases/latest/download/<name>
+VERSION=v0.7.2   # or "latest" via /releases/latest/download/<name>
 ARCH=linux-amd64   # or linux-arm64, darwin-amd64, darwin-arm64
 
 curl -L -o ember.tar.gz \
@@ -191,7 +193,7 @@ Put the env vars in `/etc/ember/ember.env` (one `KEY=value` per line, no `export
 ### Upgrading
 
 ```sh
-VERSION=v0.6.1   # next release
+VERSION=v0.7.3   # next release
 curl -L -o ember.tar.gz \
   "https://github.com/brandonhon/ember/releases/download/${VERSION}/ember-${VERSION}-linux-amd64.tar.gz"
 tar -xzf ember.tar.gz
