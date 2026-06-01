@@ -19,7 +19,7 @@ type URLValidator func(ctx context.Context, raw string) error
 
 // Service exposes Import/Export, wired to a store and a discovery helper.
 type Service struct {
-	Store      *store.Store
+	Store       *store.Store
 	ValidateURL URLValidator
 }
 
@@ -212,4 +212,3 @@ func (s *Service) Export(ctx context.Context, userID int64, w io.Writer) error {
 	}
 	return enc.Flush()
 }
-

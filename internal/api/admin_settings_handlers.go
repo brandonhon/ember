@@ -16,12 +16,12 @@ import (
 // are reflected so the UI can pre-fill.
 type adminSettings struct {
 	SMTP struct {
-		Host          string `json:"host"`
-		Port          int    `json:"port"`
-		Username      string `json:"username"`
-		PasswordSet   bool   `json:"password_set"`
-		From          string `json:"from"`
-		StartTLS      bool   `json:"starttls"`
+		Host        string `json:"host"`
+		Port        int    `json:"port"`
+		Username    string `json:"username"`
+		PasswordSet bool   `json:"password_set"`
+		From        string `json:"from"`
+		StartTLS    bool   `json:"starttls"`
 	} `json:"smtp"`
 	InitialBacklogHours int `json:"initial_backlog_hours"`
 }

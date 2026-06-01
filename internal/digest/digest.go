@@ -60,12 +60,12 @@ func sanitizeHeader(v string) (string, error) {
 
 // SMTPConfig is what the sender needs to talk to an upstream SMTP relay.
 type SMTPConfig struct {
-	Host      string
-	Port      int
-	Username  string
-	Password  string
-	From      string
-	StartTLS  bool
+	Host     string
+	Port     int
+	Username string
+	Password string
+	From     string
+	StartTLS bool
 }
 
 // Configured reports whether SMTP has the minimum settings to send. Lets the

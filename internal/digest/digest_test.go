@@ -115,7 +115,7 @@ func fakeSMTPNoSTARTTLS(t *testing.T) (host string, port int) {
 				return
 			}
 			go func(c net.Conn) {
-				defer c.Close()
+				defer func() { _ = c.Close() }()
 				br := bufio.NewReader(c)
 				_, _ = c.Write([]byte("220 fake ESMTP\r\n"))
 				for {
@@ -157,12 +157,12 @@ func TestSend_StartTLSRequiredButNotOffered(t *testing.T) {
 
 func TestIsLoopbackHost(t *testing.T) {
 	cases := map[string]bool{
-		"localhost":   true,
-		"LocalHost":   true,
-		"127.0.0.1":   true,
-		"127.0.0.53":  true,
-		"::1":         true,
-		"  localhost": true,
+		"localhost":        true,
+		"LocalHost":        true,
+		"127.0.0.1":        true,
+		"127.0.0.53":       true,
+		"::1":              true,
+		"  localhost":      true,
 		"smtp.example.com": false,
 		"10.0.0.5":         false,
 		"192.168.1.1":      false,

@@ -28,8 +28,8 @@ type Config struct {
 	// to 24h. Override via EMBER_SESSION_TTL (Go duration: e.g. 30m, 12h, 7d
 	// not supported — use 168h for a week).
 	SessionTTL time.Duration
-	LogLevel        slog.Level
-	TestMode        bool
+	LogLevel   slog.Level
+	TestMode   bool
 	// DisableSummaries skips the LLM summarizer entirely. Articles still show
 	// in lists; the UI renders the article body without a summary card.
 	DisableSummaries bool
