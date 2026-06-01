@@ -2,9 +2,14 @@ package filters
 
 import (
 	"testing"
+	"time"
 
 	"github.com/brandonhon/ember/internal/models"
 )
+
+// frozenNow is a deterministic clock for tests that don't actually care
+// about relative-date matching but call Matches/Apply with a now value.
+var frozenNow = time.Unix(1_700_000_000, 0)
 
 func art(title, content, author, url string) models.Article {
 	return models.Article{Title: title, ContentText: content, Author: author, URL: url}
@@ -29,7 +34,7 @@ func TestMatch_AllOps(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if got := Matches(c.m, a); got != c.want {
+			if got := Matches(c.m, a, frozenNow); got != c.want {
 				t.Errorf("Matches(%+v) = %v, want %v", c.m, got, c.want)
 			}
 		})
@@ -103,7 +108,7 @@ func TestApply(t *testing.T) {
 			MatchJSON: `not json`, Enabled: true},
 	}
 
-	out := Apply(filters, a)
+	out := Apply(filters, a, frozenNow)
 	if !out.Hide {
 		t.Errorf("expected Hide=true")
 	}
@@ -122,7 +127,7 @@ func TestApply_NoMatches(t *testing.T) {
 			MatchJSON: `{"field":"title","op":"contains","value":"crypto"}`,
 			Enabled:   true},
 	}
-	out := Apply(filters, a)
+	out := Apply(filters, a, frozenNow)
 	if out.Any() {
 		t.Errorf("expected no actions, got %+v", out)
 	}
@@ -131,7 +136,7 @@ func TestApply_NoMatches(t *testing.T) {
 func TestMatches_RegexCaseInsensitive(t *testing.T) {
 	a := art("HelLo WoRld", "", "", "")
 	m := Match{Field: FieldTitle, Op: OpMatches, Value: "hello.+world"}
-	if !Matches(m, a) {
+	if !Matches(m, a, frozenNow) {
 		t.Error("expected case-insensitive regex match")
 	}
 }
@@ -139,7 +144,7 @@ func TestMatches_RegexCaseInsensitive(t *testing.T) {
 func TestMatches_RegexCaseSensitive(t *testing.T) {
 	a := art("HelLo WoRld", "", "", "")
 	m := Match{Field: FieldTitle, Op: OpMatches, Value: "hello.+world", CaseSensitive: true}
-	if Matches(m, a) {
+	if Matches(m, a, frozenNow) {
 		t.Error("expected no match (case sensitive)")
 	}
 }
