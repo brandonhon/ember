@@ -177,7 +177,10 @@
   }
   @media (max-width: 800px) {
     #login { grid-template-columns: 1fr; }
-    .login-brand { display: none; }
+    /* Scoped via #login so this beats the base `.login-brand { display: flex }`
+       rule below it — media queries add no specificity, and the base rule wins
+       on source order otherwise, leaking the brand panel onto mobile. */
+    #login .login-brand { display: none; }
   }
 
   /* LEFT — ink brand panel ------------------------------------------------ */
@@ -228,11 +231,12 @@
     color: var(--ember-soft);
   }
   .message p {
-    /* Was rgba(...,0.6) — too soft against --ink on narrow viewports where
-       the panel is still visible (e.g. phone landscape between 800 and
-       1100px). 0.82 keeps the "subdued tagline" look without forcing
-       readers to squint. */
-    color: rgba(246, 242, 233, 0.82);
+    /* Track --paper (the panel's on-ink text color) rather than a hardcoded
+       cream: the brand panel background is var(--ink), which flips to a light
+       tone in the dark themes (dark/nord/gruvbox). A literal light value went
+       near-invisible there. 0.82 alpha keeps the "subdued tagline" look
+       without forcing readers to squint. */
+    color: color-mix(in srgb, var(--paper) 82%, transparent);
     max-width: 38ch;
     line-height: 1.6;
     margin-top: 18px;
@@ -250,7 +254,9 @@
 
   .foot {
     font-size: 11px;
-    color: rgba(246, 242, 233, 0.4);
+    /* Same reason as .message p — derive from --paper so the footer stays
+       legible on the light-flipped panel in dark themes. */
+    color: color-mix(in srgb, var(--paper) 40%, transparent);
     letter-spacing: 0.04em;
     font-weight: 600;
   }
