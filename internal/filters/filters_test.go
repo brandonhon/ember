@@ -65,6 +65,30 @@ func TestMatch_Validate(t *testing.T) {
 	}
 }
 
+// TestPublishedAt_DayDuration is a regression test: the docs and UI
+// advertise "7d" for published_at/newer_than, but time.ParseDuration
+// rejects the day unit. parseDuration must bridge that gap.
+func TestPublishedAt_DayDuration(t *testing.T) {
+	for _, v := range []string{"7d", "24h", "168h", "1d"} {
+		m := Match{Field: FieldPublishedAt, Op: OpNewerThan, Value: v}
+		if err := m.Validate(); err != nil {
+			t.Errorf("Validate(%q) = %v, want nil", v, err)
+		}
+	}
+	if (Match{Field: FieldPublishedAt, Op: OpNewerThan, Value: "7x"}).Validate() == nil {
+		t.Error("Validate(\"7x\") = nil, want error")
+	}
+
+	// Article published 3 days before the reference clock.
+	a := models.Article{PublishedAt: frozenNow.Add(-3 * 24 * time.Hour).Unix()}
+	if !Matches(Match{Field: FieldPublishedAt, Op: OpNewerThan, Value: "7d"}, a, frozenNow) {
+		t.Error("3-day-old article should match newer_than 7d")
+	}
+	if Matches(Match{Field: FieldPublishedAt, Op: OpNewerThan, Value: "1d"}, a, frozenNow) {
+		t.Error("3-day-old article should NOT match newer_than 1d")
+	}
+}
+
 func TestParseMatch(t *testing.T) {
 	m, err := ParseMatch(`{"field":"title","op":"contains","value":"foo"}`)
 	if err != nil {
