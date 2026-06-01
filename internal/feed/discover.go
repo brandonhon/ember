@@ -43,6 +43,20 @@ func Discover(ctx context.Context, c *http.Client, target string, validate func(
 	if err := validate(target); err != nil {
 		return "", fmt.Errorf("feed: validate target: %w", err)
 	}
+	// Pre-pass: recognize known URL shapes (YouTube channel/playlist/handle,
+	// Mastodon profile) and rewrite them straight to their feed URL. For
+	// shapes that need a network hop (YouTube /@handle), this runs through
+	// the same validate guard. Returns the original target on no-match so
+	// the rest of the function still runs as before.
+	if rewritten, ok, err := RewriteKnown(ctx, c, target, validate); err != nil {
+		return "", err
+	} else if ok {
+		// Validate the rewritten URL too — it crosses the same trust boundary.
+		if err := validate(rewritten); err != nil {
+			return "", fmt.Errorf("feed: validate rewritten: %w", err)
+		}
+		target = rewritten
+	}
 	parsedTarget, err := url.Parse(target)
 	if err != nil {
 		return "", fmt.Errorf("feed: parse target: %w", err)
