@@ -152,7 +152,13 @@
     // Branding can be fetched without a session so the title/icon match the
     // server's identity even before the user logs in.
     void refreshBranding();
-    await refreshMe();
+    // refreshMe handles its own 401 (clears $user → Login renders). We
+    // wrap in try/finally so a transient network error or 5xx still flips
+    // mounted=true — otherwise the page is stuck on "Loading…" forever and
+    // the user can't retry by refreshing.
+    try {
+      await refreshMe();
+    } catch { /* swallow non-401 errors; user lands on Login */ }
     mounted = true;
   });
 
