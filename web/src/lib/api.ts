@@ -4,6 +4,7 @@ import type {
   ArticleView,
   Board,
   Category,
+  ClusterSibling,
   DiscoveredFeed,
   FeedWithCounts,
   Filter,
@@ -206,6 +207,8 @@ export const api = {
     return call<ArticleView[]>("GET", `/api/articles${qs ? "?" + qs : ""}`);
   },
   getArticle: (id: number) => call<ArticleView>("GET", `/api/articles/${id}`),
+  getArticleCluster: (id: number) =>
+    call<{ siblings: ClusterSibling[] }>("GET", `/api/articles/${id}/cluster`),
   setRead: (ids: number[], read: boolean) =>
     call<{ count: number }>("POST", "/api/articles/read", { ids, read }),
   setStar: (id: number, value: boolean) =>
