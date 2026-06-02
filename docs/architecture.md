@@ -84,9 +84,9 @@ HTTPS                Caddy
         ▼              ▼              ▼
    /api/auth/*    /api/*         /fever  (Fever shim)
                        │              │
-                  CSRFVerify           │
-                  RequireAuth          │
-                  (RequireAdmin)       │
+                  CSRFVerify          │
+                  RequireAuth         │
+                  (RequireAdmin)      │
                        │              │
                        ▼              ▼
                    handlers       fever_handlers
