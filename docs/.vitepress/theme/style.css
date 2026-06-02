@@ -125,6 +125,14 @@ h1, h2, h3, .VPHero .name, .VPHero .text {
 .dark .VPNavBar:not(.has-sidebar) {
   background: rgba(33, 29, 24, 0.85);
 }
+/* Kill the inner content-body background. VitePress' own scoped style
+   (.VPNavBar:not(.home.top) .content-body[data-v-…]) paints
+   var(--vp-nav-bg-color) here, which double-stacks an opaque band over
+   our translucent backdrop-blur .content above. !important is required
+   to beat the scope-hashed attribute selector's specificity. */
+.VPNavBar:not(.home.top) .content-body {
+  background-color: transparent !important;
+}
 
 /* Align the nav's logo + menu with the hero's "Ember" name. VitePress'
    default .wrapper uses padding:0 32px and the inner .container caps
@@ -186,6 +194,27 @@ h1, h2, h3, .VPHero .name, .VPHero .text {
 .VPNavBarSearch .DocSearch-Button:hover {
   border-color: var(--vp-c-brand-1);
   background: var(--vp-c-bg-elv);
+}
+/* Search shortcut hint: VitePress 1.x already opens local search on `/`
+   (in addition to ⌘K/Ctrl+K), so we only restyle the visible hint to a
+   single `/` key instead of the default platform-meta + K pair. */
+.VPNavBarSearch .DocSearch-Button-Keys .DocSearch-Button-Key {
+  display: none;
+}
+.VPNavBarSearch .DocSearch-Button-Keys::after {
+  content: '/';
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  font-family: var(--vp-font-family-mono);
+  font-size: 12px;
+  line-height: 1;
+  color: var(--vp-c-text-2);
+  background: var(--vp-c-bg-soft);
+  border: 1px solid var(--vp-c-divider);
 }
 
 /* Theme-toggle moon icon: VitePress' default vpi-moon is a Lucide
@@ -324,4 +353,59 @@ h1, h2, h3, .VPHero .name, .VPHero .text {
   box-shadow:
     0 0 0 1px rgba(240, 233, 218, 0.1),
     0 24px 60px -20px rgba(0, 0, 0, 0.6);
+}
+
+/* ───────────────────────── Mobile (<960px) ───────────────────────── */
+
+/* Hide the page scrollbar on mobile — the chrome is unnecessary on touch
+   devices and the thin track clutters the narrow viewport. Scrolling
+   still works; only the visible bar is suppressed. */
+@media (max-width: 959px) {
+  html {
+    scrollbar-width: none;            /* Firefox */
+    -ms-overflow-style: none;         /* legacy Edge */
+  }
+  html::-webkit-scrollbar {
+    display: none;                    /* WebKit / Blink */
+  }
+}
+
+/* Hero stacking order on mobile. VitePress' default stacks the hero as
+   [image] → [heading] → [tagline] → [actions] (screenshot up top). We
+   want the wordmark/tagline to lead, the screenshot to sit in the
+   middle, and the call-to-action buttons last:
+     [heading] → [tagline] → [image] → [actions]
+   The actions (Get started / GitHub) live *inside* .main while .image is
+   a sibling, so plain flex `order` can't interleave them. `display:
+   contents` dissolves .main's box and promotes heading/tagline/actions
+   into the container's flex flow, where explicit `order` can sequence
+   them around the image. align-items:stretch keeps the promoted text
+   blocks full-width + left-aligned (the column default would otherwise
+   shrink-wrap and center them). */
+@media (max-width: 959px) {
+  .VPHero .container { align-items: stretch; }
+  .VPHero .main { display: contents; }
+  .VPHero .heading { order: 1; text-align: left; }
+  .VPHero .tagline { order: 2; text-align: left; }
+  .VPHero .image   { order: 3; }
+  .VPHero .actions { order: 4; }
+}
+
+/* Nav arrangement on mobile (<768px, where VitePress collapses the menu
+   into a hamburger). Default leaves the hamburger jammed against the
+   logo and the search pill pinned far right:
+     [logo][menu] ............ [search]
+   Swap them — center the search and move the hamburger to the right:
+     [logo] ...... [search] ...... [menu] */
+@media (max-width: 767px) {
+  .VPNavBar .content-body > .VPNavBarSearch {
+    order: 1;
+    margin-left: auto;
+    margin-right: auto;
+    flex: 0 0 auto;
+  }
+  .VPNavBar .content-body > .VPNavBarHamburger {
+    order: 2;
+    margin-left: 0;
+  }
 }

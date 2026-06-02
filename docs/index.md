@@ -42,30 +42,6 @@ features:
   - icon: 🔐
     title: Hardened by default
     details: argon2id passwords, SameSite=Strict cookies, CSRF double-submit, SSRF block on outbound fetches, generic error responses, govulncheck-clean stdlib.
-  - icon: 📱
-    title: Fever-compatible
-    details: Reeder, FeedMe, and other Fever clients connect via /fever using a random per-user API token. Random tokens, not predictable hashes.
-  - icon: ⚙️
-    title: Live admin controls
-    details: Hot-swap LLM model, tune temperature/top_p/num_ctx, manage backups + cleanup + OPML export schedules. All from Settings.
-  - icon: 🚀
-    title: Auto-refresh + favicon dot
-    details: 15-second background poll prepends new articles without a page reload. A green dot on the favicon and (N) prefix in the tab title flag unread items.
-  - icon: 🔑
-    title: Passkey sign-in
-    details: Self-register a FIDO2 passkey per device. Sign in with Touch ID, Face ID, or a hardware key alongside (or instead of) your password.
-  - icon: 📬
-    title: Daily digest email
-    details: Opt-in nightly summary of your fresh / unread / starred articles sent to your inbox. Pick the view, set the time in UTC, point at any SMTP relay.
-  - icon: 🌐
-    title: Subscribe by URL
-    details: Paste the homepage URL — Ember discovers the feed by following &lt;link rel=alternate&gt; and probing common feed paths. Also recognizes YouTube channel/handle/playlist URLs and Mastodon profiles, resolving them to the right feed automatically.
-  - icon: 📧
-    title: Email newsletter inbox
-    details: Each user gets a unique &lt;handle&gt;@&lt;your-domain&gt; address. Mail sent there lands as articles in a synthetic Newsletters feed — Substack, Beehiiv, mailchimp etc. flow through the same reader, filters, and digest. Off by default; opt-in by setting EMBER_EMAIL_DOMAIN.
-  - icon: 🔔
-    title: Web Push notifications
-    details: Opt-in per device. VAPID keypair auto-generated and persisted; no third-party push gateway. Send-test button in Settings → Notifications. Requires a trusted TLS cert (real domain or DNS-01 with Let's Encrypt).
   - icon: ⚖️
     title: Smart cross-feed dedup
     details: Tracking-param-stripped canonical URL + title-fingerprint clustering (48h window) collapse syndicated wire stories into one row. Click the "Also in N feeds" pill to expand the sibling list with per-feed read/star state.
@@ -73,6 +49,8 @@ features:
     title: Rules engine
     details: Five actions (mark_read, star, hide, tag, add_to_board), eight match fields including feed, tags, published_at, has_image. Per-rule priority and a Preview button that counts last-7-day matches before you save.
 ---
+
+And plenty more under the hood: **Fever-compatible API** (Reeder, FeedMe & co. via a random per-user token), **passkey sign-in** (Touch ID / Face ID / hardware keys), an opt-in **daily digest email**, **subscribe-by-URL** discovery (including YouTube channels and Mastodon profiles), **15-second auto-refresh** with a favicon unread dot, and **live admin controls** for hot-swapping the LLM model, tuning generation params, and scheduling backups / cleanup / OPML exports.
 
 ## Why?
 
