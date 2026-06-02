@@ -107,6 +107,17 @@ func ytFeedURL(key, id string) string {
 // out of the embedded ytInitialData blob. Returns "" when the pattern isn't
 // found (page changed shape, redirect to login, etc.) — the caller treats
 // that as "no rewrite, fall back to Discover".
+//
+// SSRF posture (CodeQL flags this as request-forgery; that's a false
+// positive — three independent layers gate the request):
+//  1. The host has already been verified as a literal YouTube domain
+//     (`isYouTubeHost`) before this function is called.
+//  2. `validate(page)` runs `urlcheck.Check` on the URL right below; it
+//     refuses non-http(s) schemes and RFC1918 / loopback / link-local /
+//     IPv6 ULA destinations.
+//  3. Callers pass an *http.Client whose CheckRedirect is
+//     `feed.RedirectGuard(validate)` so every 30x hop is re-validated
+//     against the same SSRF guard.
 func resolveYouTubeHandle(ctx context.Context, c *http.Client, u *url.URL, validate func(string) error) (string, error) {
 	if c == nil {
 		c = http.DefaultClient
