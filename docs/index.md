@@ -8,9 +8,13 @@ hero:
   text: A reader for people who read.
   tagline: Self-hosted RSS aggregation with an optional on-device LLM and a paper-and-ink interface. One Go binary, one container, one tab.
   image:
-    light: /icon.svg
-    dark: /icon-dark.svg
-    alt: Ember
+    # Theme-inverted on purpose: a dark UI screenshot reads strongest against
+    # the cream paper background; the light screenshot pops against the
+    # warm-dark page in dark mode. Both are real screenshots of the running
+    # app, captured at 2880×1800 retina.
+    light: /screenshots/hero-2-threepane-summary-dark.png
+    dark: /screenshots/hero-2-threepane-summary-light.png
+    alt: Ember three-pane reader with AI summary card
   actions:
     - theme: brand
       text: Get started
@@ -69,10 +73,6 @@ features:
     title: Rules engine
     details: Five actions (mark_read, star, hide, tag, add_to_board), eight match fields including feed, tags, published_at, has_image. Per-rule priority and a Preview button that counts last-7-day matches before you save.
 ---
-
-::: tip AI is fully optional
-The summary card, model picker, and Ollama sidecar are an opt-out feature, not a dependency. Set `EMBER_DISABLE_SUMMARIES=1` (or run the stack without the `ollama` container) and the reader works exactly the same — minus the summary card. No model download, no inference, no LLM code paths run. Even when enabled, everything stays on your box; no article content leaves the host.
-:::
 
 ## Why?
 
