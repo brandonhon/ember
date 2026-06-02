@@ -106,3 +106,222 @@ h1, h2, h3, .VPHero .name, .VPHero .text {
 .VPNavBarTitle .title .logo {
   margin-right: 4px !important;
 }
+
+/* Nav-bar polish + reordering.
+   Default VitePress packs nav elements as:
+     [title] [search ←pushed right] [menu] [appearance] [socialLinks]
+   We want the marketing-page layout:
+     [title] [menu] [appearance] [search ←pushed right]
+   The GitHub link in themeConfig.nav already covers the social-icon
+   case, so the duplicate icon at the right is hidden. */
+
+.VPNavBar.has-sidebar .content,
+.VPNavBar:not(.has-sidebar) {
+  background: rgba(255, 253, 248, 0.92); /* var(--vp-c-bg-elv) with alpha */
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--vp-c-divider);
+}
+.dark .VPNavBar.has-sidebar .content,
+.dark .VPNavBar:not(.has-sidebar) {
+  background: rgba(33, 29, 24, 0.85);
+}
+
+/* Align the nav's logo + menu with the hero's "Ember" name. VitePress'
+   default .wrapper uses padding:0 32px and the inner .container caps
+   at ~1376px, but the hero (.VPHero) uses responsive padding
+   (24/48/64px) with a 1152px inner container — different geometry.
+   Mirror the hero's padding scale on the nav wrapper, then cap the
+   inner .container at 1152px (matching .VPHero .container). End result:
+   logo left edge == hero name left edge at every viewport width. */
+.VPNavBar > .wrapper {
+  padding-left: 24px;
+  padding-right: 24px;
+}
+@media (min-width: 640px) {
+  .VPNavBar > .wrapper {
+    padding-left: 48px;
+    padding-right: 48px;
+  }
+}
+@media (min-width: 960px) {
+  .VPNavBar > .wrapper {
+    padding-left: 64px;
+    padding-right: 64px;
+  }
+}
+.VPNavBar > .wrapper > .container {
+  max-width: 1152px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Re-order the right-side nav group. Flex `order` shuffles without
+   touching the DOM. */
+.VPNavBar .content-body {
+  display: flex;
+  align-items: center;
+  column-gap: 12px;
+}
+.VPNavBar .content-body > .VPNavBarMenu        { order: 1; margin-left: 8px; }
+.VPNavBar .content-body > .VPNavBarTranslations { order: 2; }
+.VPNavBar .content-body > .VPNavBarSearch      { order: 10; margin-left: auto; flex: 0 0 auto; }
+.VPNavBar .content-body > .VPNavBarAppearance  { order: 11; }
+.VPNavBar .content-body > .VPNavBarSocialLinks { display: none; }
+.VPNavBar .content-body > .VPNavBarExtra       { order: 99; }
+
+.VPNavBarMenuLink:hover,
+.VPNavBarMenuLink.active {
+  color: var(--vp-c-brand-1) !important;
+}
+/* Search pill: bordered control (matches the mockup) instead of the
+   default ghost button. Compact width — it's no longer fighting menu
+   items for space since it's anchored right. */
+.VPNavBarSearch .DocSearch-Button {
+  border: 1px solid var(--vp-c-divider);
+  background: var(--vp-c-bg);
+  border-radius: 8px;
+  transition: border-color 0.15s, background 0.15s;
+  height: 36px;
+}
+.VPNavBarSearch .DocSearch-Button:hover {
+  border-color: var(--vp-c-brand-1);
+  background: var(--vp-c-bg-elv);
+}
+
+/* Theme-toggle moon icon: VitePress' default vpi-moon is a Lucide
+   stroke-only crescent. At 12×12 the rasterized stroke produces two
+   parallel arcs that read as a fuzzy "C" rather than a clean moon.
+   Override with a filled crescent + slightly larger render size so
+   it actually reads as a moon at the toggle's scale. */
+.vpi-moon {
+  --icon: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M21.64 13a1 1 0 0 0-1.05-.14 8.05 8.05 0 0 1-3.37.73 8.15 8.15 0 0 1-8.14-8.1 8.59 8.59 0 0 1 .25-2A1 1 0 0 0 8 2.36a10.14 10.14 0 1 0 14 11.69 1 1 0 0 0-.36-1.05Z'/%3E%3C/svg%3E");
+}
+.VPSwitchAppearance :deep(.icon [class^='vpi-']) {
+  /* slightly larger than default 12×12 so the filled shape isn't a
+     postage stamp on the 18×18 thumb. */
+  width: 14px !important;
+  height: 14px !important;
+  top: 2px !important;
+  left: 2px !important;
+}
+/* Soften the toggle's hover state — the brand-color border was so
+   prominent on a dark thumb that the moon got crowded. Use a subtler
+   border-color (the same warm border we use elsewhere) and reserve
+   the brand color for the actual icon. */
+.VPSwitch:hover {
+  border-color: var(--vp-c-text-3) !important;
+}
+
+/* Hero image: VitePress' default constrains the image into a fixed-size
+   square container (.image-container is 320–392px, .image-src is
+   absolutely centered with max-width 320px), with a translate(-32, -32)
+   offset on the container. That's optimized for the default icon/logo
+   use-case — not for a wide screenshot. We need a natural-sized image
+   that vertically centers against the text column.
+   Tear down the fixed sizing + transform, then let the inner image flow
+   naturally. align-self:center on the .image flex item pins the
+   resulting block to the text column's vertical center. */
+.VPHero .container {
+  align-items: center;
+}
+@media (min-width: 960px) {
+  /* Default VitePress allocates 2/3 of the hero row to the text column
+     (capped at 592px) and 1/3 to the image — a logo-friendly split.
+     A wide screenshot reads as tiny in that 1/3 slot. Re-split closer
+     to 50/50 so the screenshot dominates appropriately. */
+  .VPHero .main {
+    width: 50%;
+    max-width: none;
+  }
+  .VPHero .image {
+    width: 50%;
+    flex: 0 0 50%;
+    align-self: center;
+    min-height: 0;
+  }
+}
+
+/* Mobile / stacked layout (<960px): VitePress' default uses negative
+   horizontal margins on .image to bleed the logo to the screen edges.
+   That's wrong for a wide screenshot — it overflows the viewport.
+   Strip the negative margins, cap the image at a reasonable max width,
+   and center it under the text. */
+@media (max-width: 959px) {
+  .VPHero .image {
+    margin: 24px auto !important;
+    max-width: 560px;
+    width: 100%;
+    align-self: center;
+  }
+  .VPHero .image-container {
+    width: 100%;
+    max-width: 100%;
+    margin: 0 auto;
+  }
+  .VPHero .image-src {
+    /* Image already has width:100% + height:auto; just make sure the
+       inner shadow + radius scale down nicely on phones. */
+    border-radius: 10px;
+  }
+  /* Tighten the rest of the hero block on mobile — VitePress' default
+     center-aligns the text on small screens, which is good. */
+  .VPHero .main {
+    text-align: left;
+  }
+}
+
+/* Phone-narrow: drop the hero side padding so the (capped) image isn't
+   sandwiched in extra whitespace, and tighten the tagline / actions. */
+@media (max-width: 639px) {
+  .VPHero {
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+  }
+  .VPHero .image {
+    max-width: 100%;
+    margin: 16px auto !important;
+  }
+  /* Callout band — at narrow widths the side gutter looks like a giant
+     orphan margin; tighten it. */
+  .ai-optional-band {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+}
+.VPHero .image-container {
+  width: 100%;
+  height: auto;
+  transform: none;
+  display: block;
+}
+.VPHero .image-bg {
+  /* Default VitePress radial-blur wash is sized for a small logo (320px
+     square) — way too small for our wide screenshot. Toned down to a
+     faint anchor (the screenshot's drop-shadow carries the lift; this
+     just adds a hint of warmth behind the image). */
+  opacity: 0.18;
+}
+/* VitePress' scoped styles set position:absolute + max-width:320px on
+   .image-src and beat unscoped overrides on specificity. !important is
+   the pragmatic answer (no other selector path reaches into the
+   scope-hashed component selector). */
+.VPHero .image-src {
+  position: static !important;
+  top: auto !important;
+  left: auto !important;
+  transform: none !important;
+  max-width: 100% !important;
+  max-height: none !important;
+  width: 100% !important;
+  height: auto !important;
+  border-radius: 12px;
+  box-shadow:
+    0 0 0 1px rgba(33, 29, 24, 0.08),
+    0 24px 60px -20px rgba(33, 29, 24, 0.35);
+  object-fit: contain;
+}
+.dark .VPHero .image-src {
+  box-shadow:
+    0 0 0 1px rgba(240, 233, 218, 0.1),
+    0 24px 60px -20px rgba(0, 0, 0, 0.6);
+}
