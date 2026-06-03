@@ -1,48 +1,48 @@
 # Screenshots
 
-Captured against the test-mode binary via `web/scripts/screenshots-dual-theme.mjs`. Each scene is captured twice — once in the app's light theme, once in dark — at both desktop (1440×900 @ 2x) and mobile (390×844 @ 3x) viewports. The docs site swaps to whichever variant matches the current page theme (via the `.light-only` / `.dark-only` classes in the theme stylesheet) so the screenshot never blends into the page background.
+Captured against the test-mode binary via `web/scripts/screenshots-dual-theme.mjs`. Each scene is captured twice — once in the app's light theme, once in dark — at both desktop (1440×900 @ 2x) and mobile (390×844 @ 3x) viewports. The docs site shows the **opposite** variant — a light page displays the dark-theme capture and a dark page the light-theme capture (via the `.light-only` / `.dark-only` classes in the theme stylesheet) — so the screenshot contrasts the page background instead of blending into it.
 
 ## Three-pane reader
 
 The default layout: sidebar of folders + feeds, the article list, and the reader. Keyboard navigation (`j` / `k` / `r` / `m` / `s` / `?`), drag-to-reorder folders and feeds within them.
 
-<img src="./public/screenshots/reader-desktop-light.png" alt="Reader desktop (light)" class="light-only">
-<img src="./public/screenshots/reader-desktop-dark.png"  alt="Reader desktop (dark)"  class="dark-only">
+<img src="./public/screenshots/reader-desktop-light.png" alt="Reader desktop (light)" class="dark-only">
+<img src="./public/screenshots/reader-desktop-dark.png"  alt="Reader desktop (dark)"  class="light-only">
 
 ## Article view
 
 Summary card sits between the title and the body — paragraph lead + factual bullets. AI ad-stripping removes newsletter signups, podcast promos, and "Comments" trailers from the body before display.
 
-<img src="./public/screenshots/article-desktop-light.png" alt="Article desktop (light)" class="light-only">
-<img src="./public/screenshots/article-desktop-dark.png"  alt="Article desktop (dark)"  class="dark-only">
+<img src="./public/screenshots/article-desktop-light.png" alt="Article desktop (light)" class="dark-only">
+<img src="./public/screenshots/article-desktop-dark.png"  alt="Article desktop (dark)"  class="light-only">
 
 ## Settings — preferences
 
 Theme picker (8 presets + custom palette), density toggle, AI summary card on/off.
 
-<img src="./public/screenshots/settings-preferences-desktop-light.png" alt="Settings preferences (light)" class="light-only">
-<img src="./public/screenshots/settings-preferences-desktop-dark.png"  alt="Settings preferences (dark)"  class="dark-only">
+<img src="./public/screenshots/settings-preferences-desktop-light.png" alt="Settings preferences (light)" class="dark-only">
+<img src="./public/screenshots/settings-preferences-desktop-dark.png"  alt="Settings preferences (dark)"  class="light-only">
 
 ## Settings — language model (admin)
 
 Host probe (RAM/CPU/GPU) with a model recommendation. Installed-model table with per-row switch + delete. Pull form for new models. Sliders for temperature, top_p, num_ctx.
 
-<img src="./public/screenshots/settings-llm-desktop-light.png" alt="Settings language model (light)" class="light-only">
-<img src="./public/screenshots/settings-llm-desktop-dark.png"  alt="Settings language model (dark)"  class="dark-only">
+<img src="./public/screenshots/settings-llm-desktop-light.png" alt="Settings language model (light)" class="dark-only">
+<img src="./public/screenshots/settings-llm-desktop-dark.png"  alt="Settings language model (dark)"  class="light-only">
 
 ## Settings — email / SMTP (admin)
 
 Overlay the `EMBER_SMTP_*` env defaults with admin-edited values that take effect at runtime (digest sender re-resolves each tick). Send a one-off test email to verify the relay. Below it, the initial-backlog window controls how much history is ingested when a new feed is added.
 
-<img src="./public/screenshots/settings-email-desktop-light.png" alt="Settings email/SMTP (light)" class="light-only">
-<img src="./public/screenshots/settings-email-desktop-dark.png"  alt="Settings email/SMTP (dark)"  class="dark-only">
+<img src="./public/screenshots/settings-email-desktop-light.png" alt="Settings email/SMTP (light)" class="dark-only">
+<img src="./public/screenshots/settings-email-desktop-dark.png"  alt="Settings email/SMTP (dark)"  class="light-only">
 
 ## Login
 
 Paper-and-ink split layout. Branding (app name, page title, favicon) is admin-configurable from Settings → Branding.
 
-<img src="./public/screenshots/login-desktop-light.png" alt="Login desktop (light)" class="light-only">
-<img src="./public/screenshots/login-desktop-dark.png"  alt="Login desktop (dark)"  class="dark-only">
+<img src="./public/screenshots/login-desktop-light.png" alt="Login desktop (light)" class="dark-only">
+<img src="./public/screenshots/login-desktop-dark.png"  alt="Login desktop (dark)"  class="light-only">
 
 ## Mobile
 
@@ -51,13 +51,13 @@ Paper-and-ink split layout. Branding (app name, page title, favicon) is admin-co
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin: 24px 0;">
 
 <div>
-  <img src="./public/screenshots/reader-mobile-light.png" alt="Reader mobile (light)" class="light-only">
-  <img src="./public/screenshots/reader-mobile-dark.png"  alt="Reader mobile (dark)"  class="dark-only">
+  <img src="./public/screenshots/reader-mobile-light.png" alt="Reader mobile (light)" class="dark-only">
+  <img src="./public/screenshots/reader-mobile-dark.png"  alt="Reader mobile (dark)"  class="light-only">
 </div>
 
 <div>
-  <img src="./public/screenshots/article-mobile-light.png" alt="Article mobile (light)" class="light-only">
-  <img src="./public/screenshots/article-mobile-dark.png"  alt="Article mobile (dark)"  class="dark-only">
+  <img src="./public/screenshots/article-mobile-light.png" alt="Article mobile (light)" class="dark-only">
+  <img src="./public/screenshots/article-mobile-dark.png"  alt="Article mobile (dark)"  class="light-only">
 </div>
 
 </div>
