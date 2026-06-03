@@ -59,6 +59,12 @@ features:
   - icon: 🌐
     title: Subscribe by URL
     details: Paste the homepage URL — Ember discovers the feed by following &lt;link rel=alternate&gt; and probing common feed paths. No more digging for the orange icon.
+  - icon: ⚖️
+    title: Smart cross-feed dedup
+    details: Tracking-param-stripped canonical URL + title-fingerprint clustering (48h window) collapse syndicated wire stories into one row. Click the "Also in N feeds" pill to expand the sibling list with per-feed read/star state.
+  - icon: 🎯
+    title: Rules engine
+    details: Five actions (mark_read, star, hide, tag, add_to_board), eight match fields including feed, tags, published_at, has_image. Per-rule priority and a Preview button that counts last-7-day matches before you save.
 ---
 
 ## Why?
