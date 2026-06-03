@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'docs/**'
+      - 'web/**'
       - '.github/workflows/pages.yml'
   # Manual run from the Actions tab if you change something outside docs/
   # that the site references (e.g., a screenshot in web/public).
@@ -36,6 +37,21 @@ jobs:
       - name: Build site
         working-directory: docs
         run: npm run docs:build
+
+      # Static "demo mode" SPA — frozen, mocked-API build served under
+      # /ember/demo/. Built from the committed web/src/demo/demo-data.json;
+      # no backend involved. Staged into the VitePress dist so it ships in the
+      # same gh-pages deploy.
+      - name: Install demo SPA deps
+        working-directory: web
+        run: npm ci --no-audit --no-fund
+
+      - name: Build demo SPA
+        working-directory: web
+        run: npm run build:demo
+
+      - name: Stage demo into dist
+        run: cp -r web/dist docs/.vitepress/dist/demo
 
       - name: Add .nojekyll
         # Tells GitHub Pages to skip Jekyll processing — VitePress emits

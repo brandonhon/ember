@@ -1,8 +1,9 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { login, refreshMe } from "../lib/stores";
+  import { login, refreshMe, user } from "../lib/stores";
   import { api, ApiError } from "../lib/api";
   import { getPasskey, passkeySupported } from "../lib/passkey";
+  import { DEMO } from "../demo/demo";
 
   let username = $state("");
   let password = $state("");
@@ -26,6 +27,15 @@
   const browserSupportsPasskey = passkeySupported();
   let anyPasskeyRegistered = $state(false);
   onMount(async () => {
+    // Demo mode: prefill demo/demo and let visitors read the login screen for
+    // 15s before auto-signing-in. Clicking "Sign in" earlier works too — the
+    // busy flag below guards against a double submit when the timer fires.
+    if (DEMO) {
+      username = "demo";
+      password = "demo";
+      setTimeout(() => { if (!busy && !$user) void onSubmit(new Event("submit")); }, 15000);
+      return;
+    }
     if (!browserSupportsPasskey) return;
     try {
       const res = await api.passkeyAnyRegistered();
