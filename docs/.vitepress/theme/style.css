@@ -107,6 +107,16 @@ h1, h2, h3, .VPHero .name, .VPHero .text {
   margin-right: 4px !important;
 }
 
+/* Theme-paired images. Author content pages with two <img>'s next to
+   each other:
+     <img src="./public/screenshots/reader-desktop-light.png" class="light-only" alt="...">
+     <img src="./public/screenshots/reader-desktop-dark.png"  class="dark-only"  alt="...">
+   The browser hides whichever doesn't match the current docs theme.
+   Without this, a cream/paper screenshot disappears against the cream
+   page bg in light mode (or vice versa in dark mode). */
+:root:not(.dark) .dark-only { display: none !important; }
+:root.dark .light-only       { display: none !important; }
+
 /* Nav-bar polish + reordering.
    Default VitePress packs nav elements as:
      [title] [search ←pushed right] [menu] [appearance] [socialLinks]
