@@ -8,9 +8,10 @@ hero:
   text: A reader for people who read.
   tagline: Self-hosted RSS aggregation with an optional on-device LLM and a paper-and-ink interface. One Go binary, one container, one tab.
   image:
-    # Theme-inverted on purpose so the device contrasts the page bg:
-    # light docs theme → dark app screenshot;
-    # dark docs theme  → light app screenshot.
+    # Theme-inverted on purpose: a dark UI screenshot reads strongest against
+    # the cream paper background; the light screenshot pops against the
+    # warm-dark page in dark mode. Both are real screenshots of the running
+    # app, captured at 2880×1800 retina.
     light: /screenshots/hero-2-threepane-summary-dark.png
     dark: /screenshots/hero-2-threepane-summary-light.png
     alt: Ember three-pane reader with AI summary card
@@ -41,24 +42,6 @@ features:
   - icon: 🔐
     title: Hardened by default
     details: argon2id passwords, SameSite=Strict cookies, CSRF double-submit, SSRF block on outbound fetches, generic error responses, govulncheck-clean stdlib.
-  - icon: 📱
-    title: Fever-compatible
-    details: Reeder, FeedMe, and other Fever clients connect via /fever using a random per-user API token. Random tokens, not predictable hashes.
-  - icon: ⚙️
-    title: Live admin controls
-    details: Hot-swap LLM model, tune temperature/top_p/num_ctx, manage backups + cleanup + OPML export schedules. All from Settings.
-  - icon: 🚀
-    title: Auto-refresh + favicon dot
-    details: 15-second background poll prepends new articles without a page reload. A green dot on the favicon and (N) prefix in the tab title flag unread items.
-  - icon: 🔑
-    title: Passkey sign-in
-    details: Self-register a FIDO2 passkey per device. Sign in with Touch ID, Face ID, or a hardware key alongside (or instead of) your password.
-  - icon: 📬
-    title: Daily digest email
-    details: Opt-in nightly summary of your fresh / unread / starred articles sent to your inbox. Pick the view, set the time in UTC, point at any SMTP relay.
-  - icon: 🌐
-    title: Subscribe by URL
-    details: Paste the homepage URL — Ember discovers the feed by following &lt;link rel=alternate&gt; and probing common feed paths. No more digging for the orange icon.
   - icon: ⚖️
     title: Smart cross-feed dedup
     details: Tracking-param-stripped canonical URL + title-fingerprint clustering (48h window) collapse syndicated wire stories into one row. Click the "Also in N feeds" pill to expand the sibling list with per-feed read/star state.
@@ -66,6 +49,8 @@ features:
     title: Rules engine
     details: Five actions (mark_read, star, hide, tag, add_to_board), eight match fields including feed, tags, published_at, has_image. Per-rule priority and a Preview button that counts last-7-day matches before you save.
 ---
+
+And plenty more under the hood: **Fever-compatible API** (Reeder, FeedMe & co. via a random per-user token), **passkey sign-in** (Touch ID / Face ID / hardware keys), an opt-in **daily digest email**, **subscribe-by-URL** discovery (including YouTube channels and Mastodon profiles), **15-second auto-refresh** with a favicon unread dot, and **live admin controls** for hot-swapping the LLM model, tuning generation params, and scheduling backups / cleanup / OPML exports.
 
 ## Why?
 
