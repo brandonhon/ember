@@ -32,6 +32,9 @@
   import ShortcutHelp from "./components/ShortcutHelp.svelte";
   import Settings from "./components/Settings.svelte";
   import WelcomeModal from "./components/WelcomeModal.svelte";
+  import DemoBanner from "./components/DemoBanner.svelte";
+  import DemoNotice from "./components/DemoNotice.svelte";
+  import { DEMO } from "./demo/demo";
 
   let keymapCleanup: () => void = () => {};
   let mounted = $state(false);
@@ -219,7 +222,7 @@
     if (!link) return;
     const base = $branding.favicon_url
       ? $branding.favicon_url
-      : (osDarkFavicon ? "/icon-dark.svg" : "/icon.svg");
+      : (osDarkFavicon ? `${import.meta.env.BASE_URL}icon-dark.svg` : `${import.meta.env.BASE_URL}icon.svg`);
     const dot = $newArticleCount > 0;
     void renderFaviconWithDot(base, dot).then((url) => {
       // The overlay is rasterized PNG; the original tag may declare svg+xml.
@@ -326,6 +329,10 @@
   });
 </script>
 
+{#if DEMO}
+  <DemoBanner />
+  <DemoNotice />
+{/if}
 {#if !mounted}
   <p class="boot">Loading…</p>
 {:else if !$user}

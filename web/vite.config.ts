@@ -3,7 +3,17 @@ import { svelte } from "@sveltejs/vite-plugin-svelte";
 
 const isTest = !!process.env.VITEST;
 
+// Demo build knobs (set by the `build:demo` script / pages.yml):
+//   VITE_DEMO_MODE=1          → ship the frozen, mocked-API demo
+//   VITE_DEMO_BASE=/ember/demo/ → subpath for GitHub Pages
+// Injected via `define` so they survive a plain `vite build` from the shell
+// (Vite only auto-loads VITE_* from .env files, not the process env).
 export default defineConfig({
+  base: process.env.VITE_DEMO_BASE || "/",
+  define: {
+    "import.meta.env.VITE_DEMO_MODE": JSON.stringify(process.env.VITE_DEMO_MODE ?? ""),
+    "import.meta.env.VITE_DEMO_DATE": JSON.stringify(process.env.VITE_DEMO_DATE ?? ""),
+  },
   plugins: [svelte({ hot: !isTest })],
   resolve: isTest ? { conditions: ["browser"] } : undefined,
   build: {

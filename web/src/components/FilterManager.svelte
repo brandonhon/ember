@@ -3,6 +3,7 @@
   import type { Filter, FilterMatch } from "../lib/types";
   import { api, ApiError } from "../lib/api";
   import { boards, feeds } from "../lib/stores";
+  import { DEMO, notifyDemoBlocked } from "../demo/demo";
 
   let { onClose }: { onClose: () => void } = $props();
 
@@ -109,6 +110,9 @@
   }
 
   async function save() {
+    // Demo: surface the "this is a demo" notice on the Add filter / Save click
+    // before any validation, so it fires even with an empty draft.
+    if (DEMO) { notifyDemoBlocked(); return; }
     if (!draft.name.trim() || !draft.value.trim()) {
       error = "name and value required";
       return;
