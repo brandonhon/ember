@@ -10,6 +10,7 @@
     sidebarCollapsed,
     branding,
   } from "../lib/stores";
+  import { DEMO, notifyDemoBlocked } from "../demo/demo";
   import { api, ApiError } from "../lib/api";
   import { get } from "svelte/store";
 
@@ -122,6 +123,7 @@
     const input = e.currentTarget as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
+    if (DEMO) { input.value = ""; notifyDemoBlocked(); return; }
     importMsg = "Importing…";
     try {
       const res = await api.importOPML(file);
@@ -136,6 +138,7 @@
   }
 
   function downloadOPML() {
+    if (DEMO) { notifyDemoBlocked(); return; }
     window.location.href = "/api/feeds/export";
   }
 
@@ -334,6 +337,7 @@
         class="pop-item"
         on:click={() => {
           popoverOpen = false;
+          if (DEMO) { notifyDemoBlocked(); return; }
           opmlInput?.click();
         }}
         data-testid="open-opml-import"

@@ -31,6 +31,9 @@ export default defineConfig({
       { text: 'Architecture', link: '/architecture' },
       { text: 'Security', link: '/security' },
       { text: 'Screenshots', link: '/screenshots' },
+      // Static demo SPA, built into /demo/ by pages.yml. Not a VitePress page,
+      // so target=_blank avoids the SPA router fighting VitePress navigation.
+      { text: 'Live Demo', link: '/demo/', target: '_blank', rel: 'noopener' },
       { text: 'GitHub', link: 'https://github.com/brandonhon/ember' },
     ],
     sidebar: [

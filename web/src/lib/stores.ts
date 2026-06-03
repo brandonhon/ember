@@ -175,7 +175,10 @@ export interface Branding {
   page_title: string;
   favicon_url: string;
 }
-const DEFAULT_BRANDING: Branding = { name: "Ember", page_title: "Ember", favicon_url: "/icon.svg" };
+// favicon_url is base-aware so it resolves under a subpath deploy (the
+// /ember/demo/ demo build); BASE_URL is "/" in the normal app so this stays
+// "/icon.svg" there.
+const DEFAULT_BRANDING: Branding = { name: "Ember", page_title: "Ember", favicon_url: `${import.meta.env.BASE_URL}icon.svg` };
 export const branding = writable<Branding>(DEFAULT_BRANDING);
 export async function refreshBranding(): Promise<void> {
   try {
