@@ -128,7 +128,7 @@ async function capturePane(page, sceneTitle, testId, vp, theme) {
     await btn.scrollIntoViewIfNeeded({ timeout: 4000 }).catch(() => {});
     await btn.click({ timeout: 4000 });
     await page.waitForTimeout(400);
-    await shoot(page, testId.replace(/^settings-/, "settings-"), vp, theme);
+    await shoot(page, testId, vp, theme);
   } catch (err) {
     console.log(`   (skipped: ${testId} — ${err.message.split("\n")[0]})`);
   }
