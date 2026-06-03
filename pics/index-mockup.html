@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Mockup — Ember docs hero with hero-2</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* Approximation of VitePress default theme + the Ember brand color. */
+    :root {
+      --vp-c-brand:        #a93b16;
+      --vp-c-brand-soft:   #e8643a;
+      --vp-c-brand-tint:   rgba(169, 59, 22, 0.06);
+      --vp-c-bg:           #ffffff;
+      --vp-c-bg-soft:      #f6f6f7;
+      --vp-c-text-1:       #1d1d1f;
+      --vp-c-text-2:       #545763;
+      --vp-c-text-3:       #84878d;
+      --vp-c-border:       #e2e2e3;
+      --vp-c-divider:      #ebebec;
+      --vp-shadow-3:       0 1px 2px rgba(0,0,0,.04), 0 12px 32px rgba(0,0,0,.06);
+      --font-display:      "Fraunces", Georgia, serif;
+      --font-ui:           "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--vp-c-bg);
+      color: var(--vp-c-text-1);
+      font-family: var(--font-ui);
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.5;
+    }
+
+    /* Top nav approximation. */
+    .nav {
+      position: sticky; top: 0; z-index: 10;
+      height: 64px;
+      background: rgba(255,255,255,.85);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--vp-c-divider);
+    }
+    .nav-inner {
+      max-width: 1152px; margin: 0 auto; padding: 0 24px;
+      height: 100%; display: flex; align-items: center; gap: 32px;
+    }
+    .brand {
+      display: flex; align-items: center; gap: 8px;
+      font-weight: 700; font-size: 17px; color: var(--vp-c-text-1);
+      text-decoration: none;
+    }
+    .brand svg { width: 24px; height: 24px; }
+    .nav-links { display: flex; gap: 24px; font-size: 14px; }
+    .nav-links a { color: var(--vp-c-text-2); text-decoration: none; }
+    .nav-links a:hover { color: var(--vp-c-text-1); }
+    .nav-right { margin-left: auto; display: flex; gap: 16px; align-items: center; font-size: 14px; }
+    .nav-right .pill {
+      padding: 6px 12px; border: 1px solid var(--vp-c-divider);
+      border-radius: 8px; color: var(--vp-c-text-2);
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+
+    /* Hero. */
+    .hero {
+      max-width: 1152px;
+      margin: 0 auto;
+      padding: 96px 24px 64px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+      align-items: center;
+    }
+    .hero-name {
+      font-family: var(--font-display);
+      font-size: 56px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      background: linear-gradient(120deg, var(--vp-c-brand), var(--vp-c-brand-soft));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      margin: 0 0 8px;
+      line-height: 1;
+    }
+    .hero-text {
+      font-family: var(--font-display);
+      font-size: 56px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--vp-c-text-1);
+      margin: 0 0 24px;
+      line-height: 1.05;
+    }
+    .hero-tagline {
+      font-size: 20px;
+      line-height: 1.5;
+      color: var(--vp-c-text-2);
+      max-width: 36ch;
+      margin: 0 0 32px;
+    }
+    .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 10px 22px;
+      border-radius: 24px;
+      font-size: 14px; font-weight: 600;
+      text-decoration: none;
+      transition: background .15s, transform .12s, box-shadow .15s;
+    }
+    .btn-brand {
+      background: var(--vp-c-brand);
+      color: #fff;
+    }
+    .btn-brand:hover { background: var(--vp-c-brand-soft); }
+    .btn-alt {
+      background: var(--vp-c-bg-soft);
+      color: var(--vp-c-text-1);
+      border: 1px solid var(--vp-c-divider);
+    }
+    .btn-alt:hover { border-color: var(--vp-c-text-3); }
+
+    /* Hero image — the new dark screenshot. VitePress wraps the image
+       in a square-ish container; we mimic that. Subtle drop-shadow so
+       the dark image lifts off the white background instead of looking
+       pasted-on. */
+    .hero-image-wrap {
+      position: relative;
+      display: grid; place-items: center;
+    }
+    .hero-image-wrap::before {
+      /* Soft radial glow tinted by the brand color — same trick the
+         VitePress default uses to anchor a hero image to the page. */
+      content: "";
+      position: absolute;
+      inset: -12%;
+      background: radial-gradient(closest-side, rgba(232, 100, 58, 0.20), transparent 70%);
+      filter: blur(40px);
+      z-index: 0;
+    }
+    .hero-image-wrap img {
+      position: relative; z-index: 1;
+      max-width: 100%;
+      border-radius: 14px;
+      box-shadow:
+        0 1px 0 rgba(255,255,255,.05) inset,
+        0 0 0 1px rgba(0,0,0,.06),
+        0 30px 60px -20px rgba(0,0,0,.35);
+    }
+
+    /* AI optional callout band. */
+    .callout {
+      max-width: 1152px;
+      margin: 24px auto 48px;
+      padding: 18px 24px;
+      background: var(--vp-c-brand-tint);
+      border-left: 4px solid var(--vp-c-brand);
+      border-radius: 0 8px 8px 0;
+      font-size: 14px; line-height: 1.6;
+      color: var(--vp-c-text-2);
+    }
+    .callout strong { color: var(--vp-c-text-1); }
+
+    /* Features grid. */
+    .features {
+      max-width: 1152px; margin: 0 auto 96px;
+      padding: 0 24px;
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+    }
+    .feature {
+      background: var(--vp-c-bg);
+      border: 1px solid var(--vp-c-divider);
+      border-radius: 12px;
+      padding: 24px;
+      transition: border-color .15s, transform .15s;
+    }
+    .feature:hover {
+      border-color: var(--vp-c-brand);
+      transform: translateY(-2px);
+    }
+    .feature .icon {
+      font-size: 28px;
+      display: inline-flex;
+      width: 48px; height: 48px;
+      align-items: center; justify-content: center;
+      background: var(--vp-c-bg-soft);
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+    .feature h3 {
+      font-family: var(--font-ui);
+      font-size: 16px; font-weight: 600;
+      color: var(--vp-c-text-1);
+      margin: 0 0 8px;
+    }
+    .feature p {
+      font-size: 14px;
+      line-height: 1.55;
+      color: var(--vp-c-text-2);
+      margin: 0;
+    }
+
+    /* Why section. */
+    .prose {
+      max-width: 720px; margin: 0 auto 96px; padding: 0 24px;
+      font-size: 16px; line-height: 1.7;
+    }
+    .prose h2 {
+      font-family: var(--font-display);
+      font-size: 32px; font-weight: 600;
+      letter-spacing: -0.01em;
+      margin: 48px 0 16px;
+      color: var(--vp-c-text-1);
+    }
+    .prose code {
+      background: var(--vp-c-bg-soft);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: .92em;
+    }
+    .prose pre {
+      background: #1d1d1f;
+      color: #e0e0e0;
+      padding: 18px 20px;
+      border-radius: 10px;
+      overflow-x: auto;
+      font-size: 13.5px;
+      font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    }
+    .prose pre code { background: transparent; padding: 0; color: inherit; }
+
+    /* Mockup notice. */
+    .mockup-tag {
+      position: fixed;
+      bottom: 16px; right: 16px;
+      background: #1d1d1f; color: #fff;
+      padding: 6px 12px; border-radius: 999px;
+      font-size: 12px; font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      z-index: 99;
+    }
+
+    @media (max-width: 768px) {
+      .hero { grid-template-columns: 1fr; padding-top: 56px; text-align: center; }
+      .hero-tagline, .hero-name { margin-left: auto; margin-right: auto; }
+      .hero-actions { justify-content: center; }
+      .features { grid-template-columns: 1fr; }
+      .nav-links { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="#" class="brand">
+        <!-- Inline Ember kite mark — matches the favicon -->
+        <svg viewBox="0 0 64 64" aria-hidden="true">
+          <defs>
+            <linearGradient id="emb" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#e8643a"/>
+              <stop offset="1" stop-color="#c2451d"/>
+            </linearGradient>
+          </defs>
+          <circle cx="13" cy="15" r="6.5" fill="url(#emb)"/>
+          <rect x="25" y="11.5" width="31" height="8" rx="4" fill="#211d18"/>
+          <rect x="8"  y="28"   width="48" height="8" rx="4" fill="#211d18"/>
+          <rect x="8" y="44.5" width="34" height="8" rx="4" fill="url(#emb)"/>
+        </svg>
+        Ember
+      </a>
+      <div class="nav-links">
+        <a href="#">Guide</a>
+        <a href="#">Architecture</a>
+        <a href="#">Security</a>
+        <a href="#">Screenshots</a>
+        <a href="#">GitHub</a>
+      </div>
+      <div class="nav-right">
+        <span class="pill">🔍 Search <kbd style="font-size:11px;color:var(--vp-c-text-3)">⌘K</kbd></span>
+      </div>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <div>
+      <h1 class="hero-name">Ember</h1>
+      <p class="hero-text">A reader for people who read.</p>
+      <p class="hero-tagline">
+        Self-hosted RSS aggregation with an optional on-device LLM and a
+        paper-and-ink interface. One Go binary, one container, one tab.
+      </p>
+      <div class="hero-actions">
+        <a class="btn btn-brand" href="#">Get started</a>
+        <a class="btn btn-alt" href="#">View on GitHub</a>
+      </div>
+    </div>
+    <div class="hero-image-wrap">
+      <img src="hero-2-threepane-summary-dark.png" alt="Ember three-pane reader with AI summary card, dark theme" />
+    </div>
+  </section>
+
+  <div class="callout">
+    <strong>AI is fully optional.</strong>
+    The summary card, model picker, and Ollama sidecar are an opt-out feature, not a dependency.
+    Set <code>EMBER_DISABLE_SUMMARIES=1</code> (or run the stack without the <code>ollama</code> container)
+    and the reader works exactly the same — minus the summary card.
+  </div>
+
+  <section class="features">
+    <div class="feature">
+      <div class="icon">📰</div>
+      <h3>Three-pane reader</h3>
+      <p>Sidebar of feeds and folders, the article list, and a focused reader. Keyboard navigation (j/k/r/m/s/?), drag-to-reorder.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">🧠</div>
+      <h3>Local AI summaries</h3>
+      <p>Optional Ollama integration produces a paragraph + bullet summary for each article. Pull, swap, and tune models from the admin UI.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">🔎</div>
+      <h3>FTS5 full-text search</h3>
+      <p>SQLite's FTS5 powers a dedicated search view + saved searches surfaced in the sidebar. Per-article user tags filter further.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">🪶</div>
+      <h3>Single binary</h3>
+      <p>Pure-Go SQLite, embedded Svelte SPA, no CGO. A single ~25 MB binary that runs anywhere and behind any reverse proxy.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">🎨</div>
+      <h3>8 themes + custom palette</h3>
+      <p>Auto, Light, Dark, Solarized, Sepia, Nord, Gruvbox, High contrast, plus a custom theme derived from 3 colors you pick.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">🔐</div>
+      <h3>Hardened by default</h3>
+      <p>argon2id passwords, SameSite=Strict cookies, CSRF double-submit, SSRF block on outbound fetches, govulncheck-clean stdlib.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">📱</div>
+      <h3>Fever-compatible</h3>
+      <p>Reeder, FeedMe, and other Fever clients connect via /fever using a random per-user API token.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">⚙️</div>
+      <h3>Live admin controls</h3>
+      <p>Hot-swap LLM model, tune temperature/top_p/num_ctx, manage backups + cleanup + OPML export schedules from Settings.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">🚀</div>
+      <h3>Auto-refresh + favicon dot</h3>
+      <p>15-second background poll prepends new articles. A green dot on the favicon and (N) prefix in the tab title flag unread items.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">🔑</div>
+      <h3>Passkey sign-in</h3>
+      <p>Self-register a FIDO2 passkey per device. Sign in with Touch ID, Face ID, or a hardware key alongside your password.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">📬</div>
+      <h3>Daily digest email</h3>
+      <p>Opt-in nightly summary of your fresh / unread / starred articles sent to your inbox. Pick the view, set the time in UTC.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">🌐</div>
+      <h3>Subscribe by URL</h3>
+      <p>Paste the homepage URL. Also recognizes YouTube channel/handle/playlist URLs and Mastodon profiles, resolving them automatically.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">📧</div>
+      <h3>Email newsletter inbox</h3>
+      <p>Each user gets a unique &lt;handle&gt;@&lt;your-domain&gt; address. Substack, Beehiiv etc. flow into the same reader.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">🔔</div>
+      <h3>Web Push notifications</h3>
+      <p>Opt-in per device. VAPID keypair auto-generated. No third-party push gateway. Requires a trusted TLS cert.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">⚖️</div>
+      <h3>Smart cross-feed dedup</h3>
+      <p>Tracking-param-stripped canonical URL + title-fingerprint clustering (48h window) collapses syndicated wire stories into one row.</p>
+    </div>
+  </section>
+
+  <section class="prose">
+    <h2>Why?</h2>
+    <p>
+      Most RSS readers are either bloated cloud services that mine your reading
+      habits, or unmaintained scripts from the Google Reader exodus. Ember is
+      what an opinionated 2026 reader looks like: a single Go binary you run on
+      your own box, a paper-and-ink interface, and — only if you want it —
+      small-local-LLM summaries for the days you can't read 300 articles.
+    </p>
+    <h2>Quick install</h2>
+<pre><code>git clone https://github.com/brandonhon/ember.git
+cd ember/deploy
+cp .env.example .env
+# Set EMBER_SESSION_KEY and EMBER_ADMIN_PASSWORD
+docker compose up -d</code></pre>
+    <p>
+      Open <code>https://localhost</code>, log in, click a starter pack.
+      You'll see articles within a minute.
+    </p>
+  </section>
+
+  <div class="mockup-tag">Mockup · not live site</div>
+
+</body>
+</html>

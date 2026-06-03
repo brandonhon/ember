@@ -8,9 +8,12 @@ hero:
   text: A reader for people who read.
   tagline: Self-hosted RSS aggregation with an optional on-device LLM and a paper-and-ink interface. One Go binary, one container, one tab.
   image:
-    light: /icon.svg
-    dark: /icon-dark.svg
-    alt: Ember
+    # Theme-inverted on purpose so the device contrasts the page bg:
+    # light docs theme → dark app screenshot;
+    # dark docs theme  → light app screenshot.
+    light: /screenshots/hero-2-threepane-summary-dark.png
+    dark: /screenshots/hero-2-threepane-summary-light.png
+    alt: Ember three-pane reader with AI summary card
   actions:
     - theme: brand
       text: Get started
@@ -57,10 +60,6 @@ features:
     title: Subscribe by URL
     details: Paste the homepage URL — Ember discovers the feed by following &lt;link rel=alternate&gt; and probing common feed paths. No more digging for the orange icon.
 ---
-
-::: tip AI is fully optional
-The summary card, model picker, and Ollama sidecar are an opt-out feature, not a dependency. Set `EMBER_DISABLE_SUMMARIES=1` (or run the stack without the `ollama` container) and the reader works exactly the same — minus the summary card. No model download, no inference, no LLM code paths run. Even when enabled, everything stays on your box; no article content leaves the host.
-:::
 
 ## Why?
 
