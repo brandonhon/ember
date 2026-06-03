@@ -47,6 +47,13 @@ jobs:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
           queries: security-and-quality
+          # Exclude local dev/build tooling from analysis — it's never shipped
+          # or run in CI/prod, so app-grade security rules produce only noise.
+          # e.g. web/scripts/capture-demo-data.mjs talks to a localhost
+          # self-signed instance and writes its API responses to demo-data.json.
+          config: |
+            paths-ignore:
+              - web/scripts/**
 
       - uses: github/codeql-action/autobuild@7211b7c8077ea37d8641b6271f6a365a22a5fbfa  # v4.36.0
         if: matrix.build-mode == 'autobuild'
