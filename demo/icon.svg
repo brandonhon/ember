@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Self-adaptive favicon: in-SVG <style> with prefers-color-scheme means
+       a single file renders correctly in both light and dark OS modes.
+       Works in evergreen Chrome, Firefox, Edge, Safari (no media-scoped
+       <link rel="icon"> required, which Firefox has historically ignored).
+       icon-dark.svg is kept as a separate file for the canvas-rendered
+       new-article-dot overlay path in App.svelte where prefers-color-scheme
+       inside a rasterized SVG isn't reliably honored. -->
+  <defs>
+    <linearGradient id="emb" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e8643a"/>
+      <stop offset="1" stop-color="#c2451d"/>
+    </linearGradient>
+    <style>
+      .ink { fill: #211d18; }
+      @media (prefers-color-scheme: dark) {
+        .ink { fill: #f0e9da; }
+      }
+    </style>
+  </defs>
+  <circle cx="13" cy="15" r="6.5" fill="url(#emb)"/>
+  <rect class="ink" x="25" y="11.5" width="31" height="8" rx="4"/>
+  <rect class="ink" x="8"  y="28"   width="48" height="8" rx="4"/>
+  <rect x="8" y="44.5" width="34" height="8" rx="4" fill="url(#emb)"/>
+</svg>

