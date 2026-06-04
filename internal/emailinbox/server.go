@@ -182,7 +182,7 @@ func parseEnhanced(s string) smtp.EnhancedCode {
 	parts := strings.Split(s, ".")
 	for i := 0; i < len(parts) && i < 3; i++ {
 		// Best-effort; on malformed input the slot stays zero.
-		fmt.Sscanf(parts[i], "%d", &c[i])
+		_, _ = fmt.Sscanf(parts[i], "%d", &c[i])
 	}
 	return c
 }

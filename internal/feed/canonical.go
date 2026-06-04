@@ -1,7 +1,7 @@
 package feed
 
 import (
-	"crypto/sha1"
+	"crypto/sha1" //nolint:gosec // G505: SHA-1 here is a non-cryptographic content fingerprint for dedup clustering (ClusterID), never integrity/auth.
 	"encoding/hex"
 	"net/url"
 	"sort"
@@ -113,7 +113,7 @@ func ClusterID(canonical string) string {
 	if canonical == "" {
 		return ""
 	}
-	sum := sha1.Sum([]byte(canonical))
+	sum := sha1.Sum([]byte(canonical)) //nolint:gosec // G401: non-crypto fingerprint, see import note.
 	return hex.EncodeToString(sum[:8])
 }
 
