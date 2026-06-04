@@ -18,6 +18,16 @@ export default defineConfig({
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:title', content: 'Ember' }],
     ['meta', { property: 'og:description', content: 'Self-hosted RSS reader with on-device AI summaries.' }],
+    // og:image/twitter:image must be ABSOLUTE URLs — social scrapers don't
+    // resolve relative paths or the /ember/ base. social-preview.png lives in
+    // docs/public/ and is copied to the site root on build.
+    ['meta', { property: 'og:image', content: 'https://brandonhon.github.io/ember/social-preview.png' }],
+    ['meta', { property: 'og:url', content: 'https://brandonhon.github.io/ember/' }],
+    ['meta', { property: 'og:site_name', content: 'Ember' }],
+    ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
+    ['meta', { name: 'twitter:title', content: 'Ember' }],
+    ['meta', { name: 'twitter:description', content: 'Self-hosted RSS reader with on-device AI summaries.' }],
+    ['meta', { name: 'twitter:image', content: 'https://brandonhon.github.io/ember/social-preview.png' }],
   ],
   cleanUrls: true,
   lastUpdated: true,
