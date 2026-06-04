@@ -53,13 +53,13 @@ func ParseMessage(raw []byte) (models.Article, error) {
 	}
 
 	art := models.Article{
-		GUID:         strings.Trim(guid, "<>"),
-		Title:        title,
-		Author:       parseFromAddress(from),
-		ContentHTML:  bodyHTML,
-		ContentText:  bodyText,
-		PublishedAt:  pub.Unix(),
-		ContentHash:  feed.ContentHash("", title, bodyText),
+		GUID:        strings.Trim(guid, "<>"),
+		Title:       title,
+		Author:      parseFromAddress(from),
+		ContentHTML: bodyHTML,
+		ContentText: bodyText,
+		PublishedAt: pub.Unix(),
+		ContentHash: feed.ContentHash("", title, bodyText),
 		// URL stays empty — there's no canonical web URL for an email.
 		// Cluster_id stays empty too, which lets every email row pass the
 		// dedup predicate (the title-fingerprint branch will still catch
