@@ -16,13 +16,13 @@ import (
 //
 // Recognized:
 //   - https://www.youtube.com/channel/UCxxxxxxxxxxxxxxxxxx
-//       → https://www.youtube.com/feeds/videos.xml?channel_id=UCxxxxxxxxxxxxxxxxxx
+//     → https://www.youtube.com/feeds/videos.xml?channel_id=UCxxxxxxxxxxxxxxxxxx
 //   - https://www.youtube.com/playlist?list=PLxxxxxxxxxxxxx
-//       → https://www.youtube.com/feeds/videos.xml?playlist_id=PLxxxxxxxxxxxxx
+//     → https://www.youtube.com/feeds/videos.xml?playlist_id=PLxxxxxxxxxxxxx
 //   - https://www.youtube.com/@handle (or /@handle/videos, /@handle/featured)
-//       → resolves the channel UC ID via a one-shot scrape, then maps as above
+//     → resolves the channel UC ID via a one-shot scrape, then maps as above
 //   - https://<instance>/@<user>           (Mastodon-compatible)
-//       → https://<instance>/@<user>.rss
+//     → https://<instance>/@<user>.rss
 //
 // Returns (rewritten, true, nil) on a successful match. Returns (target,
 // false, nil) when no rule applies — the caller should fall back to the

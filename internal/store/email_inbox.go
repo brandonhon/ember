@@ -19,12 +19,12 @@ const gracePeriodSeconds = 7 * 24 * 60 * 60
 // Domain is filled by the API handler from cfg.EmailDomain — the store
 // doesn't know about the configured domain.
 type EmailInbox struct {
-	ID            int64  `json:"id"`
-	UserID        int64  `json:"-"`
-	FeedID        int64  `json:"feed_id"`
-	Handle        string `json:"handle"`
-	SupersededAt  int64  `json:"-"`
-	CreatedAt     int64  `json:"created_at"`
+	ID           int64  `json:"id"`
+	UserID       int64  `json:"-"`
+	FeedID       int64  `json:"feed_id"`
+	Handle       string `json:"handle"`
+	SupersededAt int64  `json:"-"`
+	CreatedAt    int64  `json:"created_at"`
 }
 
 // EnsureInbox returns the user's active inbox, creating both the

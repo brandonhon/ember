@@ -24,23 +24,23 @@ var trackingParamPrefixes = []string{
 // trackingParamExact is the set of single-word tracking params (no prefix
 // pattern) that are stripped.
 var trackingParamExact = map[string]struct{}{
-	"fbclid":            {}, // Facebook click ID
-	"gclid":             {}, // Google ads click ID
-	"dclid":             {}, // DoubleClick click ID
-	"msclkid":           {}, // Microsoft ads click ID
-	"yclid":             {}, // Yandex / Yahoo click ID
-	"twclid":            {}, // Twitter click ID
-	"igshid":            {}, // Instagram share ID
-	"ttclid":            {}, // TikTok click ID
-	"ck_subscriber_id":  {}, // ConvertKit
-	"oly_anon_id":       {}, // Omeda
-	"oly_enc_id":        {}, // Omeda
-	"ref":               {}, // ambiguous but overwhelmingly a referrer tag
-	"ref_source":        {}, // Substack
-	"ref_url":           {}, // various
-	"trk":               {}, // LinkedIn
-	"trkCampaign":       {}, // LinkedIn
-	"hsCtaTracking":     {}, // HubSpot
+	"fbclid":           {}, // Facebook click ID
+	"gclid":            {}, // Google ads click ID
+	"dclid":            {}, // DoubleClick click ID
+	"msclkid":          {}, // Microsoft ads click ID
+	"yclid":            {}, // Yandex / Yahoo click ID
+	"twclid":           {}, // Twitter click ID
+	"igshid":           {}, // Instagram share ID
+	"ttclid":           {}, // TikTok click ID
+	"ck_subscriber_id": {}, // ConvertKit
+	"oly_anon_id":      {}, // Omeda
+	"oly_enc_id":       {}, // Omeda
+	"ref":              {}, // ambiguous but overwhelmingly a referrer tag
+	"ref_source":       {}, // Substack
+	"ref_url":          {}, // various
+	"trk":              {}, // LinkedIn
+	"trkCampaign":      {}, // LinkedIn
+	"hsCtaTracking":    {}, // HubSpot
 }
 
 // CanonicalURL returns a normalized form of the input URL with tracking
