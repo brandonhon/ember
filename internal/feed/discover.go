@@ -87,6 +87,152 @@ func Discover(ctx context.Context, c *http.Client, target string, validate func(
 	return "", ErrNoFeed
 }
 
+// Discovered is a single feed surfaced by DiscoverAll.
+type Discovered struct {
+	URL   string `json:"url"`
+	Title string `json:"title"`
+	Type  string `json:"type"` // "rss", "atom", or "" when unknown
+}
+
+// DiscoverAll is like Discover but returns every feed advertised by an HTML
+// page rather than only the first. It is used by the add-feed UI to show a
+// picker when a site exposes multiple feeds.
+//
+//  1. GET the URL. If it is itself a feed, return that single entry.
+//  2. Otherwise collect every <link rel="alternate" type=".../(rss|atom)">.
+//  3. If the page advertised none, probe DiscoveryFallbacks and return any
+//     that respond as a feed.
+//
+// validate is required and is called against the target and every discovered
+// or probed URL — the same SSRF discipline as Discover. Discovered URLs that
+// fail validation are dropped. Results are de-duplicated by URL. Returns an
+// empty slice (nil error) when the page loads but advertises no feed.
+func DiscoverAll(ctx context.Context, c *http.Client, target string, validate func(rawURL string) error) ([]Discovered, error) {
+	if c == nil {
+		c = http.DefaultClient
+	}
+	if validate == nil {
+		return nil, errors.New("feed: DiscoverAll requires a non-nil validate function")
+	}
+	if err := validate(target); err != nil {
+		return nil, fmt.Errorf("feed: validate target: %w", err)
+	}
+	parsedTarget, err := url.Parse(target)
+	if err != nil {
+		return nil, fmt.Errorf("feed: parse target: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", DefaultUserAgent)
+	resp, err := c.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if ct := resp.Header.Get("Content-Type"); isFeedContentType(ct) {
+		return []Discovered{{URL: target, Type: feedTypeFromHint(ct)}}, nil
+	}
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return nil, err
+	}
+
+	seen := make(map[string]struct{})
+	var out []Discovered
+	for _, alt := range findAllAlternatesInHTML(body) {
+		abs, rerr := resolveRef(parsedTarget, alt.href)
+		if rerr != nil || abs == "" {
+			continue
+		}
+		if err := validate(abs); err != nil {
+			continue // drop SSRF-rejected feed links
+		}
+		if _, dup := seen[abs]; dup {
+			continue
+		}
+		seen[abs] = struct{}{}
+		out = append(out, Discovered{URL: abs, Title: strings.TrimSpace(alt.title), Type: feedTypeFromHint(alt.typ)})
+	}
+	if len(out) > 0 {
+		return out, nil
+	}
+
+	// No <link> hints — probe common paths, collecting any that respond.
+	for _, p := range DiscoveryFallbacks {
+		probe := *parsedTarget
+		probe.Path = p
+		probe.RawQuery = ""
+		probe.Fragment = ""
+		ps := probe.String()
+		if _, dup := seen[ps]; dup {
+			continue
+		}
+		if ok, perr := probeFeed(ctx, c, ps, validate); perr == nil && ok {
+			seen[ps] = struct{}{}
+			out = append(out, Discovered{URL: ps})
+		}
+	}
+	return out, nil
+}
+
+// feedTypeFromHint maps a Content-Type or <link type> hint to "rss"/"atom"/"".
+func feedTypeFromHint(hint string) string {
+	hint = strings.ToLower(hint)
+	switch {
+	case strings.Contains(hint, "atom"):
+		return "atom"
+	case strings.Contains(hint, "rss"):
+		return "rss"
+	default:
+		return ""
+	}
+}
+
+type altLink struct {
+	href, title, typ string
+}
+
+// findAllAlternatesInHTML returns every <link rel="alternate"> RSS/Atom feed
+// declared in the document, in document order.
+func findAllAlternatesInHTML(body []byte) []altLink {
+	doc, err := html.Parse(strings.NewReader(string(body)))
+	if err != nil {
+		return nil
+	}
+	var out []altLink
+	var walk func(*html.Node)
+	walk = func(n *html.Node) {
+		if n.Type == html.ElementNode && n.Data == "link" {
+			var rel, typ, href, title string
+			for _, a := range n.Attr {
+				switch strings.ToLower(a.Key) {
+				case "rel":
+					rel = strings.ToLower(a.Val)
+				case "type":
+					typ = strings.ToLower(a.Val)
+				case "href":
+					href = a.Val
+				case "title":
+					title = a.Val
+				}
+			}
+			if rel == "alternate" && (strings.Contains(typ, "rss") || strings.Contains(typ, "atom")) && href != "" {
+				out = append(out, altLink{href: href, title: title, typ: typ})
+			}
+		}
+		for child := n.FirstChild; child != nil; child = child.NextSibling {
+			walk(child)
+		}
+	}
+	walk(doc)
+	return out
+}
+
 func isFeedContentType(ct string) bool {
 	ct = strings.ToLower(ct)
 	return strings.Contains(ct, "application/rss") ||

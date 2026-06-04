@@ -41,7 +41,7 @@
 
   let { onClose }: { onClose: () => void } = $props();
 
-  type Section = "profile" | "passkeys" | "preferences" | "stats" | "digest" | "mobile" | "filters" | "users" | "starter" | "llm" | "branding" | "database" | "session" | "email" | "about";
+  type Section = "profile" | "passkeys" | "preferences" | "stats" | "digest" | "mobile" | "filters" | "users" | "starter" | "import" | "llm" | "branding" | "database" | "session" | "email" | "about";
   let section = $state<Section>("profile");
 
   // Mobile detection (matches App.svelte's 900px breakpoint). On mobile the
@@ -67,6 +67,103 @@
   }
   function mobileBackToList() { sectionPicked = false; }
 
+  // --- Import & Data section -------------------------------------------
+  let importTab = $state<"live" | "file">("live");
+  let ttUrl = $state("");
+  let ttUser = $state("");
+  let ttPass = $state("");
+  let ttStarred = $state(true);
+  let ttArchived = $state(true);
+  let importBusy = $state(false);
+  let importMsg = $state("");
+  let importErr = $state("");
+  let ttrssFileInput: HTMLInputElement | undefined = $state();
+  let opmlFileInput: HTMLInputElement | undefined = $state();
+
+  async function ttrssLivePull() {
+    if (!ttUrl.trim() || !ttUser.trim()) {
+      importErr = "URL and username are required";
+      return;
+    }
+    if (!ttStarred && !ttArchived) {
+      importErr = "Pick at least one of Starred / Archived";
+      return;
+    }
+    importErr = "";
+    importMsg = "";
+    importBusy = true;
+    try {
+      const res = await api.importTTRSSAPI({
+        url: ttUrl.trim(),
+        username: ttUser.trim(),
+        password: ttPass,
+        import_starred: ttStarred,
+        import_archived: ttArchived,
+      });
+      importMsg = `Imported ${res.data.imported} of ${res.data.total} articles.`;
+      await refreshSidebar();
+    } catch (e) {
+      importErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      importBusy = false;
+    }
+  }
+
+  async function ttrssFilePick(e: Event) {
+    const input = e.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    importErr = "";
+    importMsg = "Importing…";
+    importBusy = true;
+    try {
+      const res = await api.importTTRSS(file);
+      importMsg = `Imported ${res.data.imported} of ${res.data.total} articles.`;
+      await refreshSidebar();
+    } catch (err) {
+      importErr = err instanceof ApiError ? err.message : String(err);
+      importMsg = "";
+    } finally {
+      input.value = "";
+      importBusy = false;
+    }
+  }
+
+  async function opmlFilePick(e: Event) {
+    const input = e.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    importErr = "";
+    importMsg = "Importing…";
+    importBusy = true;
+    try {
+      const res = await api.importOPML(file);
+      importMsg = `Imported ${res.data.imported} subscriptions.`;
+      await refreshSidebar();
+    } catch (err) {
+      importErr = err instanceof ApiError ? err.message : String(err);
+      importMsg = "";
+    } finally {
+      input.value = "";
+      importBusy = false;
+    }
+  }
+
+  async function exportOPML() {
+    try {
+      const res = await api.exportOPML();
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "ember.opml";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      importErr = err instanceof ApiError ? err.message : String(err);
+    }
+  }
+
   // Human-readable label for the active section, used in the mobile drill-down
   // header. Keeps in sync with the nav button text.
   const sectionLabel = $derived.by((): string => {
@@ -79,6 +176,7 @@
       case "stats": return "Reading stats";
       case "digest": return "Daily digest";
       case "starter": return "Starter packs";
+      case "import": return "Import & migrate";
       case "llm": return "Language model";
       case "branding": return "Branding";
       case "database": return "Database";
@@ -836,23 +934,39 @@
 
     <div class="layout" data-view={isMobile ? (sectionPicked ? "detail" : "list") : "split"}>
       <nav class="nav" aria-label="Settings sections">
-        <button class:active={section === "profile"} on:click={() => pickSection("profile")} data-testid="settings-profile">Profile</button>
-        <button class:active={section === "passkeys"} on:click={() => pickSection("passkeys")} data-testid="settings-passkeys">Passkeys</button>
-        <button class:active={section === "preferences"} on:click={() => pickSection("preferences")}>Preferences</button>
-        <button class:active={section === "mobile"} on:click={() => pickSection("mobile")}>Mobile clients</button>
-        <button class:active={section === "filters"} on:click={() => pickSection("filters")}>Filters</button>
-        <button class:active={section === "stats"} on:click={() => pickSection("stats")} data-testid="settings-stats">Reading stats</button>
-        <button class:active={section === "digest"} on:click={() => pickSection("digest")} data-testid="settings-digest">Daily digest</button>
-        <button class:active={section === "starter"} on:click={() => pickSection("starter")} data-testid="settings-starter">Starter packs</button>
+        <div class="nav-group">
+          <div class="nav-label">Account</div>
+          <button class:active={section === "profile"} on:click={() => pickSection("profile")} data-testid="settings-profile">Profile</button>
+          <button class:active={section === "passkeys"} on:click={() => pickSection("passkeys")} data-testid="settings-passkeys">Passkeys</button>
+        </div>
+        <div class="nav-group">
+          <div class="nav-label">Reading</div>
+          <button class:active={section === "preferences"} on:click={() => pickSection("preferences")}>Preferences</button>
+          <button class:active={section === "filters"} on:click={() => pickSection("filters")}>Filters</button>
+          <button class:active={section === "digest"} on:click={() => pickSection("digest")} data-testid="settings-digest">Daily digest</button>
+          <button class:active={section === "stats"} on:click={() => pickSection("stats")} data-testid="settings-stats">Reading stats</button>
+          <button class:active={section === "mobile"} on:click={() => pickSection("mobile")}>Mobile clients</button>
+        </div>
+        <div class="nav-group">
+          <div class="nav-label">Import &amp; Data</div>
+          <button class:active={section === "import"} on:click={() => pickSection("import")} data-testid="settings-import">Import &amp; migrate</button>
+          <button class:active={section === "starter"} on:click={() => pickSection("starter")} data-testid="settings-starter">Starter packs</button>
+        </div>
         {#if $user?.is_admin}
-          <button class:active={section === "llm"} on:click={() => pickSection("llm")} data-testid="settings-llm">Language model</button>
-          <button class:active={section === "branding"} on:click={() => pickSection("branding")} data-testid="settings-branding">Branding</button>
-          <button class:active={section === "database"} on:click={() => pickSection("database")} data-testid="settings-database">Database</button>
-          <button class:active={section === "session"} on:click={() => pickSection("session")} data-testid="settings-session">Sessions</button>
-          <button class:active={section === "email"} on:click={() => pickSection("email")} data-testid="settings-email">Email / SMTP</button>
-          <button class:active={section === "users"} on:click={() => pickSection("users")} data-testid="settings-users">Users</button>
+          <div class="nav-group">
+            <div class="nav-label">Administration</div>
+            <button class:active={section === "llm"} on:click={() => pickSection("llm")} data-testid="settings-llm">Language model</button>
+            <button class:active={section === "branding"} on:click={() => pickSection("branding")} data-testid="settings-branding">Branding</button>
+            <button class:active={section === "database"} on:click={() => pickSection("database")} data-testid="settings-database">Database</button>
+            <button class:active={section === "session"} on:click={() => pickSection("session")} data-testid="settings-session">Sessions</button>
+            <button class:active={section === "email"} on:click={() => pickSection("email")} data-testid="settings-email">Email / SMTP</button>
+            <button class:active={section === "users"} on:click={() => pickSection("users")} data-testid="settings-users">Users</button>
+          </div>
         {/if}
-        <button class:active={section === "about"} on:click={() => pickSection("about")}>About</button>
+        <div class="nav-group">
+          <div class="nav-label">System</div>
+          <button class:active={section === "about"} on:click={() => pickSection("about")}>About</button>
+        </div>
       </nav>
 
       <div class="content">
@@ -1161,6 +1275,58 @@
               </button>
             </div>
           {/if}
+        {/if}
+
+        {#if section === "import"}
+          <h3>Import &amp; migrate</h3>
+          <p class="hint">Bring your library and subscriptions into Ember. Nothing here touches your existing feeds.</p>
+          {#if importErr}<p class="error" data-testid="import-error">{importErr}</p>{/if}
+          {#if importMsg}<p class="ok" data-testid="import-msg">{importMsg}</p>{/if}
+
+          <input type="file" accept=".xml,application/xml,text/xml" bind:this={ttrssFileInput} on:change={ttrssFilePick} style="display:none" data-testid="ttrss-file-input" />
+          <input type="file" accept=".opml,.xml,application/xml,text/xml" bind:this={opmlFileInput} on:change={opmlFilePick} style="display:none" data-testid="opml-file-input" />
+
+          <div class="import-card">
+            <h4>Tiny Tiny RSS</h4>
+            <p class="import-sub">Import your starred &amp; archived articles from a running instance or an export file.</p>
+            <div class="import-seg" role="tablist">
+              <button role="tab" class:on={importTab === "live"} on:click={() => (importTab = "live")} data-testid="ttrss-tab-live">Pull from running TT-RSS</button>
+              <button role="tab" class:on={importTab === "file"} on:click={() => (importTab = "file")} data-testid="ttrss-tab-file">Upload export file</button>
+            </div>
+            {#if importTab === "live"}
+              <label><span>TT-RSS URL</span>
+                <input type="text" bind:value={ttUrl} placeholder="rss.example.com/tt-rss" disabled={importBusy} data-testid="ttrss-url" />
+              </label>
+              <label><span>Username</span>
+                <input type="text" bind:value={ttUser} disabled={importBusy} data-testid="ttrss-user" />
+              </label>
+              <label><span>Password</span>
+                <input type="password" bind:value={ttPass} disabled={importBusy} data-testid="ttrss-pass" />
+              </label>
+              <div class="import-checks">
+                <label class="inline"><input type="checkbox" bind:checked={ttStarred} disabled={importBusy} /> Starred</label>
+                <label class="inline"><input type="checkbox" bind:checked={ttArchived} disabled={importBusy} /> Archived</label>
+              </div>
+              <p class="import-note">Enable “API access” in your TT-RSS Preferences first. If TT-RSS lives under a subpath (e.g. <code>/tt-rss</code>), include it — we append <code>/api/</code>. Credentials are used only for this import and never stored.</p>
+              <div class="actions">
+                <button on:click={ttrssLivePull} disabled={importBusy} data-testid="ttrss-start">{importBusy ? "Importing…" : "Start import"}</button>
+              </div>
+            {:else}
+              <p class="import-note">Export your Starred &amp; Archived articles from TT-RSS (the import/export plugin produces an <code>.xml</code> file), then upload it here.</p>
+              <div class="actions">
+                <button on:click={() => ttrssFileInput?.click()} disabled={importBusy} data-testid="ttrss-file-pick">Choose .xml file…</button>
+              </div>
+            {/if}
+          </div>
+
+          <div class="import-card">
+            <h4>OPML subscriptions</h4>
+            <p class="import-sub">Import or export your feed list in the universal OPML format.</p>
+            <div class="actions" style="justify-content:flex-start">
+              <button on:click={() => opmlFileInput?.click()} disabled={importBusy} data-testid="open-opml-import">Import OPML…</button>
+              <button class="ghost" on:click={exportOPML} data-testid="export-opml">Export OPML</button>
+            </div>
+          </div>
         {/if}
 
         {#if section === "starter"}
@@ -1729,7 +1895,7 @@
               {/if}
             </dd>
             <dt>Project</dt><dd><a href="https://github.com/brandonhon/ember" target="_blank" rel="noopener noreferrer">github.com/brandonhon/ember</a></dd>
-            <dt>License</dt><dd>private</dd>
+            <dt>License</dt><dd><a href="https://github.com/brandonhon/ember/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a></dd>
           </dl>
         {/if}
       </div>
@@ -1811,6 +1977,27 @@
     flex-direction: column;
     gap: 2px;
     overflow-y: auto;
+  }
+  .nav-group { display: flex; flex-direction: column; gap: 2px; margin-bottom: 14px; }
+  .nav-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    /* --ink-faint (not --gold): gold-on-paper is only 2.99:1, below WCAG AA
+       4.5:1 for this small bold text (caught by the a11y e2e). ink-faint is
+       ~5.1:1 and passes in light + dark themes. */
+    color: var(--ink-faint);
+    padding: 4px 12px 6px;
+  }
+  .nav-label::after {
+    content: "";
+    height: 1px;
+    flex: 1;
+    background: linear-gradient(90deg, var(--line), transparent);
   }
   .nav button {
     background: transparent;
@@ -2067,6 +2254,66 @@
   .actions button:hover:not(:disabled) { background: var(--ember-soft); }
   .actions button.ghost:hover { background: var(--line-soft); }
   .actions button:disabled { opacity: 0.5; cursor: not-allowed; }
+  /* Import & Data section */
+  .import-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 18px 20px;
+    margin-bottom: 14px;
+    box-shadow: var(--shadow-card);
+  }
+  .import-card h4 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 16px; }
+  .import-sub { color: var(--ink-faint); font-size: 13px; margin: 5px 0 14px; line-height: 1.5; }
+  .import-seg {
+    display: inline-flex;
+    background: var(--paper-2);
+    border-radius: 9px;
+    padding: 3px;
+    gap: 3px;
+    margin-bottom: 14px;
+  }
+  .import-seg button {
+    border: 0;
+    background: transparent;
+    font-family: var(--font-ui);
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ink-faint);
+    padding: 6px 13px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .import-seg button.on {
+    background: var(--card);
+    color: var(--ember);
+    box-shadow: 0 1px 2px rgba(33, 29, 24, 0.08);
+  }
+  .import-checks { display: flex; gap: 18px; margin: 4px 0 12px; }
+  .import-checks label.inline {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .import-note {
+    font-size: 12px;
+    color: var(--ink-faint);
+    background: var(--ember-wash);
+    border-radius: 8px;
+    padding: 9px 12px;
+    line-height: 1.5;
+    margin: 0 0 6px;
+  }
+  .import-note code {
+    font-family: ui-monospace, monospace;
+    background: var(--paper-2);
+    padding: 0 4px;
+    border-radius: 4px;
+    color: var(--ember);
+  }
   .error {
     background: #fef2f2;
     color: #991b1b;
@@ -2170,12 +2417,20 @@
     font-size: 12px;
     padding: 2px 8px;
     border-radius: 999px;
-    background: var(--ember-soft);
+    background: var(--ember-wash);
     color: var(--ember);
-    border: 1px solid var(--ember-wash);
+    border: 1px solid color-mix(in srgb, var(--ember) 30%, transparent);
+    text-decoration: none;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+  }
+  /* Invert on hover for a clearly-readable state (paper-colored text on a
+     solid ember fill) rather than a low-contrast wash-on-wash. */
+  a.version-badge:hover {
+    background: var(--ember);
+    color: var(--card);
+    border-color: var(--ember);
     text-decoration: none;
   }
-  a.version-badge:hover { background: var(--ember-wash); text-decoration: none; }
   .version-badge-dev {
     background: var(--line-soft);
     color: var(--ink-faint);

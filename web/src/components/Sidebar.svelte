@@ -11,8 +11,9 @@
     savedSearches,
   } from "../lib/stores";
   import { api, ApiError } from "../lib/api";
-  import type { FeedWithCounts } from "../lib/types";
+  import type { DiscoveredFeed, FeedWithCounts } from "../lib/types";
   import ConfirmDialog from "./ConfirmDialog.svelte";
+  import FeedPickerModal from "./FeedPickerModal.svelte";
 
   import { onMount, onDestroy } from "svelte";
 
@@ -50,6 +51,9 @@
   let addingFeed = $state(false);
   let newFeedURL = $state("");
   let addError = $state("");
+  // When a site advertises more than one feed, hold the candidates here to
+  // open the picker modal instead of subscribing immediately.
+  let pickerFeeds = $state<DiscoveredFeed[] | null>(null);
   let newBoardName = $state("");
   let newBoardFormOpen = $state(false);
   let creatingBoard = $state(false);
@@ -456,25 +460,51 @@
 
   async function submitAddFeed(e: Event) {
     e.preventDefault();
-    if (!newFeedURL.trim()) return;
+    const url = newFeedURL.trim();
+    if (!url) return;
     addError = "";
     addingFeed = true;
     try {
-      await api.addFeed(newFeedURL.trim());
-      newFeedURL = "";
-      addFormOpen = false;
-      await refreshSidebar();
-      // The backend ingests synchronously, but the article list isn't reloaded
-      // by refreshSidebar(). Pull the current view so new items appear without
-      // the user having to navigate. A delayed second refresh catches the
-      // summarizer pending count once Ollama starts chewing the new feed.
-      await loadArticles($activeView);
-      setTimeout(() => { void refreshSidebar(); }, 2000);
+      // Ask the backend what feeds the URL exposes. >1 → let the user pick;
+      // exactly 1 → add that feed; 0 → fall through to addFeed so the
+      // server-side discovery/probe still has a chance.
+      let feedsFound: DiscoveredFeed[] = [];
+      try {
+        feedsFound = (await api.discoverFeeds(url)).data?.feeds ?? [];
+      } catch {
+        // Discovery is best-effort; fall back to the direct add path below.
+      }
+      if (feedsFound.length > 1) {
+        pickerFeeds = feedsFound;
+        return; // picker drives the rest; keep the form populated until done
+      }
+      await api.addFeed(feedsFound.length === 1 ? feedsFound[0].url : url);
+      await afterFeedsAdded();
     } catch (err) {
       addError = err instanceof ApiError ? err.message : String(err);
     } finally {
       addingFeed = false;
     }
+  }
+
+  // Add the feeds the user picked from the multi-feed modal, in sequence.
+  async function addPickedFeeds(urls: string[]) {
+    for (const u of urls) {
+      await api.addFeed(u);
+    }
+    await afterFeedsAdded();
+  }
+
+  // Shared post-add refresh. The backend ingests synchronously, but the
+  // article list isn't reloaded by refreshSidebar(); pull the current view so
+  // new items appear without navigating. A delayed second refresh catches the
+  // summarizer pending count once Ollama starts chewing the new feed(s).
+  async function afterFeedsAdded() {
+    newFeedURL = "";
+    addFormOpen = false;
+    await refreshSidebar();
+    await loadArticles($activeView);
+    setTimeout(() => { void refreshSidebar(); }, 2000);
   }
 
   function cancelAdd() {
@@ -726,10 +756,10 @@
       {:else}
         <form class="add-form" on:submit={submitAddFeed}>
           <input
-            type="url"
+            type="text"
             bind:value={newFeedURL}
             bind:this={addFeedInputEl}
-            placeholder="https://example.com/feed.xml"
+            placeholder="example.com or example.com/feed.xml"
             disabled={addingFeed}
             data-testid="add-feed-input"
           />
@@ -896,6 +926,14 @@
     busy={confirmBusy}
     onConfirm={runConfirm}
     onCancel={() => (confirmReq = null)}
+  />
+{/if}
+
+{#if pickerFeeds}
+  <FeedPickerModal
+    feeds={pickerFeeds}
+    onAdd={addPickedFeeds}
+    onClose={() => (pickerFeeds = null)}
   />
 {/if}
 

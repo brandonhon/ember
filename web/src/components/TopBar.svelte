@@ -10,8 +10,7 @@
     sidebarCollapsed,
     branding,
   } from "../lib/stores";
-  import { DEMO, notifyDemoBlocked } from "../demo/demo";
-  import { api, ApiError } from "../lib/api";
+  import { api } from "../lib/api";
   import { get } from "svelte/store";
 
   let {
@@ -32,8 +31,6 @@
   let searchResults = $state<{ id: number; title: string; url?: string }[]>([]);
   let showResults = $state(false);
   let popoverOpen = $state(false);
-  let opmlInput: HTMLInputElement | undefined = $state();
-  let importMsg = $state("");
   let polling = $state(false);
 
   // Close the popover and result dropdown on outside click.
@@ -119,29 +116,6 @@
     }
   }
 
-  async function onOPMLPick(e: Event) {
-    const input = e.currentTarget as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file) return;
-    if (DEMO) { input.value = ""; notifyDemoBlocked(); return; }
-    importMsg = "Importing…";
-    try {
-      const res = await api.importOPML(file);
-      importMsg = `Imported ${res.data.imported} subscriptions`;
-      await refreshSidebar();
-    } catch (err) {
-      importMsg = err instanceof ApiError ? err.message : String(err);
-    } finally {
-      input.value = "";
-      setTimeout(() => (importMsg = ""), 4000);
-    }
-  }
-
-  function downloadOPML() {
-    if (DEMO) { notifyDemoBlocked(); return; }
-    window.location.href = "/api/feeds/export";
-  }
-
   function initials(name: string): string {
     return (name?.[0] ?? "?").toUpperCase();
   }
@@ -204,14 +178,6 @@
   </form>
 
   <div class="topbar-actions">
-    <input
-      type="file"
-      accept=".opml,.xml,application/xml,text/xml"
-      bind:this={opmlInput}
-      on:change={onOPMLPick}
-      style="display:none"
-      data-testid="opml-input"
-    />
     {#if !mobile}
       <button
         class="icon-btn"
@@ -277,10 +243,6 @@
     </button>
   </div>
 
-  {#if importMsg}
-    <p class="import-msg" data-testid="opml-msg">{importMsg}</p>
-  {/if}
-
   {#if showResults && searchResults.length > 0}
     <div class="search-results" data-search-results data-testid="search-results">
       {#each searchResults as r (r.id)}
@@ -332,22 +294,6 @@
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .4 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.4 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.9.4l-.1.1A2 2 0 1 1 4.2 17l.1-.1a1.7 1.7 0 0 0 .4-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.4-1.9l-.1-.1A2 2 0 1 1 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.4H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.4l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.4 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" /></svg>
         Settings
-      </button>
-      <button
-        class="pop-item"
-        on:click={() => {
-          popoverOpen = false;
-          if (DEMO) { notifyDemoBlocked(); return; }
-          opmlInput?.click();
-        }}
-        data-testid="open-opml-import"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M7 10l5 5 5-5" /><path d="M12 15V3" /></svg>
-        Import OPML
-      </button>
-      <button class="pop-item" on:click={() => { popoverOpen = false; downloadOPML(); }}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M7 10l5-5 5 5" /><path d="M12 5v12" /></svg>
-        Export OPML
       </button>
       <div class="pop-sep"></div>
       <button class="pop-item" on:click={() => { popoverOpen = false; logout(); }} data-testid="logout">
@@ -598,18 +544,4 @@
     line-height: 1.4;
   }
   .search-results a:hover { background: var(--line-soft); }
-
-  .import-msg {
-    position: absolute;
-    top: calc(var(--topbar-h) + 4px);
-    right: 18px;
-    background: var(--ember-wash);
-    color: var(--ember);
-    padding: 6px 12px;
-    border-radius: 8px;
-    font-size: 12px;
-    margin: 0;
-    border: 1px solid var(--ember);
-    z-index: 10;
-  }
 </style>

@@ -12,6 +12,7 @@ import (
 	"github.com/brandonhon/ember/internal/opml"
 	"github.com/brandonhon/ember/internal/store"
 	"github.com/brandonhon/ember/internal/summarize"
+	"github.com/brandonhon/ember/internal/ttrss"
 )
 
 // PollerRefresher is the subset of *poller.Poller the API uses (lets us avoid
@@ -38,7 +39,8 @@ type Dependencies struct {
 	Poller  PollerRefresher
 	Metrics MetricsSnapshotter
 	OPML    *opml.Service
-	StaticH http.Handler // SPA / embed.FS handler; may be nil in tests
+	TTRSS   *ttrss.Service // Tiny Tiny RSS starred/archived import; nil disables the endpoint
+	StaticH http.Handler   // SPA / embed.FS handler; may be nil in tests
 	// Ollama exposes the live summarizer so the admin LLM endpoints can list
 	// installed models, pull new ones, and swap the active model. Optional —
 	// nil when the summarizer is disabled or the noop (tests) is in use.
@@ -181,6 +183,7 @@ func NewRouter(d Dependencies) http.Handler {
 		// Feeds / subscriptions
 		r.With(d.Auth.RequireAuth).Get("/feeds", d.handleListFeeds)
 		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/feeds", d.handleAddFeed)
+		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/feeds/discover", d.handleDiscoverFeeds)
 		r.With(d.Auth.RequireAuth).Post("/feeds/reorder", d.handleReorderFeeds)
 		r.With(d.Auth.RequireAuth).Patch("/feeds/{id}", d.handleUpdateFeed)
 		r.With(d.Auth.RequireAuth).Delete("/feeds/{id}", d.handleDeleteFeed)
@@ -201,6 +204,8 @@ func NewRouter(d Dependencies) http.Handler {
 		r.With(d.Auth.RequireAdmin).Post("/admin/db/cleanup", d.handleDBCleanup)
 		r.With(d.Auth.RequireAdmin).Post("/admin/db/schedule", d.handleDBSchedule)
 		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/feeds/import", d.handleOPMLImport)
+		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/feeds/import-ttrss", d.handleTTRSSImport)
+		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/feeds/import-ttrss-api", d.handleTTRSSAPIImport)
 		r.With(d.Auth.RequireAuth).Get("/feeds/export", d.handleOPMLExport)
 
 		// Starter packs
