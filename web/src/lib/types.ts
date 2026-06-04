@@ -55,6 +55,13 @@ export interface FeedWithCounts extends Feed {
   unread: number;
 }
 
+/** A feed surfaced by POST /api/feeds/discover; not yet subscribed. */
+export interface DiscoveredFeed {
+  url: string;
+  title: string;
+  type: string; // "rss", "atom", or "" when unknown
+}
+
 export interface Article {
   id: number;
   feed_id: number;
