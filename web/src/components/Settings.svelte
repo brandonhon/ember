@@ -1987,7 +1987,10 @@
     font-weight: 700;
     letter-spacing: 0.13em;
     text-transform: uppercase;
-    color: var(--gold);
+    /* --ink-faint (not --gold): gold-on-paper is only 2.99:1, below WCAG AA
+       4.5:1 for this small bold text (caught by the a11y e2e). ink-faint is
+       ~5.1:1 and passes in light + dark themes. */
+    color: var(--ink-faint);
     padding: 4px 12px 6px;
   }
   .nav-label::after {
