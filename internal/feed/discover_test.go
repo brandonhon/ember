@@ -152,3 +152,97 @@ func TestDiscover_ValidateBlocksProbe(t *testing.T) {
 		t.Errorf("want ErrNoFeed (all probes blocked), got %v", err)
 	}
 }
+
+const multiFeedHTML = `<html><head>
+<link rel="alternate" type="application/rss+xml" title="Main RSS" href="/main.rss">
+<link rel="alternate" type="application/atom+xml" title="Comments" href="/comments.atom">
+<link rel="stylesheet" href="/style.css">
+</head><body>page</body></html>`
+
+func TestDiscoverAll_MultipleFeeds(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte(multiFeedHTML))
+	}))
+	defer srv.Close()
+
+	got, err := DiscoverAll(context.Background(), srv.Client(), srv.URL, allowAll)
+	if err != nil {
+		t.Fatalf("DiscoverAll: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("want 2 feeds, got %d: %+v", len(got), got)
+	}
+	if !strings.HasSuffix(got[0].URL, "/main.rss") || got[0].Title != "Main RSS" || got[0].Type != "rss" {
+		t.Errorf("feed[0] wrong: %+v", got[0])
+	}
+	if !strings.HasSuffix(got[1].URL, "/comments.atom") || got[1].Type != "atom" {
+		t.Errorf("feed[1] wrong: %+v", got[1])
+	}
+	for _, f := range got {
+		if !strings.HasPrefix(f.URL, "http") {
+			t.Errorf("URL should be absolute: %q", f.URL)
+		}
+	}
+}
+
+func TestDiscoverAll_DropsSSRFRejected(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte(multiFeedHTML))
+	}))
+	defer srv.Close()
+
+	// Reject the comments feed (simulating an SSRF-blocked target); allow the rest.
+	validate := func(raw string) error {
+		if strings.Contains(raw, "comments.atom") {
+			return errors.New("blocked")
+		}
+		return nil
+	}
+	got, err := DiscoverAll(context.Background(), srv.Client(), srv.URL, validate)
+	if err != nil {
+		t.Fatalf("DiscoverAll: %v", err)
+	}
+	if len(got) != 1 || !strings.HasSuffix(got[0].URL, "/main.rss") {
+		t.Fatalf("want only /main.rss after dropping rejected feed, got %+v", got)
+	}
+}
+
+func TestDiscoverAll_DirectFeed(t *testing.T) {
+	rss, _ := os.ReadFile("testdata/sample.rss")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/rss+xml")
+		_, _ = w.Write(rss)
+	}))
+	defer srv.Close()
+
+	got, err := DiscoverAll(context.Background(), srv.Client(), srv.URL, allowAll)
+	if err != nil {
+		t.Fatalf("DiscoverAll: %v", err)
+	}
+	if len(got) != 1 || got[0].URL != srv.URL || got[0].Type != "rss" {
+		t.Fatalf("direct feed should return single rss entry for target, got %+v", got)
+	}
+}
+
+func TestDiscoverAll_NoFeedsEmpty(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte("<html><body>plain page</body></html>"))
+	})
+	for _, p := range DiscoveryFallbacks {
+		mux.HandleFunc(p, func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(404) })
+	}
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	got, err := DiscoverAll(context.Background(), srv.Client(), srv.URL+"/", allowAll)
+	if err != nil {
+		t.Fatalf("DiscoverAll should not error on no-feed, got %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("want empty slice, got %+v", got)
+	}
+}

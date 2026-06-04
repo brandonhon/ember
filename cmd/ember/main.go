@@ -29,6 +29,7 @@ import (
 	"github.com/brandonhon/ember/internal/store"
 	"github.com/brandonhon/ember/internal/summarize"
 	"github.com/brandonhon/ember/internal/sysinfo"
+	"github.com/brandonhon/ember/internal/ttrss"
 	"github.com/brandonhon/ember/internal/urlcheck"
 	"github.com/brandonhon/ember/internal/web"
 )
@@ -234,6 +235,10 @@ func run() error {
 	op.ValidateURL = func(ctx context.Context, raw string) error {
 		return urlcheck.Check(ctx, raw, cfg.AllowPrivateURLs)
 	}
+	tt := ttrss.NewService(st)
+	tt.ValidateURL = func(ctx context.Context, raw string) error {
+		return urlcheck.Check(ctx, raw, cfg.AllowPrivateURLs)
+	}
 
 	// Summarizer: noop in test mode, nil if disabled at install, otherwise
 	// Ollama. The active model is the persisted app setting if present, else
@@ -361,7 +366,7 @@ func run() error {
 	}
 
 	router := api.NewRouter(api.Dependencies{
-		Store: st, Auth: a, Poller: p, Metrics: p, OPML: op,
+		Store: st, Auth: a, Poller: p, Metrics: p, OPML: op, TTRSS: tt,
 		StaticH: staticH, TestMode: cfg.TestMode, Ollama: ollamaSum,
 		WebAuthn: webAuthn,
 		// Test mode uses synthetic .test hostnames that don't resolve; the

@@ -149,6 +149,11 @@ func resolveLink(base *url.URL, ref string) string {
 	return base.ResolveReference(u).String()
 }
 
+// HTMLToText returns a plain-text representation of an HTML fragment,
+// extracting text nodes only. Exported for ingest paths that store a text
+// rendering alongside the HTML body (e.g. the TT-RSS import).
+func HTMLToText(s string) string { return htmlToText(s) }
+
 // htmlToText returns a plain-text representation of an HTML fragment by
 // extracting text nodes only.
 func htmlToText(s string) string {
