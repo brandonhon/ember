@@ -462,6 +462,17 @@
     outline-offset: 4px;
     border-radius: 6px;
   }
+  /* Stretch the primary "open article" button across the whole card so a
+     click anywhere on the card (padding, gaps, around the foot) opens it —
+     not just the title/excerpt. The foot buttons sit above this overlay via
+     tree-order paint (position:relative) so star/later/sources stay
+     clickable. Works for both card and compact view. */
+  .story-link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+  }
   .story .unread-dot {
     position: absolute;
     left: 6px;
@@ -575,6 +586,10 @@
     gap: 14px;
     margin-top: 11px;
     color: var(--ink-faint);
+    /* Painted after (and thus above) the .story-link::after card overlay so
+       star/later/sources stay clickable. position:relative is enough — it
+       avoids a stacking context that would trap the dup-sources popover. */
+    position: relative;
   }
   .story-foot button {
     display: flex;

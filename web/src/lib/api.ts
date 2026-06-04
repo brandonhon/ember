@@ -4,6 +4,7 @@ import type {
   ArticleView,
   Board,
   Category,
+  DiscoveredFeed,
   FeedWithCounts,
   Filter,
   ListArticlesQuery,
@@ -112,6 +113,8 @@ export const api = {
       url,
       category_id,
     }),
+  discoverFeeds: (url: string) =>
+    call<{ feeds: DiscoveredFeed[] }>("POST", "/api/feeds/discover", { url }),
   updateFeed: (
     id: number,
     req: {
@@ -152,6 +155,44 @@ export const api = {
     }
     return res.json();
   },
+  importTTRSS: async (
+    file: File,
+  ): Promise<{ data: { total: number; imported: number; skipped: number } }> => {
+    const form = new FormData();
+    form.append("file", file);
+    const headers: Record<string, string> = {};
+    const tok = readCSRFCookie();
+    if (tok) headers["X-Ember-CSRF"] = tok;
+    const res = await fetch("/api/feeds/import-ttrss", {
+      method: "POST",
+      credentials: "include",
+      headers,
+      body: form,
+    });
+    if (!res.ok) {
+      let msg = res.statusText;
+      try {
+        const j = (await res.json()) as { error?: { message?: string } };
+        if (j?.error?.message) msg = j.error.message;
+      } catch {
+        /* keep statusText */
+      }
+      throw new ApiError(res.status, "http_" + res.status, msg);
+    }
+    return res.json();
+  },
+  importTTRSSAPI: (body: {
+    url: string;
+    username: string;
+    password: string;
+    import_starred: boolean;
+    import_archived: boolean;
+  }) =>
+    call<{ total: number; imported: number; skipped: number }>(
+      "POST",
+      "/api/feeds/import-ttrss-api",
+      body,
+    ),
 
   // Articles ----------------------------------------------------------
   listArticles: (q: ListArticlesQuery = {}) => {

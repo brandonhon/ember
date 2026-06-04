@@ -36,6 +36,12 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile
+      args:
+        # Stamps the binary's reported version (About → Settings, /metrics).
+        # Defaults to "dev"; pass the real one at build time, e.g.
+        #   EMBER_VERSION=$(git describe --tags --always --dirty) docker compose up -d --build ember
+        # Released images get the git tag injected by release.yml.
+        VERSION: ${EMBER_VERSION:-dev}
     restart: unless-stopped
     environment:
       EMBER_ADDR: ":8080"
