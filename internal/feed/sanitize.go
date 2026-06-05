@@ -35,7 +35,11 @@ func SafeHTTPURL(raw string) string {
 		return ""
 	}
 	u, err := url.Parse(raw)
-	if err != nil || (u.Scheme != "http" && u.Scheme != "https") {
+	// Require an http(s) scheme AND a host: a scheme-only value like "http:"
+	// or an opaque "https:foo" has no host to fetch/link and isn't a usable
+	// web URL. (url.Parse lowercases the scheme, so the check is case-
+	// insensitive and still rejects javascript:/data:.)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 		return ""
 	}
 	return raw
