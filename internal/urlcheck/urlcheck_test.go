@@ -86,3 +86,13 @@ func TestCheck_AllowPrivateBypass(t *testing.T) {
 		t.Errorf("allowPrivate=true should bypass: %v", err)
 	}
 }
+
+func TestDialContext_RejectsPrivateLiteral(t *testing.T) {
+	dial := DialContext(false)
+	// A literal private IP is rejected before any connection attempt.
+	for _, addr := range []string{"127.0.0.1:80", "169.254.169.254:80", "10.0.0.5:443"} {
+		if _, err := dial(context.Background(), "tcp", addr); !errors.Is(err, ErrPrivate) {
+			t.Errorf("dial %s: want ErrPrivate, got %v", addr, err)
+		}
+	}
+}

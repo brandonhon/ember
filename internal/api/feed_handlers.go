@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -342,7 +343,12 @@ func (d *Dependencies) handleTTRSSAPIImport(w http.ResponseWriter, r *http.Reque
 		ImportArchived: req.ImportArchived,
 	})
 	if err != nil {
-		writeError(w, http.StatusBadGateway, "import_failed", err.Error())
+		// Log the full error server-side for diagnosis; return a generic
+		// message. Raw net/http / DNS / TLS errors carry the resolved endpoint,
+		// internal hostnames, and TLS detail that shouldn't reach the client.
+		slog.Default().Warn("ttrss api import failed", "url", req.URL, "err", err)
+		writeError(w, http.StatusBadGateway, "import_failed",
+			"could not import from TT-RSS — check the URL/credentials and the server logs.")
 		return
 	}
 	writeData(w, http.StatusOK, res, nil)

@@ -4,12 +4,20 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"regexp"
 	"strconv"
 	"time"
 
 	"github.com/brandonhon/ember/internal/summarize"
 	"github.com/brandonhon/ember/internal/sysinfo"
 )
+
+// validModelName bounds an Ollama model reference to its documented shape
+// ([registry/][namespace/]name[:tag]) and printable ASCII. Even though these
+// endpoints are admin-only, validating the name stops a compromised/rogue admin
+// from coaxing the Ollama daemon into pulling from an arbitrary registry or
+// dereferencing path-traversal components.
+var validModelName = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$`)
 
 func floatToStr(f float64) string { return strconv.FormatFloat(f, 'f', -1, 64) }
 func intToStr(i int) string       { return strconv.Itoa(i) }
@@ -70,6 +78,10 @@ func (d *Dependencies) handleSetLLMModel(w http.ResponseWriter, r *http.Request)
 	}
 	if req.Model == "" {
 		writeError(w, http.StatusBadRequest, "bad_request", "model required")
+		return
+	}
+	if !validModelName.MatchString(req.Model) {
+		writeError(w, http.StatusBadRequest, "bad_request", "invalid model name")
 		return
 	}
 	if err := d.Store.PutAppSetting(r.Context(), "ollama_model", req.Model); err != nil {
@@ -141,6 +153,10 @@ func (d *Dependencies) handleDeleteLLMModel(w http.ResponseWriter, r *http.Reque
 		writeError(w, http.StatusBadRequest, "bad_request", "model required")
 		return
 	}
+	if !validModelName.MatchString(req.Model) {
+		writeError(w, http.StatusBadRequest, "bad_request", "invalid model name")
+		return
+	}
 	if req.Model == d.Ollama.Model() {
 		writeError(w, http.StatusConflict, "active_model", "cannot delete the active model — switch first")
 		return
@@ -168,6 +184,10 @@ func (d *Dependencies) handlePullLLMModel(w http.ResponseWriter, r *http.Request
 	}
 	if req.Model == "" {
 		writeError(w, http.StatusBadRequest, "bad_request", "model required")
+		return
+	}
+	if !validModelName.MatchString(req.Model) {
+		writeError(w, http.StatusBadRequest, "bad_request", "invalid model name")
 		return
 	}
 	// Override per-connection deadlines so the response can stay open for

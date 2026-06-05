@@ -63,7 +63,10 @@ func normalizeItem(it *gofeed.Item, feedID int64, base *url.URL) models.Article 
 		a.GUID = strings.TrimSpace(it.Link)
 	}
 	a.Title = strings.TrimSpace(it.Title)
-	a.URL = resolveLink(base, it.Link)
+	// Guard the article link: it is rendered as an href ("Original" button), so
+	// drop javascript:/data: and other non-web schemes. GUID fell back to the
+	// raw link above, so dedup is unaffected when this clears a bad URL.
+	a.URL = SafeHTTPURL(resolveLink(base, it.Link))
 
 	switch {
 	case it.Content != "":
@@ -71,6 +74,9 @@ func normalizeItem(it *gofeed.Item, feedID int64, base *url.URL) models.Article 
 	case it.Description != "":
 		a.ContentHTML = it.Description
 	}
+	// Feed bodies are rendered via {@html}; sanitize before deriving text and
+	// storing so stored HTML is render-safe regardless of the CSP.
+	a.ContentHTML = SanitizeHTML(a.ContentHTML)
 	a.ContentText = htmlToText(a.ContentHTML)
 
 	if it.Author != nil {

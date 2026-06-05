@@ -16,8 +16,10 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // ErrPrivate is returned when the URL resolves to a private/loopback/CGNAT
@@ -99,6 +101,60 @@ func CheckWith(ctx context.Context, raw string, allowPrivate bool, resolve Resol
 		}
 	}
 	return nil
+}
+
+// DialContext returns a net.Dialer-style DialContext that re-resolves the host,
+// rejects any resolved IP that fails the private-address check, and dials the
+// pinned IP directly. This closes the DNS-rebinding TOCTOU window: Check
+// validates the name at request time, but the stdlib HTTP stack would resolve
+// again at dial time — an attacker controlling DNS could return a public IP to
+// Check and a private one to the dialer. Pinning the checked IP removes the
+// second lookup. allowPrivate skips the check (homelab opt-in).
+func DialContext(allowPrivate bool) func(ctx context.Context, network, addr string) (net.Conn, error) {
+	d := &net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}
+	return func(ctx context.Context, network, addr string) (net.Conn, error) {
+		host, port, err := net.SplitHostPort(addr)
+		if err != nil {
+			return nil, err
+		}
+		if allowPrivate {
+			return d.DialContext(ctx, network, addr)
+		}
+		if ip := net.ParseIP(host); ip != nil {
+			if isPrivate(ip) {
+				return nil, fmt.Errorf("%w: %s", ErrPrivate, ip)
+			}
+			return d.DialContext(ctx, network, addr)
+		}
+		ips, err := defaultResolver(ctx, host)
+		if err != nil {
+			return nil, fmt.Errorf("urlcheck: resolve %s: %w", host, err)
+		}
+		lastErr := error(fmt.Errorf("urlcheck: no usable address for %s", host))
+		for _, ip := range ips {
+			if isPrivate(ip) {
+				lastErr = fmt.Errorf("%w: %s -> %s", ErrPrivate, host, ip)
+				continue
+			}
+			conn, derr := d.DialContext(ctx, network, net.JoinHostPort(ip.String(), port))
+			if derr == nil {
+				return conn, nil
+			}
+			lastErr = derr
+		}
+		return nil, lastErr
+	}
+}
+
+// GuardedTransport returns an *http.Transport (cloned from the default so proxy,
+// TLS, and timeout defaults are preserved) whose DialContext pins the resolved
+// IP against the private-address check. Set it as a client's Transport to make
+// the SSRF guard cover the actual connect, complementing the pre-flight Check
+// and the redirect guard.
+func GuardedTransport(allowPrivate bool) *http.Transport {
+	tr := http.DefaultTransport.(*http.Transport).Clone()
+	tr.DialContext = DialContext(allowPrivate)
+	return tr
 }
 
 func isPrivate(ip net.IP) bool {

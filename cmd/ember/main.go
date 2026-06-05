@@ -279,11 +279,14 @@ func run() error {
 		sum = ollamaSum
 	}
 
-	fetcher := feed.NewFetcher(30 * time.Second)
-	// Block redirects to private/internal addresses on every feed fetch.
-	fetcher.Client.CheckRedirect = feed.RedirectGuard(func(rawURL string) error {
+	// Block redirects to private/internal addresses on every feed fetch — the
+	// guard is baked into the fetcher at construction.
+	fetcher := feed.NewFetcher(30*time.Second, func(rawURL string) error {
 		return urlcheck.Check(ctx, rawURL, cfg.AllowPrivateURLs)
 	})
+	// IP-pinning transport closes the DNS-rebind window between the pre-flight
+	// urlcheck and the actual dial (the redirect guard only covers 3xx hops).
+	fetcher.Client.Transport = urlcheck.GuardedTransport(cfg.AllowPrivateURLs)
 	p := poller.New(st, fetcher, sum, poller.Config{
 		Tick:                        cfg.PollTick,
 		Concurrency:                 cfg.PollConcurrency,

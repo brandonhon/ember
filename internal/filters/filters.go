@@ -98,12 +98,22 @@ func (m Match) Validate() error {
 		return fmt.Errorf("filters: value required")
 	}
 	if m.Op == OpMatches {
+		// Bound the pattern length: each distinct pattern is compiled and
+		// cached forever (reCache), so unbounded patterns are a memory-DoS
+		// vector. RE2 rules out catastrophic backtracking; this caps per-entry
+		// size. 512 is far beyond any legitimate filter.
+		if len(m.Value) > maxPatternLen {
+			return fmt.Errorf("filters: regex too long (max %d chars)", maxPatternLen)
+		}
 		if _, err := regexp.Compile(m.Value); err != nil {
 			return fmt.Errorf("filters: invalid regex %q: %w", m.Value, err)
 		}
 	}
 	return nil
 }
+
+// maxPatternLen caps a single match regex; see Match.Validate.
+const maxPatternLen = 512
 
 // ValidateAction returns an error for unknown action strings.
 func ValidateAction(a string) error {
