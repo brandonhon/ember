@@ -40,6 +40,10 @@ func ParseMessage(raw []byte) (models.Article, error) {
 	if err != nil {
 		return models.Article{}, fmt.Errorf("emailinbox: extract bodies: %w", err)
 	}
+	// Inbound email is untrusted and the body is rendered via {@html} in the
+	// reader. Sanitize before deriving text and storing, mirroring the feed
+	// ingest path (feed/parse.go) so the email path isn't a stored-XSS hole.
+	bodyHTML = feed.SanitizeHTML(bodyHTML)
 	if bodyText == "" && bodyHTML != "" {
 		bodyText = feed.HTMLToText(bodyHTML)
 	}
@@ -86,7 +90,7 @@ func extractBodies(h mail.Header, body io.Reader) (string, string, error) {
 		if boundary == "" {
 			return "", "", errors.New("multipart without boundary")
 		}
-		return walkMultipart(body, boundary)
+		return walkMultipart(body, boundary, 0)
 	}
 
 	// Single-part. Decode by transfer-encoding then route by content type.
@@ -102,10 +106,19 @@ func extractBodies(h mail.Header, body io.Reader) (string, string, error) {
 	}
 }
 
+// maxMultipartDepth caps multipart nesting. A crafted message can nest
+// multipart/* containers thousands deep within the size limit; without a cap
+// the recursion below overflows the SMTP goroutine's stack and crashes the
+// process. 10 is far beyond any legitimate newsletter.
+const maxMultipartDepth = 10
+
 // walkMultipart recurses into multipart bodies, picking the first
 // text/html and first text/plain found anywhere. Skips attachments and
-// embedded images.
-func walkMultipart(body io.Reader, boundary string) (string, string, error) {
+// embedded images. depth guards against deeply-nested multipart bombs.
+func walkMultipart(body io.Reader, boundary string, depth int) (string, string, error) {
+	if depth > maxMultipartDepth {
+		return "", "", nil // too deep — stop descending, keep what we have
+	}
 	mr := multipart.NewReader(body, boundary)
 	var html, text string
 	for {
@@ -128,7 +141,7 @@ func walkMultipart(body io.Reader, boundary string) (string, string, error) {
 				part.Close()
 				continue
 			}
-			h, t, _ := walkMultipart(part, subB)
+			h, t, _ := walkMultipart(part, subB, depth+1)
 			if html == "" {
 				html = h
 			}

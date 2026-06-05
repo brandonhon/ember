@@ -82,6 +82,29 @@ Content-Type: text/plain
 Body only.
 `
 
+func TestParseMessage_SanitizesHTML(t *testing.T) {
+	msg := "From: Evil <evil@attacker.test>\r\n" +
+		"To: 01234ABCDEFG@mail.example.com\r\n" +
+		"Subject: hi\r\n" +
+		"Date: Mon, 02 Jan 2026 10:00:00 +0000\r\n" +
+		"Content-Type: text/html; charset=UTF-8\r\n" +
+		"\r\n" +
+		`<p>hello</p><script>alert(document.cookie)</script>` +
+		`<img src=x onerror="steal()"><a href="javascript:evil()">x</a>`
+	art, err := ParseMessage([]byte(msg))
+	if err != nil {
+		t.Fatalf("ParseMessage: %v", err)
+	}
+	for _, bad := range []string{"<script", "alert(", "onerror", "javascript:"} {
+		if strings.Contains(art.ContentHTML, bad) {
+			t.Errorf("email HTML not sanitized, still contains %q: %q", bad, art.ContentHTML)
+		}
+	}
+	if !strings.Contains(art.ContentHTML, "<p>hello</p>") {
+		t.Errorf("benign content dropped: %q", art.ContentHTML)
+	}
+}
+
 func TestParseMessage_NoSubject(t *testing.T) {
 	art, err := ParseMessage([]byte(sampleNoSubject))
 	if err != nil {
