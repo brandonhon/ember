@@ -50,7 +50,7 @@ features:
     details: Five actions (mark_read, star, hide, tag, add_to_board), eight match fields including feed, tags, published_at, has_image. Per-rule priority and a Preview button that counts last-7-day matches before you save.
 ---
 
-And plenty more under the hood: **Fever-compatible API** (Reeder, FeedMe & co. via a random per-user token), **passkey sign-in** (Touch ID / Face ID / hardware keys), an opt-in **daily digest email**, **subscribe-by-URL** discovery (including YouTube channels and Mastodon profiles), **15-second auto-refresh** with a favicon unread dot, and **live admin controls** for hot-swapping the LLM model, tuning generation params, and scheduling backups / cleanup / OPML exports.
+And plenty more under the hood: **migrate your library** in (OPML subscriptions + starred/archived articles from Tiny Tiny RSS), a **Fever-compatible API** (Reeder, FeedMe & co. via a random per-user token), **passkey sign-in** (Touch ID / Face ID / hardware keys), an opt-in **daily digest email**, **subscribe-by-URL** discovery (paste a homepage; pick from multiple feeds), **15-second auto-refresh** with a favicon unread dot, and **live admin controls** for hot-swapping the LLM model, tuning generation params, and scheduling backups / cleanup / OPML exports.
 
 ## Why?
 

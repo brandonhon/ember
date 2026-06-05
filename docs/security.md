@@ -9,7 +9,7 @@ For vulnerability reporting, see [SECURITY.md](https://github.com/brandonhon/emb
 - **Passwords**: argon2id (`time=3`, `memory=64 MiB`, `parallelism=2`, salt=16 bytes). Meets OWASP 2024 recommendations.
 - **Sessions**: 64-hex-char random IDs signed via `gorilla/securecookie`. Server-side row in `sessions` table backs every cookie. Default lifetime 24 hours; override via `EMBER_SESSION_TTL` env var or **Settings → Sessions** (bounded 5 min – 90 days). Destroyed on logout, login (fixation defense), and on password change (both self-service and admin).
 - **Cookies**: `HttpOnly`, `Secure`, `SameSite=Strict`, scoped to `/`.
-- **Rate limiting**: per-IP token bucket on `POST /api/auth/login` and `POST /api/auth/passkey/*` (burst 10/min). A second, higher-burst bucket (30/min) guards the expensive authenticated endpoints — add-feed, refresh-feed, resummarize(-all), OPML import, starter-pack import, article extract, and search — which spawn outbound fetches / goroutines / FTS work. Buckets key on the real client IP (see Transport / proxy expectations for how that's resolved).
+- **Rate limiting**: per-IP token bucket on `POST /api/auth/login` and `POST /api/auth/passkey/*` (burst 10/min). A second, higher-burst bucket (30/min) guards the expensive authenticated endpoints — add-feed, feed discovery, refresh-feed, resummarize(-all), OPML import, TT-RSS import (file + live API), starter-pack import, article extract, and search — which spawn outbound fetches / goroutines / FTS work. Buckets key on the real client IP (see Transport / proxy expectations for how that's resolved).
 - **Passkeys / WebAuthn**: optional second sign-in method (FIDO2). Credentials are bound to a relying-party ID derived from `EMBER_PUBLIC_URL`; ceremonies expire after 5 minutes; a stale `webauthn_sessions` row is reaped on a 15-minute cadence. Credentials never leave the device — only the public key is stored.
 
 ## Authorization
@@ -49,7 +49,9 @@ Every outbound URL fetch passes through `internal/urlcheck.Check`:
 Surfaces covered:
 
 - `POST /api/feeds` (add feed)
+- `POST /api/feeds/discover` (multi-feed picker — the target page and every advertised feed link is validated before fetching)
 - `POST /api/feeds/import` (OPML import — each `xmlUrl` is filtered)
+- `POST /api/feeds/import-ttrss-api` (TT-RSS live pull — the API endpoint is validated and the client carries `feed.RedirectGuard`; the user-supplied TT-RSS credentials are held only for the request and never persisted). The file upload `POST /api/feeds/import-ttrss` makes no outbound request, and `javascript:`/`data:` article links in the export are dropped.
 - Poller readability enrichment (Lobsters / HN aggregator → external link)
 - Feed fetcher redirects
 - `POST /api/articles/{id}/extract` (on-demand Re-extract) — runs the same `urlcheck.Check` before fetching the article URL through readability.
@@ -67,6 +69,7 @@ Outbound mail (digests + the test message) never sends credentials or message bo
 
 - `decodeJSON` wraps the body in `http.MaxBytesReader` capped at **1 MiB**.
 - OPML import body capped at **8 MiB** (and the parser reads at most 10 MiB).
+- TT-RSS file import capped at **50 MiB** (the streaming XML parser reads at most that); the live API pull paginates and stops at 100k articles.
 - Fever (`/fever`) form body capped at **64 KiB**.
 - Request headers capped at **64 KiB** (`http.Server.MaxHeaderBytes`).
 - `/api/articles/read` (and other bulk endpoints) accept at most **1000** ids per request; `/api/articles?limit=` is clamped to **200**.

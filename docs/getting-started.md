@@ -112,10 +112,19 @@ Migrations are embedded in the binary and apply automatically on startup; no man
 2. Open **Settings → Language model** and confirm the recommendation matches your hardware. The `ember probe` subcommand (or that section) reports detected RAM/CPU/GPU and the suggested model.
 3. Open **Settings → Database**, schedule a daily backup, and pick a cleanup cadence.
 4. Open **Settings → Preferences** and pick your theme + article density.
-5. Click **Browse starter packs** or paste a feed URL — or a homepage URL — into the sidebar "+ Add feed". Ember auto-discovers the feed link.
+5. Click **Browse starter packs** or paste a feed URL — or just a domain like `example.com` (no `https://` needed) — into the sidebar "+ Add feed". Ember auto-discovers the feed (it reads `<link rel="alternate">` and probes common paths like `/feed`, `/rss`, `/atom.xml`); if the site publishes more than one, a picker lets you choose which to add.
 6. (Optional) **Settings → Passkeys** to register a passkey for password-less sign-in. Requires `EMBER_PUBLIC_URL` to be set.
 7. (Optional) Configure SMTP env vars (see [Configuration](/configuration#optional-env-vars)) and enable a daily digest email from your profile.
 8. (Optional) Install Ember as a PWA — Chrome / Edge / Safari "Install app" menu. Once installed, new articles trigger an OS-level numeric badge on the app icon (taskbar / dock / launcher) in addition to the in-tab favicon dot.
+
+## Migrating from another reader
+
+**Settings → Import & migrate** brings your existing library across — none of it touches feeds you've already added:
+
+- **OPML** — import your subscription list (or export Ember's at any time).
+- **Tiny Tiny RSS** — import your **starred & archived articles**, either by uploading the export file or pulling them live from a running instance. For the live pull, enable *Settings → Preferences → Enable API access* in TT-RSS first; if it's served under a subpath (e.g. `https://example.com/tt-rss`), include that — Ember appends `/api/`. Credentials are used only for the import and are never stored.
+
+Imported articles arrive starred (and marked read) in a dedicated, non-polling feed, so they show up in **Starred** immediately without re-fetching your old sources.
 
 ## Run from a pre-built binary
 
