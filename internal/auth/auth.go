@@ -376,6 +376,11 @@ func (a *Auth) BootstrapAdmin(ctx context.Context, username, password string) (m
 	if username == "" || password == "" {
 		return models.User{}, false, errors.New("auth: bootstrap admin requires EMBER_ADMIN_USER and EMBER_ADMIN_PASSWORD")
 	}
+	// Enforce the same 8-char floor as the create-user/change-password paths so
+	// the first-run admin can't be seeded with a trivially weak password.
+	if len(password) < 8 {
+		return models.User{}, false, errors.New("auth: EMBER_ADMIN_PASSWORD must be at least 8 characters")
+	}
 	hash, err := a.HashPassword(password)
 	if err != nil {
 		return models.User{}, false, err
