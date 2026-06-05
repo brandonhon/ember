@@ -105,6 +105,25 @@ func TestParseMessage_SanitizesHTML(t *testing.T) {
 	}
 }
 
+func TestParseMessage_Base64HTML(t *testing.T) {
+	// "<p>hi <b>there</b></p>" base64-encoded, MIME line-wrapped.
+	body := "PHA+aGkgPGI+dGhlcmU8L2I+PC9wPg=="
+	msg := "From: News <n@s.test>\r\n" +
+		"To: 01234ABCDEFG@mail.example.com\r\n" +
+		"Subject: b64\r\n" +
+		"Date: Mon, 02 Jan 2026 10:00:00 +0000\r\n" +
+		"Content-Type: text/html; charset=UTF-8\r\n" +
+		"Content-Transfer-Encoding: base64\r\n" +
+		"\r\n" + body
+	art, err := ParseMessage([]byte(msg))
+	if err != nil {
+		t.Fatalf("ParseMessage: %v", err)
+	}
+	if !strings.Contains(art.ContentHTML, "<b>there</b>") {
+		t.Errorf("base64 HTML not decoded: %q", art.ContentHTML)
+	}
+}
+
 func TestParseMessage_NoSubject(t *testing.T) {
 	art, err := ParseMessage([]byte(sampleNoSubject))
 	if err != nil {

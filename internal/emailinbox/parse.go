@@ -1,6 +1,7 @@
 package emailinbox
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -173,10 +174,13 @@ func decodeBody(r io.Reader, encoding, charset string) ([]byte, error) {
 	switch strings.ToLower(strings.TrimSpace(encoding)) {
 	case "quoted-printable":
 		return io.ReadAll(quotedprintable.NewReader(r))
+	case "base64":
+		// Common for HTML parts from Substack/Beehiiv; without this the body
+		// is stored as raw base64 text and renders as garbage. The streaming
+		// decoder ignores the CRLF line breaks MIME wraps base64 at.
+		return io.ReadAll(base64.NewDecoder(base64.StdEncoding, r))
 	default:
-		// 7bit / 8bit / no encoding all read raw. base64 is rare for
-		// text/* parts but supported by the standard reader chain;
-		// callers can extend here if needed.
+		// 7bit / 8bit / no encoding all read raw.
 		return io.ReadAll(r)
 	}
 }
