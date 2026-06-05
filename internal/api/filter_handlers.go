@@ -119,6 +119,19 @@ func (d *Dependencies) handleUpdateFilter(w http.ResponseWriter, r *http.Request
 	// string means "no change" rather than "clear it" (avoids accidentally
 	// wiping the payload on a PATCH that only touches name / enabled).
 	if req.ActionValue != "" {
+		// When the action itself isn't part of this PATCH, validate the new
+		// value against the stored action so e.g. a board filter can't be
+		// given a non-numeric value (or a tag filter a board id).
+		if req.Action == "" {
+			existing, err := d.Store.GetFilter(r.Context(), u.ID, id)
+			if mapStoreError(w, err) {
+				return
+			}
+			if err := filters.ValidateActionWithValue(existing.Action, req.ActionValue); err != nil {
+				writeError(w, http.StatusBadRequest, "bad_request", err.Error())
+				return
+			}
+		}
 		patch.ActionValue = &req.ActionValue
 	}
 	if mapStoreError(w, d.Store.UpdateFilter(r.Context(), u.ID, id, patch)) {
