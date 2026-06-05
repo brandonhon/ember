@@ -81,6 +81,9 @@ func NewNotifier(keys Keys, contactEmail string, store SubStore, logger *slog.Lo
 		// but a push service could 30x to a private/metadata address. Re-check
 		// every redirect hop, mirroring the feed fetcher.
 		httpClient: &http.Client{
+			// IP-pinning transport closes the DNS-rebind window between the
+			// registration-time Check and the actual delivery dial.
+			Transport: urlcheck.GuardedTransport(allowPrivate),
 			CheckRedirect: func(req *http.Request, _ []*http.Request) error {
 				return urlcheck.Check(req.Context(), req.URL.String(), allowPrivate)
 			},
