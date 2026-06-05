@@ -22,6 +22,11 @@ var ErrForbidden = errors.New("store: forbidden")
 // duplicate category name within a user, etc.).
 var ErrConflict = errors.New("store: conflict")
 
+// ErrInvalidQuery is returned by Search when the user's text is not a valid
+// FTS5 MATCH expression (unbalanced quote, bare boolean operator, bad column
+// filter). The api layer maps it to 400 rather than a 500.
+var ErrInvalidQuery = errors.New("store: invalid search query")
+
 // ErrNoNewContent is returned by Poller.ExtractArticle when readability ran
 // but the result wasn't an improvement over the stored body. Defined here so
 // the api package can errors.Is without importing poller (which would create
