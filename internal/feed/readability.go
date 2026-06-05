@@ -45,7 +45,7 @@ func ExtractFromURL(ctx context.Context, c *http.Client, target string) (Readabl
 	}
 	return Readable{
 		Title:    strings.TrimSpace(art.Title),
-		HTML:     art.Content,
+		HTML:     SanitizeHTML(art.Content),
 		Text:     strings.TrimSpace(art.TextContent),
 		ImageURL: art.Image,
 	}, nil
@@ -61,7 +61,7 @@ func extractFromHTML(body, target string) (Readable, error) {
 	}
 	return Readable{
 		Title:    strings.TrimSpace(art.Title),
-		HTML:     art.Content,
+		HTML:     SanitizeHTML(art.Content),
 		Text:     strings.TrimSpace(art.TextContent),
 		ImageURL: art.Image,
 	}, nil
