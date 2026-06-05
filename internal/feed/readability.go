@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 
 	"github.com/go-shiori/go-readability"
 )
@@ -23,7 +22,10 @@ type Readable struct {
 // readability-extracted view.
 func ExtractFromURL(ctx context.Context, c *http.Client, target string) (Readable, error) {
 	if c == nil {
-		c = &http.Client{Timeout: 30 * time.Second}
+		// Require a caller-supplied client: the SSRF guard (redirect + dial)
+		// lives on it, so a nil client would be an unguarded fetch. Callers
+		// build a guarded client (see poller.enrichWithReadability).
+		return Readable{}, errors.New("readability: nil http client (SSRF guard required)")
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
 	if err != nil {
