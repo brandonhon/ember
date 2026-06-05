@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/emersion/go-smtp"
+	"golang.org/x/net/netutil"
 )
 
 // Ingester is the store-facing surface the SMTP server needs. The real
@@ -30,6 +31,7 @@ type Config struct {
 	ListenAddr  string        // e.g. ":2525" — default if empty
 	MaxBytes    int64         // per-message cap; default 25 MiB
 	ReadTimeout time.Duration // default 30s
+	MaxConns    int           // max concurrent connections; default 256
 }
 
 // Server is a thin wrapper around go-smtp configured to accept mail
@@ -56,6 +58,9 @@ func NewServer(cfg Config, store Ingester, logger *slog.Logger) *Server {
 	if cfg.ReadTimeout <= 0 {
 		cfg.ReadTimeout = 30 * time.Second
 	}
+	if cfg.MaxConns <= 0 {
+		cfg.MaxConns = 256
+	}
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -74,10 +79,17 @@ func NewServer(cfg Config, store Ingester, logger *slog.Logger) *Server {
 }
 
 // Start blocks listening for inbound connections until Stop is called.
-// Logs and returns nil on graceful shutdown.
+// Logs and returns nil on graceful shutdown. The listener is wrapped with a
+// connection limiter so an attacker can't exhaust file descriptors / goroutines
+// by opening many idle connections (go-smtp has no built-in cap).
 func (s *Server) Start() error {
-	s.logger.Info("smtp listener starting", "addr", s.cfg.ListenAddr, "domain", s.cfg.Domain)
-	if err := s.smtp.ListenAndServe(); err != nil && !errors.Is(err, smtp.ErrServerClosed) && !errors.Is(err, net.ErrClosed) {
+	s.logger.Info("smtp listener starting", "addr", s.cfg.ListenAddr, "domain", s.cfg.Domain, "max_conns", s.cfg.MaxConns)
+	ln, err := net.Listen("tcp", s.cfg.ListenAddr)
+	if err != nil {
+		return fmt.Errorf("emailinbox: listen: %w", err)
+	}
+	ln = netutil.LimitListener(ln, s.cfg.MaxConns)
+	if err := s.smtp.Serve(ln); err != nil && !errors.Is(err, smtp.ErrServerClosed) && !errors.Is(err, net.ErrClosed) {
 		return fmt.Errorf("emailinbox: serve: %w", err)
 	}
 	return nil
