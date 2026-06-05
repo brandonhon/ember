@@ -57,6 +57,8 @@ func mapStoreError(w http.ResponseWriter, err error) bool {
 		writeError(w, http.StatusForbidden, "forbidden", "forbidden")
 	case errors.Is(err, store.ErrConflict):
 		writeError(w, http.StatusConflict, "conflict", "resource already exists")
+	case errors.Is(err, store.ErrInvalidQuery):
+		writeError(w, http.StatusBadRequest, "bad_request", "invalid search query")
 	default:
 		slog.Default().Error("store error", "err", err)
 		writeError(w, http.StatusInternalServerError, "internal", "internal error")

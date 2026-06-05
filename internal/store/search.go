@@ -2,6 +2,8 @@ package store
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/brandonhon/ember/internal/models"
 )
@@ -37,6 +39,12 @@ func (s *Store) Search(ctx context.Context, userID int64, query string, limit in
 		ORDER BY rank
 		LIMIT ?`, userID, userID, query, limit)
 	if err != nil {
+		// A malformed MATCH expression (unbalanced quote, bare operator, bad
+		// column filter) is a client mistake, not a server fault — surface it
+		// as ErrInvalidQuery so the api layer returns 400 instead of 500.
+		if isFTSQueryError(err) {
+			return nil, fmt.Errorf("%w: %v", ErrInvalidQuery, err)
+		}
 		return nil, err
 	}
 	defer rows.Close()
@@ -56,4 +64,17 @@ func (s *Store) Search(ctx context.Context, userID int64, query string, limit in
 		out = append(out, r)
 	}
 	return out, rows.Err()
+}
+
+// isFTSQueryError reports whether err is a SQLite FTS5 MATCH-syntax error
+// caused by malformed user input (vs. a genuine infrastructure fault). The
+// phrases below are the full set observed from modernc.org/sqlite for bad
+// queries: unbalanced quote, bare operator, unknown column filter, and the
+// "special query" prefix-search error.
+func isFTSQueryError(err error) bool {
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "fts5:") ||
+		strings.Contains(msg, "unterminated string") ||
+		strings.Contains(msg, "unknown special query") ||
+		strings.Contains(msg, "no such column")
 }

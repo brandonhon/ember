@@ -46,13 +46,21 @@ func RedirectGuard(validate func(rawURL string) error) func(*http.Request, []*ht
 	}
 }
 
-// NewFetcher returns a Fetcher with sensible defaults.
-func NewFetcher(timeout time.Duration) *Fetcher {
+// NewFetcher returns a Fetcher with sensible defaults and an SSRF redirect
+// guard wired in at construction, so the safe default is the only option — a
+// caller can't accidentally build an unguarded fetcher. validate is invoked on
+// every redirect hop's next URL (pass urlcheck.Check); nil still enforces the
+// 10-redirect cap but performs no address check, so production must supply a
+// real validator.
+func NewFetcher(timeout time.Duration, validate func(rawURL string) error) *Fetcher {
 	if timeout <= 0 {
 		timeout = 30 * time.Second
 	}
 	return &Fetcher{
-		Client:    &http.Client{Timeout: timeout},
+		Client: &http.Client{
+			Timeout:       timeout,
+			CheckRedirect: RedirectGuard(validate),
+		},
 		UserAgent: DefaultUserAgent,
 	}
 }

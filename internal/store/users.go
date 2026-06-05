@@ -92,6 +92,42 @@ func (s *Store) ListUsers(ctx context.Context) ([]models.User, error) {
 	return out, rows.Err()
 }
 
+// PublicUser is the non-secret projection of a user. It deliberately excludes
+// password_hash, fever_token, and settings_json so those columns never leave
+// the database for a request (the user-list endpoint) that only needs identity
+// and role.
+type PublicUser struct {
+	ID        int64
+	Username  string
+	Email     string
+	IsAdmin   bool
+	CreatedAt int64
+}
+
+// ListUsersPublic returns all users without their secret columns, ordered by
+// id. Backs the /api/users endpoint; the non-admin caller path projects this
+// down further to id+username.
+func (s *Store) ListUsersPublic(ctx context.Context) ([]PublicUser, error) {
+	rows, err := s.DB.QueryContext(ctx, `
+		SELECT id, username, IFNULL(email,''), is_admin, created_at
+		FROM users ORDER BY id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []PublicUser
+	for rows.Next() {
+		var u PublicUser
+		var isAdmin int
+		if err := rows.Scan(&u.ID, &u.Username, &u.Email, &isAdmin, &u.CreatedAt); err != nil {
+			return nil, err
+		}
+		u.IsAdmin = isAdmin == 1
+		out = append(out, u)
+	}
+	return out, rows.Err()
+}
+
 // CountUsers returns the number of users (used by first-run bootstrap).
 func (s *Store) CountUsers(ctx context.Context) (int, error) {
 	var n int

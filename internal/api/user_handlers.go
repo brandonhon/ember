@@ -32,7 +32,7 @@ type adminUserView struct {
 }
 
 func (d *Dependencies) handleListUsers(w http.ResponseWriter, r *http.Request) {
-	users, err := d.Store.ListUsers(r.Context())
+	users, err := d.Store.ListUsersPublic(r.Context())
 	if mapStoreError(w, err) {
 		return
 	}
