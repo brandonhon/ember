@@ -7,6 +7,7 @@
     refreshSidebar,
     activeView,
     loadArticles,
+    selectedArticleId,
     sidebarCollapsed,
     branding,
   } from "../lib/stores";
@@ -99,6 +100,20 @@
         searchResults = [];
       }
     }, 220);
+  }
+
+  // Clicking a typeahead hit opens that article inside Ember (not the source
+  // site). Switch the list pane to the search view so the article is loaded,
+  // then select it for the reader. (The Reader resolves selectedArticleId
+  // against the loaded $articles.items, so the article must be in the list.)
+  async function openResult(r: { id: number }) {
+    showResults = false;
+    const q = searchQ.trim();
+    if (q) {
+      activeView.set({ kind: "search", query: q });
+      await loadArticles({ kind: "search", query: q });
+    }
+    selectedArticleId.set(r.id);
   }
 
   function toggleTheme() {
@@ -246,7 +261,7 @@
   {#if showResults && searchResults.length > 0}
     <div class="search-results" data-search-results data-testid="search-results">
       {#each searchResults as r (r.id)}
-        <a href={r.url || "#"} target="_blank" rel="noopener noreferrer">{r.title}</a>
+        <button type="button" on:click={() => openResult(r)}>{r.title}</button>
       {/each}
     </div>
   {/if}
@@ -535,15 +550,21 @@
     width: 420px;
     border-radius: 11px;
   }
-  .search-results a {
+  .search-results button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    font-family: inherit;
     color: var(--ink);
-    text-decoration: none;
     font-size: 13px;
     padding: 8px 10px;
     border-radius: 8px;
     line-height: 1.4;
   }
-  .search-results a:hover { background: var(--line-soft); }
+  .search-results button:hover { background: var(--line-soft); }
   /* Mobile: the desktop offset (left: rail-w + 16) + fixed 420px width push
      the panel off the right edge of a phone. Pin it under the full-width
      search bar with small side margins instead. */
