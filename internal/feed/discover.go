@@ -84,8 +84,16 @@ func Discover(ctx context.Context, c *http.Client, target string, validate func(
 	}
 
 	if href := findAlternateInHTML(body); href != "" {
-		abs, _ := resolveRef(parsedTarget, href)
-		return abs, nil
+		if abs, rerr := resolveRef(parsedTarget, href); rerr == nil && abs != "" {
+			// The discovered link crosses the same trust boundary as the
+			// target; validate before returning it (the caller fetches it).
+			// On reject/unresolvable, fall through to the fallback probes —
+			// matching DiscoverAll's drop-and-continue rather than handing back
+			// an unchecked URL.
+			if verr := validate(abs); verr == nil {
+				return abs, nil
+			}
+		}
 	}
 
 	for _, p := range DiscoveryFallbacks {
