@@ -294,6 +294,12 @@ func TestBootstrapAdmin(t *testing.T) {
 	if _, _, err := a2.BootstrapAdmin(ctx, "", ""); err == nil {
 		t.Error("empty creds should fail")
 	}
+
+	// Sub-8-char password on first run → error (no admin created).
+	a3 := newAuth(t)
+	if _, created, err := a3.BootstrapAdmin(ctx, "root", "short7!"); err == nil || created {
+		t.Errorf("short password should fail: created=%v err=%v", created, err)
+	}
 }
 
 func TestLogin(t *testing.T) {
