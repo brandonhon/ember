@@ -401,6 +401,27 @@
   },
   "articles": [
     {
+      "id": 9001,
+      "feed_id": 1,
+      "guid": "https://example.com/ember-demo/a-love-story-from-abroad",
+      "url": "https://example.com/ember-demo/a-love-story-from-abroad",
+      "title": "A Love Story From Abroad",
+      "author": "Anonymous",
+      "content_html": "<p>She came to America to study, and somehow she became my whole world.</p>\n<p>From the first time I heard her laugh, I knew nothing in my life would ever be the same. Her personality is the kind that fills a room without trying — warm, curious, kind. She listens like every word matters, and laughs like the world is still good. Her beauty is the part I notice last, only because everything else about her already amazes me.</p>\n<p>She makes me happy in a way I did not know was possible. Quiet mornings, long walks, small jokes only we understand — she turns ordinary days into the ones I want to remember.</p>\n<p>I am an American man. She is a Chinese woman who came to study abroad. The world brought us together by chance, but the way I feel about her is not chance at all.</p>\n<p>She means everything to me.</p>",
+      "content_text": "She came to America to study, and somehow she became my whole world. From the first time I heard her laugh, I knew nothing in my life would ever be the same. Her personality is the kind that fills a room without trying — warm, curious, kind. She listens like every word matters, and laughs like the world is still good. Her beauty is the part I notice last, only because everything else about her already amazes me. She makes me happy in a way I did not know was possible. Quiet mornings, long walks, small jokes only we understand — she turns ordinary days into the ones I want to remember. I am an American man. She is a Chinese woman who came to study abroad. The world brought us together by chance, but the way I feel about her is not chance at all. She means everything to me.",
+      "summary": "A short personal essay about an American man who fell in love with a Chinese woman during her year studying abroad — a quiet tribute to her personality, her beauty, the happiness she brings, and the simple truth that she means everything to him.",
+      "summary_model": "qwen2.5:0.5b",
+      "image_url": "https://picsum.photos/seed/ember-love-story/1200/675",
+      "published_at": 1780509200,
+      "fetched_at": 1780509343,
+      "content_hash": "42be321878e0ad61d10d30f914fa60bf77e251e3032f32800ac621ebcd74f0ed",
+      "tags": "Personal",
+      "is_read": false,
+      "is_starred": true,
+      "is_later": false,
+      "dup_count": 0
+    },
+    {
       "id": 1,
       "feed_id": 3,
       "guid": "https://www.theverge.com/?p=942629",
