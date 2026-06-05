@@ -176,6 +176,15 @@ func (a *Auth) VerifyPassword(plain, encoded string) error {
 	return nil
 }
 
+// equalizeTiming runs a throwaway argon2id derivation with the live cost
+// params so the user-not-found path costs the same as a real VerifyPassword.
+// The result is discarded — only the elapsed time matters.
+func (a *Auth) equalizeTiming(password string) {
+	var salt [16]byte // fixed; the derivation is never compared, only timed
+	_ = argon2.IDKey([]byte(password), salt[:],
+		a.Params.Iterations, a.Params.Memory, a.Params.Parallelism, a.Params.KeyLength)
+}
+
 func decodeArgon2id(encoded string) (Params, []byte, []byte, error) {
 	parts := strings.Split(encoded, "$")
 	if len(parts) != 6 || parts[1] != "argon2id" {
@@ -390,6 +399,10 @@ func (a *Auth) BootstrapAdmin(ctx context.Context, username, password string) (m
 func (a *Auth) Login(ctx context.Context, w http.ResponseWriter, r *http.Request, username, password string) (models.User, error) {
 	u, err := a.Store.GetUserByUsername(ctx, username)
 	if errors.Is(err, store.ErrNotFound) {
+		// Equalize timing with the found-user path: without a throwaway argon2
+		// derivation, a missing username returns in ~1ms while a real one takes
+		// ~100ms, leaking account existence via a timing side channel.
+		a.equalizeTiming(password)
 		return models.User{}, ErrInvalidCredentials
 	}
 	if err != nil {
