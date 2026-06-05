@@ -1,0 +1,42 @@
+package feed
+
+import (
+	"net/url"
+	"strings"
+
+	"github.com/microcosm-cc/bluemonday"
+)
+
+// sanitizePolicy is bluemonday's user-generated-content policy: it permits
+// common formatting, images, and links while stripping <script>, inline event
+// handlers (onerror/onload/...), <style>, and javascript:/data: URLs. Feed and
+// extracted article HTML is rendered verbatim via {@html} in the reader, so
+// every ingest path runs its body through this before it is stored — making
+// sanitization a peer of the CSP rather than the CSP being the sole defense.
+// Compiled once; bluemonday policies are safe for concurrent use.
+var sanitizePolicy = bluemonday.UGCPolicy()
+
+// SanitizeHTML strips dangerous markup from an untrusted HTML fragment and
+// returns render-safe HTML. Empty in, empty out.
+func SanitizeHTML(s string) string {
+	if s == "" {
+		return ""
+	}
+	return sanitizePolicy.Sanitize(s)
+}
+
+// SafeHTTPURL returns raw only if it parses as an http(s) URL, else "". Use for
+// any feed-supplied value that is later rendered as an href/src so javascript:,
+// data:, and other non-web schemes can't ride through. Shared by every ingest
+// path (feed parse, TT-RSS import) that stores a URL for later rendering.
+func SafeHTTPURL(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+	u, err := url.Parse(raw)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") {
+		return ""
+	}
+	return raw
+}

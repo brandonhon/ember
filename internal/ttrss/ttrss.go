@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -141,19 +140,22 @@ func (s *Service) save(ctx context.Context, userID, feedID int64, it normItem) (
 	if guid == "" {
 		return false, true, nil // nothing to identify or dedup on
 	}
-	link := safeHTTPURL(it.link)
-	// Derive plain text from the HTML body the same way feed.Parse does, so
-	// imported items get a card excerpt and are full-text searchable. The hash
-	// is computed over the text (matching the parser) for consistency; guid
-	// dedup still dominates, so re-imports stay idempotent regardless.
-	text := feed.HTMLToText(it.content)
+	link := feed.SafeHTTPURL(it.link)
+	// Sanitize the embedded HTML before storing; imported bodies are rendered
+	// via {@html} like any feed article. Derive plain text from the sanitized
+	// body the same way feed.Parse does, so imported items get a card excerpt
+	// and are full-text searchable. The hash is computed over the text (matching
+	// the parser) for consistency; guid dedup still dominates, so re-imports
+	// stay idempotent regardless.
+	content := feed.SanitizeHTML(it.content)
+	text := feed.HTMLToText(content)
 	saved, ins, err := s.Store.UpsertArticle(ctx, models.Article{
 		FeedID:      feedID,
 		GUID:        guid,
 		URL:         link,
 		Title:       it.title,
 		Author:      it.author,
-		ContentHTML: it.content,
+		ContentHTML: content,
 		ContentText: text,
 		PublishedAt: it.published,
 		ContentHash: feed.ContentHash(link, it.title, text),
@@ -202,21 +204,6 @@ func (s *Service) ensureImportFeed(ctx context.Context, userID int64) (int64, er
 		return 0, fmt.Errorf("ttrss: subscribe: %w", err)
 	}
 	return f.ID, nil
-}
-
-// safeHTTPURL returns raw only if it is an http(s) URL, else "". The link is
-// stored and later rendered as an href; this drops javascript:/data: and
-// other non-web schemes. Import never fetches it, so there is no SSRF surface.
-func safeHTTPURL(raw string) string {
-	raw = strings.TrimSpace(raw)
-	if raw == "" {
-		return ""
-	}
-	u, err := url.Parse(raw)
-	if err != nil || (u.Scheme != "http" && u.Scheme != "https") {
-		return ""
-	}
-	return raw
 }
 
 // parseTime parses TT-RSS's "YYYY-MM-DD HH:MM:SS" updated stamp, falling back

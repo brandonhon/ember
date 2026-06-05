@@ -650,7 +650,10 @@ func (p *Poller) summarizeOne(ctx context.Context, articleID int64) {
 	// paragraphs so the Reader's prose styling kicks in (the LLM emits plain
 	// text, not HTML).
 	if cleaned := strings.TrimSpace(res.Cleaned); cleaned != "" {
-		html := paragraphizePlain(cleaned)
+		// cleaned_html is rendered via {@html}; sanitize the model output (a
+		// prompt-injected feed could coax HTML out of the summarizer) before it
+		// is paragraphized and stored.
+		html := feed.SanitizeHTML(paragraphizePlain(cleaned))
 		if err := p.Store.UpdateCleanedHTML(ctx, articleID, html); err != nil {
 			p.Logger.Warn("poller: persist cleaned_html", "article_id", articleID, "err", err)
 		}
