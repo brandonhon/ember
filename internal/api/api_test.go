@@ -63,7 +63,12 @@ func (f *fakePoller) ExtractArticle(_ context.Context, _ int64) error {
 	return nil
 }
 
-func newHarness(t *testing.T) *harness {
+func newHarness(t *testing.T) *harness { return newHarnessWith(t, nil) }
+
+// newHarnessWith is newHarness with a hook to tweak Dependencies before the
+// router is built — e.g. flip AllowPrivateURLs off or wire a Push notifier for
+// tests that exercise those paths.
+func newHarnessWith(t *testing.T, mutate func(*Dependencies)) *harness {
 	t.Helper()
 	st := store.NewTest(t)
 	a, err := auth.New(st, "0123456789abcdef0123456789abcdef")
@@ -78,6 +83,9 @@ func newHarness(t *testing.T) *harness {
 		// Test fixtures use synthetic hosts like x.test that don't resolve;
 		// the SSRF block would reject those, so bypass it in tests.
 		AllowPrivateURLs: true,
+	}
+	if mutate != nil {
+		mutate(&dep)
 	}
 	r := NewRouter(dep)
 	srv := httptest.NewTLSServer(r)
