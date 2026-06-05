@@ -321,9 +321,9 @@ func run() error {
 		sum = ollamaSum
 	}
 
-	fetcher := feed.NewFetcher(30 * time.Second)
-	// Block redirects to private/internal addresses on every feed fetch.
-	fetcher.Client.CheckRedirect = feed.RedirectGuard(func(rawURL string) error {
+	// Block redirects to private/internal addresses on every feed fetch — the
+	// guard is baked into the fetcher at construction.
+	fetcher := feed.NewFetcher(30*time.Second, func(rawURL string) error {
 		return urlcheck.Check(ctx, rawURL, cfg.AllowPrivateURLs)
 	})
 	p := poller.New(st, fetcher, sum, poller.Config{
