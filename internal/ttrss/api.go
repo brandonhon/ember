@@ -55,7 +55,7 @@ func (s *Service) ImportFromAPI(ctx context.Context, userID int64, opt APIOption
 			return res, fmt.Errorf("ttrss: URL rejected: %w", err)
 		}
 	}
-	client := s.apiClient()
+	client := s.apiClient(ctx)
 
 	sid, err := s.login(ctx, client, endpoint, opt.Username, opt.Password)
 	if err != nil {
@@ -94,14 +94,17 @@ func apiEndpoint(base string) string {
 	return base + "/api/"
 }
 
-func (s *Service) apiClient() *http.Client {
+// apiClient builds the HTTP client for the live pull. ctx is the import
+// request's context, threaded into the redirect SSRF guard so a slow redirect
+// check honors the caller's cancellation/deadline rather than running detached.
+func (s *Service) apiClient(ctx context.Context) *http.Client {
 	if s.HTTPClient != nil {
 		return s.HTTPClient
 	}
 	c := &http.Client{Timeout: apiCallTimeout}
 	if s.ValidateURL != nil {
 		c.CheckRedirect = feed.RedirectGuard(func(raw string) error {
-			return s.ValidateURL(context.Background(), raw)
+			return s.ValidateURL(ctx, raw)
 		})
 	}
 	return c
