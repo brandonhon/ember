@@ -231,12 +231,12 @@ func NewRouter(d Dependencies) http.Handler {
 		r.With(d.Auth.RequireAuth).Get("/me/push-subscriptions", d.handleListPushSubscriptions)
 		r.With(d.Auth.RequireAuth).Post("/me/push-subscriptions", d.handleCreatePushSubscription)
 		r.With(d.Auth.RequireAuth).Delete("/me/push-subscriptions/{id}", d.handleDeletePushSubscription)
-		r.With(d.Auth.RequireAuth).Post("/me/push-subscriptions/test", d.handleTestPushNotification)
+		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/me/push-subscriptions/test", d.handleTestPushNotification)
 		// Email newsletter inbox (per-user address). Endpoints are always
 		// registered; the handlers return enabled=false / 503 when
 		// EMBER_EMAIL_DOMAIN isn't configured.
 		r.With(d.Auth.RequireAuth).Get("/me/inbox", d.handleGetInbox)
-		r.With(d.Auth.RequireAuth).Post("/me/inbox/rotate", d.handleRotateInbox)
+		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/me/inbox/rotate", d.handleRotateInbox)
 		r.With(d.Auth.RequireAuth).Post("/articles/read", d.handleSetRead)
 		r.With(d.Auth.RequireAuth).Post("/articles/star", d.handleSetStar)
 		r.With(d.Auth.RequireAuth).Post("/articles/later", d.handleSetLater)
