@@ -69,6 +69,29 @@
   }
   function mobileBackToList() { sectionPicked = false; }
 
+  // Per-section glyphs shown only in the mobile settings list (the .nav-ic
+  // span is display:none on desktop, so the desktop rail stays text-only).
+  const NAV_ICONS: Record<string, string> = {
+    profile: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>`,
+    passkeys: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V8a5 5 0 0 1 10 0v3"/></svg>`,
+    notifications: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M10.3 21a2 2 0 0 0 3.4 0"/></svg>`,
+    inbox: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>`,
+    preferences: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M3 12h3M18 12h3M12 3v3M12 18v3"/></svg>`,
+    filters: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 5h18l-7 8v6l-4-2v-4z"/></svg>`,
+    digest: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5m6 14v-9m6 9V8m4 11H2"/></svg>`,
+    stats: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18M7 15l4-5 3 3 5-7"/></svg>`,
+    mobile: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="3" width="10" height="18" rx="2"/></svg>`,
+    import: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg>`,
+    starter: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.4 5 5.6.8-4 4 1 5.6L12 20l-5 2.4 1-5.6-4-4 5.6-.8z"/></svg>`,
+    llm: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9h6v6H9z"/></svg>`,
+    branding: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l8 4-8 4-8-4z"/><path d="M4 11l8 4 8-4"/></svg>`,
+    database: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/></svg>`,
+    session: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>`,
+    email: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>`,
+    users: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3"/><path d="M3 21a6 6 0 0 1 12 0M16 6a3 3 0 0 1 0 6"/></svg>`,
+    about: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>`,
+  };
+
   // --- Import & Data section -------------------------------------------
   let importTab = $state<"live" | "file">("live");
   let ttUrl = $state("");
@@ -1036,39 +1059,39 @@
       <nav class="nav" aria-label="Settings sections">
         <div class="nav-group">
           <div class="nav-label">Account</div>
-          <button class:active={section === "profile"} on:click={() => pickSection("profile")} data-testid="settings-profile">Profile</button>
-          <button class:active={section === "passkeys"} on:click={() => pickSection("passkeys")} data-testid="settings-passkeys">Passkeys</button>
-          <button class:active={section === "notifications"} on:click={() => pickSection("notifications")} data-testid="settings-notifications">Notifications</button>
-          <button class:active={section === "inbox"} on:click={() => pickSection("inbox")} data-testid="settings-inbox">Email inbox</button>
+          <button class:active={section === "profile"} on:click={() => pickSection("profile")} data-testid="settings-profile"><span class="nav-ic">{@html NAV_ICONS.profile}</span>Profile</button>
+          <button class:active={section === "passkeys"} on:click={() => pickSection("passkeys")} data-testid="settings-passkeys"><span class="nav-ic">{@html NAV_ICONS.passkeys}</span>Passkeys</button>
+          <button class:active={section === "notifications"} on:click={() => pickSection("notifications")} data-testid="settings-notifications"><span class="nav-ic">{@html NAV_ICONS.notifications}</span>Notifications</button>
+          <button class:active={section === "inbox"} on:click={() => pickSection("inbox")} data-testid="settings-inbox"><span class="nav-ic">{@html NAV_ICONS.inbox}</span>Email inbox</button>
         </div>
         <div class="nav-group">
           <div class="nav-label">Reading</div>
-          <button class:active={section === "preferences"} on:click={() => pickSection("preferences")}>Preferences</button>
-          <button class:active={section === "filters"} on:click={() => pickSection("filters")}>Filters</button>
-          <button class:active={section === "digest"} on:click={() => pickSection("digest")} data-testid="settings-digest">Daily digest</button>
-          <button class:active={section === "stats"} on:click={() => pickSection("stats")} data-testid="settings-stats">Reading stats</button>
-          <button class:active={section === "mobile"} on:click={() => pickSection("mobile")}>Mobile clients</button>
+          <button class:active={section === "preferences"} on:click={() => pickSection("preferences")} data-testid="settings-preferences"><span class="nav-ic">{@html NAV_ICONS.preferences}</span>Preferences</button>
+          <button class:active={section === "filters"} on:click={() => pickSection("filters")} data-testid="settings-filters"><span class="nav-ic">{@html NAV_ICONS.filters}</span>Filters</button>
+          <button class:active={section === "digest"} on:click={() => pickSection("digest")} data-testid="settings-digest"><span class="nav-ic">{@html NAV_ICONS.digest}</span>Daily digest</button>
+          <button class:active={section === "stats"} on:click={() => pickSection("stats")} data-testid="settings-stats"><span class="nav-ic">{@html NAV_ICONS.stats}</span>Reading stats</button>
+          <button class:active={section === "mobile"} on:click={() => pickSection("mobile")} data-testid="settings-mobile"><span class="nav-ic">{@html NAV_ICONS.mobile}</span>Mobile clients</button>
         </div>
         <div class="nav-group">
           <div class="nav-label">Import &amp; Data</div>
-          <button class:active={section === "import"} on:click={() => pickSection("import")} data-testid="settings-import">Import &amp; migrate</button>
-          <button class:active={section === "starter"} on:click={() => pickSection("starter")} data-testid="settings-starter">Starter packs</button>
+          <button class:active={section === "import"} on:click={() => pickSection("import")} data-testid="settings-import"><span class="nav-ic">{@html NAV_ICONS.import}</span>Import &amp; migrate</button>
+          <button class:active={section === "starter"} on:click={() => pickSection("starter")} data-testid="settings-starter"><span class="nav-ic">{@html NAV_ICONS.starter}</span>Starter packs</button>
         </div>
 
         {#if $user?.is_admin}
           <div class="nav-group">
             <div class="nav-label">Administration</div>
-            <button class:active={section === "llm"} on:click={() => pickSection("llm")} data-testid="settings-llm">Language model</button>
-            <button class:active={section === "branding"} on:click={() => pickSection("branding")} data-testid="settings-branding">Branding</button>
-            <button class:active={section === "database"} on:click={() => pickSection("database")} data-testid="settings-database">Database</button>
-            <button class:active={section === "session"} on:click={() => pickSection("session")} data-testid="settings-session">Sessions</button>
-            <button class:active={section === "email"} on:click={() => pickSection("email")} data-testid="settings-email">Email / SMTP</button>
-            <button class:active={section === "users"} on:click={() => pickSection("users")} data-testid="settings-users">Users</button>
+            <button class:active={section === "llm"} on:click={() => pickSection("llm")} data-testid="settings-llm"><span class="nav-ic nav-ic-admin">{@html NAV_ICONS.llm}</span>Language model</button>
+            <button class:active={section === "branding"} on:click={() => pickSection("branding")} data-testid="settings-branding"><span class="nav-ic nav-ic-admin">{@html NAV_ICONS.branding}</span>Branding</button>
+            <button class:active={section === "database"} on:click={() => pickSection("database")} data-testid="settings-database"><span class="nav-ic nav-ic-admin">{@html NAV_ICONS.database}</span>Database</button>
+            <button class:active={section === "session"} on:click={() => pickSection("session")} data-testid="settings-session"><span class="nav-ic nav-ic-admin">{@html NAV_ICONS.session}</span>Sessions</button>
+            <button class:active={section === "email"} on:click={() => pickSection("email")} data-testid="settings-email"><span class="nav-ic nav-ic-admin">{@html NAV_ICONS.email}</span>Email / SMTP</button>
+            <button class:active={section === "users"} on:click={() => pickSection("users")} data-testid="settings-users"><span class="nav-ic nav-ic-admin">{@html NAV_ICONS.users}</span>Users</button>
           </div>
         {/if}
         <div class="nav-group">
           <div class="nav-label">System</div>
-          <button class:active={section === "about"} on:click={() => pickSection("about")}>About</button>
+          <button class:active={section === "about"} on:click={() => pickSection("about")} data-testid="settings-about"><span class="nav-ic">{@html NAV_ICONS.about}</span>About</button>
         </div>
       </nav>
 
@@ -2179,6 +2202,9 @@
     flex: 1;
     background: linear-gradient(90deg, var(--line), transparent);
   }
+  /* Per-row glyphs are mobile-only; hidden on desktop so the rail stays a
+     clean text list (shown again under .modal.mobile below). */
+  .nav-ic { display: none; }
   .nav button {
     background: transparent;
     border: 0;
@@ -2230,29 +2256,54 @@
   .modal.mobile .layout { grid-template-columns: 1fr; }
   .modal.mobile .layout[data-view="list"] .content,
   .modal.mobile .layout[data-view="detail"] .nav { display: none; }
+  /* Mobile list view = grouped inset cards (label on paper, rounded card of
+     rows with icon chips + chevron). iOS-grouped feel in ember's palette. */
   .modal.mobile .layout[data-view="list"] .nav {
     border-right: 0;
-    padding: 8px 8px 24px;
-    background: var(--card);
+    padding: 10px 16px 28px;
+    background: var(--paper);
+    gap: 0;
   }
+  .modal.mobile .nav-group { margin: 0 0 22px; gap: 0; }
+  .modal.mobile .nav-label { color: var(--ink-faint); padding: 0 8px 8px; }
+  .modal.mobile .nav-label::after { display: none; }
+  .modal.mobile .nav-ic {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    background: var(--ember-wash);
+    color: var(--ember);
+  }
+  .modal.mobile .nav-ic :global(svg) { width: 17px; height: 17px; }
+  .modal.mobile .nav-ic-admin { background: rgba(176, 125, 26, 0.16); color: var(--gold); }
   .modal.mobile .nav button {
-    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    padding: 12px 36px 12px 14px;
     font-size: 15px;
-    border-radius: 10px;
-    /* Subtle chevron at the right edge so the affordance reads as "tap to
-       open a sub-screen", matching the iOS-style drill-down. */
+    border-radius: 0;
+    background-color: var(--card);
+    border-left: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+    /* Chevron affordance: "tap to open a sub-screen" (iOS-style drill-down). */
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23847a68' stroke-width='2'><path d='M9 6l6 6-6 6'/></svg>");
     background-repeat: no-repeat;
     background-position: right 14px center;
     background-size: 14px 14px;
-    padding-right: 36px;
   }
-  .modal.mobile .nav button.active {
-    /* On mobile, "active" only matters momentarily before the detail view
-       slides in — keep it subtle so it doesn't read as a permanent state. */
-    background-color: var(--ember-wash);
-  }
+  .modal.mobile .nav button + button { border-top: 1px solid var(--line-soft); }
+  .modal.mobile .nav button:first-of-type { border-top: 1px solid var(--line); border-radius: 16px 16px 0 0; }
+  .modal.mobile .nav button:last-of-type { border-bottom: 1px solid var(--line); border-radius: 0 0 16px 16px; }
+  .modal.mobile .nav button:active { background-color: var(--paper-2); }
+  .modal.mobile .nav button.active { background-color: var(--ember-wash); }
   .modal.mobile .content { padding: 18px 16px 48px; }
+  /* Detail view: stack actions as full-width tap targets. */
+  .modal.mobile .actions { flex-direction: column; align-items: stretch; }
+  .modal.mobile .actions button { width: 100%; padding: 13px; font-size: 15px; }
 
   /* Form scaffolding — collapse two-column grids and side-by-side rows so
      fields stop overflowing the screen on a phone. */
