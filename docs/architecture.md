@@ -27,10 +27,11 @@ internal/auth/                argon2id passwords, securecookie sessions, WebAuth
 internal/config/              env-var loading (typed Config)
 internal/db/                  SQLite open, pragmas, embedded migrations (goose)
 internal/digest/              SMTP daily-digest builder + sender (multipart/alt + STARTTLS)
-internal/feed/                gofeed wrapper + readability fallback fetcher + Discover (homepage → feed URL)
+internal/feed/                gofeed wrapper + readability fallback fetcher + Discover / DiscoverAll (homepage → one or many feed URLs) + URL normalize (schemeless → https)
 internal/filters/             matcher (field/op/value), apply outcome combiner
 internal/models/              data types shared across packages
 internal/opml/                OPML import + export + discovery → subscribe
+internal/ttrss/               Tiny Tiny RSS import — XML export parser + live JSON API client → one non-polling "Imported" feed
 internal/poller/              adaptive scheduler, fetch dispatch, summary queue
 internal/store/               SQLite CRUD, FTS5 search, app_settings KV, dbops, passkeys, digests
 internal/summarize/           Summarizer interface + Ollama implementation + noop for tests
