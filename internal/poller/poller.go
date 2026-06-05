@@ -524,7 +524,8 @@ func (p *Poller) enrichWithReadability(ctx context.Context, a *models.Article) {
 	// address. Mirror the SSRF guard wired into the feed Fetcher + discovery
 	// client.
 	client := &http.Client{
-		Timeout: 15 * time.Second,
+		Timeout:   15 * time.Second,
+		Transport: urlcheck.GuardedTransport(p.Config.AllowPrivateURLs),
 		CheckRedirect: feed.RedirectGuard(func(rawURL string) error {
 			return urlcheck.Check(rctx, rawURL, p.Config.AllowPrivateURLs)
 		}),
