@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 
@@ -29,28 +30,28 @@ func (s *Store) CreatePushSubscription(ctx context.Context, userID int64, endpoi
 		return 0, errors.New("push: endpoint, p256dh, auth all required")
 	}
 	now := s.nowUnix()
-	res, err := s.DB.ExecContext(ctx, `
+	// The endpoint UNIQUE constraint is global, but a subscription belongs to
+	// one user. Guard the upsert with `WHERE ...user_id = excluded.user_id` so a
+	// caller submitting another user's endpoint can't reassign the row to
+	// themselves (IDOR) — the upsert is filtered out, RETURNING yields no row,
+	// and we surface a conflict instead of silently hijacking it.
+	var id int64
+	err := s.DB.QueryRowContext(ctx, `
 		INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, user_agent, created_at)
 		VALUES (?, ?, ?, ?, ?, ?)
 		ON CONFLICT(endpoint) DO UPDATE SET
-			user_id    = excluded.user_id,
 			p256dh     = excluded.p256dh,
 			auth       = excluded.auth,
-			user_agent = excluded.user_agent`,
-		userID, endpoint, p256dh, auth, userAgent, now)
-	if err != nil {
-		return 0, fmt.Errorf("push: insert: %w", err)
+			user_agent = excluded.user_agent
+		WHERE push_subscriptions.user_id = excluded.user_id
+		RETURNING id`,
+		userID, endpoint, p256dh, auth, userAgent, now).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		// Endpoint exists and is owned by a different user — upsert filtered out.
+		return 0, ErrConflict
 	}
-	id, err := res.LastInsertId()
 	if err != nil {
-		return 0, fmt.Errorf("push: last insert id: %w", err)
-	}
-	if id == 0 {
-		// ON CONFLICT path — fetch the existing id.
-		if err := s.DB.QueryRowContext(ctx,
-			`SELECT id FROM push_subscriptions WHERE endpoint = ?`, endpoint).Scan(&id); err != nil {
-			return 0, fmt.Errorf("push: refetch id: %w", err)
-		}
+		return 0, fmt.Errorf("push: upsert: %w", err)
 	}
 	return id, nil
 }
