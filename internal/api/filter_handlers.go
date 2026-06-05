@@ -9,6 +9,10 @@ import (
 	"github.com/brandonhon/ember/internal/store"
 )
 
+// maxFiltersPerUser bounds how many filters one account can create; see
+// handleCreateFilter.
+const maxFiltersPerUser = 200
+
 type filterReq struct {
 	Name        string `json:"name"`
 	MatchJSON   string `json:"match_json"`
@@ -44,6 +48,18 @@ func (d *Dependencies) handleCreateFilter(w http.ResponseWriter, r *http.Request
 	}
 	if err := filters.ValidateActionWithValue(req.Action, req.ActionValue); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
+		return
+	}
+	// Cap filters per user: each filter's regex is compiled and cached for the
+	// process lifetime, so an unbounded count is a memory-DoS vector. 200 is
+	// far beyond any realistic use.
+	existing, err := d.Store.ListFilters(r.Context(), u.ID)
+	if mapStoreError(w, err) {
+		return
+	}
+	if len(existing) >= maxFiltersPerUser {
+		writeError(w, http.StatusBadRequest, "filter_limit",
+			"filter limit reached (max 200 per user)")
 		return
 	}
 	enabled := true
