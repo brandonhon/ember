@@ -35,7 +35,7 @@ func TestFetch_ConditionalGET_304(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	f := NewFetcher(5 * time.Second)
+	f := NewFetcher(5*time.Second, nil)
 	res, err := f.Fetch(context.Background(), srv.URL, etag, lastMod)
 	if err != nil {
 		t.Fatal(err)
@@ -65,7 +65,7 @@ func TestFetch_200ReturnsBody(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	f := NewFetcher(5 * time.Second)
+	f := NewFetcher(5*time.Second, nil)
 	res, err := f.Fetch(context.Background(), srv.URL, "", "")
 	if err != nil {
 		t.Fatal(err)
@@ -87,7 +87,7 @@ func TestFetch_5xxIsError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	f := NewFetcher(5 * time.Second)
+	f := NewFetcher(5*time.Second, nil)
 	_, err := f.Fetch(context.Background(), srv.URL, "", "")
 	if err == nil {
 		t.Fatal("expected error on 500")
@@ -100,7 +100,7 @@ func TestFetch_Timeout(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	f := NewFetcher(50 * time.Millisecond)
+	f := NewFetcher(50*time.Millisecond, nil)
 	_, err := f.Fetch(context.Background(), srv.URL, "", "")
 	if err == nil {
 		t.Fatal("expected timeout error")
