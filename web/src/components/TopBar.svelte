@@ -544,4 +544,12 @@
     line-height: 1.4;
   }
   .search-results a:hover { background: var(--line-soft); }
+  /* Mobile: the desktop offset (left: rail-w + 16) + fixed 420px width push
+     the panel off the right edge of a phone. Pin it under the full-width
+     search bar with small side margins instead. */
+  .topbar.mobile .search-results {
+    left: 8px;
+    right: 8px;
+    width: auto;
+  }
 </style>
