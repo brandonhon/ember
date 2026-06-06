@@ -18,7 +18,7 @@ import (
 // Compiled once; bluemonday policies are safe for concurrent use.
 var sanitizePolicy = func() *bluemonday.Policy {
 	p := bluemonday.UGCPolicy()
-	p.RequireNoReferrerOnLinks()
+	p.RequireNoReferrerOnLinks(true)
 	return p
 }()
 
