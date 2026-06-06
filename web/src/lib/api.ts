@@ -4,11 +4,14 @@ import type {
   ArticleView,
   Board,
   Category,
+  ClusterSibling,
   DiscoveredFeed,
+  EmailInbox,
   FeedWithCounts,
   Filter,
   ListArticlesQuery,
   MeResponse,
+  PushSubscriptionSummary,
   SavedSearch,
   SearchResult,
   Share,
@@ -206,6 +209,8 @@ export const api = {
     return call<ArticleView[]>("GET", `/api/articles${qs ? "?" + qs : ""}`);
   },
   getArticle: (id: number) => call<ArticleView>("GET", `/api/articles/${id}`),
+  getArticleCluster: (id: number) =>
+    call<{ siblings: ClusterSibling[] }>("GET", `/api/articles/${id}/cluster`),
   setRead: (ids: number[], read: boolean) =>
     call<{ count: number }>("POST", "/api/articles/read", { ids, read }),
   setStar: (id: number, value: boolean) =>
@@ -220,14 +225,25 @@ export const api = {
   createFilter: (req: {
     name: string;
     match_json: string;
-    action: "mark_read" | "star" | "hide";
+    action: Filter["action"];
     enabled?: boolean;
+    priority?: number;
+    action_value?: string;
   }) => call<Filter>("POST", "/api/filters", req),
   updateFilter: (
     id: number,
-    req: { name?: string; match_json?: string; action?: string; enabled?: boolean },
+    req: {
+      name?: string;
+      match_json?: string;
+      action?: string;
+      enabled?: boolean;
+      priority?: number;
+      action_value?: string;
+    },
   ) => call<unknown>("PATCH", `/api/filters/${id}`, req),
   deleteFilter: (id: number) => call<unknown>("DELETE", `/api/filters/${id}`),
+  previewFilter: (match_json: string, since_days = 7) =>
+    call<{ count: number }>("POST", "/api/filters/preview", { match_json, since_days }),
 
   // Boards ------------------------------------------------------------
   listBoards: () => call<Board[]>("GET", "/api/boards"),
@@ -329,6 +345,26 @@ export const api = {
       "POST",
       `/api/articles/${id}/extract`,
     ),
+
+  // Web Push (VAPID) ------------------------------------------------
+  pushVapidKey: () =>
+    call<{ public_key: string }>("GET", "/api/me/push-vapid-public-key"),
+  pushSubscriptions: () =>
+    call<PushSubscriptionSummary[]>("GET", "/api/me/push-subscriptions"),
+  pushSubscribe: (req: {
+    endpoint: string;
+    p256dh: string;
+    auth: string;
+    user_agent: string;
+  }) => call<{ id: number }>("POST", "/api/me/push-subscriptions", req),
+  pushUnsubscribe: (id: number) =>
+    call<{ ok: boolean }>("DELETE", `/api/me/push-subscriptions/${id}`),
+  pushTest: () =>
+    call<{ sent: number; removed: number }>("POST", "/api/me/push-subscriptions/test"),
+
+  // Email newsletter inbox -------------------------------------------
+  getInbox: () => call<EmailInbox>("GET", "/api/me/inbox"),
+  rotateInbox: () => call<EmailInbox>("POST", "/api/me/inbox/rotate"),
 
   // Passkeys --------------------------------------------------------
   listPasskeys: () => call<PasskeySummary[]>("GET", "/api/me/passkeys"),

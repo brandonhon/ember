@@ -23,9 +23,11 @@ import (
 	"github.com/brandonhon/ember/internal/config"
 	"github.com/brandonhon/ember/internal/db"
 	"github.com/brandonhon/ember/internal/digest"
+	"github.com/brandonhon/ember/internal/emailinbox"
 	"github.com/brandonhon/ember/internal/feed"
 	"github.com/brandonhon/ember/internal/opml"
 	"github.com/brandonhon/ember/internal/poller"
+	"github.com/brandonhon/ember/internal/push"
 	"github.com/brandonhon/ember/internal/store"
 	"github.com/brandonhon/ember/internal/summarize"
 	"github.com/brandonhon/ember/internal/sysinfo"
@@ -148,6 +150,13 @@ func run() error {
 
 	st := store.New(dbh)
 
+	// One-shot backfill for articles inserted before the 0013 migration:
+	// populates canonical_url + cluster_id so cross-feed dedup catches
+	// historical rows too. Runs in a goroutine so server start isn't gated
+	// on a large historical corpus; the dedup query gracefully skips rows
+	// with cluster_id='' until the backfill catches up.
+	st.BackfillClustersAsync(ctx, logger)
+
 	sessionKey := cfg.SessionKey
 	if sessionKey == "" && cfg.TestMode {
 		// Test mode falls back to a hardcoded, publicly-known signing key so
@@ -215,6 +224,39 @@ func run() error {
 		}
 	}
 
+	// Web Push (VAPID). Generates the keypair on first start, persists to
+	// app_settings. Subject defaults to the admin's email so push services
+	// have a contact for delivery problems; empty falls back to a localhost
+	// address with a warn. Failure here is non-fatal — push endpoints just
+	// return 503 and the rest of the app keeps working.
+	var pushNotifier *push.Notifier
+	if keys, kerr := push.LoadOrCreateKeys(ctx, st); kerr != nil {
+		logger.Warn("push notifications disabled", "err", kerr)
+	} else {
+		// VAPID subject contact — fall back to SMTPFrom (operator already
+		// configured it as a deliverability contact for outbound email).
+		// Empty falls through to NewNotifier's localhost default + warn.
+		pushNotifier = push.NewNotifier(keys, cfg.SMTPFrom, st, logger, cfg.AllowPrivateURLs)
+		logger.Info("push notifications enabled")
+	}
+
+	// Inbound email inbox (newsletter feature). Only starts when
+	// EMBER_EMAIL_DOMAIN is configured. The listener runs in a goroutine;
+	// we join on it during shutdown alongside the other background workers.
+	emailSrv := emailinbox.NewServer(emailinbox.Config{
+		Domain:     cfg.EmailDomain,
+		ListenAddr: cfg.EmailListenAddr,
+		MaxBytes:   cfg.EmailMaxBytes,
+	}, st, logger)
+	if emailSrv != nil {
+		go func() {
+			if err := emailSrv.Start(); err != nil {
+				logger.Error("smtp listener", "err", err)
+			}
+		}()
+		defer emailSrv.Stop()
+	}
+
 	// Test mode seeds a deterministic admin + feed + articles so the e2e
 	// harness has known data to assert against. In normal mode, do the
 	// usual first-run admin bootstrap.
@@ -236,6 +278,7 @@ func run() error {
 		return urlcheck.Check(ctx, raw, cfg.AllowPrivateURLs)
 	}
 	tt := ttrss.NewService(st)
+	tt.AllowPrivateURLs = cfg.AllowPrivateURLs
 	tt.ValidateURL = func(ctx context.Context, raw string) error {
 		return urlcheck.Check(ctx, raw, cfg.AllowPrivateURLs)
 	}
@@ -250,6 +293,7 @@ func run() error {
 		logger.Info("AI summaries disabled via EMBER_DISABLE_SUMMARIES")
 		sum = nil
 	case cfg.TestMode:
+		logger.Warn("AI summarizer: using noop (test mode) — set EMBER_OLLAMA_URL for real summaries")
 		sum = summarize.Noop{}
 	default:
 		model := cfg.OllamaModel
@@ -378,6 +422,7 @@ func run() error {
 		// CIDRs whose X-Real-IP / X-Forwarded-Proto we trust. Empty = the app is
 		// the edge (trust the connection peer, ignore the headers).
 		TrustedProxies: cfg.TrustedProxies,
+		HSTSPreload:    cfg.HSTSPreload,
 		// FreshWindow makes EMBER_FRESH_WINDOW actually take effect — the
 		// Fresh-view article list, the sidebar's Fresh count, and the
 		// client-side isFresh() all read from this single source.
@@ -396,6 +441,13 @@ func run() error {
 		// parent so they don't outlive process shutdown and end up making
 		// DB calls against a closed handle.
 		BackgroundCtx: ctx,
+		// Web Push fan-out. Nil disables the /api/me/push-* endpoints
+		// (they return 503). Configured above near WebAuthn.
+		Push: pushNotifier,
+		// Email inbox domain (e.g. mail.example.com). Empty disables the
+		// inbox endpoints. The SMTP listener for this domain is started
+		// above when configured.
+		EmailDomain: cfg.EmailDomain,
 	})
 
 	srv := &http.Server{

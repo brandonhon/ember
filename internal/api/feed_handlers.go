@@ -51,7 +51,8 @@ func (d *Dependencies) handleAddFeed(w http.ResponseWriter, r *http.Request) {
 	// http://) before validation so "example.com/feed" just works.
 	req.URL = feed.NormalizeInputURL(req.URL)
 	if err := urlcheck.Check(r.Context(), req.URL, d.AllowPrivateURLs); err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "URL rejected: "+err.Error())
+		slog.Default().Info("api: add-feed URL rejected", "url", req.URL, "reason", err)
+		writeError(w, http.StatusBadRequest, "bad_request", "URL is not allowed")
 		return
 	}
 	// Discover: if the user pasted a website URL (not a feed URL), find its
@@ -61,7 +62,8 @@ func (d *Dependencies) handleAddFeed(w http.ResponseWriter, r *http.Request) {
 	dctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 	disco := &http.Client{
-		Timeout: 10 * time.Second,
+		Timeout:   10 * time.Second,
+		Transport: urlcheck.GuardedTransport(d.AllowPrivateURLs),
 		CheckRedirect: feed.RedirectGuard(func(rawURL string) error {
 			return urlcheck.Check(dctx, rawURL, d.AllowPrivateURLs)
 		}),
@@ -71,7 +73,8 @@ func (d *Dependencies) handleAddFeed(w http.ResponseWriter, r *http.Request) {
 	}
 	if discovered, derr := feed.Discover(dctx, disco, req.URL, discoValidate); derr == nil && discovered != "" {
 		if err := urlcheck.Check(dctx, discovered, d.AllowPrivateURLs); err != nil {
-			writeError(w, http.StatusBadRequest, "bad_request", "discovered feed URL rejected: "+err.Error())
+			slog.Default().Info("api: discovered feed URL rejected", "url", discovered, "reason", err)
+			writeError(w, http.StatusBadRequest, "bad_request", "URL is not allowed")
 			return
 		}
 		target = discovered
@@ -116,13 +119,15 @@ func (d *Dependencies) handleDiscoverFeeds(w http.ResponseWriter, r *http.Reques
 	}
 	req.URL = feed.NormalizeInputURL(req.URL)
 	if err := urlcheck.Check(r.Context(), req.URL, d.AllowPrivateURLs); err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "URL rejected: "+err.Error())
+		slog.Default().Info("api: discover URL rejected", "url", req.URL, "reason", err)
+		writeError(w, http.StatusBadRequest, "bad_request", "URL is not allowed")
 		return
 	}
 	dctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 	disco := &http.Client{
-		Timeout: 10 * time.Second,
+		Timeout:   10 * time.Second,
+		Transport: urlcheck.GuardedTransport(d.AllowPrivateURLs),
 		CheckRedirect: feed.RedirectGuard(func(rawURL string) error {
 			return urlcheck.Check(dctx, rawURL, d.AllowPrivateURLs)
 		}),
@@ -132,7 +137,8 @@ func (d *Dependencies) handleDiscoverFeeds(w http.ResponseWriter, r *http.Reques
 	}
 	feeds, err := feed.DiscoverAll(dctx, disco, req.URL, validate)
 	if err != nil {
-		writeError(w, http.StatusBadGateway, "discover_failed", "could not load URL: "+err.Error())
+		slog.Default().Info("api: discover failed", "url", req.URL, "reason", err)
+		writeError(w, http.StatusBadGateway, "discover_failed", "could not load URL")
 		return
 	}
 	if feeds == nil {

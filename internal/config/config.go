@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -39,6 +40,11 @@ type Config struct {
 	// AllowPrivateURLs disables the SSRF block on outbound HTTP fetches so a
 	// homelab can subscribe to feeds on its LAN. Default false (production).
 	AllowPrivateURLs bool
+	// HSTSPreload appends "; preload" to the Strict-Transport-Security header.
+	// Only enable after verifying the domain is (or will be) submitted to the
+	// HSTS preload list — it is a long-term, browser-level commitment.
+	// Set EMBER_HSTS_PRELOAD=true to enable.
+	HSTSPreload bool
 	// SMTP for daily digest emails. Configured = host + port + from. Username
 	// + password are optional (skipped when empty).
 	SMTPHost     string
@@ -47,6 +53,13 @@ type Config struct {
 	SMTPPassword string
 	SMTPFrom     string
 	SMTPStartTLS bool
+	// Email inbox (inbound newsletter feature). When EmailDomain is
+	// empty the SMTP listener doesn't start and the inbox endpoints
+	// return enabled=false. EmailListenAddr defaults to :2525; operators
+	// fronting the bind via Caddy / haproxy can pick another port.
+	EmailDomain     string
+	EmailListenAddr string
+	EmailMaxBytes   int64
 	// PublicURL is the canonical scheme://host[:port] users hit the app on.
 	// Required for WebAuthn registration so the RP ID + origin can be set.
 	// Optional otherwise.
@@ -115,7 +128,15 @@ func loadFrom(get func(string) string) (Config, error) {
 	}
 	cfg.AdminPassword = get("EMBER_ADMIN_PASSWORD")
 	if v := get("EMBER_OLLAMA_URL"); v != "" {
-		cfg.OllamaURL = v
+		u, parseErr := url.Parse(v)
+		switch {
+		case parseErr != nil:
+			errs = append(errs, fmt.Sprintf("EMBER_OLLAMA_URL invalid: %v", parseErr))
+		case u.Scheme != "http" && u.Scheme != "https":
+			errs = append(errs, fmt.Sprintf("EMBER_OLLAMA_URL must use http or https scheme, got %q", u.Scheme))
+		default:
+			cfg.OllamaURL = v
+		}
 	}
 	if v := get("EMBER_OLLAMA_MODEL"); v != "" {
 		cfg.OllamaModel = v
@@ -225,6 +246,14 @@ func loadFrom(get func(string) string) (Config, error) {
 			cfg.AllowPrivateURLs = on
 		}
 	}
+	if v := get("EMBER_HSTS_PRELOAD"); v != "" {
+		on, err := parseBool(v)
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("EMBER_HSTS_PRELOAD %v", err))
+		} else {
+			cfg.HSTSPreload = on
+		}
+	}
 	if v := get("EMBER_SMTP_HOST"); v != "" {
 		cfg.SMTPHost = v
 	}
@@ -251,6 +280,23 @@ func loadFrom(get func(string) string) (Config, error) {
 			errs = append(errs, fmt.Sprintf("EMBER_SMTP_STARTTLS %v", err))
 		} else {
 			cfg.SMTPStartTLS = on
+		}
+	}
+	// Inbound email-inbox feature.
+	if v := get("EMBER_EMAIL_DOMAIN"); v != "" {
+		cfg.EmailDomain = v
+	}
+	cfg.EmailListenAddr = ":2525"
+	if v := get("EMBER_EMAIL_LISTEN_ADDR"); v != "" {
+		cfg.EmailListenAddr = v
+	}
+	cfg.EmailMaxBytes = 25 * 1024 * 1024
+	if v := get("EMBER_EMAIL_MAX_BYTES"); v != "" {
+		n, err := strconv.ParseInt(v, 10, 64)
+		if err != nil || n <= 0 {
+			errs = append(errs, "EMBER_EMAIL_MAX_BYTES invalid")
+		} else {
+			cfg.EmailMaxBytes = n
 		}
 	}
 

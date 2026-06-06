@@ -5,7 +5,9 @@ package digest
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"crypto/tls"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"html"
@@ -278,8 +280,10 @@ func (s *Sender) smtpAuth() smtp.Auth {
 }
 
 // isLoopbackHost reports whether host is the local machine — "localhost"
-// (case-insensitive) or a loopback IP literal. Used to gate plain (non-TLS)
-// SMTP so credentials only ever traverse the loopback interface in the clear.
+// (case-insensitive), a loopback IP literal, or a hostname that resolves
+// exclusively to loopback addresses (e.g. a Docker service name mapped to
+// 127.x). Used to gate plain (non-TLS) SMTP so credentials only ever
+// traverse the loopback interface in the clear.
 func isLoopbackHost(host string) bool {
 	host = strings.TrimSpace(host)
 	if strings.EqualFold(host, "localhost") {
@@ -288,12 +292,24 @@ func isLoopbackHost(host string) bool {
 	if ip := net.ParseIP(host); ip != nil {
 		return ip.IsLoopback()
 	}
-	return false
+	// Resolve and check: if every resolved address is loopback, treat as local.
+	addrs, err := net.LookupHost(host)
+	if err != nil || len(addrs) == 0 {
+		return false
+	}
+	for _, addr := range addrs {
+		if ip := net.ParseIP(addr); ip == nil || !ip.IsLoopback() {
+			return false
+		}
+	}
+	return true
 }
 
 func buildMIME(from, to, subject, textBody, htmlBody string) []byte {
 	var b bytes.Buffer
-	boundary := fmt.Sprintf("ember-%d", time.Now().UnixNano())
+	var rnd [8]byte
+	_, _ = rand.Read(rnd[:])
+	boundary := "ember-" + hex.EncodeToString(rnd[:])
 	fmt.Fprintf(&b, "From: %s\r\n", from)
 	fmt.Fprintf(&b, "To: %s\r\n", to)
 	fmt.Fprintf(&b, "Subject: %s\r\n", subject)

@@ -9,14 +9,18 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/brandonhon/ember/internal/auth"
 )
 
 // SecurityHeaders returns middleware that sets common hardening headers. When
 // the app sits behind a TLS-terminating proxy these complement the proxy's
 // own; exposed directly they are the only source. `trusted` is the set of
 // proxy CIDRs whose X-Forwarded-Proto is believed when deciding whether the
-// edge connection is HTTPS (for the HSTS header).
-func SecurityHeaders(trusted []*net.IPNet) func(http.Handler) http.Handler {
+// edge connection is HTTPS (for the HSTS header). `hstsPreload` appends
+// "; preload" to the HSTS header — only enable after verifying the domain is
+// submitted (or will be submitted) to the HSTS preload list.
+func SecurityHeaders(trusted []*net.IPNet, hstsPreload bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			h := w.Header()
@@ -28,7 +32,11 @@ func SecurityHeaders(trusted []*net.IPNet) func(http.Handler) http.Handler {
 			// misleading no-op. Detect HTTPS from the connection or from a
 			// trusted proxy's X-Forwarded-Proto. 2 years + includeSubDomains.
 			if httpsDetected(r, trusted) {
-				h.Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
+				hsts := "max-age=63072000; includeSubDomains"
+				if hstsPreload {
+					hsts += "; preload"
+				}
+				h.Set("Strict-Transport-Security", hsts)
 			}
 			// Disable browser features we never use. Defense in depth against XSS
 			// chains that try to exfil via webcam, geolocation, etc.
@@ -43,9 +51,10 @@ func SecurityHeaders(trusted []*net.IPNet) func(http.Handler) http.Handler {
 			// trade-offs for a self-hosted reader (documented in security docs).
 			h.Set("Content-Security-Policy",
 				"default-src 'self'; "+
-					"img-src 'self' data: https:; "+
+					"script-src 'self'; "+
+					"img-src 'self' https:; "+
 					"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "+
-					"font-src 'self' data: https://fonts.gstatic.com; "+
+					"font-src 'self' https://fonts.gstatic.com; "+
 					"connect-src 'self'; "+
 					"object-src 'none'; "+
 					"base-uri 'self'; "+
@@ -249,16 +258,19 @@ func CSRFVerify(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		// Login is the bootstrap path — no cookie yet. Skip. Use exact match
-		// so a routing mishap that mounts /api under a sub-path can't expose
-		// other endpoints to the bypass.
-		if r.URL.Path == "/api/auth/login" {
+		// Explicit pre-auth bypass list — paths that legitimately receive POST
+		// requests before a session cookie exists. Use exact match so a routing
+		// mishap can't expose other endpoints.
+		switch r.URL.Path {
+		case "/api/auth/login",
+			"/api/auth/passkey/begin",
+			"/api/auth/passkey/finish":
 			next.ServeHTTP(w, r)
 			return
 		}
 		// No session cookie → not authenticated. Let RequireAuth return 401.
 		// Without a session there's nothing to forge, so CSRF check is moot.
-		if _, err := r.Cookie("ember_session"); err != nil {
+		if _, err := r.Cookie(auth.CookieName); err != nil {
 			next.ServeHTTP(w, r)
 			return
 		}

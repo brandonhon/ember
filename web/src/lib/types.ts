@@ -103,14 +103,34 @@ export interface Filter {
   user_id: number;
   name: string;
   match_json: string;
-  action: "mark_read" | "star" | "hide";
+  action: "mark_read" | "star" | "hide" | "tag" | "add_to_board";
   enabled: boolean;
   created_at: number;
+  // Priority orders rule evaluation — lower numbers fire first when
+  // multiple rules would set conflicting state. Default 100.
+  priority: number;
+  // Payload for actions that need one (tag name for "tag"; board id
+  // as decimal string for "add_to_board"). Empty for the boolean
+  // actions (mark_read, star, hide).
+  action_value: string;
 }
 
 export interface FilterMatch {
-  field: "title" | "content" | "author" | "url";
-  op: "contains" | "equals" | "starts_with" | "matches";
+  field:
+    | "title"
+    | "content"
+    | "author"
+    | "url"
+    | "feed_id"
+    | "tags"
+    | "published_at"
+    | "has_image";
+  op:
+    | "contains"
+    | "equals"
+    | "starts_with"
+    | "matches"
+    | "newer_than";
   value: string;
   case_sensitive?: boolean;
 }
@@ -120,6 +140,36 @@ export interface Board {
   user_id: number;
   name: string;
   created_at: number;
+}
+
+// Siblings of an article in the same cross-feed dedup cluster. Returned
+// by GET /api/articles/{id}/cluster — drives the "Also in N feeds" pill
+// expansion in the article list.
+export interface ClusterSibling {
+  article_id: number;
+  feed_id: number;
+  feed_title: string;
+  url: string;
+  is_read: boolean;
+  is_starred: boolean;
+}
+
+// Web Push subscription summary. The cryptographic fields (endpoint /
+// p256dh / auth) are deliberately omitted from the API response so a
+// session token can't be used to harvest other devices' push tokens.
+export interface PushSubscriptionSummary {
+  id: number;
+  user_agent: string;
+  created_at: number;
+}
+
+// Per-user email-inbox descriptor. enabled=false means the operator
+// hasn't configured EMBER_EMAIL_DOMAIN; the SPA shows a notice and
+// the rotate endpoint returns 503.
+export interface EmailInbox {
+  enabled: boolean;
+  address?: string;
+  feed_id?: number;
 }
 
 export interface Share {

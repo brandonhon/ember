@@ -102,6 +102,22 @@ func (d *Dependencies) handleGetArticle(w http.ResponseWriter, r *http.Request) 
 	writeData(w, http.StatusOK, a, nil)
 }
 
+// handleGetArticleCluster returns the cross-feed siblings of the given
+// article: same canonical URL cluster, reached via the user's other
+// subscriptions. Drives the "Also in N feeds" pill expansion in the UI.
+func (d *Dependencies) handleGetArticleCluster(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.FromContext(r.Context())
+	id, ok := paramInt(w, r, "id")
+	if !ok {
+		return
+	}
+	siblings, err := d.Store.ListClusterSiblings(r.Context(), u.ID, id)
+	if mapStoreError(w, err) {
+		return
+	}
+	writeData(w, http.StatusOK, map[string]any{"siblings": siblings}, nil)
+}
+
 type setReadReq struct {
 	IDs  []int64 `json:"ids"`
 	Read bool    `json:"read"`

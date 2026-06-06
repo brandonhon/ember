@@ -35,13 +35,27 @@ var DiscoveryFallbacks = []string{"/feed", "/rss", "/atom.xml", "/feed.xml", "/i
 // Returns ErrNoFeed if nothing is discovered.
 func Discover(ctx context.Context, c *http.Client, target string, validate func(rawURL string) error) (string, error) {
 	if c == nil {
-		c = http.DefaultClient
+		return "", errors.New("feed: Discover requires a non-nil http.Client")
 	}
 	if validate == nil {
 		return "", errors.New("feed: Discover requires a non-nil validate function")
 	}
 	if err := validate(target); err != nil {
 		return "", fmt.Errorf("feed: validate target: %w", err)
+	}
+	// Pre-pass: recognize known URL shapes (YouTube channel/playlist/handle,
+	// Mastodon profile) and rewrite them straight to their feed URL. For
+	// shapes that need a network hop (YouTube /@handle), this runs through
+	// the same validate guard. Returns the original target on no-match so
+	// the rest of the function still runs as before.
+	if rewritten, ok, err := RewriteKnown(ctx, c, target, validate); err != nil {
+		return "", err
+	} else if ok {
+		// Validate the rewritten URL too — it crosses the same trust boundary.
+		if err := validate(rewritten); err != nil {
+			return "", fmt.Errorf("feed: validate rewritten: %w", err)
+		}
+		target = rewritten
 	}
 	parsedTarget, err := url.Parse(target)
 	if err != nil {
@@ -117,7 +131,7 @@ type Discovered struct {
 // empty slice (nil error) when the page loads but advertises no feed.
 func DiscoverAll(ctx context.Context, c *http.Client, target string, validate func(rawURL string) error) ([]Discovered, error) {
 	if c == nil {
-		c = http.DefaultClient
+		return nil, errors.New("feed: DiscoverAll requires a non-nil http.Client")
 	}
 	if validate == nil {
 		return nil, errors.New("feed: DiscoverAll requires a non-nil validate function")
@@ -245,9 +259,7 @@ func isFeedContentType(ct string) bool {
 	ct = strings.ToLower(ct)
 	return strings.Contains(ct, "application/rss") ||
 		strings.Contains(ct, "application/atom") ||
-		strings.Contains(ct, "application/feed+json") ||
-		strings.Contains(ct, "application/xml") ||
-		strings.Contains(ct, "text/xml")
+		strings.Contains(ct, "application/feed+json")
 }
 
 func findAlternateInHTML(body []byte) string {
@@ -318,5 +330,5 @@ func probeFeed(ctx context.Context, c *http.Client, target string, validate func
 	buf := make([]byte, 256)
 	n, _ := io.ReadFull(resp.Body, buf)
 	snippet := strings.ToLower(string(buf[:n]))
-	return strings.Contains(snippet, "<rss") || strings.Contains(snippet, "<feed") || strings.Contains(snippet, "<?xml"), nil
+	return strings.Contains(snippet, "<rss") || strings.Contains(snippet, "<feed") || strings.Contains(snippet, "<rdf:rdf"), nil
 }

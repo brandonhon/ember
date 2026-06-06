@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/brandonhon/ember/internal/feed"
+	"github.com/brandonhon/ember/internal/urlcheck"
 )
 
 // TT-RSS virtual feed IDs (see API reference): -1 = Starred, 0 = Archived.
@@ -101,11 +102,27 @@ func (s *Service) apiClient(ctx context.Context) *http.Client {
 	if s.HTTPClient != nil {
 		return s.HTTPClient
 	}
-	c := &http.Client{Timeout: apiCallTimeout}
+	c := &http.Client{
+		Timeout:   apiCallTimeout,
+		Transport: urlcheck.GuardedTransport(s.AllowPrivateURLs),
+	}
 	if s.ValidateURL != nil {
+		validate := s.ValidateURL
 		c.CheckRedirect = feed.RedirectGuard(func(raw string) error {
-			return s.ValidateURL(ctx, raw)
+			// Use a short detached context so a cancelled import request doesn't
+			// produce misleading "context cancelled" SSRF-rejection log lines.
+			rctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			return validate(rctx, raw)
 		})
+	} else {
+		// Fail-safe: block all redirects when no validator is configured rather
+		// than forwarding them unchecked. ValidateURL should always be set in
+		// production; this prevents a misconfigured zero-value Service from
+		// silently opening an SSRF path via redirect chains.
+		c.CheckRedirect = func(*http.Request, []*http.Request) error {
+			return errors.New("ttrss: redirect blocked — ValidateURL not configured")
+		}
 	}
 	return c
 }
@@ -125,7 +142,7 @@ func (s *Service) pull(ctx context.Context, client *http.Client, endpoint, sid s
 			res.Total++
 			inserted, skipped, err := s.save(ctx, userID, importFeedID, normItem{
 				guid:      h.GUID,
-				link:      h.Link,
+				link:      feed.SafeHTTPURL(h.Link),
 				title:     h.Title,
 				author:    h.Author,
 				content:   h.Content,

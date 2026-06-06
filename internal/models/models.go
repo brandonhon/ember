@@ -87,6 +87,20 @@ type Article struct {
 	FetchedAt    int64  `json:"fetched_at"`
 	ContentHash  string `json:"content_hash"`
 	Tags         string `json:"tags,omitempty"` // comma-joined gofeed categories; first one used as a badge.
+	// CanonicalURL is the tracking-param-stripped, case-normalized form of
+	// URL used for cross-feed dedup. Populated at ingest by feed.CanonicalURL.
+	// Internal — never exposed to clients (the human-readable URL stays in URL).
+	CanonicalURL string `json:"-"`
+	// ClusterID is a stable short hash of CanonicalURL. Empty when URL is
+	// empty. Drives the cross-feed dedup join and identifies the "this
+	// article also appears in N other feeds" sibling set.
+	ClusterID string `json:"-"`
+	// TitleFingerprint is a normalized form of Title used for soft
+	// clustering when canonical URLs differ but headlines match (typical
+	// wire-story syndication). Empty for titles that are too short /
+	// generic to be reliable cluster keys (e.g. "Re:", "News update").
+	// Internal only; never exposed via the API.
+	TitleFingerprint string `json:"-"`
 }
 
 // ArticleState is per-user read/star/later state for an article.
@@ -141,6 +155,16 @@ type Filter struct {
 	Action    string `json:"action"`
 	Enabled   bool   `json:"enabled"`
 	CreatedAt int64  `json:"created_at"`
+	// Priority orders rule evaluation — lower numbers win when two rules
+	// would set conflicting state on the same article. Default 100;
+	// arbitrary positive integers allowed.
+	Priority int `json:"priority"`
+	// ActionValue carries the payload for actions that need one. For
+	// ActionTag it's the tag name to attach. For ActionAddToBoard it's
+	// the board id as a decimal string (stringly typed to keep the
+	// schema simple and forward-compatible). Empty for actions that
+	// don't need a payload (mark_read, star, hide).
+	ActionValue string `json:"action_value"`
 }
 
 // Share is one article shared from one user to another.
