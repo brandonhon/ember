@@ -61,7 +61,8 @@ func (d *Dependencies) handleAddFeed(w http.ResponseWriter, r *http.Request) {
 	dctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 	disco := &http.Client{
-		Timeout: 10 * time.Second,
+		Timeout:   10 * time.Second,
+		Transport: urlcheck.GuardedTransport(d.AllowPrivateURLs),
 		CheckRedirect: feed.RedirectGuard(func(rawURL string) error {
 			return urlcheck.Check(dctx, rawURL, d.AllowPrivateURLs)
 		}),
@@ -122,7 +123,8 @@ func (d *Dependencies) handleDiscoverFeeds(w http.ResponseWriter, r *http.Reques
 	dctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 	disco := &http.Client{
-		Timeout: 10 * time.Second,
+		Timeout:   10 * time.Second,
+		Transport: urlcheck.GuardedTransport(d.AllowPrivateURLs),
 		CheckRedirect: feed.RedirectGuard(func(rawURL string) error {
 			return urlcheck.Check(dctx, rawURL, d.AllowPrivateURLs)
 		}),
