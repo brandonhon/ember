@@ -35,7 +35,7 @@ var DiscoveryFallbacks = []string{"/feed", "/rss", "/atom.xml", "/feed.xml", "/i
 // Returns ErrNoFeed if nothing is discovered.
 func Discover(ctx context.Context, c *http.Client, target string, validate func(rawURL string) error) (string, error) {
 	if c == nil {
-		c = http.DefaultClient
+		return "", errors.New("feed: Discover requires a non-nil http.Client")
 	}
 	if validate == nil {
 		return "", errors.New("feed: Discover requires a non-nil validate function")
@@ -131,7 +131,7 @@ type Discovered struct {
 // empty slice (nil error) when the page loads but advertises no feed.
 func DiscoverAll(ctx context.Context, c *http.Client, target string, validate func(rawURL string) error) ([]Discovered, error) {
 	if c == nil {
-		c = http.DefaultClient
+		return nil, errors.New("feed: DiscoverAll requires a non-nil http.Client")
 	}
 	if validate == nil {
 		return nil, errors.New("feed: DiscoverAll requires a non-nil validate function")
@@ -330,5 +330,5 @@ func probeFeed(ctx context.Context, c *http.Client, target string, validate func
 	buf := make([]byte, 256)
 	n, _ := io.ReadFull(resp.Body, buf)
 	snippet := strings.ToLower(string(buf[:n]))
-	return strings.Contains(snippet, "<rss") || strings.Contains(snippet, "<feed") || strings.Contains(snippet, "<?xml"), nil
+	return strings.Contains(snippet, "<rss") || strings.Contains(snippet, "<feed") || strings.Contains(snippet, "<rdf:rdf"), nil
 }
