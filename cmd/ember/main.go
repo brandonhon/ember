@@ -236,6 +236,7 @@ func run() error {
 		return urlcheck.Check(ctx, raw, cfg.AllowPrivateURLs)
 	}
 	tt := ttrss.NewService(st)
+	tt.AllowPrivateURLs = cfg.AllowPrivateURLs
 	tt.ValidateURL = func(ctx context.Context, raw string) error {
 		return urlcheck.Check(ctx, raw, cfg.AllowPrivateURLs)
 	}
