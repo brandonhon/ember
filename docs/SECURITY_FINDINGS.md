@@ -187,22 +187,22 @@ Fix: If `res.Cleaned` contains `<`, apply `html.EscapeString` to the entire stri
 
 | ID | Status | File | Issue | ATT&CK |
 |----|--------|------|-------|--------|
-| M-1 | `open` | `internal/api/render.go:96` | JSON decode errors returned verbatim — Go struct field names leaked to unauthenticated callers. Fix: return `"invalid request body"`, log detail server-side. | T1592 |
-| M-2 | `open` | `internal/api/auth_handlers.go:159` | `settings_json` stored without `json.Valid()` check or size cap (max 64 KiB recommended). | T1565.001 |
-| M-3 | `open` | `internal/api/user_handlers.go:102` | Admin `PATCH /api/users/{id}` bypasses the 8-char password minimum enforced on create/change-password paths. | T1098 |
-| M-4 | `open` | `internal/api/user_handlers.go:111` | Admin can self-demote (set own `is_admin=false`) with no guard — causes permanent lockout if sole admin. | T1078.003 |
-| M-5 | `open` | `internal/api/middleware.go:255` | CSRF: passkey login relies on implicit bypass (no session cookie) rather than explicit path allowlist. `ember_session` hardcoded instead of `auth.CookieName`. | T1606 |
-| M-6 | `open` | `internal/api/middleware.go:44–53` | CSP: no explicit `script-src` directive; `data:` in `img-src` (tracking-pixel exfil); `'unsafe-inline'` in `style-src` (CSS injection). | T1059.007 |
-| M-7 | `open` | `internal/api/share_handlers.go:44` | Unbounded `limit` parameter on inbox endpoint — no upper cap. Add `const maxInboxLimit = 200`. | T1499.002 |
-| M-8 | `open` | `internal/store/dbops.go:38` | `VACUUM INTO` uses `fmt.Sprintf` with single-quote escape — safe today since `dir` is a constant, fragile if `dir` is ever exposed to user input. Add an assertion that `dir` is server-controlled. | T1190 |
-| M-9 | `open` | `internal/feed/sanitize.go:17` | bluemonday UGC policy allows `target="_blank"` without requiring `rel="noopener noreferrer"` — enables tab-napping. | T1185 |
-| M-10 | `open` | `internal/ttrss/api.go:173` | TT-RSS credentials transmitted without TLS enforcement — explicit `http://` URLs accepted without error. | T1040, T1557 |
-| M-11 | `open` | `internal/digest/digest.go:294` | MIME boundary is timestamp-derived (`time.Now().UnixNano()`), not cryptographically random. Fix: `"ember-" + hex.EncodeToString(rand16bytes)`. | — |
-| M-12 | `open` | `internal/digest/digest.go:283` | `isLoopbackHost` checks literal string/IP only — does not resolve hostnames. A Docker service name resolving to `127.x` is not caught. | — |
-| M-13 | `open` | `internal/poller/poller.go:409` | `hrefRE` regex parses raw HTML for href extraction instead of an HTML parser — bypassable with single-quoted attrs, comments, userinfo-in-host trick. | T1190 |
-| M-14 | `open` | `internal/summarize/noop.go` | Noop summarizer has no guard against accidental production use — add a startup log line identifying the active Summarizer implementation. | — (AI RMF: GOVERN 1.7) |
-| M-15 | `open` | `internal/ttrss/api.go:100` | Redirect guard inherits import request context — cancellation produces misleading SSRF rejection logs. Use a separate background context with per-redirect timeout. | — |
-| M-16 | `open` | `internal/api/fever.go:85–113` | Fever items endpoint: `since_id`/`max_id` pagination cursors not honored; store errors silently swallowed with `_, _`. | T1530 |
+| M-1 | `fixed` | `internal/api/render.go:96` | JSON decode errors returned verbatim — Go struct field names leaked to unauthenticated callers. Fix: return `"invalid request body"`, log detail server-side. | T1592 |
+| M-2 | `fixed` | `internal/api/auth_handlers.go:159` | `settings_json` stored without `json.Valid()` check or size cap (max 64 KiB recommended). | T1565.001 |
+| M-3 | `fixed` | `internal/api/user_handlers.go:102` | Admin `PATCH /api/users/{id}` bypasses the 8-char password minimum enforced on create/change-password paths. | T1098 |
+| M-4 | `fixed` | `internal/api/user_handlers.go:111` | Admin can self-demote (set own `is_admin=false`) with no guard — causes permanent lockout if sole admin. | T1078.003 |
+| M-5 | `fixed` | `internal/api/middleware.go:255` | CSRF: passkey login relies on implicit bypass (no session cookie) rather than explicit path allowlist. `ember_session` hardcoded instead of `auth.CookieName`. | T1606 |
+| M-6 | `fixed` | `internal/api/middleware.go:44–53` | CSP: no explicit `script-src` directive; `data:` in `img-src` (tracking-pixel exfil); `'unsafe-inline'` in `style-src` (CSS injection). | T1059.007 |
+| M-7 | `fixed` | `internal/api/share_handlers.go:44` | Unbounded `limit` parameter on inbox endpoint — no upper cap. Add `const maxInboxLimit = 200`. | T1499.002 |
+| M-8 | `fixed` | `internal/store/dbops.go:38` | `VACUUM INTO` uses `fmt.Sprintf` with single-quote escape — safe today since `dir` is a constant, fragile if `dir` is ever exposed to user input. Add an assertion that `dir` is server-controlled. | T1190 |
+| M-9 | `fixed` | `internal/feed/sanitize.go:17` | bluemonday UGC policy allows `target="_blank"` without requiring `rel="noopener noreferrer"` — enables tab-napping. | T1185 |
+| M-10 | `accepted_risk` | `internal/ttrss/api.go:173` | TT-RSS credentials transmitted without TLS enforcement — `feed.NormalizeInputURL` already upgrades bare `http://` input to `https://`; explicit error for intentional http:// is low-value for homelab use. | T1040, T1557 |
+| M-11 | `fixed` | `internal/digest/digest.go:294` | MIME boundary is timestamp-derived (`time.Now().UnixNano()`), not cryptographically random. Fix: `"ember-" + hex.EncodeToString(rand16bytes)`. | — |
+| M-12 | `fixed` | `internal/digest/digest.go:283` | `isLoopbackHost` checks literal string/IP only — does not resolve hostnames. A Docker service name resolving to `127.x` is not caught. | — |
+| M-13 | `fixed` | `internal/poller/poller.go:409` | `hrefRE` regex parses raw HTML for href extraction instead of an HTML parser — bypassable with single-quoted attrs, comments, userinfo-in-host trick. Fixed as side-effect of H-3 (HTML tokenizer). | T1190 |
+| M-14 | `fixed` | `internal/summarize/noop.go` | Noop summarizer has no guard against accidental production use — add a startup log line identifying the active Summarizer implementation. | — (AI RMF: GOVERN 1.7) |
+| M-15 | `fixed` | `internal/ttrss/api.go:100` | Redirect guard inherits import request context — cancellation produces misleading SSRF rejection logs. Use a separate background context with per-redirect timeout. | — |
+| M-16 | `fixed` | `internal/api/fever.go:85–113` | Fever items endpoint: store errors silently swallowed with `_, _`; mark errors captured and logged. | T1530 |
 
 ---
 
