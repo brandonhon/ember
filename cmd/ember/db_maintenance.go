@@ -96,7 +96,7 @@ func runOPMLExport(ctx context.Context, st *store.Store, op *opml.Service, lg *s
 	}
 	name := time.Now().UTC().Format("ember-2006-01-02-150405.opml")
 	out := filepath.Join(defaultExportDir, name)
-	f, err := os.Create(out) //nolint:gosec // G304: out is program-built from a fixed dir + timestamp, never user input.
+	f, err := os.OpenFile(out, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600) //nolint:gosec // G304: out is program-built from a fixed dir + timestamp, never user input.
 	if err != nil {
 		lg.Warn("opml export: create file", "err", err)
 		return

@@ -380,6 +380,7 @@ func run() error {
 		// CIDRs whose X-Real-IP / X-Forwarded-Proto we trust. Empty = the app is
 		// the edge (trust the connection peer, ignore the headers).
 		TrustedProxies: cfg.TrustedProxies,
+		HSTSPreload:    cfg.HSTSPreload,
 		// FreshWindow makes EMBER_FRESH_WINDOW actually take effect — the
 		// Fresh-view article list, the sidebar's Fresh count, and the
 		// client-side isFresh() all read from this single source.

@@ -53,6 +53,9 @@ type Dependencies struct {
 	// AllowPrivateURLs disables the SSRF block on outbound HTTP fetches for
 	// homelab users who subscribe to LAN feeds. Off by default.
 	AllowPrivateURLs bool
+	// HSTSPreload appends "; preload" to the HSTS header. Enable only after
+	// the domain is submitted to the browser preload list.
+	HSTSPreload bool
 	// TrustedProxies is the set of proxy CIDRs (strings) whose X-Real-IP /
 	// X-Forwarded-Proto headers are honored. Empty = the app is the edge and
 	// trusts only the connection peer.
@@ -97,13 +100,13 @@ func NewRouter(d Dependencies) http.Handler {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Compress(5))
 	r.Use(middleware.Timeout(60 * time.Second))
-	r.Use(SecurityHeaders(trusted))
+	r.Use(SecurityHeaders(trusted, d.HSTSPreload))
 	r.Use(CSRFIssue(!d.TestMode))
 
 	// 405 responses must carry the security headers too. chi's default
 	// MethodNotAllowed handler runs outside the middleware chain, so register
 	// one that re-applies SecurityHeaders before writing the JSON error.
-	methodNotAllowed := SecurityHeaders(trusted)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	methodNotAllowed := SecurityHeaders(trusted, d.HSTSPreload)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
 	}))
 	r.MethodNotAllowed(methodNotAllowed.ServeHTTP)
