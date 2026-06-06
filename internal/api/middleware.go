@@ -9,6 +9,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/brandonhon/ember/internal/auth"
 )
 
 // SecurityHeaders returns middleware that sets common hardening headers. When
@@ -43,9 +45,10 @@ func SecurityHeaders(trusted []*net.IPNet) func(http.Handler) http.Handler {
 			// trade-offs for a self-hosted reader (documented in security docs).
 			h.Set("Content-Security-Policy",
 				"default-src 'self'; "+
-					"img-src 'self' data: https:; "+
+					"script-src 'self'; "+
+					"img-src 'self' https:; "+
 					"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "+
-					"font-src 'self' data: https://fonts.gstatic.com; "+
+					"font-src 'self' https://fonts.gstatic.com; "+
 					"connect-src 'self'; "+
 					"object-src 'none'; "+
 					"base-uri 'self'; "+
@@ -249,16 +252,19 @@ func CSRFVerify(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		// Login is the bootstrap path — no cookie yet. Skip. Use exact match
-		// so a routing mishap that mounts /api under a sub-path can't expose
-		// other endpoints to the bypass.
-		if r.URL.Path == "/api/auth/login" {
+		// Explicit pre-auth bypass list — paths that legitimately receive POST
+		// requests before a session cookie exists. Use exact match so a routing
+		// mishap can't expose other endpoints.
+		switch r.URL.Path {
+		case "/api/auth/login",
+			"/api/auth/passkey/begin",
+			"/api/auth/passkey/finish":
 			next.ServeHTTP(w, r)
 			return
 		}
 		// No session cookie → not authenticated. Let RequireAuth return 401.
 		// Without a session there's nothing to forge, so CSRF check is moot.
-		if _, err := r.Cookie("ember_session"); err != nil {
+		if _, err := r.Cookie(auth.CookieName); err != nil {
 			next.ServeHTTP(w, r)
 			return
 		}
