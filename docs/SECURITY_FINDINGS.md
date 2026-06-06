@@ -76,7 +76,7 @@ Fix: Replace `hrefRE` with `golang.org/x/net/html` tokenizer for href extraction
 ---
 
 ### H-4 — TT-RSS SSRF Guard Nil-Default Is Unsafe
-**Status:** `open`  
+**Status:** `fixed`  
 **File:** `internal/ttrss/ttrss.go:52–55`, `internal/ttrss/api.go:97–110`  
 **ATT&CK:** T1090.001, T1602 | **NIST CSF:** PR.PS-05, ID.RA-01 | **D3FEND:** D3-NTF, D3-UA
 
@@ -98,7 +98,7 @@ Fix: `link: feed.SafeHTTPURL(h.Link)` in the `normItem` construction.
 ---
 
 ### H-6 — `urlcheck` Error Strings Returned to Clients — Internal IP Oracle
-**Status:** `open`  
+**Status:** `fixed`  
 **File:** `internal/api/feed_handlers.go:54, 74, 119, 135`  
 **ATT&CK:** T1590, T1046 | **NIST CSF:** PR.DS-5, DE.CM-1 | **D3FEND:** D3-EHB
 
@@ -109,7 +109,7 @@ Fix: Return `"URL is not allowed"` to the client; log the full error server-side
 ---
 
 ### H-7 — Ollama BaseURL Not SSRF-Validated
-**Status:** `open`  
+**Status:** `fixed`  
 **File:** `internal/config/config.go:117–119`, `internal/summarize/ollama.go:42–51`  
 **ATT&CK:** T1090.002, T1602 | **NIST CSF:** PR.AA-05, ID.RA-01 | **D3FEND:** D3-NTF, D3-UA
 
@@ -120,7 +120,7 @@ Fix: At config load time, parse the URL and validate the scheme is `http`/`https
 ---
 
 ### H-8 — Model Pull Endpoint: 30-Minute Blocking Call, No Concurrency Guard
-**Status:** `open`  
+**Status:** `fixed`  
 **File:** `internal/api/llm_handlers.go:176–213`  
 **ATT&CK:** T1499.001 | **NIST CSF:** PR.IR-04, DE.CM-01 | **D3FEND:** D3-RTSD
 
@@ -142,7 +142,7 @@ Mitigations: (1) Mandate TLS at the edge when Fever is enabled. (2) Add a per-us
 ---
 
 ### H-10 — WebAuthn `TakeWebAuthnSession` TOCTOU Race
-**Status:** `open`  
+**Status:** `fixed`  
 **File:** `internal/store/passkeys.go:171`  
 **ATT&CK:** T1550 | **NIST CSF:** PR.AA-05 | **D3FEND:** D3-OTP
 
@@ -151,7 +151,7 @@ SELECT then DELETE is not atomic. Two concurrent requests with the same session 
 ---
 
 ### H-11 — `FinishRegister` Resolves Target User from Session, Not Auth Context
-**Status:** `open`  
+**Status:** `fixed`  
 **File:** `internal/auth/webauthn.go:141–188`, `internal/api/passkey_handlers.go:93–121`  
 **ATT&CK:** T1556, T1550 | **NIST CSF:** PR.AA-05 | **D3FEND:** D3-UAM
 
@@ -162,7 +162,7 @@ Fix: Pass `callerID` from the auth context into `FinishRegister` and assert `ses
 ---
 
 ### H-12 — Summary Backfill on Restart Can Saturate LLM
-**Status:** `open`  
+**Status:** `fixed`  
 **File:** `internal/poller/poller.go:596–615`  
 **ATT&CK:** T1499.002 | **NIST CSF:** PR.IR-04, DE.CM-01 | **AI RMF:** GOVERN 1.2, MAP 1.5
 
@@ -173,7 +173,7 @@ Fix: Token-bucket rate limiter in the summary worker loop; log the backfill coun
 ---
 
 ### H-13 — LLM-Cleaned HTML Stored Without Structural Output Validation
-**Status:** `open`  
+**Status:** `fixed`  
 **File:** `internal/poller/poller.go:653–661`  
 **ATLAS:** AML.T0048, AML.T0056 | **AI RMF:** MEASURE 2.5, MANAGE 2.4 | **D3FEND:** D3-OAM, D3-IBAR
 
