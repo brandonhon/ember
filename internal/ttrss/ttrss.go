@@ -42,6 +42,10 @@ type Service struct {
 	// ValidateURL guards the live-pull target (set from urlcheck.Check in
 	// production). Nil accepts all — only safe for the file path.
 	ValidateURL URLValidator
+	// AllowPrivateURLs is passed to urlcheck.GuardedTransport so the DNS-
+	// pinning transport respects the same private-IP opt-in as the rest of
+	// the app (EMBER_ALLOW_PRIVATE_URLS).
+	AllowPrivateURLs bool
 	// HTTPClient overrides the default client used by the live pull (tests
 	// inject httptest.Server.Client()). Nil builds a guarded 30s client.
 	HTTPClient *http.Client
