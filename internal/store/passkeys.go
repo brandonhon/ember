@@ -166,24 +166,22 @@ func (s *Store) PutWebAuthnSession(ctx context.Context, sess WebAuthnSession) er
 	return err
 }
 
-// TakeWebAuthnSession reads and deletes an in-flight ceremony. Rows older than
-// 5 minutes are treated as not found (defense against replay of leaked IDs).
+// TakeWebAuthnSession atomically reads and deletes an in-flight ceremony.
+// Rows older than 5 minutes are treated as not found (defense against replay
+// of leaked IDs). DELETE...RETURNING closes the SELECT+DELETE TOCTOU window so
+// no two concurrent requests can consume the same session row.
 func (s *Store) TakeWebAuthnSession(ctx context.Context, id string) (WebAuthnSession, error) {
 	cutoff := s.Now().Add(-5 * time.Minute).Unix()
 	var sess WebAuthnSession
 	err := s.DB.QueryRowContext(ctx, `
-		SELECT id, user_id, data, purpose, created_at
-		FROM webauthn_sessions
-		WHERE id = ? AND created_at >= ?`, id, cutoff).Scan(
+		DELETE FROM webauthn_sessions
+		WHERE id = ? AND created_at >= ?
+		RETURNING id, user_id, data, purpose, created_at`, id, cutoff).Scan(
 		&sess.ID, &sess.UserID, &sess.Data, &sess.Purpose, &sess.CreatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return WebAuthnSession{}, ErrNotFound
 	}
-	if err != nil {
-		return WebAuthnSession{}, err
-	}
-	_, _ = s.DB.ExecContext(ctx, `DELETE FROM webauthn_sessions WHERE id = ?`, id)
-	return sess, nil
+	return sess, err
 }
 
 // CleanupWebAuthnSessions removes ceremony rows older than 5 minutes.

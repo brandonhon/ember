@@ -604,11 +604,17 @@ func (p *Poller) summaryWorker(ctx context.Context) {
 	}
 }
 
+// summaryBackfillLimit caps how many articles are enqueued for summarization
+// at startup. SummaryQueue (256) is the steady-state channel buffer; loading
+// the full backlog at boot would saturate Ollama for long stretches on a fresh
+// install or after a model change.
+const summaryBackfillLimit = 20
+
 // enqueuePendingSummaries reads articles with no summary_model from the store
 // and pushes them onto the summary worker channel. Bounded by the channel
 // buffer; runs in its own goroutine so it never blocks startup.
 func (p *Poller) enqueuePendingSummaries(ctx context.Context) {
-	ids, err := p.Store.ListUnsummarizedIDs(ctx, p.Config.SummaryQueue)
+	ids, err := p.Store.ListUnsummarizedIDs(ctx, min(summaryBackfillLimit, p.Config.SummaryQueue))
 	if err != nil {
 		p.Logger.Warn("poller: backfill summary queue", "err", err)
 		return
