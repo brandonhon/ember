@@ -107,8 +107,13 @@ func (s *Service) apiClient(ctx context.Context) *http.Client {
 		Transport: urlcheck.GuardedTransport(s.AllowPrivateURLs),
 	}
 	if s.ValidateURL != nil {
+		validate := s.ValidateURL
 		c.CheckRedirect = feed.RedirectGuard(func(raw string) error {
-			return s.ValidateURL(ctx, raw)
+			// Use a short detached context so a cancelled import request doesn't
+			// produce misleading "context cancelled" SSRF-rejection log lines.
+			rctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			return validate(rctx, raw)
 		})
 	} else {
 		// Fail-safe: block all redirects when no validator is configured rather

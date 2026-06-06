@@ -94,7 +94,8 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(dst); err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
+		slog.Default().Info("api: json decode error", "path", r.URL.Path, "err", err)
+		writeError(w, http.StatusBadRequest, "bad_request", "invalid request body")
 		return false
 	}
 	return true
