@@ -41,7 +41,7 @@ Fix: Remove `application/xml` and `text/xml` from `isFeedContentType`; keep only
 ## HIGH (13)
 
 ### H-1 — Prompt Injection via Feed Content into Ollama LLM
-**Status:** `open`  
+**Status:** `fixed`  
 **File:** `internal/summarize/ollama.go:242–245`  
 **ATT&CK:** T1059.007 | **ATLAS:** AML.T0051, AML.T0048 | **NIST CSF:** GV.SC-07, PR.DS-02, DE.CM-09 | **D3FEND:** D3-IBAR, D3-OAM | **AI RMF:** GOVERN 1.2, MAP 1.5, MEASURE 2.5
 
@@ -65,7 +65,7 @@ Fix: `Transport: urlcheck.GuardedTransport(false)` (or thread `allowPrivate` thr
 ---
 
 ### H-3 — SSRF via Aggregator Feed Body External Links
-**Status:** `open`  
+**Status:** `fixed`  
 **File:** `internal/poller/poller.go:501–519`  
 **ATT&CK:** T1090.001, T1210 | **NIST CSF:** PR.PS-05, PR.IR-01 | **D3FEND:** D3-UA, D3-NTF
 
