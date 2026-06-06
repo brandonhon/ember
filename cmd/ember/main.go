@@ -293,6 +293,7 @@ func run() error {
 		logger.Info("AI summaries disabled via EMBER_DISABLE_SUMMARIES")
 		sum = nil
 	case cfg.TestMode:
+		logger.Warn("AI summarizer: using noop (test mode) — set EMBER_OLLAMA_URL for real summaries")
 		sum = summarize.Noop{}
 	default:
 		model := cfg.OllamaModel

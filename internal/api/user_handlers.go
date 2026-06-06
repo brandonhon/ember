@@ -100,6 +100,7 @@ type updateUserReq struct {
 }
 
 func (d *Dependencies) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
+	caller, _ := auth.FromContext(r.Context())
 	id, ok := paramInt(w, r, "id")
 	if !ok {
 		return
@@ -108,8 +109,19 @@ func (d *Dependencies) handleUpdateUser(w http.ResponseWriter, r *http.Request) 
 	if !decodeJSON(w, r, &req) {
 		return
 	}
+	// Guard against admins removing their own admin role — permanent lockout
+	// if they are the sole admin.
+	if req.IsAdmin != nil && !*req.IsAdmin && id == caller.ID {
+		writeError(w, http.StatusBadRequest, "bad_request", "you cannot remove your own admin role")
+		return
+	}
 	patch := store.UpdateUserPatch{Email: req.Email, IsAdmin: req.IsAdmin}
 	if req.Password != nil {
+		// Enforce the same 8-character minimum that create-user uses.
+		if len(*req.Password) < 8 {
+			writeError(w, http.StatusBadRequest, "bad_request", "password must be at least 8 characters")
+			return
+		}
 		hash, err := d.Auth.HashPassword(*req.Password)
 		if err != nil {
 			internalError(w, "internal", err)
