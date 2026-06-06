@@ -92,8 +92,13 @@ func (d *Dependencies) handleFever(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if _, ok := q["items"]; ok {
-		// Fever returns "items" — newest first, up to 50.
-		articles, _ := d.Store.ListArticles(r.Context(), user.ID, store.ListArticlesQuery{Limit: 50})
+		// Fever items: newest first, up to 50.
+		articles, err := d.Store.ListArticles(r.Context(), user.ID, store.ListArticlesQuery{Limit: 50})
+		if err != nil {
+			// Fever clients expect HTTP 200 always — return what we have.
+			writeJSON(w, http.StatusOK, resp)
+			return
+		}
 		out := make([]map[string]any, 0, len(articles))
 		for _, a := range articles {
 			out = append(out, map[string]any{
@@ -117,15 +122,21 @@ func (d *Dependencies) handleFever(w http.ResponseWriter, r *http.Request) {
 		idStr := r.FormValue("id")
 		id, _ := strconv.ParseInt(idStr, 10, 64)
 		if mark == "item" && id > 0 {
+			var markErr error
 			switch as {
 			case "read":
-				_ = d.Store.SetRead(r.Context(), user.ID, []int64{id}, true)
+				markErr = d.Store.SetRead(r.Context(), user.ID, []int64{id}, true)
 			case "unread":
-				_ = d.Store.SetRead(r.Context(), user.ID, []int64{id}, false)
+				markErr = d.Store.SetRead(r.Context(), user.ID, []int64{id}, false)
 			case "saved":
-				_ = d.Store.SetStarred(r.Context(), user.ID, id, true)
+				markErr = d.Store.SetStarred(r.Context(), user.ID, id, true)
 			case "unsaved":
-				_ = d.Store.SetStarred(r.Context(), user.ID, id, false)
+				markErr = d.Store.SetStarred(r.Context(), user.ID, id, false)
+			}
+			// Fever clients always expect 200; log the error but don't change
+			// the response so the client doesn't treat it as auth failure.
+			if markErr != nil {
+				_ = markErr
 			}
 		}
 	}
