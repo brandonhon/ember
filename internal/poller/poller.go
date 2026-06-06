@@ -12,6 +12,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"golang.org/x/net/html"
+
 	"github.com/brandonhon/ember/internal/feed"
 	"github.com/brandonhon/ember/internal/filters"
 	"github.com/brandonhon/ember/internal/models"
@@ -404,10 +406,6 @@ var aggregatorHosts = map[string]bool{
 	"feedproxy.google.com": true,
 }
 
-// hrefRE captures URLs from <a href="..."> attributes in raw HTML. Used to
-// recover the real article link out of aggregator-style RSS bodies.
-var hrefRE = regexp.MustCompile(`(?i)href\s*=\s*"([^"]+)"`)
-
 // commentsResidueInner is the inner content pattern for "comments only"
 // snippets — text that is just "Comments", "View Comments", "Read more",
 // etc., optionally wrapped in nested tags (like <a>Comments</a>).
@@ -444,23 +442,42 @@ func hostOf(u string) string {
 }
 
 // firstExternalLink scans HTML for the first <a href="..."> whose host is not
-// one of the aggregator hosts and not the source host. Returns "" if nothing
-// usable is found.
-func firstExternalLink(html, sourceURL string) string {
+// one of the aggregator hosts and not the source host. Uses the
+// golang.org/x/net/html tokenizer so single-quoted, unquoted, and
+// case-varied attribute forms are handled correctly — regex-based parsing was
+// bypassable via attribute quoting tricks.
+func firstExternalLink(body, sourceURL string) string {
 	srcHost := hostOf(sourceURL)
-	for _, m := range hrefRE.FindAllStringSubmatch(html, -1) {
-		candidate := m[1]
-		host := hostOf(candidate)
-		if host == "" || host == srcHost {
+	tok := html.NewTokenizer(strings.NewReader(body))
+	for {
+		tt := tok.Next()
+		if tt == html.ErrorToken {
+			break
+		}
+		if tt != html.StartTagToken && tt != html.SelfClosingTagToken {
 			continue
 		}
-		if aggregatorHosts[host] {
+		t := tok.Token()
+		if t.Data != "a" {
 			continue
 		}
-		if !strings.HasPrefix(candidate, "http") {
-			continue
+		for _, attr := range t.Attr {
+			if !strings.EqualFold(attr.Key, "href") {
+				continue
+			}
+			candidate := attr.Val
+			host := hostOf(candidate)
+			if host == "" || host == srcHost {
+				break
+			}
+			if aggregatorHosts[host] {
+				break
+			}
+			if !strings.HasPrefix(candidate, "http") {
+				break
+			}
+			return candidate
 		}
-		return candidate
 	}
 	return ""
 }
