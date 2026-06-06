@@ -245,9 +245,7 @@ func isFeedContentType(ct string) bool {
 	ct = strings.ToLower(ct)
 	return strings.Contains(ct, "application/rss") ||
 		strings.Contains(ct, "application/atom") ||
-		strings.Contains(ct, "application/feed+json") ||
-		strings.Contains(ct, "application/xml") ||
-		strings.Contains(ct, "text/xml")
+		strings.Contains(ct, "application/feed+json")
 }
 
 func findAlternateInHTML(body []byte) string {
