@@ -137,14 +137,19 @@ func (w *WebAuthn) BeginRegister(ctx context.Context, u models.User) ([]byte, st
 }
 
 // FinishRegister consumes the ceremony, parses the attestation response, and
-// persists a new passkey for the user. The caller supplies a friendly name.
-func (w *WebAuthn) FinishRegister(ctx context.Context, sessionID, name string, raw []byte) (models.Passkey, error) {
+// persists a new passkey for the user. callerID must match the session's
+// stored user — prevents a logged-in user from finishing another user's
+// ceremony by supplying a foreign session ID.
+func (w *WebAuthn) FinishRegister(ctx context.Context, sessionID, name string, raw []byte, callerID int64) (models.Passkey, error) {
 	sess, err := w.Store.TakeWebAuthnSession(ctx, sessionID)
 	if err != nil {
 		return models.Passkey{}, err
 	}
 	if sess.Purpose != "register" || !sess.UserID.Valid {
 		return models.Passkey{}, errors.New("webauthn: wrong session")
+	}
+	if sess.UserID.Int64 != callerID {
+		return models.Passkey{}, errors.New("webauthn: session does not belong to caller")
 	}
 	user, err := w.Store.GetUser(ctx, sess.UserID.Int64)
 	if err != nil {
