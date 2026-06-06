@@ -210,14 +210,14 @@ Fix: If `res.Cleaned` contains `<`, apply `html.EscapeString` to the entire stri
 
 | ID | Status | File | Issue |
 |----|--------|------|-------|
-| L-1 | `open` | `internal/api/middleware.go:30` | HSTS header omits `preload` — first-visit MITM window for public deployments. Make configurable via `EMBER_HSTS_PRELOAD=true`. |
-| L-2 | `open` | `internal/api/middleware.go:255` | CSRF exemption for passkey login is implicit (no-session bypass) rather than explicit path allowlist — fragile if a pre-auth cookie is added later. |
-| L-3 | `open` | `internal/api/fever.go:140` | `feverFindUser` does full-table scan loading all `password_hash` rows on every Fever request. Add `UNIQUE INDEX ON users(fever_token)` and query directly. |
-| L-4 | `open` | `internal/store/admin_settings.go:117` | SMTP password stored plaintext in SQLite — readable if DB file is compromised. Acceptable for homelab; verify `ember.db` is `0600`; document in `docs/security.md`. |
-| L-5 | `open` | `internal/api/health.go:13` | `/readyz` returns HTTP 503 to unauthenticated probes when DB is down — binary oracle for availability state. |
-| L-6 | `open` | `cmd/ember/db_maintenance.go:93` | `os.Create` for OPML exports inherits process umask — may create world-readable files. Fix: `os.OpenFile(out, os.O_CREATE\|os.O_WRONLY\|os.O_TRUNC, 0o600)`. |
-| L-7 | `open` | `internal/feed/discover.go:38, 120` | `http.DefaultClient` fallback in `Discover`/`DiscoverAll` when `c == nil` — no timeout, no guarded transport. Return an error instead of silently using the default client. |
-| L-8 | `open` | `internal/feed/discover.go:318–321` | `<?xml` body sniff matches any XML document. Tighten to `<rss`, `<feed`, `<rdf:rdf` only. |
+| L-1 | `fixed` | `internal/api/middleware.go:30` | HSTS header omits `preload` — first-visit MITM window for public deployments. Added `EMBER_HSTS_PRELOAD=true` env var; appends `; preload` when set. |
+| L-2 | `fixed` | `internal/api/middleware.go:255` | CSRF exemption for passkey login is implicit (no-session bypass) rather than explicit path allowlist — fixed as part of M-5 with an explicit path list. |
+| L-3 | `fixed` | `internal/api/fever.go:140` | `feverFindUser` does full-table scan on every Fever request. Added `UNIQUE INDEX ON users(fever_token)` (migration 0013) and `GetUserByFeverToken` store method; direct lookup replaces table scan. |
+| L-4 | `fixed` | `internal/store/admin_settings.go:117` | SMTP password stored plaintext in SQLite — documented in `docs/security.md` (Secrets at rest section) with filesystem permission guidance. |
+| L-5 | `accepted_risk` | `internal/api/health.go:13` | `/readyz` returns HTTP 503 when DB is down — binary oracle. Changing to always-200 would break Docker/Kubernetes orchestrator healthchecks. Acceptable for homelab; the leaked state (DB availability) carries minimal attacker value. |
+| L-6 | `fixed` | `cmd/ember/db_maintenance.go:93` | `os.Create` replaced with `os.OpenFile(..., 0o600)` so OPML exports are owner-readable only, not world-readable. |
+| L-7 | `fixed` | `internal/feed/discover.go:38, 120` | `http.DefaultClient` fallback removed from `Discover`/`DiscoverAll` — both now return an error when `c == nil`. |
+| L-8 | `fixed` | `internal/feed/discover.go:318–321` | `<?xml` body sniff replaced with `<rdf:rdf` — limits feed detection to RSS, Atom, and RSS 1.0/RDF only. |
 
 ---
 

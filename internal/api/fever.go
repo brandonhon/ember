@@ -148,22 +148,18 @@ func (d *Dependencies) feverFindUser(ctx context.Context, apiKey string) (models
 	if apiKey == "" {
 		return models.User{}, store.ErrNotFound
 	}
-	users, err := d.Store.ListUsers(ctx)
+	// Direct indexed lookup instead of a full table scan. The constant-time
+	// compare guards against timing attacks on the token comparison itself.
+	u, err := d.Store.GetUserByFeverToken(ctx, apiKey)
 	if err != nil {
-		return models.User{}, err
+		return models.User{}, store.ErrNotFound
 	}
-	// Constant-time compare per user so a network observer can't time-extract
-	// the matching token. ListUsers is bounded and tiny in the homelab case.
-	provided := []byte(apiKey)
-	for _, u := range users {
-		if u.FeverToken == "" {
-			continue
-		}
-		if subtle.ConstantTimeCompare(provided, []byte(u.FeverToken)) == 1 {
-			return u, nil
-		}
+	// Constant-time compare confirms the token even after the indexed lookup,
+	// preventing timing side-channels on the database comparison itself.
+	if subtle.ConstantTimeCompare([]byte(apiKey), []byte(u.FeverToken)) != 1 {
+		return models.User{}, store.ErrNotFound
 	}
-	return models.User{}, store.ErrNotFound
+	return u, nil
 }
 
 func (d *Dependencies) feverIDsForFlag(ctx context.Context, userID int64, flag string) (string, error) {

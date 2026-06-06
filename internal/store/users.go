@@ -72,6 +72,15 @@ func (s *Store) GetUserByUsername(ctx context.Context, username string) (models.
 	return scanUser(row)
 }
 
+// GetUserByFeverToken returns the user whose fever_token matches token.
+// Returns ErrNotFound when no user has that token.
+func (s *Store) GetUserByFeverToken(ctx context.Context, token string) (models.User, error) {
+	row := s.DB.QueryRowContext(ctx, `
+		SELECT id, username, IFNULL(email,''), password_hash, is_admin, settings_json, IFNULL(fever_token,''), created_at
+		FROM users WHERE fever_token = ? AND fever_token != ''`, token)
+	return scanUser(row)
+}
+
 // ListUsers returns all users ordered by id.
 func (s *Store) ListUsers(ctx context.Context) ([]models.User, error) {
 	rows, err := s.DB.QueryContext(ctx, `

@@ -17,8 +17,10 @@ import (
 // the app sits behind a TLS-terminating proxy these complement the proxy's
 // own; exposed directly they are the only source. `trusted` is the set of
 // proxy CIDRs whose X-Forwarded-Proto is believed when deciding whether the
-// edge connection is HTTPS (for the HSTS header).
-func SecurityHeaders(trusted []*net.IPNet) func(http.Handler) http.Handler {
+// edge connection is HTTPS (for the HSTS header). `hstsPreload` appends
+// "; preload" to the HSTS header — only enable after verifying the domain is
+// submitted (or will be submitted) to the HSTS preload list.
+func SecurityHeaders(trusted []*net.IPNet, hstsPreload bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			h := w.Header()
@@ -30,7 +32,11 @@ func SecurityHeaders(trusted []*net.IPNet) func(http.Handler) http.Handler {
 			// misleading no-op. Detect HTTPS from the connection or from a
 			// trusted proxy's X-Forwarded-Proto. 2 years + includeSubDomains.
 			if httpsDetected(r, trusted) {
-				h.Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
+				hsts := "max-age=63072000; includeSubDomains"
+				if hstsPreload {
+					hsts += "; preload"
+				}
+				h.Set("Strict-Transport-Security", hsts)
 			}
 			// Disable browser features we never use. Defense in depth against XSS
 			// chains that try to exfil via webcam, geolocation, etc.
