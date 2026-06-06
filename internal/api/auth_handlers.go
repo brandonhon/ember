@@ -3,6 +3,7 @@ package api
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
@@ -10,6 +11,8 @@ import (
 	"github.com/brandonhon/ember/internal/auth"
 	"github.com/brandonhon/ember/internal/store"
 )
+
+const maxSettingsJSON = 64 << 10 // 64 KiB
 
 type loginReq struct {
 	Username string `json:"username"`
@@ -165,6 +168,14 @@ func (d *Dependencies) handleUpdateSettings(w http.ResponseWriter, r *http.Reque
 	settings := req.SettingsJSON
 	if settings == "" {
 		settings = "{}"
+	}
+	if len(settings) > maxSettingsJSON {
+		writeError(w, http.StatusBadRequest, "bad_request", "settings too large (max 64 KiB)")
+		return
+	}
+	if !json.Valid([]byte(settings)) {
+		writeError(w, http.StatusBadRequest, "bad_request", "settings must be valid JSON")
+		return
 	}
 	if mapStoreError(w, d.Store.UpdateUser(r.Context(), u.ID, store.UpdateUserPatch{SettingsJSON: &settings})) {
 		return

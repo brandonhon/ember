@@ -13,8 +13,14 @@ import (
 // extracted article HTML is rendered verbatim via {@html} in the reader, so
 // every ingest path runs its body through this before it is stored — making
 // sanitization a peer of the CSP rather than the CSP being the sole defense.
+// RequireNoReferrerOnLinks adds rel="nofollow noreferrer noopener" to every
+// anchor, preventing tab-napping via target="_blank" links in feed content.
 // Compiled once; bluemonday policies are safe for concurrent use.
-var sanitizePolicy = bluemonday.UGCPolicy()
+var sanitizePolicy = func() *bluemonday.Policy {
+	p := bluemonday.UGCPolicy()
+	p.RequireNoReferrerOnLinks()
+	return p
+}()
 
 // SanitizeHTML strips dangerous markup from an untrusted HTML fragment and
 // returns render-safe HTML. Empty in, empty out.

@@ -40,10 +40,11 @@ func (d *Dependencies) handleCreateShare(w http.ResponseWriter, r *http.Request)
 func (d *Dependencies) handleListInbox(w http.ResponseWriter, r *http.Request) {
 	u, _ := auth.FromContext(r.Context())
 	q := r.URL.Query()
+	const maxInboxLimit = 200
 	limit := 50
 	if v := q.Get("limit"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil {
-			limit = n
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			limit = min(n, maxInboxLimit)
 		}
 	}
 	unseen := q.Get("unseen") == "1"
