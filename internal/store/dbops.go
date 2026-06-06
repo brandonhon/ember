@@ -33,9 +33,13 @@ func (s *Store) Backup(ctx context.Context, dir string) (BackupInfo, error) {
 	if _, err := os.Stat(out); err == nil {
 		return BackupInfo{}, fmt.Errorf("backup: %s already exists", out)
 	}
-	// VACUUM INTO can't bind a placeholder for the path, but we control the
-	// timestamp filename so no injection risk.
-	q := fmt.Sprintf("VACUUM INTO '%s'", strings.ReplaceAll(out, "'", "''"))
+	// VACUUM INTO can't bind a placeholder for the path. We control the
+	// timestamp filename; assert no single-quote in the path so a future
+	// refactor that exposes `dir` to user input can't cause SQL injection.
+	if strings.ContainsRune(out, '\'') {
+		return BackupInfo{}, fmt.Errorf("backup: path contains invalid character")
+	}
+	q := fmt.Sprintf("VACUUM INTO '%s'", out)
 	if _, err := s.DB.ExecContext(ctx, q); err != nil {
 		return BackupInfo{}, fmt.Errorf("backup: %w", err)
 	}

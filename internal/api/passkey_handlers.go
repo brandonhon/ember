@@ -95,6 +95,7 @@ func (d *Dependencies) handlePasskeyRegisterFinish(w http.ResponseWriter, r *htt
 		writeError(w, http.StatusServiceUnavailable, "webauthn_disabled", "passkeys are not configured")
 		return
 	}
+	u, _ := auth.FromContext(r.Context())
 	var req passkeyRegisterFinishReq
 	if !decodeJSON(w, r, &req) {
 		return
@@ -103,7 +104,7 @@ func (d *Dependencies) handlePasskeyRegisterFinish(w http.ResponseWriter, r *htt
 		writeError(w, http.StatusBadRequest, "bad_request", "session_id and response required")
 		return
 	}
-	pk, err := d.WebAuthn.FinishRegister(r.Context(), req.SessionID, req.Name, req.Response)
+	pk, err := d.WebAuthn.FinishRegister(r.Context(), req.SessionID, req.Name, req.Response, u.ID)
 	if errors.Is(err, store.ErrNotFound) {
 		writeError(w, http.StatusBadRequest, "session_expired", "registration ceremony expired")
 		return

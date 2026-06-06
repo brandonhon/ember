@@ -10,6 +10,7 @@ import (
 
 	"github.com/brandonhon/ember/internal/auth"
 	"github.com/brandonhon/ember/internal/opml"
+	"github.com/brandonhon/ember/internal/push"
 	"github.com/brandonhon/ember/internal/store"
 	"github.com/brandonhon/ember/internal/summarize"
 	"github.com/brandonhon/ember/internal/ttrss"
@@ -53,6 +54,9 @@ type Dependencies struct {
 	// AllowPrivateURLs disables the SSRF block on outbound HTTP fetches for
 	// homelab users who subscribe to LAN feeds. Off by default.
 	AllowPrivateURLs bool
+	// HSTSPreload appends "; preload" to the HSTS header. Enable only after
+	// the domain is submitted to the browser preload list.
+	HSTSPreload bool
 	// TrustedProxies is the set of proxy CIDRs (strings) whose X-Real-IP /
 	// X-Forwarded-Proto headers are honored. Empty = the app is the edge and
 	// trusts only the connection peer.
@@ -75,6 +79,13 @@ type Dependencies struct {
 	// first-ingest backlog window. The poller resolves the live value by
 	// preferring an app_settings row over this fallback.
 	InitialBacklogHoursFallback int
+	// Push fans out Web Push notifications. Nil disables the feature
+	// (the /api/me/push-* endpoints return 503).
+	Push *push.Notifier
+	// EmailDomain is the operator-configured EMBER_EMAIL_DOMAIN. When
+	// empty, the email-inbox endpoints return enabled=false / 503 and
+	// the SMTP listener doesn't start.
+	EmailDomain string
 }
 
 // backgroundCtx returns d.BackgroundCtx or context.Background if unset.
@@ -97,13 +108,13 @@ func NewRouter(d Dependencies) http.Handler {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Compress(5))
 	r.Use(middleware.Timeout(60 * time.Second))
-	r.Use(SecurityHeaders(trusted))
+	r.Use(SecurityHeaders(trusted, d.HSTSPreload))
 	r.Use(CSRFIssue(!d.TestMode))
 
 	// 405 responses must carry the security headers too. chi's default
 	// MethodNotAllowed handler runs outside the middleware chain, so register
 	// one that re-applies SecurityHeaders before writing the JSON error.
-	methodNotAllowed := SecurityHeaders(trusted)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	methodNotAllowed := SecurityHeaders(trusted, d.HSTSPreload)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
 	}))
 	r.MethodNotAllowed(methodNotAllowed.ServeHTTP)
@@ -216,6 +227,19 @@ func NewRouter(d Dependencies) http.Handler {
 		// Articles
 		r.With(d.Auth.RequireAuth).Get("/articles", d.handleListArticles)
 		r.With(d.Auth.RequireAuth).Get("/articles/{id}", d.handleGetArticle)
+		r.With(d.Auth.RequireAuth).Get("/articles/{id}/cluster", d.handleGetArticleCluster)
+		// Web Push (VAPID) — public key fetch, subscription CRUD, test send.
+		// All 503 if d.Push is nil. See internal/push.
+		r.With(d.Auth.RequireAuth).Get("/me/push-vapid-public-key", d.handleGetVapidKey)
+		r.With(d.Auth.RequireAuth).Get("/me/push-subscriptions", d.handleListPushSubscriptions)
+		r.With(d.Auth.RequireAuth).Post("/me/push-subscriptions", d.handleCreatePushSubscription)
+		r.With(d.Auth.RequireAuth).Delete("/me/push-subscriptions/{id}", d.handleDeletePushSubscription)
+		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/me/push-subscriptions/test", d.handleTestPushNotification)
+		// Email newsletter inbox (per-user address). Endpoints are always
+		// registered; the handlers return enabled=false / 503 when
+		// EMBER_EMAIL_DOMAIN isn't configured.
+		r.With(d.Auth.RequireAuth).Get("/me/inbox", d.handleGetInbox)
+		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/me/inbox/rotate", d.handleRotateInbox)
 		r.With(d.Auth.RequireAuth).Post("/articles/read", d.handleSetRead)
 		r.With(d.Auth.RequireAuth).Post("/articles/star", d.handleSetStar)
 		r.With(d.Auth.RequireAuth).Post("/articles/later", d.handleSetLater)
@@ -258,6 +282,7 @@ func NewRouter(d Dependencies) http.Handler {
 		// Filters
 		r.With(d.Auth.RequireAuth).Get("/filters", d.handleListFilters)
 		r.With(d.Auth.RequireAuth).Post("/filters", d.handleCreateFilter)
+		r.With(d.Auth.RequireAuth).Post("/filters/preview", d.handlePreviewFilter)
 		r.With(d.Auth.RequireAuth).Patch("/filters/{id}", d.handleUpdateFilter)
 		r.With(d.Auth.RequireAuth).Delete("/filters/{id}", d.handleDeleteFilter)
 

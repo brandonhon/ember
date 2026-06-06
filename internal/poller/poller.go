@@ -12,6 +12,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"golang.org/x/net/html"
+
 	"github.com/brandonhon/ember/internal/feed"
 	"github.com/brandonhon/ember/internal/filters"
 	"github.com/brandonhon/ember/internal/models"
@@ -404,10 +406,6 @@ var aggregatorHosts = map[string]bool{
 	"feedproxy.google.com": true,
 }
 
-// hrefRE captures URLs from <a href="..."> attributes in raw HTML. Used to
-// recover the real article link out of aggregator-style RSS bodies.
-var hrefRE = regexp.MustCompile(`(?i)href\s*=\s*"([^"]+)"`)
-
 // commentsResidueInner is the inner content pattern for "comments only"
 // snippets — text that is just "Comments", "View Comments", "Read more",
 // etc., optionally wrapped in nested tags (like <a>Comments</a>).
@@ -444,23 +442,42 @@ func hostOf(u string) string {
 }
 
 // firstExternalLink scans HTML for the first <a href="..."> whose host is not
-// one of the aggregator hosts and not the source host. Returns "" if nothing
-// usable is found.
-func firstExternalLink(html, sourceURL string) string {
+// one of the aggregator hosts and not the source host. Uses the
+// golang.org/x/net/html tokenizer so single-quoted, unquoted, and
+// case-varied attribute forms are handled correctly — regex-based parsing was
+// bypassable via attribute quoting tricks.
+func firstExternalLink(body, sourceURL string) string {
 	srcHost := hostOf(sourceURL)
-	for _, m := range hrefRE.FindAllStringSubmatch(html, -1) {
-		candidate := m[1]
-		host := hostOf(candidate)
-		if host == "" || host == srcHost {
+	tok := html.NewTokenizer(strings.NewReader(body))
+	for {
+		tt := tok.Next()
+		if tt == html.ErrorToken {
+			break
+		}
+		if tt != html.StartTagToken && tt != html.SelfClosingTagToken {
 			continue
 		}
-		if aggregatorHosts[host] {
+		t := tok.Token()
+		if t.Data != "a" {
 			continue
 		}
-		if !strings.HasPrefix(candidate, "http") {
-			continue
+		for _, attr := range t.Attr {
+			if !strings.EqualFold(attr.Key, "href") {
+				continue
+			}
+			candidate := attr.Val
+			host := hostOf(candidate)
+			if host == "" || host == srcHost {
+				break
+			}
+			if aggregatorHosts[host] {
+				break
+			}
+			if !strings.HasPrefix(candidate, "http") {
+				break
+			}
+			return candidate
 		}
-		return candidate
 	}
 	return ""
 }
@@ -560,7 +577,7 @@ func (p *Poller) applyFiltersForUser(ctx context.Context, userID int64, a models
 	if len(fs) == 0 {
 		return
 	}
-	out := filters.Apply(fs, a)
+	out := filters.Apply(fs, a, time.Now())
 	if !out.Any() {
 		return
 	}
@@ -572,6 +589,20 @@ func (p *Poller) applyFiltersForUser(ctx context.Context, userID int64, a models
 	if out.Star {
 		if err := p.Store.SetStarred(ctx, userID, a.ID, true); err != nil {
 			p.Logger.Warn("poller: filter star", "user_id", userID, "article_id", a.ID, "err", err)
+		}
+	}
+	for _, tag := range out.Tags {
+		if err := p.Store.AddArticleTag(ctx, userID, a.ID, tag); err != nil {
+			p.Logger.Warn("poller: filter tag", "user_id", userID, "article_id", a.ID, "tag", tag, "err", err)
+		}
+	}
+	for _, boardID := range out.BoardIDs {
+		if err := p.Store.AddArticleToBoard(ctx, userID, boardID, a.ID); err != nil {
+			// AddArticleToBoard already checks board ownership — cross-user
+			// safety. A miss returns ErrNotFound which we silently swallow.
+			if !errors.Is(err, store.ErrNotFound) {
+				p.Logger.Warn("poller: filter add_to_board", "user_id", userID, "article_id", a.ID, "board_id", boardID, "err", err)
+			}
 		}
 	}
 }
@@ -590,11 +621,17 @@ func (p *Poller) summaryWorker(ctx context.Context) {
 	}
 }
 
+// summaryBackfillLimit caps how many articles are enqueued for summarization
+// at startup. SummaryQueue (256) is the steady-state channel buffer; loading
+// the full backlog at boot would saturate Ollama for long stretches on a fresh
+// install or after a model change.
+const summaryBackfillLimit = 20
+
 // enqueuePendingSummaries reads articles with no summary_model from the store
 // and pushes them onto the summary worker channel. Bounded by the channel
 // buffer; runs in its own goroutine so it never blocks startup.
 func (p *Poller) enqueuePendingSummaries(ctx context.Context) {
-	ids, err := p.Store.ListUnsummarizedIDs(ctx, p.Config.SummaryQueue)
+	ids, err := p.Store.ListUnsummarizedIDs(ctx, min(summaryBackfillLimit, p.Config.SummaryQueue))
 	if err != nil {
 		p.Logger.Warn("poller: backfill summary queue", "err", err)
 		return

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"sync/atomic"
 	"time"
 
 	"github.com/brandonhon/ember/internal/summarize"
@@ -18,6 +19,11 @@ import (
 // from coaxing the Ollama daemon into pulling from an arbitrary registry or
 // dereferencing path-traversal components.
 var validModelName = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$`)
+
+// pullInProgress prevents concurrent model pulls. A single pull can block for
+// up to 30 minutes; allowing concurrent pulls would saturate Ollama and exhaust
+// server goroutines.
+var pullInProgress atomic.Bool
 
 func floatToStr(f float64) string { return strconv.FormatFloat(f, 'f', -1, 64) }
 func intToStr(i int) string       { return strconv.Itoa(i) }
@@ -190,6 +196,11 @@ func (d *Dependencies) handlePullLLMModel(w http.ResponseWriter, r *http.Request
 		writeError(w, http.StatusBadRequest, "bad_request", "invalid model name")
 		return
 	}
+	if !pullInProgress.CompareAndSwap(false, true) {
+		writeError(w, http.StatusConflict, "pull_in_progress", "a model pull is already running")
+		return
+	}
+	defer pullInProgress.Store(false)
 	// Override per-connection deadlines so the response can stay open for
 	// the duration of the pull. http.NewResponseController is the modern
 	// way to do this; errors mean the server doesn't support it (very old

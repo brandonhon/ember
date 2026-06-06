@@ -126,6 +126,15 @@ func normalizeItem(it *gofeed.Item, feedID int64, base *url.URL) models.Article 
 	}
 
 	a.ContentHash = ContentHash(a.URL, a.Title, a.ContentText)
+	// Canonical URL + cluster_id for cross-feed dedup. Empty in / empty out
+	// so articles without a URL (some feeds omit it) don't all hash to the
+	// same value and get falsely clustered.
+	a.CanonicalURL = CanonicalURL(a.URL)
+	a.ClusterID = ClusterID(a.CanonicalURL)
+	// Title fingerprint: secondary dedup signal for syndicated wire stories
+	// that get republished under different URLs. Empty for too-short /
+	// generic titles so they don't false-cluster.
+	a.TitleFingerprint = TitleFingerprint(a.Title)
 	return a
 }
 
@@ -157,7 +166,7 @@ func resolveLink(base *url.URL, ref string) string {
 
 // HTMLToText returns a plain-text representation of an HTML fragment,
 // extracting text nodes only. Exported for ingest paths that store a text
-// rendering alongside the HTML body (e.g. the TT-RSS import).
+// rendering alongside the HTML body (e.g. the TT-RSS import, email inbox).
 func HTMLToText(s string) string { return htmlToText(s) }
 
 // htmlToText returns a plain-text representation of an HTML fragment by
