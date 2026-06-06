@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/brandonhon/ember/internal/feed"
+	"github.com/brandonhon/ember/internal/urlcheck"
 )
 
 // TT-RSS virtual feed IDs (see API reference): -1 = Starred, 0 = Archived.
@@ -101,7 +102,10 @@ func (s *Service) apiClient(ctx context.Context) *http.Client {
 	if s.HTTPClient != nil {
 		return s.HTTPClient
 	}
-	c := &http.Client{Timeout: apiCallTimeout}
+	c := &http.Client{
+		Timeout:   apiCallTimeout,
+		Transport: urlcheck.GuardedTransport(s.AllowPrivateURLs),
+	}
 	if s.ValidateURL != nil {
 		c.CheckRedirect = feed.RedirectGuard(func(raw string) error {
 			return s.ValidateURL(ctx, raw)
@@ -125,7 +129,7 @@ func (s *Service) pull(ctx context.Context, client *http.Client, endpoint, sid s
 			res.Total++
 			inserted, skipped, err := s.save(ctx, userID, importFeedID, normItem{
 				guid:      h.GUID,
-				link:      h.Link,
+				link:      feed.SafeHTTPURL(h.Link),
 				title:     h.Title,
 				author:    h.Author,
 				content:   h.Content,
