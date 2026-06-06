@@ -40,6 +40,11 @@ type Config struct {
 	// AllowPrivateURLs disables the SSRF block on outbound HTTP fetches so a
 	// homelab can subscribe to feeds on its LAN. Default false (production).
 	AllowPrivateURLs bool
+	// HSTSPreload appends "; preload" to the Strict-Transport-Security header.
+	// Only enable after verifying the domain is (or will be) submitted to the
+	// HSTS preload list — it is a long-term, browser-level commitment.
+	// Set EMBER_HSTS_PRELOAD=true to enable.
+	HSTSPreload bool
 	// SMTP for daily digest emails. Configured = host + port + from. Username
 	// + password are optional (skipped when empty).
 	SMTPHost     string
@@ -239,6 +244,14 @@ func loadFrom(get func(string) string) (Config, error) {
 			errs = append(errs, fmt.Sprintf("EMBER_ALLOW_PRIVATE_URLS %v", err))
 		} else {
 			cfg.AllowPrivateURLs = on
+		}
+	}
+	if v := get("EMBER_HSTS_PRELOAD"); v != "" {
+		on, err := parseBool(v)
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("EMBER_HSTS_PRELOAD %v", err))
+		} else {
+			cfg.HSTSPreload = on
 		}
 	}
 	if v := get("EMBER_SMTP_HOST"); v != "" {
