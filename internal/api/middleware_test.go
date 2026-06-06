@@ -9,7 +9,7 @@ import (
 )
 
 func TestSecurityHeaders(t *testing.T) {
-	h := SecurityHeaders(nil)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	h := SecurityHeaders(nil, false)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	w := httptest.NewRecorder()
@@ -35,7 +35,7 @@ func TestSecurityHeaders(t *testing.T) {
 
 func TestSecurityHeaders_HSTSGating(t *testing.T) {
 	trusted := ParseTrustedProxies([]string{"10.0.0.0/8"})
-	h := SecurityHeaders(trusted)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	h := SecurityHeaders(trusted, false)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
