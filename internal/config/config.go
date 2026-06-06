@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -115,7 +116,15 @@ func loadFrom(get func(string) string) (Config, error) {
 	}
 	cfg.AdminPassword = get("EMBER_ADMIN_PASSWORD")
 	if v := get("EMBER_OLLAMA_URL"); v != "" {
-		cfg.OllamaURL = v
+		u, parseErr := url.Parse(v)
+		switch {
+		case parseErr != nil:
+			errs = append(errs, fmt.Sprintf("EMBER_OLLAMA_URL invalid: %v", parseErr))
+		case u.Scheme != "http" && u.Scheme != "https":
+			errs = append(errs, fmt.Sprintf("EMBER_OLLAMA_URL must use http or https scheme, got %q", u.Scheme))
+		default:
+			cfg.OllamaURL = v
+		}
 	}
 	if v := get("EMBER_OLLAMA_MODEL"); v != "" {
 		cfg.OllamaModel = v

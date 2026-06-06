@@ -110,6 +110,14 @@ func (s *Service) apiClient(ctx context.Context) *http.Client {
 		c.CheckRedirect = feed.RedirectGuard(func(raw string) error {
 			return s.ValidateURL(ctx, raw)
 		})
+	} else {
+		// Fail-safe: block all redirects when no validator is configured rather
+		// than forwarding them unchecked. ValidateURL should always be set in
+		// production; this prevents a misconfigured zero-value Service from
+		// silently opening an SSRF path via redirect chains.
+		c.CheckRedirect = func(*http.Request, []*http.Request) error {
+			return errors.New("ttrss: redirect blocked — ValidateURL not configured")
+		}
 	}
 	return c
 }
