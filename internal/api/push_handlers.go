@@ -1,6 +1,7 @@
 package api
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/brandonhon/ember/internal/auth"
@@ -46,7 +47,10 @@ func (d *Dependencies) handleCreatePushSubscription(w http.ResponseWriter, r *ht
 	// authenticated user probe internal services. Reject private/loopback
 	// targets at registration; redirects are re-checked by the push client.
 	if err := urlcheck.Check(r.Context(), req.Endpoint, d.AllowPrivateURLs); err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "endpoint rejected: "+err.Error())
+		// urlcheck errors carry the resolved IP — log server-side only so an
+		// authenticated user can't pivot this endpoint into a blind IP oracle.
+		slog.Default().Info("push: endpoint rejected", "user_id", u.ID, "err", err)
+		writeError(w, http.StatusBadRequest, "bad_request", "endpoint is not allowed")
 		return
 	}
 	id, err := d.Store.CreatePushSubscription(r.Context(), u.ID, req.Endpoint, req.P256dh, req.Auth, req.UserAgent)

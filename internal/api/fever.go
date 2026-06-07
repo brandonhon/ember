@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"crypto/subtle"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -136,7 +137,8 @@ func (d *Dependencies) handleFever(w http.ResponseWriter, r *http.Request) {
 			// Fever clients always expect 200; log the error but don't change
 			// the response so the client doesn't treat it as auth failure.
 			if markErr != nil {
-				_ = markErr
+				slog.Default().Warn("fever: mark item failed",
+					"user_id", user.ID, "mark", mark, "as", as, "id", id, "err", markErr)
 			}
 		}
 	}
