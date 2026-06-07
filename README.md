@@ -11,7 +11,7 @@ Three options, in order of effort. Each has a walkthrough in [docs/getting-start
 1. **Pre-built container** ([docs](https://brandonhon.github.io/ember/getting-started#run-from-the-released-container-image)) — `ghcr.io/brandonhon/ember:vX.Y.Z` (also `:X.Y`, `:X`, `:latest`). Multi-arch linux/amd64 + linux/arm64. Either `docker run` a single container to kick the tires, or swap the `build:` block in `deploy/docker-compose.yml` for `image: ghcr.io/brandonhon/ember:vX.Y.Z` to pull instead of building.
 2. **Pre-built binary** ([docs](https://brandonhon.github.io/ember/getting-started#run-from-a-pre-built-binary)) — download from [Releases](https://github.com/brandonhon/ember/releases). Four tarballs (`linux-{amd64,arm64}`, `darwin-{amd64,arm64}`) + `SHA256SUMS`. Includes a sample `systemd` unit.
    ```sh
-   VERSION=v0.6.0
+   VERSION=v0.8.4
    curl -L -o ember.tar.gz \
      "https://github.com/brandonhon/ember/releases/download/${VERSION}/ember-${VERSION}-linux-amd64.tar.gz"
    tar -xzf ember.tar.gz && ./ember --version
@@ -63,7 +63,7 @@ You'll land on an onboarding panel that points to starter packs or OPML import. 
 ### Search + filters
 - FTS5 full-text search; submitting from the topbar opens a dedicated results view.
 - Saved searches: persist a query as a sidebar entry.
-- Filter rules with `mark_read`, `star`, or `hide` actions.
+- Filter rules with `mark_read`, `star`, `hide`, `tag`, or `add_to_board` actions; eight match fields including feed, tags, `published_at`, and `has_image`; per-rule priority; Preview button counts last-7-day matches before save.
 - "Mute" popover in the reader actions adds a hide-by-keyword rule in one click.
 - Per-article user tags, with a `?tag=…` filter on the list endpoint.
 
@@ -135,12 +135,19 @@ You'll land on an onboarding panel that points to starter packs or OPML import. 
 | `EMBER_LOG_LEVEL` | `info` | slog level |
 | `EMBER_TEST_MODE` | `0` | enables fake fetcher/summarizer for e2e |
 | `EMBER_PUBLIC_URL` | _(unset)_ | canonical `scheme://host` users hit; required to enable passkey sign-in |
+| `EMBER_ALLOW_PRIVATE_URLS` | `0` | bypass SSRF block to subscribe to RFC1918 / loopback feeds (only set if you trust every user who can add feeds) |
+| `EMBER_SECURE_COOKIES` | `1` | `Secure` flag on session + CSRF cookies; set `0` only for deliberate plain-HTTP deployments |
+| `EMBER_TRUSTED_PROXIES` | _(unset)_ | CIDRs/IPs of fronting proxy; `X-Real-IP` + `X-Forwarded-Proto` are honored only from these peers |
+| `EMBER_HSTS_PRELOAD` | `0` | append `; preload` to the HSTS header; only set after submitting the domain to the preload list |
 | `EMBER_SMTP_HOST` | _(unset)_ | SMTP host; required to enable daily-digest emails |
 | `EMBER_SMTP_PORT` | `587` | SMTP port |
 | `EMBER_SMTP_USER` | _(unset)_ | SMTP auth user (optional) |
 | `EMBER_SMTP_PASSWORD` | _(unset)_ | SMTP auth password |
 | `EMBER_SMTP_FROM` | _(unset)_ | digest `From:` address |
 | `EMBER_SMTP_STARTTLS` | `1` | enable STARTTLS on submission ports |
+| `EMBER_EMAIL_DOMAIN` | _(unset)_ | enable per-user newsletter inbox; host part of generated addresses (see [docs/email-inbox.md](docs/email-inbox.md)) |
+| `EMBER_EMAIL_LISTEN_ADDR` | `:2525` | inbound SMTP bind address for the newsletter inbox |
+| `EMBER_EMAIL_MAX_BYTES` | `26214400` | per-message size cap (25 MiB) |
 
 ### Runtime-tunable settings (Settings UI)
 
