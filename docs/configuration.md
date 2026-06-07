@@ -36,6 +36,10 @@ Ember reads configuration from environment variables at startup. A handful of se
 | `EMBER_SESSION_TTL` | `24h` | Lifetime of a freshly-issued session cookie. Go duration (e.g. `30m`, `12h`, `168h`). Range-validated (5m–90d). Admin UI override in **Settings → Sessions** takes precedence when set. |
 | `EMBER_LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error`. |
 | `EMBER_TEST_MODE` | `0` | Seeds fake admin + articles; loosens cookie Secure flag; and (when `EMBER_SESSION_KEY` is unset) falls back to a **hardcoded, publicly-known session signing key** — session cookies become forgeable. Logs a loud warning at startup. **Never enable in production.** |
+| `EMBER_HSTS_PRELOAD` | `0` | Appends `; preload` to the `Strict-Transport-Security` header. Long-term, browser-level commitment — only set after the domain is (or will be) submitted to the [HSTS preload list](https://hstspreload.org). |
+| `EMBER_EMAIL_DOMAIN` | — | Enables the per-user newsletter inbox. Without it, the SMTP listener doesn't start and the inbox endpoints return `enabled: false`. See [Email newsletter inbox](/email-inbox) for the operator setup. |
+| `EMBER_EMAIL_LISTEN_ADDR` | `:2525` | Inbound SMTP bind address for the newsletter inbox. Front with Caddy layer4 / haproxy / nginx stream to publish on port 25. |
+| `EMBER_EMAIL_MAX_BYTES` | `26214400` (25 MiB) | Per-message size cap on inbound newsletter mail. |
 
 ## Runtime settings (persist across restarts)
 
