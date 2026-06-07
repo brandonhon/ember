@@ -17,6 +17,14 @@ const handleAlphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 // handleLen is the fixed character length of a generated handle.
 const handleLen = 12
 
+// GenerateHandle relies on `byte % len(handleAlphabet)` being bias-free,
+// which holds iff len(handleAlphabet) is a power of two (256 is divisible
+// by it). This compile-time assertion breaks the build if the alphabet
+// ever drifts to a non-power-of-two size — otherwise the bias would
+// reappear silently. The index is 0 for power-of-two lengths (valid) and
+// out of bounds otherwise (compile error).
+var _ = [1]struct{}{}[len(handleAlphabet)&(len(handleAlphabet)-1)]
+
 // GenerateHandle returns a fresh ~60-bit random handle.
 func GenerateHandle() (string, error) {
 	buf := make([]byte, handleLen)

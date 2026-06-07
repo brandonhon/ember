@@ -205,8 +205,68 @@ func seedTestData(ctx context.Context, st *store.Store, a *auth.Auth, logger *sl
 		}
 	}
 
+	// --- Layer 3: cross-feed dedup demo ----------------------------------
+	// Two scenarios so the "Also in N feeds" pill is visible end-to-end:
+	//
+	//   1. Wire story: same headline syndicated by Reuters and The Verge
+	//      within the 48h window. Title-fingerprint clustering collapses
+	//      them to one card; clicking the pill expands the sibling feed.
+	//
+	//   2. Tracking-param variants: HN linking to a Smashing piece — same
+	//      canonical URL (smashingmagazine.com/.../calm-web) with different
+	//      ?utm_*= query strings. CanonicalURL strips the trackers, so the
+	//      two rows share a cluster_id and collapse to one.
+	syndicated := []struct {
+		feed                                     int64
+		guid, title, author, url, image, summary string
+		body                                     string
+		agoMin                                   int64
+	}{
+		// Wire story pair — different URLs, same fingerprint, both Fresh.
+		{reuters, "wire-openai-compute-1",
+			"OpenAI signs $50B compute deal with chipmaker",
+			"Reuters Staff",
+			"https://reutersworld.test/openai-compute-deal",
+			img("compute"),
+			"A five-year capacity guarantee underscores AI's silicon appetite.\n\n• Multi-year, multi-country commitment\n• Custom accelerator silicon\n• On-prem buildouts in 4 countries",
+			"<p>OpenAI and a major fab-light chipmaker have signed a five-year, ~$50B capacity deal, a sign that hyperscaler appetite for guaranteed silicon supply continues to outpace the industry's ability to manufacture it.</p>", 8},
+		{verge, "wire-openai-compute-2",
+			"OpenAI Signs $50B Compute Deal With Chipmaker",
+			"Alex Heath",
+			"https://theverge.test/openai-50b-compute",
+			img("compute2"), "",
+			"<p>The Verge confirms the multi-year capacity deal with new details on which fabs are involved and how OpenAI plans to deploy the silicon across four regions.</p>", 14},
+
+		// Tracking-param pair — same canonical_url, distinct raw URLs.
+		{smashing, "track-calm-web-1",
+			"How to ship a fast, calm website in 2026",
+			"Adam Wathan",
+			"https://smashingmag.test/2026/calm-web?utm_source=newsletter&utm_medium=email",
+			img("perf"),
+			"Performance budgets, prefetch hints, and minimal JS.\n\n• Budget every kilobyte\n• Prefetch the next likely page\n• Default to no-JS until proven otherwise",
+			"<p>The web isn't slow because we don't know how to make it fast; it's slow because we don't budget for it. This post walks through a working perf budget and the small handful of techniques that move the needle in 2026.</p>", 22},
+		{hn, "track-calm-web-2",
+			"How to ship a fast, calm website in 2026",
+			"perf_curious",
+			"https://smashingmag.test/2026/calm-web?utm_source=hackernews&fbclid=xyz789",
+			img("perf"), "",
+			"<p>(link points at smashingmagazine.com — HN comment thread linked off this post.)</p>", 28},
+	}
+	for _, s := range syndicated {
+		if err := addArticle(s.feed, s.guid, models.Article{
+			Title:       s.title,
+			Author:      s.author,
+			URL:         s.url,
+			ImageURL:    s.image,
+			ContentHTML: s.body,
+			PublishedAt: now.Unix() - s.agoMin*60,
+		}, s.summary); err != nil {
+			return err
+		}
+	}
+
 	logger.Info("test mode: seeded fixtures",
-		"user", testAdminUser, "feeds", 6, "articles", 3+len(stories))
+		"user", testAdminUser, "feeds", 6, "articles", 3+len(stories)+len(syndicated))
 	return nil
 }
 
