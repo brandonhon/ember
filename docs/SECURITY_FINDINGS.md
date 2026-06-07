@@ -257,6 +257,49 @@ LOW — opportunistic:
 
 ---
 
+## Followup Review — 2026-06-07
+
+A second, independent Go-review pass over the post-v0.8.4 tree. Verified all 39 prior findings remediated and surfaced 3 additional issues — one parallel of an already-closed HIGH that was missed on a sibling handler, plus two opportunistic LOW items.
+
+**Prior remediations:** 39/39 verified intact, 0 regressions.
+
+### N-1 — Push Subscription Handler Leaks `urlcheck` Error to Client
+**Severity:** MEDIUM | **Status:** `fixed`
+**File:** `internal/api/push_handlers.go:48–53`
+**ATT&CK:** T1590, T1046 | **NIST CSF:** PR.DS-5, DE.CM-1 | **D3FEND:** D3-EHB
+
+`handleCreatePushSubscription` returned `"endpoint rejected: " + err.Error()` verbatim to the authenticated caller. The `urlcheck` error string embeds the resolved IP (e.g. `"URL resolves to a private or loopback address: 10.0.0.5 -> 169.254.169.254"`). This is the same class as H-6, which was closed on the feed-handler paths but missed on push. While only reachable by authenticated users, it still turns the endpoint into a blind internal-IP oracle for any logged-in account.
+
+Fix: log the underlying error server-side; return a generic `"endpoint is not allowed"` to the client.
+
+---
+
+### N-2 — `GenerateHandle` Modulo-Bias Invariant Not Asserted
+**Severity:** LOW | **Status:** `fixed`
+**File:** `internal/emailinbox/handle.go:14–25`
+**NIST CSF:** PR.DS-2
+
+`GenerateHandle` maps each random byte to the 32-character alphabet via `int(b) % len(handleAlphabet)`. The mapping is currently bias-free because `256 % 32 == 0`, but the invariant is implicit — any future change to a non-power-of-two alphabet length would silently reintroduce bias. Added a compile-time assertion (`var _ = [1]struct{}{}[len(handleAlphabet)&(len(handleAlphabet)-1)]`) that breaks the build if the alphabet length is ever not a power of two.
+
+---
+
+### N-3 — Fever Mark-Item Errors Silently Discarded
+**Severity:** LOW | **Status:** `fixed`
+**File:** `internal/api/fever.go:138–140`
+**NIST CSF:** DE.CM-1
+
+Per the Fever protocol, mark requests always return HTTP 200 — clients treat any other status as an auth failure. M-16 added `markErr` capture but the existing code immediately discarded it with `_ = markErr`. If `Store.SetRead`/`SetStarred` fails (DB locked, schema mismatch), the operator has no visibility while the client silently believes the state mutated. Now logs via `slog.Warn` with user/mark/as/id context before discarding for the protocol response.
+
+---
+
+## Static Analysis Baseline (2026-06-07)
+
+- `go vet ./...` — clean
+- `golangci-lint run` — clean (one expected dev-only embed stub for the SPA `dist/` when the web bundle hasn't been built)
+- `govulncheck ./...` — no known vulnerabilities
+
+---
+
 ## Positive Security Baseline (no action needed)
 
 - **argon2id** — correct params (64 MiB / 3 iter / 2 parallel), `crypto/rand` salt, constant-time verify, timing equalization on missing user
