@@ -111,6 +111,6 @@ The Fever-compatible endpoint (`/fever`) uses a per-user random 32-byte token st
 
 ## CVE posture
 
-- Go stdlib pinned to **1.26.3**.
+- Go stdlib pinned to **1.26.4**.
 - CI runs `go vet` and `govulncheck` on every push.
 - Dependabot opens PRs weekly for `gomod` + `npm` updates.
