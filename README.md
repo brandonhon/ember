@@ -70,6 +70,7 @@ You'll land on an onboarding panel that points to starter packs or OPML import. 
 ### Onboarding + organization
 - Five curated starter packs (Technology, Programming, Security, DevOps & Infra, World News).
 - OPML import/export. Optional scheduled OPML export to `/data/exports/`.
+- **Tiny Tiny RSS migration**: pull your subscriptions (recreating TT-RSS categories as folders) plus starred/archived articles from a running instance via its API, or upload an article export file. Already-subscribed feeds are skipped, so it's safe to re-run.
 - **Subscribe by URL**: paste either a feed URL or just the homepage. Ember follows `<link rel=alternate>` and probes common feed paths (`/feed`, `/rss`, `/atom.xml`, `/feed.xml`, `/index.xml`).
 - Drag-to-reorder feeds and folders.
 - Mark-all-read at view / feed / category scope.
