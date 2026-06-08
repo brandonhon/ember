@@ -61,6 +61,7 @@ type Result struct {
 	Total    int `json:"total"`    // <article> elements seen
 	Imported int `json:"imported"` // newly inserted (excludes duplicates)
 	Skipped  int `json:"skipped"`  // unusable (no guid/link)
+	Feeds    int `json:"feeds"`    // subscriptions migrated (full-migrate API pull only)
 }
 
 // article is one <article> node in the TT-RSS export. Unused fields

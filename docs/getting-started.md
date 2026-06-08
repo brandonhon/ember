@@ -127,9 +127,11 @@ Migrations are embedded in the binary and apply automatically on startup; no man
 **Settings → Import & migrate** brings your existing library across — none of it touches feeds you've already added:
 
 - **OPML** — import your subscription list (or export Ember's at any time).
-- **Tiny Tiny RSS** — import your **starred & archived articles**, either by uploading the export file or pulling them live from a running instance. For the live pull, enable *Settings → Preferences → Enable API access* in TT-RSS first; if it's served under a subpath (e.g. `https://example.com/tt-rss`), include that — Ember appends `/api/`. Credentials are used only for the import and are never stored.
+- **Tiny Tiny RSS** — two ways:
+  - **Migrate from a running instance** (live pull) — brings over your **subscriptions** (recreating your TT-RSS categories as folders) **and** your **starred & archived articles** in one shot. Tick which parts to include. Enable *Settings → Preferences → Enable API access* in TT-RSS first; if it's served under a subpath (e.g. `https://example.com/tt-rss`), include that — Ember appends `/api/`. Credentials are used only for the import and are never stored.
+  - **Upload an export file** — the TT-RSS import/export plugin produces an `.xml` of your **starred & archived articles only**. Export files don't contain your feed list, so to migrate subscriptions use the live pull above or import an OPML export.
 
-Imported articles arrive starred (and marked read) in a dedicated, non-polling feed, so they show up in **Starred** immediately without re-fetching your old sources.
+Imported articles arrive starred (and marked read) in a dedicated, non-polling feed, so they show up in **Starred** immediately without re-fetching your old sources. Migrated subscriptions are picked up by the poller on its next cycle and backfill normally.
 
 ## Run from a pre-built binary
 

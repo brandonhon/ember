@@ -188,10 +188,11 @@ export const api = {
     url: string;
     username: string;
     password: string;
+    import_feeds: boolean;
     import_starred: boolean;
     import_archived: boolean;
   }) =>
-    call<{ total: number; imported: number; skipped: number }>(
+    call<{ total: number; imported: number; skipped: number; feeds: number }>(
       "POST",
       "/api/feeds/import-ttrss-api",
       body,

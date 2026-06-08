@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/brandonhon/ember/internal/feed"
+	"github.com/brandonhon/ember/internal/models"
+	"github.com/brandonhon/ember/internal/store"
 	"github.com/brandonhon/ember/internal/urlcheck"
 )
 
@@ -22,9 +24,15 @@ const (
 	feedArchived = 0
 )
 
+// getFeeds cat_id sentinel: -4 returns every subscribed feed regardless of
+// category. Each returned feed still carries its real cat_id for folder mapping.
+const feedsCatAll = -4
+
 const (
 	headlineLimit  = 200      // page size for getHeadlines
+	feedsLimit     = 200      // page size for getFeeds
 	maxArticles    = 100_000  // safety cap on a single pull
+	maxFeeds       = 10_000   // safety cap on a single subscription enumeration
 	maxAPIResponse = 16 << 20 // cap per API response body
 	apiCallTimeout = 30 * time.Second
 )
@@ -34,20 +42,23 @@ type APIOptions struct {
 	BaseURL        string
 	Username       string
 	Password       string
+	ImportFeeds    bool // migrate subscriptions (getFeeds) + recreate categories
 	ImportStarred  bool
 	ImportArchived bool
 }
 
-// ImportFromAPI logs into a running TT-RSS instance and pulls the user's
-// Starred and/or Archived articles via getHeadlines, storing them in the same
-// import feed (starred + read) as the file path. Credentials are used only for
-// this call and never persisted.
+// ImportFromAPI logs into a running TT-RSS instance and migrates the user's
+// account: when ImportFeeds is set it re-subscribes them to every TT-RSS feed
+// (recreating categories as folders); when ImportStarred/ImportArchived are set
+// it pulls those articles via getHeadlines into the parked import feed (starred
+// + read), as the file path does. Credentials are used only for this call and
+// never persisted.
 //
 // Note: the TT-RSS JSON API is disabled by default — the source user must
 // enable "API access" in their TT-RSS preferences first.
 func (s *Service) ImportFromAPI(ctx context.Context, userID int64, opt APIOptions) (Result, error) {
 	var res Result
-	if !opt.ImportStarred && !opt.ImportArchived {
+	if !opt.ImportFeeds && !opt.ImportStarred && !opt.ImportArchived {
 		return res, errors.New("ttrss: nothing selected to import")
 	}
 	endpoint := apiEndpoint(opt.BaseURL)
@@ -64,24 +75,138 @@ func (s *Service) ImportFromAPI(ctx context.Context, userID int64, opt APIOption
 	}
 	defer s.logout(ctx, client, endpoint, sid) // best effort
 
-	feedID, err := s.ensureImportFeed(ctx, userID)
-	if err != nil {
-		return res, err
-	}
-
-	var feeds []int
-	if opt.ImportStarred {
-		feeds = append(feeds, feedStarred)
-	}
-	if opt.ImportArchived {
-		feeds = append(feeds, feedArchived)
-	}
-	for _, fid := range feeds {
-		if err := s.pull(ctx, client, endpoint, sid, fid, userID, feedID, &res); err != nil {
+	// Subscriptions first so the user's feed list/folders are in place before
+	// the (potentially long) article pull.
+	if opt.ImportFeeds {
+		if err := s.importSubscriptions(ctx, client, endpoint, sid, userID, &res); err != nil {
 			return res, err
 		}
 	}
+
+	if opt.ImportStarred || opt.ImportArchived {
+		feedID, err := s.ensureImportFeed(ctx, userID)
+		if err != nil {
+			return res, err
+		}
+		var feeds []int
+		if opt.ImportStarred {
+			feeds = append(feeds, feedStarred)
+		}
+		if opt.ImportArchived {
+			feeds = append(feeds, feedArchived)
+		}
+		for _, fid := range feeds {
+			if err := s.pull(ctx, client, endpoint, sid, fid, userID, feedID, &res); err != nil {
+				return res, err
+			}
+		}
+	}
 	return res, nil
+}
+
+// importSubscriptions enumerates the user's TT-RSS feeds (getFeeds, all
+// categories) and re-subscribes them in ember, recreating TT-RSS categories as
+// ember folders. New feeds land with next_fetch=0 so the poller backfills their
+// articles on its next tick — no inline fetch here, which keeps a several-
+// hundred-feed migration fast. SSRF-blocked feed URLs are skipped (non-fatal),
+// matching OPML import. res.Feeds counts feeds successfully subscribed.
+func (s *Service) importSubscriptions(ctx context.Context, client *http.Client, endpoint, sid string, userID int64, res *Result) error {
+	cats, err := s.getCategories(ctx, client, endpoint, sid)
+	if err != nil {
+		return err
+	}
+	catNames := make(map[int]string, len(cats))
+	for _, c := range cats {
+		catNames[int(c.ID)] = c.Title
+	}
+	emberCat := make(map[int]*int64) // TT-RSS cat id -> ember category id (cached)
+
+	offset := 0
+	for offset < maxFeeds {
+		feeds, err := s.getFeeds(ctx, client, endpoint, sid, offset)
+		if err != nil {
+			return err
+		}
+		if len(feeds) == 0 {
+			break
+		}
+		for _, f := range feeds {
+			url := strings.TrimSpace(f.FeedURL)
+			if url == "" {
+				continue // virtual/special feed (no real source URL)
+			}
+			if s.ValidateURL != nil {
+				if err := s.ValidateURL(ctx, url); err != nil {
+					continue // SSRF-blocked — skip, don't abort the migration
+				}
+			}
+			catID, err := s.resolveCategory(ctx, userID, int(f.CatID), catNames, emberCat)
+			if err != nil {
+				return err
+			}
+			title := strings.TrimSpace(f.Title)
+			if title == "" {
+				title = url
+			}
+			fd, err := s.Store.UpsertFeed(ctx, models.Feed{URL: url, Title: title})
+			if err != nil {
+				return fmt.Errorf("ttrss: ensure subscribed feed: %w", err)
+			}
+			before, err := s.Store.Subscribe(ctx, models.Subscription{
+				UserID: userID, FeedID: fd.ID, CategoryID: catID,
+			})
+			if err != nil {
+				return fmt.Errorf("ttrss: subscribe: %w", err)
+			}
+			// Best-effort: file a previously-uncategorized sub into its folder.
+			if before.ID > 0 && before.CategoryID == nil && catID != nil {
+				_ = s.Store.UpdateSubscription(ctx, userID, before.ID,
+					store.UpdateSubscriptionPatch{CategoryID: catID})
+			}
+			res.Feeds++
+		}
+		offset += len(feeds)
+		if len(feeds) < feedsLimit {
+			break // last page
+		}
+	}
+	return nil
+}
+
+// resolveCategory maps a TT-RSS category id to an ember category id, creating
+// the ember category on first use and caching the result. Returns nil for
+// uncategorized (TT-RSS cat 0), virtual categories (negative), or any category
+// with no usable name — those feeds land uncategorized.
+func (s *Service) resolveCategory(ctx context.Context, userID int64, ttCatID int, catNames map[int]string, emberCat map[int]*int64) (*int64, error) {
+	if id, ok := emberCat[ttCatID]; ok {
+		return id, nil
+	}
+	name := strings.TrimSpace(catNames[ttCatID])
+	if ttCatID <= 0 || name == "" || strings.EqualFold(name, "Uncategorized") {
+		emberCat[ttCatID] = nil
+		return nil, nil
+	}
+	c, err := s.Store.CreateCategory(ctx, models.Category{UserID: userID, Name: name})
+	switch {
+	case errors.Is(err, store.ErrConflict):
+		existing, lerr := s.Store.ListCategories(ctx, userID)
+		if lerr != nil {
+			return nil, lerr
+		}
+		for i := range existing {
+			if existing[i].Name == name {
+				emberCat[ttCatID] = &existing[i].ID
+				return &existing[i].ID, nil
+			}
+		}
+		emberCat[ttCatID] = nil // conflict but not found — treat as uncategorized
+		return nil, nil
+	case err != nil:
+		return nil, err
+	default:
+		emberCat[ttCatID] = &c.ID
+		return &c.ID, nil
+	}
 }
 
 // apiEndpoint normalizes a user-entered base URL to the TT-RSS API endpoint
@@ -185,6 +310,64 @@ type headline struct {
 	Content string `json:"content"` // only present with show_content=true
 	Author  string `json:"author"`
 	Updated int64  `json:"updated"` // unix seconds
+}
+
+// flexInt decodes an id that TT-RSS may send as either a JSON number or a
+// quoted string — getCategories returns string ids on some versions while
+// getFeeds returns a numeric cat_id, so both ends of the folder mapping must
+// tolerate either form.
+type flexInt int
+
+func (f *flexInt) UnmarshalJSON(b []byte) error {
+	s := strings.Trim(string(b), `"`)
+	if s == "" || s == "null" {
+		*f = 0
+		return nil
+	}
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		return fmt.Errorf("ttrss: bad integer id %q: %w", s, err)
+	}
+	*f = flexInt(n)
+	return nil
+}
+
+type ttCategory struct {
+	ID    flexInt `json:"id"`
+	Title string  `json:"title"`
+}
+
+type ttFeed struct {
+	ID      flexInt `json:"id"`
+	Title   string  `json:"title"`
+	FeedURL string  `json:"feed_url"`
+	CatID   flexInt `json:"cat_id"`
+}
+
+func (s *Service) getCategories(ctx context.Context, client *http.Client, endpoint, sid string) ([]ttCategory, error) {
+	var cats []ttCategory
+	err := s.call(ctx, client, endpoint, map[string]any{
+		"op": "getCategories", "sid": sid,
+	}, &cats)
+	if err != nil {
+		return nil, err
+	}
+	return cats, nil
+}
+
+func (s *Service) getFeeds(ctx context.Context, client *http.Client, endpoint, sid string, offset int) ([]ttFeed, error) {
+	var fs []ttFeed
+	err := s.call(ctx, client, endpoint, map[string]any{
+		"op":     "getFeeds",
+		"sid":    sid,
+		"cat_id": feedsCatAll,
+		"limit":  feedsLimit,
+		"offset": offset,
+	}, &fs)
+	if err != nil {
+		return nil, err
+	}
+	return fs, nil
 }
 
 func (s *Service) login(ctx context.Context, client *http.Client, endpoint, user, pass string) (string, error) {
