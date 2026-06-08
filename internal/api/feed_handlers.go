@@ -317,6 +317,7 @@ type ttrssAPIReq struct {
 	URL            string `json:"url"`
 	Username       string `json:"username"`
 	Password       string `json:"password"`
+	ImportFeeds    bool   `json:"import_feeds"`
 	ImportStarred  bool   `json:"import_starred"`
 	ImportArchived bool   `json:"import_archived"`
 }
@@ -337,14 +338,16 @@ func (d *Dependencies) handleTTRSSAPIImport(w http.ResponseWriter, r *http.Reque
 		writeError(w, http.StatusBadRequest, "bad_request", "url and username required")
 		return
 	}
-	// Default to both when the client sends neither flag.
-	if !req.ImportStarred && !req.ImportArchived {
-		req.ImportStarred, req.ImportArchived = true, true
+	// Default to a full migrate (subscriptions + starred + archived) when the
+	// client sends no selection flags.
+	if !req.ImportFeeds && !req.ImportStarred && !req.ImportArchived {
+		req.ImportFeeds, req.ImportStarred, req.ImportArchived = true, true, true
 	}
 	res, err := d.TTRSS.ImportFromAPI(r.Context(), u.ID, ttrss.APIOptions{
 		BaseURL:        req.URL,
 		Username:       req.Username,
 		Password:       req.Password,
+		ImportFeeds:    req.ImportFeeds,
 		ImportStarred:  req.ImportStarred,
 		ImportArchived: req.ImportArchived,
 	})

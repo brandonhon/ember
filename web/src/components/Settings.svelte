@@ -97,6 +97,7 @@
   let ttUrl = $state("");
   let ttUser = $state("");
   let ttPass = $state("");
+  let ttFeeds = $state(true);
   let ttStarred = $state(true);
   let ttArchived = $state(true);
   let importBusy = $state(false);
@@ -110,8 +111,8 @@
       importErr = "URL and username are required";
       return;
     }
-    if (!ttStarred && !ttArchived) {
-      importErr = "Pick at least one of Starred / Archived";
+    if (!ttFeeds && !ttStarred && !ttArchived) {
+      importErr = "Pick at least one of Subscriptions / Starred / Archived";
       return;
     }
     importErr = "";
@@ -122,10 +123,20 @@
         url: ttUrl.trim(),
         username: ttUser.trim(),
         password: ttPass,
+        import_feeds: ttFeeds,
         import_starred: ttStarred,
         import_archived: ttArchived,
       });
-      importMsg = `Imported ${res.data.imported} of ${res.data.total} articles.`;
+      const parts: string[] = [];
+      if (ttFeeds) {
+        let s = `${res.data.feeds} new subscriptions`;
+        if (res.data.feeds_existing > 0)
+          s += ` (${res.data.feeds_existing} already subscribed, skipped)`;
+        parts.push(s);
+      }
+      if (ttStarred || ttArchived)
+        parts.push(`${res.data.imported} of ${res.data.total} articles`);
+      importMsg = `Migrated ${parts.join(" and ")}.`;
       await refreshSidebar();
     } catch (e) {
       importErr = e instanceof ApiError ? e.message : String(e);
@@ -1491,9 +1502,9 @@
 
           <div class="import-card">
             <h4>Tiny Tiny RSS</h4>
-            <p class="import-sub">Import your starred &amp; archived articles from a running instance or an export file.</p>
+            <p class="import-sub">Migrate your subscriptions and starred &amp; archived articles from a running instance, or upload an article export file.</p>
             <div class="import-seg" role="tablist">
-              <button role="tab" class:on={importTab === "live"} on:click={() => (importTab = "live")} data-testid="ttrss-tab-live">Pull from running TT-RSS</button>
+              <button role="tab" class:on={importTab === "live"} on:click={() => (importTab = "live")} data-testid="ttrss-tab-live">Migrate from running TT-RSS</button>
               <button role="tab" class:on={importTab === "file"} on:click={() => (importTab = "file")} data-testid="ttrss-tab-file">Upload export file</button>
             </div>
             {#if importTab === "live"}
@@ -1507,15 +1518,16 @@
                 <input type="password" bind:value={ttPass} disabled={importBusy} data-testid="ttrss-pass" />
               </label>
               <div class="import-checks">
+                <label class="inline"><input type="checkbox" bind:checked={ttFeeds} disabled={importBusy} data-testid="ttrss-feeds" /> Subscriptions &amp; folders</label>
                 <label class="inline"><input type="checkbox" bind:checked={ttStarred} disabled={importBusy} /> Starred</label>
                 <label class="inline"><input type="checkbox" bind:checked={ttArchived} disabled={importBusy} /> Archived</label>
               </div>
-              <p class="import-note">Enable “API access” in your TT-RSS Preferences first. If TT-RSS lives under a subpath (e.g. <code>/tt-rss</code>), include it — we append <code>/api/</code>. Credentials are used only for this import and never stored.</p>
+              <p class="import-note">Feeds you’re already subscribed to are skipped, so it’s safe to run more than once. Enable “API access” in your TT-RSS Preferences first. If TT-RSS lives under a subpath (e.g. <code>/tt-rss</code>), include it — we append <code>/api/</code>. Credentials are used only for this import and never stored.</p>
               <div class="actions">
-                <button on:click={ttrssLivePull} disabled={importBusy} data-testid="ttrss-start">{importBusy ? "Importing…" : "Start import"}</button>
+                <button on:click={ttrssLivePull} disabled={importBusy} data-testid="ttrss-start">{importBusy ? "Importing…" : "Start migration"}</button>
               </div>
             {:else}
-              <p class="import-note">Export your Starred &amp; Archived articles from TT-RSS (the import/export plugin produces an <code>.xml</code> file), then upload it here.</p>
+              <p class="import-note">Export your Starred &amp; Archived articles from TT-RSS (the import/export plugin produces an <code>.xml</code> file), then upload it here. <strong>Subscriptions aren’t included in this file</strong> — to bring over your feed list, use “Migrate from running TT-RSS” above, or import an OPML export below.</p>
               <div class="actions">
                 <button on:click={() => ttrssFileInput?.click()} disabled={importBusy} data-testid="ttrss-file-pick">Choose .xml file…</button>
               </div>
