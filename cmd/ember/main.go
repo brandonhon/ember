@@ -267,7 +267,10 @@ func run() error {
 	} else if cfg.AdminUser != "" && cfg.AdminPassword != "" {
 		u, created, err := a.BootstrapAdmin(ctx, cfg.AdminUser, cfg.AdminPassword)
 		if err != nil {
-			logger.Warn("bootstrap admin failed", "err", err)
+			// Fail fast: a bad first-run admin (e.g. too-short password) leaves
+			// the app with no usable account. Surface it at startup instead of
+			// limping on with login broken.
+			return fmt.Errorf("bootstrap admin: %w", err)
 		} else if created {
 			logger.Warn("created first-run admin — change the password!", "user", u.Username)
 		}
