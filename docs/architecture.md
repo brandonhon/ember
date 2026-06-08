@@ -32,7 +32,7 @@ internal/feed/                gofeed wrapper + readability fallback fetcher + Di
 internal/filters/             matcher (field/op/value), apply outcome combiner
 internal/models/              data types shared across packages
 internal/opml/                OPML import + export + discovery → subscribe
-internal/ttrss/               Tiny Tiny RSS import — XML export parser + live JSON API client → one non-polling "Imported" feed
+internal/ttrss/               Tiny Tiny RSS migration — XML export parser (articles → one non-polling "Imported" feed) + live JSON API client (subscriptions + categories→folders, plus starred/archived articles)
 internal/poller/              adaptive scheduler, fetch dispatch, summary queue
 internal/store/               SQLite CRUD, FTS5 search, app_settings KV, dbops, passkeys, digests, cluster backfill + sibling lookup
 internal/summarize/           Summarizer interface + Ollama implementation + noop for tests

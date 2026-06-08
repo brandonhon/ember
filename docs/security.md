@@ -51,7 +51,7 @@ Surfaces covered:
 - `POST /api/feeds` (add feed)
 - `POST /api/feeds/discover` (multi-feed picker — the target page and every advertised feed link is validated before fetching)
 - `POST /api/feeds/import` (OPML import — each `xmlUrl` is filtered)
-- `POST /api/feeds/import-ttrss-api` (TT-RSS live pull — the API endpoint is validated and the client carries `feed.RedirectGuard`; the user-supplied TT-RSS credentials are held only for the request and never persisted). The file upload `POST /api/feeds/import-ttrss` makes no outbound request, and `javascript:`/`data:` article links in the export are dropped.
+- `POST /api/feeds/import-ttrss-api` (TT-RSS live pull / full migrate — the API endpoint is validated and the client carries `feed.RedirectGuard`; the user-supplied TT-RSS credentials are held only for the request and never persisted). When subscriptions are migrated, every feed URL returned by `getFeeds` is run through `urlcheck.Check` before subscribing (a blocked URL is skipped, not fatal). The file upload `POST /api/feeds/import-ttrss` makes no outbound request, and `javascript:`/`data:` article links in the export are dropped.
 - Poller readability enrichment (Lobsters / HN aggregator → external link)
 - Feed fetcher redirects
 - `POST /api/articles/{id}/extract` (on-demand Re-extract) — runs the same `urlcheck.Check` before fetching the article URL through readability.
@@ -69,7 +69,7 @@ Outbound mail (digests + the test message) never sends credentials or message bo
 
 - `decodeJSON` wraps the body in `http.MaxBytesReader` capped at **1 MiB**.
 - OPML import body capped at **8 MiB** (and the parser reads at most 10 MiB).
-- TT-RSS file import capped at **50 MiB** (the streaming XML parser reads at most that); the live API pull paginates and stops at 100k articles.
+- TT-RSS file import capped at **50 MiB** (the streaming XML parser reads at most that); the live API pull paginates and stops at 100k articles, and the subscription migration paginates `getFeeds` and stops at 10k feeds.
 - Fever (`/fever`) form body capped at **64 KiB**.
 - Request headers capped at **64 KiB** (`http.Server.MaxHeaderBytes`).
 - `/api/articles/read` (and other bulk endpoints) accept at most **1000** ids per request; `/api/articles?limit=` is clamped to **200**.
