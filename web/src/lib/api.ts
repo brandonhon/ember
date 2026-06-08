@@ -192,11 +192,13 @@ export const api = {
     import_starred: boolean;
     import_archived: boolean;
   }) =>
-    call<{ total: number; imported: number; skipped: number; feeds: number }>(
-      "POST",
-      "/api/feeds/import-ttrss-api",
-      body,
-    ),
+    call<{
+      total: number;
+      imported: number;
+      skipped: number;
+      feeds: number;
+      feeds_existing: number;
+    }>("POST", "/api/feeds/import-ttrss-api", body),
 
   // Articles ----------------------------------------------------------
   listArticles: (q: ListArticlesQuery = {}) => {

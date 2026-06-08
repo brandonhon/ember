@@ -105,11 +105,13 @@ func (s *Service) ImportFromAPI(ctx context.Context, userID int64, opt APIOption
 }
 
 // importSubscriptions enumerates the user's TT-RSS feeds (getFeeds, all
-// categories) and re-subscribes them in ember, recreating TT-RSS categories as
-// ember folders. New feeds land with next_fetch=0 so the poller backfills their
-// articles on its next tick — no inline fetch here, which keeps a several-
-// hundred-feed migration fast. SSRF-blocked feed URLs are skipped (non-fatal),
-// matching OPML import. res.Feeds counts feeds successfully subscribed.
+// categories) and subscribes them in ember, recreating TT-RSS categories as
+// ember folders. Feeds the user is already subscribed to are skipped (counted
+// in res.FeedsExisting) and left untouched — re-running a migration never
+// re-adds or re-files an existing feed. New feeds land with next_fetch=0 so the
+// poller backfills their articles on its next tick — no inline fetch here,
+// which keeps a several-hundred-feed migration fast. SSRF-blocked feed URLs are
+// skipped (non-fatal), matching OPML import. res.Feeds counts NEW subscriptions.
 func (s *Service) importSubscriptions(ctx context.Context, client *http.Client, endpoint, sid string, userID int64, res *Result) error {
 	cats, err := s.getCategories(ctx, client, endpoint, sid)
 	if err != nil {
@@ -120,6 +122,18 @@ func (s *Service) importSubscriptions(ctx context.Context, client *http.Client, 
 		catNames[int(c.ID)] = c.Title
 	}
 	emberCat := make(map[int]*int64) // TT-RSS cat id -> ember category id (cached)
+
+	// Snapshot the feeds the user is already subscribed to so we skip them
+	// rather than re-subscribe (and re-count) — same dedup pattern as the
+	// starter-pack import.
+	existing, err := s.Store.ListFeedsForUser(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("ttrss: list existing feeds: %w", err)
+	}
+	have := make(map[string]bool, len(existing))
+	for _, f := range existing {
+		have[f.URL] = true
+	}
 
 	offset := 0
 	for offset < maxFeeds {
@@ -134,6 +148,10 @@ func (s *Service) importSubscriptions(ctx context.Context, client *http.Client, 
 			url := strings.TrimSpace(f.FeedURL)
 			if url == "" {
 				continue // virtual/special feed (no real source URL)
+			}
+			if have[url] {
+				res.FeedsExisting++
+				continue // already subscribed — don't add again
 			}
 			if s.ValidateURL != nil {
 				if err := s.ValidateURL(ctx, url); err != nil {
@@ -152,17 +170,12 @@ func (s *Service) importSubscriptions(ctx context.Context, client *http.Client, 
 			if err != nil {
 				return fmt.Errorf("ttrss: ensure subscribed feed: %w", err)
 			}
-			before, err := s.Store.Subscribe(ctx, models.Subscription{
+			if _, err := s.Store.Subscribe(ctx, models.Subscription{
 				UserID: userID, FeedID: fd.ID, CategoryID: catID,
-			})
-			if err != nil {
+			}); err != nil {
 				return fmt.Errorf("ttrss: subscribe: %w", err)
 			}
-			// Best-effort: file a previously-uncategorized sub into its folder.
-			if before.ID > 0 && before.CategoryID == nil && catID != nil {
-				_ = s.Store.UpdateSubscription(ctx, userID, before.ID,
-					store.UpdateSubscriptionPatch{CategoryID: catID})
-			}
+			have[url] = true // guard against duplicate URLs across pages
 			res.Feeds++
 		}
 		offset += len(feeds)

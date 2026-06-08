@@ -335,6 +335,39 @@ func TestImportFromAPI_FullMigrate(t *testing.T) {
 	}
 }
 
+func TestImportFromAPI_MigrateDedupsExisting(t *testing.T) {
+	srv := fakeTTRSS(t)
+	defer srv.Close()
+	svc, u := newAPISvc(t, srv)
+	ctx := context.Background()
+	opt := APIOptions{BaseURL: srv.URL, Username: "a", Password: "p", ImportFeeds: true}
+
+	first, err := svc.ImportFromAPI(ctx, u.ID, opt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Feeds != 3 || first.FeedsExisting != 0 {
+		t.Fatalf("first run = %+v, want Feeds=3 FeedsExisting=0", first)
+	}
+
+	second, err := svc.ImportFromAPI(ctx, u.ID, opt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.Feeds != 0 || second.FeedsExisting != 3 {
+		t.Errorf("re-migrate = %+v, want Feeds=0 FeedsExisting=3 (all already subscribed)", second)
+	}
+
+	// No duplicate feed rows were created.
+	feeds, err := svc.Store.ListFeedsForUser(ctx, u.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(feeds) != 3 {
+		t.Errorf("feed count = %d after re-migrate, want 3 (no dupes)", len(feeds))
+	}
+}
+
 func TestImportFromAPI_MigrateSkipsSSRFFeed(t *testing.T) {
 	srv := fakeTTRSS(t)
 	defer srv.Close()

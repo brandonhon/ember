@@ -128,7 +128,12 @@
         import_archived: ttArchived,
       });
       const parts: string[] = [];
-      if (ttFeeds) parts.push(`${res.data.feeds} subscriptions`);
+      if (ttFeeds) {
+        let s = `${res.data.feeds} new subscriptions`;
+        if (res.data.feeds_existing > 0)
+          s += ` (${res.data.feeds_existing} already subscribed, skipped)`;
+        parts.push(s);
+      }
       if (ttStarred || ttArchived)
         parts.push(`${res.data.imported} of ${res.data.total} articles`);
       importMsg = `Migrated ${parts.join(" and ")}.`;
@@ -1517,7 +1522,7 @@
                 <label class="inline"><input type="checkbox" bind:checked={ttStarred} disabled={importBusy} /> Starred</label>
                 <label class="inline"><input type="checkbox" bind:checked={ttArchived} disabled={importBusy} /> Archived</label>
               </div>
-              <p class="import-note">Enable “API access” in your TT-RSS Preferences first. If TT-RSS lives under a subpath (e.g. <code>/tt-rss</code>), include it — we append <code>/api/</code>. Credentials are used only for this import and never stored.</p>
+              <p class="import-note">Feeds you’re already subscribed to are skipped, so it’s safe to run more than once. Enable “API access” in your TT-RSS Preferences first. If TT-RSS lives under a subpath (e.g. <code>/tt-rss</code>), include it — we append <code>/api/</code>. Credentials are used only for this import and never stored.</p>
               <div class="actions">
                 <button on:click={ttrssLivePull} disabled={importBusy} data-testid="ttrss-start">{importBusy ? "Importing…" : "Start migration"}</button>
               </div>

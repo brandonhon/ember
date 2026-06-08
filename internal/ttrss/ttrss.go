@@ -58,10 +58,11 @@ func NewService(s *store.Store) *Service {
 
 // Result summarizes an import run.
 type Result struct {
-	Total    int `json:"total"`    // <article> elements seen
-	Imported int `json:"imported"` // newly inserted (excludes duplicates)
-	Skipped  int `json:"skipped"`  // unusable (no guid/link)
-	Feeds    int `json:"feeds"`    // subscriptions migrated (full-migrate API pull only)
+	Total         int `json:"total"`          // <article> elements seen
+	Imported      int `json:"imported"`       // newly inserted (excludes duplicates)
+	Skipped       int `json:"skipped"`        // unusable (no guid/link)
+	Feeds         int `json:"feeds"`          // NEW subscriptions created (full-migrate API pull only)
+	FeedsExisting int `json:"feeds_existing"` // feeds skipped because already subscribed
 }
 
 // article is one <article> node in the TT-RSS export. Unused fields
