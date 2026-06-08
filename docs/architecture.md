@@ -9,7 +9,8 @@ caddy ─┬─> ember (Go binary)
        │     ├─ HTTP API + Fever shim + SPA serve
        │     ├─ Background poller (per-feed adaptive ticker)
        │     ├─ Summary worker pool (Ollama HTTP client)
-       │     └─ DB maintenance goroutine (backup / cleanup / OPML / hourly)
+       │     ├─ DB maintenance goroutine (backup / cleanup / OPML / hourly)
+       │     └─ Cluster backfill goroutine (one-time at startup; idempotent)
        │
        └─> SPA (embedded static files served by ember)
 
@@ -101,7 +102,7 @@ Each feed has `next_fetch` (unix seconds) and an `error_count`. The poller:
 2. Due feeds fan out across `EMBER_POLL_CONCURRENCY` worker goroutines.
 3. Each worker calls `Fetcher.Fetch(url, etag, last_modified)`:
    - 304 → bookkeep last_fetched/next_fetch, error_count = 0.
-   - 2xx → parse with gofeed, optionally enrich short bodies via go-readability, upsert articles.
+   - 2xx → parse with gofeed, optionally enrich short bodies via go-readability, upsert articles (the upsert stamps `canonical_url`, `cluster_id`, and `title_fingerprint` so cross-feed dedup keys are populated at ingest, not only by backfill).
    - Error → increment error_count, schedule next try with exponential backoff (capped at `MaxInterval`).
 4. Newly-inserted articles enqueue on `summaryCh` (best-effort, drops on full).
 5. Filters apply per-subscriber as articles land.
