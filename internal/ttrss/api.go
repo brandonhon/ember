@@ -33,6 +33,7 @@ const (
 	feedsLimit     = 200      // page size for getFeeds
 	maxArticles    = 100_000  // safety cap on a single pull
 	maxFeeds       = 10_000   // safety cap on a single subscription enumeration
+	maxCategories  = 5_000    // safety cap on getCategories (unpaginated)
 	maxAPIResponse = 16 << 20 // cap per API response body
 	apiCallTimeout = 30 * time.Second
 )
@@ -332,7 +333,7 @@ type headline struct {
 type flexInt int
 
 func (f *flexInt) UnmarshalJSON(b []byte) error {
-	s := strings.Trim(string(b), `"`)
+	s := strings.TrimSpace(strings.Trim(string(b), `"`))
 	if s == "" || s == "null" {
 		*f = 0
 		return nil
@@ -364,6 +365,11 @@ func (s *Service) getCategories(ctx context.Context, client *http.Client, endpoi
 	}, &cats)
 	if err != nil {
 		return nil, err
+	}
+	// getCategories is unpaginated; bound how many we map so a hostile server
+	// can't return a giant list (getFeeds is already capped at maxFeeds).
+	if len(cats) > maxCategories {
+		cats = cats[:maxCategories]
 	}
 	return cats, nil
 }
