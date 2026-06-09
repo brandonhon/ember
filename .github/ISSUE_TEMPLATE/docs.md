@@ -2,7 +2,7 @@
 name: Documentation issue
 about: Something in the docs is wrong, missing, or unclear
 title: ''
-labels: docs
+labels: documentation
 ---
 
 ## Where
