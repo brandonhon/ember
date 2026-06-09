@@ -466,6 +466,11 @@ export interface AdminSettings {
     starttls: boolean;
   };
   initial_backlog_hours: number;
+  // Adaptive per-feed fetch-interval floor ("check feeds every…"), in seconds,
+  // with the hard bounds the UI uses to constrain its control.
+  poll_min_interval_seconds: number;
+  poll_min_interval_floor_seconds: number;
+  poll_min_interval_ceil_seconds: number;
 }
 
 // AdminSettingsPatch mirrors the backend's pointer-bag: only fields included
@@ -481,6 +486,7 @@ export interface AdminSettingsPatch {
     starttls?: boolean;
   };
   initial_backlog_hours?: number;
+  poll_min_interval_seconds?: number;
 }
 
 export interface TopFeed {

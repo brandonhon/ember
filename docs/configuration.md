@@ -33,6 +33,7 @@ Ember reads configuration from environment variables at startup. A handful of se
 | `EMBER_FRESH_WINDOW` | `6h` | How recent an article must be to appear in the "Fresh" smart view. Fresh lists recent **unread** articles, matching its sidebar badge. |
 | `EMBER_POLL_CONCURRENCY` | `8` | Number of feed-fetch worker goroutines. |
 | `EMBER_POLL_TICK` | `60s` | How often the poller scans for feeds due to fetch. |
+| `EMBER_POLL_MIN_INTERVAL` | `30m` | Floor for the adaptive per-feed fetch interval ("check feeds every…"). Active feeds settle near this value; quiet feeds back off up to 6h. Range-validated **5m–24h**. Admins can change it at runtime in **Settings → (Email/Data) → Feed check interval** (persisted in `app_settings`, overrides this env default, no restart needed). |
 | `EMBER_SESSION_TTL` | `24h` | Lifetime of a freshly-issued session cookie. Go duration (e.g. `30m`, `12h`, `168h`). Range-validated (5m–90d). Admin UI override in **Settings → Sessions** takes precedence when set. |
 | `EMBER_LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error`. |
 | `EMBER_TEST_MODE` | `0` | Seeds fake admin + articles; loosens cookie Secure flag; and (when `EMBER_SESSION_KEY` is unset) falls back to a **hardcoded, publicly-known session signing key** — session cookies become forgeable. Logs a loud warning at startup. **Never enable in production.** |

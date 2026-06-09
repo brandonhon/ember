@@ -104,8 +104,9 @@ Each feed has `next_fetch` (unix seconds) and an `error_count`. The poller:
    - 304 → bookkeep last_fetched/next_fetch, error_count = 0.
    - 2xx → parse with gofeed, optionally enrich short bodies via go-readability, upsert articles (the upsert stamps `canonical_url`, `cluster_id`, and `title_fingerprint` so cross-feed dedup keys are populated at ingest, not only by backfill).
    - Error → increment error_count, schedule next try with exponential backoff (capped at `MaxInterval`).
-4. Newly-inserted articles enqueue on `summaryCh` (best-effort, drops on full).
-5. Filters apply per-subscriber as articles land.
+4. `next_fetch` is set by `AdaptiveInterval`, clamped to `[floor, MaxInterval]`. The **floor** is runtime-configurable — `EMBER_POLL_MIN_INTERVAL` (default 30m) overlaid by the `poll_min_interval_seconds` `app_settings` row (admin UI), resolved live per fetch and clamped to the hard bounds `store.PollMinInterval{Floor,Ceil}` (5m–24h).
+5. Newly-inserted articles enqueue on `summaryCh` (best-effort, drops on full).
+6. Filters apply per-subscriber as articles land.
 
 The summary worker is a separate goroutine that drains `summaryCh`, calls Ollama, writes `summary` + `summary_model` + `cleaned_html`. Failures stamp `summary_model = 'skipped'` so the article still surfaces in the UI.
 

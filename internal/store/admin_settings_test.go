@@ -3,7 +3,41 @@ package store
 import (
 	"context"
 	"testing"
+	"time"
 )
+
+func TestResolvePollMinInterval(t *testing.T) {
+	s := NewTest(t)
+	ctx := context.Background()
+	fb := 30 * time.Minute
+
+	// Unset → fallback.
+	if got := s.ResolvePollMinInterval(ctx, fb); got != fb {
+		t.Errorf("unset: got %v, want fallback %v", got, fb)
+	}
+
+	// Round-trips a valid value.
+	if err := s.PutPollMinInterval(ctx, time.Hour); err != nil {
+		t.Fatal(err)
+	}
+	if got := s.ResolvePollMinInterval(ctx, fb); got != time.Hour {
+		t.Errorf("after put 1h: got %v, want 1h", got)
+	}
+
+	// Put clamps out-of-range values to the hard bounds.
+	if err := s.PutPollMinInterval(ctx, time.Minute); err != nil { // below floor
+		t.Fatal(err)
+	}
+	if got := s.ResolvePollMinInterval(ctx, fb); got != PollMinIntervalFloor {
+		t.Errorf("below floor: got %v, want %v", got, PollMinIntervalFloor)
+	}
+	if err := s.PutPollMinInterval(ctx, 48*time.Hour); err != nil { // above ceil
+		t.Fatal(err)
+	}
+	if got := s.ResolvePollMinInterval(ctx, fb); got != PollMinIntervalCeil {
+		t.Errorf("above ceil: got %v, want %v", got, PollMinIntervalCeil)
+	}
+}
 
 func TestResolveSMTPSettings_FallbackWhenUnset(t *testing.T) {
 	s := NewTest(t)
