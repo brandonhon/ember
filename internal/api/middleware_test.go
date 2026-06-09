@@ -31,6 +31,12 @@ func TestSecurityHeaders(t *testing.T) {
 	if got := w.Header().Get("Strict-Transport-Security"); got != "" {
 		t.Errorf("HSTS should be absent over plain HTTP, got %q", got)
 	}
+	// img-src must allow data: — the dynamic tab favicon is a canvas-rasterized
+	// data:image/png; without this the browser blocks it and the favicon
+	// disappears. Regression guard for that fix.
+	if csp := w.Header().Get("Content-Security-Policy"); !strings.Contains(csp, "img-src 'self' https: data:") {
+		t.Errorf("CSP img-src must allow data: for the favicon, got %q", csp)
+	}
 }
 
 func TestSecurityHeaders_HSTSGating(t *testing.T) {

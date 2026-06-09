@@ -46,13 +46,17 @@ func SecurityHeaders(trusted []*net.IPNet, hstsPreload bool) func(http.Handler) 
 			// CSP — locked down to the same origin except for the Google Fonts
 			// stylesheets and webfonts. The mockup's typography is critical to
 			// the design language. img-src allows any https: origin because
-			// feeds embed third-party article images; style-src allows
-			// 'unsafe-inline' for the SPA's scoped styles. Both are accepted
-			// trade-offs for a self-hosted reader (documented in security docs).
+			// feeds embed third-party article images; it also allows data: so
+			// the dynamic tab favicon works — App.svelte rasterizes the SVG mark
+			// (with the unread-dot overlay) to a data:image/png via canvas and
+			// assigns it to <link rel=icon>, which the browser fetches under
+			// img-src. style-src allows 'unsafe-inline' for the SPA's scoped
+			// styles. All accepted trade-offs for a self-hosted reader
+			// (documented in security docs).
 			h.Set("Content-Security-Policy",
 				"default-src 'self'; "+
 					"script-src 'self'; "+
-					"img-src 'self' https:; "+
+					"img-src 'self' https: data:; "+
 					"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "+
 					"font-src 'self' https://fonts.gstatic.com; "+
 					"connect-src 'self'; "+
