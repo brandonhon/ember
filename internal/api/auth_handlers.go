@@ -58,6 +58,12 @@ type meResponse struct {
 	// server uses for the Fresh badge + Fresh list. Zero/missing on the
 	// client falls back to 6h to match the server's own fallback.
 	FreshWindowSeconds int64 `json:"fresh_window_seconds"`
+	// SummariesEnabled tells the SPA whether AI summarization is wired up
+	// on this server. False when EMBER_DISABLE_SUMMARIES=1 or no Ollama
+	// summarizer is configured (e.g. test mode). The Sidebar uses this to
+	// hide the per-feed "Resummarize" action that would otherwise enqueue
+	// work for a worker pool that isn't running.
+	SummariesEnabled bool `json:"summaries_enabled"`
 }
 
 // Version is populated by main.go at startup so /api/me can surface it.
@@ -93,6 +99,7 @@ func (d *Dependencies) handleMe(w http.ResponseWriter, r *http.Request) {
 		FeverAPIKey:        u.FeverToken,
 		Version:            Version,
 		FreshWindowSeconds: int64(fw.Seconds()),
+		SummariesEnabled:   d.Ollama != nil,
 	}
 	writeData(w, http.StatusOK, resp, nil)
 }

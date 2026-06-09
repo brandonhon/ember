@@ -223,6 +223,18 @@ func TestAuth_Login_LogoutMe(t *testing.T) {
 	if code := get(t, cl, h.srv.URL+"/api/me", &me); code != http.StatusOK {
 		t.Errorf("/me = %d", code)
 	}
+	// summaries_enabled tells the SPA whether to show the Resummarize
+	// action; defaults to false here since the test harness has no Ollama.
+	data, _ := me["data"].(map[string]any)
+	if data == nil {
+		t.Fatal("/me missing data envelope")
+	}
+	if _, ok := data["summaries_enabled"]; !ok {
+		t.Error("/me response missing summaries_enabled field")
+	}
+	if v, _ := data["summaries_enabled"].(bool); v != false {
+		t.Errorf("summaries_enabled = %v, want false (no Ollama wired in tests)", v)
+	}
 
 	// Bad creds → 401.
 	jar, _ := newJar()
