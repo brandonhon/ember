@@ -2,6 +2,23 @@ import { test, expect } from "@playwright/test";
 import { signIn } from "./helpers";
 
 test.describe("reading", () => {
+  // workers:1 + one shared SQLite DB for the whole run, so read-state persists
+  // across tests. Fresh now lists only *unread* recent articles (q.Unread=true,
+  // matching the Fresh badge), so:
+  //   - the Fresh assertion must run BEFORE any story is opened (read), and
+  //   - any test that re-finds an already-opened story navigates via the feed
+  //     view (read-independent), not Fresh.
+
+  test("Fresh smart view filters out older articles", async ({ page }) => {
+    await signIn(page);
+    // Sidebar defaults to Fresh; recent *unread* fixtures appear, the 2-day-old
+    // one does not. Runs first so story-1/story-2 are still unread here.
+    await page.getByTestId("view-fresh").click();
+    await expect(page.getByTestId("story-1")).toBeVisible();
+    await expect(page.getByTestId("story-2")).toBeVisible();
+    await expect(page.getByTestId("story-3")).toHaveCount(0);
+  });
+
   test("opening an article reveals the reader pane with its content", async ({ page }) => {
     await signIn(page);
     await page.getByTestId("story-1").click();
@@ -14,6 +31,9 @@ test.describe("reading", () => {
 
   test("star toggle persists across reload", async ({ page }) => {
     await signIn(page);
+    // story-1 was opened (read) by the previous test, and Fresh now hides read
+    // articles — reach it through the feed view, which lists read + unread.
+    await page.getByTestId("feed-1").click();
     await page.getByTestId("story-1").click();
     const starBtn = page.getByTestId("reader-star");
     await expect(starBtn).toBeVisible();
@@ -24,21 +44,12 @@ test.describe("reading", () => {
 
     await page.reload();
     // After reload we need to log in via cookie (the session cookie is still
-    // present in the browser context). Article list comes up, click the
-    // starred story again.
+    // present in the browser context). Reload resets the view to Fresh, so
+    // navigate back to the feed to re-find the now read + starred story.
     await expect(page.getByTestId("article-list")).toBeVisible();
+    await page.getByTestId("feed-1").click();
     await page.getByTestId("story-1").click();
     await expect(page.getByTestId("reader-star")).toContainText("Starred");
-  });
-
-  test("Fresh smart view filters out older articles", async ({ page }) => {
-    await signIn(page);
-    // Sidebar defaults to Fresh on load; the seeded fixtures with published_at
-    // within the last hour appear, the 2-day-old one does not.
-    await page.getByTestId("view-fresh").click();
-    await expect(page.getByTestId("story-1")).toBeVisible();
-    await expect(page.getByTestId("story-2")).toBeVisible();
-    await expect(page.getByTestId("story-3")).toHaveCount(0);
   });
 
   test("the m keyboard shortcut toggles read state of the selected article", async ({ page }) => {
