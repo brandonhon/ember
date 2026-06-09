@@ -53,6 +53,7 @@ export default defineConfig({
           { text: 'Introduction', link: '/' },
           { text: 'Getting started', link: '/getting-started' },
           { text: 'Configuration', link: '/configuration' },
+          { text: 'Upgrading', link: '/upgrading' },
         ],
       },
       // Features section hidden until these ship in a release — Web Push
