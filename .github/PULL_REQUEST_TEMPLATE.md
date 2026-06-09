@@ -15,7 +15,7 @@
 - [ ] Tests added or updated (Go + Playwright as appropriate)
 - [ ] `make verify` passes locally
 - [ ] `make web-check` passes (if SPA touched)
-- [ ] Conventional commit prefix (`feat`, `fix`, `chore`, `docs`, `sec`, `refactor`, `style`, `test`)
+- [ ] Conventional commit prefix (`feat`, `fix`, `chore`, `docs`, `ci`, `deploy`, `security`, `release`, `test`, `refactor`)
 - [ ] No new `panic()` calls in handlers or stores
 - [ ] User-scoped DB queries include `WHERE user_id = ?`
 - [ ] Migrations append-only (no edits to committed `.sql` files)
