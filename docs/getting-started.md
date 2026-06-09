@@ -91,7 +91,7 @@ Use the bundled `deploy/docker-compose.yml` but swap the `ember` service's local
 -    build:
 -      context: ..
 -      dockerfile: Dockerfile
-+    image: ghcr.io/brandonhon/ember:v0.6.0   # pin to a release; or :latest
++    image: ghcr.io/brandonhon/ember:v0.8.8   # pin to a release; or :latest
 ```
 
 Then everything else works as in [Stack install](#stack-install-recommended) — `docker compose up -d` pulls the released image instead of building one locally. Pinning a specific `vX.Y.Z` tag means your stack only updates when you re-pull, which is what you want for a homelab.
@@ -104,7 +104,7 @@ docker compose up -d ember         # restart with the new image
 docker compose logs -f ember       # watch migrations run on first boot
 ```
 
-Migrations are embedded in the binary and apply automatically on startup; no manual step.
+Migrations are embedded in the binary and apply automatically on startup; no manual step. **Back up first** and see [Upgrading](/upgrading) for the full procedure (binary upgrades, verifying, and rolling back).
 
 ## First-run checklist
 
