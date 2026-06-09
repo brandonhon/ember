@@ -17,6 +17,11 @@ export const appVersion = writable<string>("");
 // Used by ArticleList.svelte's isFresh() so the client filter matches the
 // server's CountSmartViews query. 6h default until /api/me resolves.
 export const freshWindowSeconds = writable<number>(6 * 3600);
+// Whether AI summarization is configured on this server. Sidebar hides
+// the per-feed Resummarize action when false (EMBER_DISABLE_SUMMARIES=1
+// or no Ollama backend). Default true so existing deployments don't
+// regress the action's visibility while /api/me is in flight.
+export const summariesEnabled = writable<boolean>(true);
 
 export async function refreshMe(): Promise<User | null> {
   try {
@@ -27,6 +32,7 @@ export async function refreshMe(): Promise<User | null> {
     if (res.data.fresh_window_seconds && res.data.fresh_window_seconds > 0) {
       freshWindowSeconds.set(res.data.fresh_window_seconds);
     }
+    summariesEnabled.set(res.data.summaries_enabled !== false);
     return res.data.user;
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) {
