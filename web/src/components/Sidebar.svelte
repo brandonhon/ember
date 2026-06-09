@@ -9,6 +9,7 @@
     loadArticles,
     refreshSidebar,
     savedSearches,
+    summariesEnabled,
   } from "../lib/stores";
   import { api, ApiError } from "../lib/api";
   import type { DiscoveredFeed, FeedWithCounts } from "../lib/types";
@@ -574,9 +575,11 @@
         <button on:click={() => toggleMute(f)} data-testid="feed-mute-{f.id}">
           {f.muted ? "Unmute" : "Mute"}
         </button>
-        <button on:click={() => resummarize(f)} data-testid="feed-resummarize-{f.id}">
-          Resummarize
-        </button>
+        {#if $summariesEnabled}
+          <button on:click={() => resummarize(f)} data-testid="feed-resummarize-{f.id}">
+            Resummarize
+          </button>
+        {/if}
         <button class="danger" on:click={() => deleteFeed(f)} data-testid="feed-delete-{f.id}">
           Delete
         </button>
