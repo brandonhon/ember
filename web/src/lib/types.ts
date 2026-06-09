@@ -21,6 +21,11 @@ export interface MeResponse {
   // on the server if unset, but the client also defaults to 6h on
   // missing/zero to be defensive.
   fresh_window_seconds: number;
+  // Whether AI summarization is configured on this server. False when
+  // EMBER_DISABLE_SUMMARIES=1 or no Ollama backend is wired. The Sidebar
+  // hides the per-feed Resummarize action when this is false so the
+  // action doesn't enqueue work for a worker pool that isn't running.
+  summaries_enabled: boolean;
 }
 
 export interface Category {

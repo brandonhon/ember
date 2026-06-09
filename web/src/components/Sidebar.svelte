@@ -9,6 +9,7 @@
     loadArticles,
     refreshSidebar,
     savedSearches,
+    summariesEnabled,
   } from "../lib/stores";
   import { api, ApiError } from "../lib/api";
   import type { DiscoveredFeed, FeedWithCounts } from "../lib/types";
@@ -187,7 +188,9 @@
   }
   function onDragOver(e: DragEvent, target: DragRef) {
     if (!drag || drag.kind !== target.kind) return;
-    if (drag.kind === "feed" && target.kind === "feed" && drag.cat !== target.cat) return;
+    // Feeds: cross-category drops are allowed — onFeedDrop updates the
+    // subscription's category_id alongside the position. Folders drag only
+    // within the folder list.
     e.preventDefault();
     if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
     dropTarget = target;
@@ -233,18 +236,51 @@
       onDragEnd();
       return;
     }
-    const sameCat = drag.cat === (target.category_id ?? 0);
-    if (!sameCat) {
-      onDragEnd();
-      return;
+    const targetCat = target.category_id ?? 0;
+    const crossCat = drag.cat !== targetCat;
+
+    // For cross-category drops, first move the subscription into the target
+    // category (or out of any category when targetCat === 0). The reorder
+    // call below then slots it at the target's position in the new list.
+    if (crossCat) {
+      try {
+        // Pointer-to-pointer: CategoryID *int64 — *p=0 sets NULL on the
+        // server (matches "no category"), *p>0 sets the new category.
+        await api.updateFeed(drag.id, { category_id: targetCat });
+      } catch (err) {
+        console.error("updateFeed category", err);
+        await refreshSidebar();
+        onDragEnd();
+        return;
+      }
     }
-    // Reorder within the affected category. Server takes ids in display order;
-    // we only send the affected slice (feeds in this category), since
-    // ReorderSubscriptions only updates the rows it sees.
-    const list = (target.category_id
-      ? grouped.byCat.get(target.category_id) ?? []
-      : grouped.uncat).slice();
-    const ids = list.map((f) => f.subscription_id);
+
+    // Optimistic local update: mutate the feeds store so the dragged feed
+    // lives in the target category before the server roundtrip finishes.
+    if (crossCat) {
+      feeds.update((fs) => fs.map((f) =>
+        f.subscription_id === drag!.id
+          ? { ...f, category_id: targetCat > 0 ? targetCat : undefined }
+          : f
+      ));
+    }
+
+    // Now build the target category's feed list, including the dragged feed,
+    // and compute new positions. Server takes ids in display order;
+    // ReorderSubscriptions only updates the rows it sees so per-category
+    // reorder is safe.
+    const allFeeds = (() => {
+      // Re-read after the optimistic update above.
+      let snapshot: FeedWithCounts[] = [];
+      const unsub = feeds.subscribe((v) => (snapshot = v));
+      unsub();
+      return snapshot;
+    })();
+    const targetList = allFeeds.filter((f) =>
+      (f.category_id ?? 0) === targetCat
+    );
+    const ids = targetList.map((f) => f.subscription_id);
+    // The dragged feed is in targetList now (we updated category_id above).
     const from = ids.indexOf(drag.id);
     const to = ids.indexOf(target.subscription_id);
     if (from < 0 || to < 0) {
@@ -253,7 +289,8 @@
     }
     const [moved] = ids.splice(from, 1);
     ids.splice(to, 0, moved);
-    // Mutate the feeds store: reorder within this category.
+    // Re-sort the store so the visual order matches the new ids order
+    // within the target category.
     feeds.update((fs) => {
       const sub2pos = new Map(ids.map((id, i) => [id, i] as const));
       return fs.slice().sort((a, b) => {
@@ -574,9 +611,11 @@
         <button on:click={() => toggleMute(f)} data-testid="feed-mute-{f.id}">
           {f.muted ? "Unmute" : "Mute"}
         </button>
-        <button on:click={() => resummarize(f)} data-testid="feed-resummarize-{f.id}">
-          Resummarize
-        </button>
+        {#if $summariesEnabled}
+          <button on:click={() => resummarize(f)} data-testid="feed-resummarize-{f.id}">
+            Resummarize
+          </button>
+        {/if}
         <button class="danger" on:click={() => deleteFeed(f)} data-testid="feed-delete-{f.id}">
           Delete
         </button>

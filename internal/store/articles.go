@@ -353,6 +353,11 @@ LEFT JOIN article_state st ON st.article_id = a.id AND st.user_id = ?`
 	case "unread":
 		q.Unread = true
 	case "fresh":
+		// Fresh = recent + unread, matching CountSmartViews.Fresh. Without
+		// this, the list shows every article in the time window (read +
+		// unread) while the sidebar badge counts only unread — users see
+		// "Fresh 4" but click in and find 50 items.
+		q.Unread = true
 		// FreshAfter expected to be set by caller
 	case "today":
 		// caller can set FreshAfter to start-of-day
