@@ -132,6 +132,7 @@ You'll land on an onboarding panel that points to starter packs or OPML import. 
 | `EMBER_FRESH_WINDOW` | `6h` | "Fresh" cutoff |
 | `EMBER_POLL_CONCURRENCY` | `8` | poller workers |
 | `EMBER_POLL_TICK` | `60s` | scheduler tick |
+| `EMBER_POLL_MIN_INTERVAL` | `30m` | per-feed fetch floor ("check feeds every…"), 5m–24h; Settings → Feed check interval overrides at runtime |
 | `EMBER_SESSION_TTL` | `24h` | session cookie lifetime (5m–90d); Settings → Sessions overrides at runtime |
 | `EMBER_LOG_LEVEL` | `info` | slog level |
 | `EMBER_TEST_MODE` | `0` | enables fake fetcher/summarizer for e2e |

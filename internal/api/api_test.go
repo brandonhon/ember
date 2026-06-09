@@ -183,6 +183,23 @@ func del(t *testing.T, c *http.Client, url string) int {
 	return resp.StatusCode
 }
 
+func patch(t *testing.T, c *http.Client, url string, body, dst any) int {
+	t.Helper()
+	buf, _ := json.Marshal(body)
+	req, _ := http.NewRequest(http.MethodPatch, url, bytes.NewReader(buf))
+	req.Header.Set("Content-Type", "application/json")
+	echoCSRF(c, url, req)
+	resp, err := c.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if dst != nil {
+		_ = json.NewDecoder(resp.Body).Decode(dst)
+	}
+	return resp.StatusCode
+}
+
 // echoCSRF reads the ember_csrf cookie from the client's jar (if present) and
 // echoes it back as the X-Ember-CSRF header. No-op when no cookie is set
 // (e.g. before login).
@@ -1009,3 +1026,51 @@ func TestDigest_EmailOverrideValidation(t *testing.T) {
 // Test feed package was wired correctly (imported elsewhere transitively;
 // ensure the import path didn't drift).
 var _ = feed.DefaultUserAgent
+
+func TestAdminSettings_PollMinInterval(t *testing.T) {
+	h := newHarnessWith(t, func(d *Dependencies) {
+		d.PollMinIntervalFallback = 30 * time.Minute
+	})
+	h.seedUser(t, "admin", "hunter2", true)
+	cl := h.login(t, "admin", "hunter2")
+	url := h.srv.URL + "/api/admin/settings"
+
+	var got struct {
+		Data struct {
+			PollMinIntervalSeconds      int `json:"poll_min_interval_seconds"`
+			PollMinIntervalFloorSeconds int `json:"poll_min_interval_floor_seconds"`
+			PollMinIntervalCeilSeconds  int `json:"poll_min_interval_ceil_seconds"`
+		} `json:"data"`
+	}
+	// GET reflects the env fallback (no app_settings row yet) + echoes the
+	// hard bounds the UI uses.
+	if code := get(t, cl, url, &got); code != http.StatusOK {
+		t.Fatalf("GET settings = %d", code)
+	}
+	if got.Data.PollMinIntervalSeconds != 1800 {
+		t.Errorf("default poll_min_interval_seconds = %d, want 1800", got.Data.PollMinIntervalSeconds)
+	}
+	if got.Data.PollMinIntervalFloorSeconds != 300 || got.Data.PollMinIntervalCeilSeconds != 86400 {
+		t.Errorf("bounds = %d/%d, want 300/86400",
+			got.Data.PollMinIntervalFloorSeconds, got.Data.PollMinIntervalCeilSeconds)
+	}
+
+	// Valid update persists and is echoed back.
+	if code := patch(t, cl, url, map[string]any{"poll_min_interval_seconds": 3600}, &got); code != http.StatusOK {
+		t.Fatalf("PATCH valid = %d", code)
+	}
+	if got.Data.PollMinIntervalSeconds != 3600 {
+		t.Errorf("after PATCH: poll_min_interval_seconds = %d, want 3600", got.Data.PollMinIntervalSeconds)
+	}
+
+	// Safeguards: below floor (5m) and above ceil (24h) are rejected.
+	for _, bad := range []int{60, 90000} {
+		if code := patch(t, cl, url, map[string]any{"poll_min_interval_seconds": bad}, nil); code != http.StatusBadRequest {
+			t.Errorf("PATCH %ds = %d, want 400", bad, code)
+		}
+	}
+	// Rejected writes left the stored value untouched.
+	if code := get(t, cl, url, &got); code != http.StatusOK || got.Data.PollMinIntervalSeconds != 3600 {
+		t.Errorf("after rejected PATCHes: code %d value %d (want 200/3600)", code, got.Data.PollMinIntervalSeconds)
+	}
+}
