@@ -43,7 +43,7 @@
 
   let { onClose }: { onClose: () => void } = $props();
 
-  type Section = "profile" | "inbox" | "passkeys" | "notifications" | "preferences" | "stats" | "digest" | "mobile" | "filters" | "users" | "starter" | "import" | "llm" | "branding" | "database" | "session" | "email" | "about";
+  type Section = "profile" | "inbox" | "passkeys" | "notifications" | "preferences" | "stats" | "digest" | "mobile" | "filters" | "feeds" | "users" | "starter" | "import" | "llm" | "branding" | "database" | "session" | "email" | "about";
   let section = $state<Section>("profile");
 
   // Mobile detection (matches App.svelte's 900px breakpoint). On mobile the
@@ -78,6 +78,7 @@
     inbox: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>`,
     preferences: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M3 12h3M18 12h3M12 3v3M12 18v3"/></svg>`,
     filters: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 5h18l-7 8v6l-4-2v-4z"/></svg>`,
+    feeds: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1.5" fill="currentColor" stroke="none"/></svg>`,
     digest: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5m6 14v-9m6 9V8m4 11H2"/></svg>`,
     stats: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18M7 15l4-5 3 3 5-7"/></svg>`,
     mobile: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="3" width="10" height="18" rx="2"/></svg>`,
@@ -211,6 +212,7 @@
       case "preferences": return "Preferences";
       case "mobile": return "Mobile clients";
       case "filters": return "Filters";
+      case "feeds": return "Feeds";
       case "stats": return "Reading stats";
       case "digest": return "Daily digest";
       case "starter": return "Starter packs";
@@ -744,6 +746,7 @@
     if (section === "database" && $user?.is_admin) void loadDB();
     if (section === "session" && $user?.is_admin) void loadSessionTTL();
     if (section === "email" && $user?.is_admin) void loadEmailSettings();
+    if (section === "feeds" && $user?.is_admin) void loadFeedSettings();
     if (section === "users" && $user?.is_admin) void loadUsers();
     if (section === "stats") void loadStats();
     if (section === "digest") void loadDigest();
@@ -814,12 +817,10 @@
     from: string;
     starttls: boolean;
     initial_backlog_hours: number;
-    poll_min_interval_seconds: number;
   };
   let emailDraft = $state<EmailDraft>({
     host: "", port: 587, username: "", password: "", clear_password: false,
     from: "", starttls: true, initial_backlog_hours: 48,
-    poll_min_interval_seconds: 1800,
   });
   // Preset choices for the feed-check interval (all within the 5m–24h bounds).
   const pollIntervalPresets = [
@@ -832,6 +833,37 @@
     { label: "12 hours", seconds: 43200 },
     { label: "24 hours", seconds: 86400 },
   ];
+
+  // --- Feeds section (admin: poll interval) ----------------------------
+  let feedSettings = $state({ poll_min_interval_seconds: 1800 });
+  let feedBusy = $state(false);
+  let feedMsg = $state("");
+  let feedErr = $state("");
+  async function loadFeedSettings() {
+    feedErr = "";
+    try {
+      const res = await api.getAdminSettings();
+      feedSettings.poll_min_interval_seconds = res.data.poll_min_interval_seconds;
+    } catch (e) {
+      feedErr = e instanceof ApiError ? e.message : String(e);
+    }
+  }
+  async function saveFeedSettings() {
+    feedBusy = true;
+    feedMsg = "";
+    feedErr = "";
+    try {
+      const res = await api.setAdminSettings({
+        poll_min_interval_seconds: Number(feedSettings.poll_min_interval_seconds) || 1800,
+      });
+      feedSettings.poll_min_interval_seconds = res.data.poll_min_interval_seconds;
+      feedMsg = "Saved";
+    } catch (e) {
+      feedErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      feedBusy = false;
+    }
+  }
   let emailLoaded = $state<import("../lib/api").AdminSettings | null>(null);
   let emailBusy = $state(false);
   let emailMsg = $state("");
@@ -853,7 +885,6 @@
         from: res.data.smtp.from,
         starttls: res.data.smtp.starttls,
         initial_backlog_hours: res.data.initial_backlog_hours,
-        poll_min_interval_seconds: res.data.poll_min_interval_seconds,
       };
     } catch (e) {
       emailErr = e instanceof ApiError ? e.message : String(e);
@@ -873,7 +904,6 @@
           starttls: !!emailDraft.starttls,
         },
         initial_backlog_hours: Math.max(0, Number(emailDraft.initial_backlog_hours) || 0),
-        poll_min_interval_seconds: Number(emailDraft.poll_min_interval_seconds) || 1800,
       };
       // Only send the password when the admin actually typed one, OR when
       // they're explicitly clearing the stored value. Otherwise the server
@@ -1094,6 +1124,9 @@
           <div class="nav-label">Reading</div>
           <button class:active={section === "preferences"} on:click={() => pickSection("preferences")} data-testid="settings-preferences"><span class="nav-ic">{@html NAV_ICONS.preferences}</span>Preferences</button>
           <button class:active={section === "filters"} on:click={() => pickSection("filters")} data-testid="settings-filters"><span class="nav-ic">{@html NAV_ICONS.filters}</span>Filters</button>
+          {#if $user?.is_admin}
+            <button class:active={section === "feeds"} on:click={() => pickSection("feeds")} data-testid="settings-feeds"><span class="nav-ic nav-ic-admin">{@html NAV_ICONS.feeds}</span>Feeds</button>
+          {/if}
           <button class:active={section === "digest"} on:click={() => pickSection("digest")} data-testid="settings-digest"><span class="nav-ic">{@html NAV_ICONS.digest}</span>Daily digest</button>
           <button class:active={section === "stats"} on:click={() => pickSection("stats")} data-testid="settings-stats"><span class="nav-ic">{@html NAV_ICONS.stats}</span>Reading stats</button>
           <button class:active={section === "mobile"} on:click={() => pickSection("mobile")} data-testid="settings-mobile"><span class="nav-ic">{@html NAV_ICONS.mobile}</span>Mobile clients</button>
@@ -2104,7 +2137,19 @@
             <input type="number" min="0" max="8760" bind:value={emailDraft.initial_backlog_hours} data-testid="backlog-hours" style="width:140px;" />
           </label>
 
-          <hr style="margin:18px 0;border:0;border-top:1px solid var(--line);" />
+          <div class="actions" style="margin-top:12px;">
+            <button on:click={saveEmailSettings} disabled={emailBusy} data-testid="backlog-save">
+              {emailBusy ? "Saving…" : "Save"}
+            </button>
+          </div>
+        {/if}
+
+        {#if section === "feeds"}
+          <h3>Feeds</h3>
+          <p class="hint">Server-wide controls for how Ember fetches your feeds. Admin only.</p>
+          {#if feedErr}<p class="error" data-testid="feeds-error">{feedErr}</p>{/if}
+          {#if feedMsg}<p class="ok" data-testid="feeds-msg">{feedMsg}</p>{/if}
+
           <h4>Feed check interval</h4>
           <p class="hint">
             How often Ember checks each feed for new articles. Active feeds settle near this
@@ -2113,7 +2158,7 @@
           </p>
           <label>
             Check feeds every
-            <select bind:value={emailDraft.poll_min_interval_seconds} data-testid="poll-interval" style="width:160px;">
+            <select bind:value={feedSettings.poll_min_interval_seconds} data-testid="poll-interval" style="width:160px;">
               {#each pollIntervalPresets as p}
                 <option value={p.seconds}>{p.label}</option>
               {/each}
@@ -2121,8 +2166,8 @@
           </label>
 
           <div class="actions" style="margin-top:12px;">
-            <button on:click={saveEmailSettings} disabled={emailBusy} data-testid="backlog-save">
-              {emailBusy ? "Saving…" : "Save"}
+            <button on:click={saveFeedSettings} disabled={feedBusy} data-testid="poll-interval-save">
+              {feedBusy ? "Saving…" : "Save"}
             </button>
           </div>
         {/if}
