@@ -515,6 +515,13 @@
     box-shadow: var(--shadow-card);
     transition: border-color 0.14s;
     position: relative;
+    /* Long unbreakable tokens (URLs, hashes, code-like strings) in the
+       title or excerpt would otherwise push the card wider than its
+       column and produce the intermittent horizontal scroll users see
+       on densely-packed views. min-width:0 lets the card collapse to
+       its column; overflow-wrap propagates to text descendants. */
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
   .story:hover { border-color: var(--ink-faint); }
   .story.active {
