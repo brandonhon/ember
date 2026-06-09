@@ -43,9 +43,9 @@ func TestAdaptiveInterval(t *testing.T) {
 			want: MaxInterval,
 		},
 		{
-			name: "zero current -> starts at floor, no new -> grow",
-			in:   IntervalInputs{NewArticles: 0, Current: 0},
-			want: 45 * time.Minute, // floor 30m * 1.5
+			name:  "zero current -> starts at floor, no new -> grow",
+			in:    IntervalInputs{NewArticles: 0, Current: 0},
+			want:  45 * time.Minute, // floor 30m * 1.5
 			minIv: 30 * time.Minute,
 		},
 		{

@@ -55,13 +55,13 @@ func TestLoad_DefaultsWithSessionKey(t *testing.T) {
 
 func TestLoad_OverridesApplied(t *testing.T) {
 	cfg, err := LoadFromMap(map[string]string{
-		"EMBER_SESSION_KEY":      strings.Repeat("k", 32),
-		"EMBER_ADDR":             ":9090",
-		"EMBER_DB_PATH":          "/tmp/x.db",
-		"EMBER_OLLAMA_URL":       "http://localhost:11434",
-		"EMBER_OLLAMA_MODEL":     "llama3.2:1b",
-		"EMBER_FRESH_WINDOW":     "12h",
-		"EMBER_POLL_CONCURRENCY": "4",
+		"EMBER_SESSION_KEY":       strings.Repeat("k", 32),
+		"EMBER_ADDR":              ":9090",
+		"EMBER_DB_PATH":           "/tmp/x.db",
+		"EMBER_OLLAMA_URL":        "http://localhost:11434",
+		"EMBER_OLLAMA_MODEL":      "llama3.2:1b",
+		"EMBER_FRESH_WINDOW":      "12h",
+		"EMBER_POLL_CONCURRENCY":  "4",
 		"EMBER_POLL_TICK":         "30s",
 		"EMBER_POLL_MIN_INTERVAL": "45m",
 		"EMBER_LOG_LEVEL":         "debug",
