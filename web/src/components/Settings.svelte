@@ -1271,11 +1271,15 @@
             {#if pushSubs.length === 0}
               <p class="hint">No devices registered yet.</p>
             {:else}
-              <ul style="list-style:none; padding:0; margin:0;">
+              <ul class="list">
                 {#each pushSubs as s (s.id)}
-                  <li style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom: 1px solid var(--line-soft);">
-                    <span style="font-size:13px; color:var(--ink);">{s.user_agent || "Unknown browser"}</span>
-                    <button class="pack-btn-remove" on:click={() => onDeletePushSub(s.id)} aria-label="Revoke device">Revoke</button>
+                  <li class="list-row">
+                    <div>
+                      <div class="list-title">{s.user_agent || "Unknown browser"}</div>
+                    </div>
+                    <button class="btn-danger" on:click={() => onDeletePushSub(s.id)} aria-label="Revoke device">
+                      Revoke
+                    </button>
                   </li>
                 {/each}
               </ul>
@@ -2497,6 +2501,56 @@
   .actions button:hover:not(:disabled) { background: var(--ember-soft); }
   .actions button.ghost:hover { background: var(--line-soft); }
   .actions button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Settings list rows (passkeys, push devices, etc.). Shared shell so a
+     registered passkey and a push-subscribed device read as members of
+     the same UI family. Title on the left, sub-line below it, action
+     button right-aligned. */
+  .list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--line-soft);
+  }
+  .list-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .list-title {
+    font-family: var(--font-ui);
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .list-sub {
+    font-size: 12px;
+    color: var(--ink-faint);
+    margin-top: 2px;
+  }
+  /* Outlined destructive button. Matches the .danger pattern from the
+     sidebar context menus (#b91c1c) but with the .actions button shape
+     so it sits comfortably next to .actions button.ghost. */
+  .btn-danger {
+    background: transparent;
+    color: #b91c1c;
+    border: 1px solid #b91c1c;
+    padding: 6px 13px;
+    border-radius: 8px;
+    font-family: var(--font-ui);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .btn-danger:hover:not(:disabled) {
+    background: #b91c1c;
+    color: #fff;
+  }
+  .btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
   /* Import & Data section */
   .import-card {
     background: var(--card);
