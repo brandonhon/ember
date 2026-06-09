@@ -2,7 +2,7 @@
 name: Feed problem
 about: A feed won't add, renders wrong, is missing articles, or has no summary
 title: ''
-labels: bug
+labels: bug, feeds
 ---
 
 ## Feed
