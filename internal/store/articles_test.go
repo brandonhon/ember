@@ -429,6 +429,59 @@ func TestCountSmartViews(t *testing.T) {
 	}
 }
 
+// TestArticles_FreshListExcludesRead locks in the badge/list parity for the
+// Fresh smart view. Before the fix, ListArticles(view="fresh") returned every
+// article in the time window — read AND unread — while CountSmartViews.Fresh
+// only counted the unread ones. Users saw "Fresh 4" in the sidebar and then
+// 50 items in the lane.
+func TestArticles_FreshListExcludesRead(t *testing.T) {
+	s := NewTest(t)
+	now := time.Unix(1_700_000_000, 0)
+	s.Now = func() time.Time { return now }
+	ctx := context.Background()
+	aliceID, feedID := seedUserAndFeed(t, s, "alice")
+
+	// Three articles published in the last 6h: one read, two unread. All
+	// stamped as summarized so OnlySummarized doesn't enter the picture.
+	mk := func(guid string, ago time.Duration) models.Article {
+		a := mkArticle(feedID, guid, "t-"+guid, "h-"+guid, now.Add(-ago).Unix())
+		a.SummaryModel = "noop"
+		return a
+	}
+	read, _, _ := s.UpsertArticle(ctx, mk("read", 1*time.Hour))
+	_, _, _ = s.UpsertArticle(ctx, mk("unread-1", 2*time.Hour))
+	_, _, _ = s.UpsertArticle(ctx, mk("unread-2", 3*time.Hour))
+	if err := s.SetRead(ctx, aliceID, []int64{read.ID}, true); err != nil {
+		t.Fatal(err)
+	}
+
+	freshAfter := now.Add(-6 * time.Hour).Unix()
+	list, err := s.ListArticles(ctx, aliceID, ListArticlesQuery{
+		View:       "fresh",
+		FreshAfter: freshAfter,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 2 {
+		t.Fatalf("Fresh list = %d, want 2 (read article must be excluded); got: %+v", len(list), list)
+	}
+	for _, a := range list {
+		if a.ID == read.ID {
+			t.Errorf("read article id=%d leaked into Fresh list", a.ID)
+		}
+	}
+
+	// Cross-check: CountSmartViews.Fresh must agree with the list length.
+	counts, err := s.CountSmartViews(ctx, aliceID, 6*time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if counts.Fresh != len(list) {
+		t.Errorf("Fresh badge=%d, list=%d — must match", counts.Fresh, len(list))
+	}
+}
+
 // TestCountSmartViews_FreshAppliesCrossFeedDedup locks in the dedup behavior
 // added so the Fresh badge doesn't over-count when the user has subscribed to
 // the same article URL via two different feeds (typical when starter packs

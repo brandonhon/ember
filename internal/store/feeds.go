@@ -319,12 +319,16 @@ func (s *Store) ListSubscriberIDs(ctx context.Context, feedID int64) ([]int64, e
 // ListFeedsForUser returns the user's subscriptions joined with feed metadata
 // and unread counts.
 func (s *Store) ListFeedsForUser(ctx context.Context, userID int64) ([]models.FeedWithCounts, error) {
-	// Per-feed unread count: every unread article counts, including those the
-	// summarizer hasn't touched yet. PR #45 dropped the same summary_model
-	// gate from the Fresh smart-view count + list so the badge matches what
-	// the user actually sees in the list; this query is the analogous fix for
-	// the sidebar's per-feed and per-category counts (which derive from this
-	// row's `unread` column via `feeds[].category_id` aggregation client-side).
+	// Per-feed unread count: every unread article in a non-muted subscription
+	// counts, including those the summarizer hasn't touched yet. PR #45
+	// dropped the same summary_model gate from the Fresh smart-view count +
+	// list so the badge matches what the user actually sees in the list;
+	// this query is the analogous fix for the sidebar's per-feed and
+	// per-category counts (which derive from this row's `unread` column via
+	// `feeds[].category_id` aggregation client-side). The `s.muted = 0`
+	// guard keeps muted subscriptions out of the per-feed (and therefore
+	// the client-summed "All Unread") count — muted means "I don't want to
+	// see these right now," so they shouldn't inflate the badge.
 	rows, err := s.DB.QueryContext(ctx, `
 		SELECT f.id, f.url, IFNULL(f.site_url,''), f.title, IFNULL(f.favicon_url,''),
 		       IFNULL(f.etag,''), IFNULL(f.last_modified,''),
@@ -336,6 +340,7 @@ func (s *Store) ListFeedsForUser(ctx context.Context, userID int64) ([]models.Fe
 		          LEFT JOIN article_state st ON st.article_id = a.id AND st.user_id = s.user_id
 		         WHERE a.feed_id = f.id
 		           AND IFNULL(st.is_read,0) = 0
+		           AND s.muted = 0
 		           ) AS unread
 		FROM feeds f
 		JOIN subscriptions s ON s.feed_id = f.id

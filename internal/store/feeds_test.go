@@ -104,6 +104,47 @@ func TestListFeedsForUser_UnreadCountsIncludeUnsummarized(t *testing.T) {
 	}
 }
 
+// TestListFeedsForUser_UnreadExcludesMuted locks in that the per-feed unread
+// count returned for a muted subscription is zero. The client sums these into
+// the "All Unread" badge, so unread items on a feed the user has explicitly
+// muted should not inflate that count.
+func TestListFeedsForUser_UnreadExcludesMuted(t *testing.T) {
+	s := NewTest(t)
+	ctx := context.Background()
+	u, _ := s.CreateUser(ctx, models.User{Username: "u", PasswordHash: "h"})
+	loud, _ := s.UpsertFeed(ctx, models.Feed{URL: "https://loud.test/feed", Title: "Loud"})
+	quiet, _ := s.UpsertFeed(ctx, models.Feed{URL: "https://quiet.test/feed", Title: "Quiet"})
+	_, _ = s.Subscribe(ctx, models.Subscription{UserID: u.ID, FeedID: loud.ID})
+	subQuiet, _ := s.Subscribe(ctx, models.Subscription{UserID: u.ID, FeedID: quiet.ID})
+
+	// Two unread articles per feed.
+	_, _, _ = s.UpsertArticle(ctx, mkArticle(loud.ID, "l1", "l-1", "hl1", 1000))
+	_, _, _ = s.UpsertArticle(ctx, mkArticle(loud.ID, "l2", "l-2", "hl2", 1500))
+	_, _, _ = s.UpsertArticle(ctx, mkArticle(quiet.ID, "q1", "q-1", "hq1", 1000))
+	_, _, _ = s.UpsertArticle(ctx, mkArticle(quiet.ID, "q2", "q-2", "hq2", 1500))
+
+	// Mute the quiet subscription.
+	mute := true
+	if err := s.UpdateSubscription(ctx, u.ID, subQuiet.ID, UpdateSubscriptionPatch{Muted: &mute}); err != nil {
+		t.Fatal(err)
+	}
+
+	list, err := s.ListFeedsForUser(ctx, u.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gotByURL := map[string]int{}
+	for _, f := range list {
+		gotByURL[f.URL] = f.Unread
+	}
+	if gotByURL["https://loud.test/feed"] != 2 {
+		t.Errorf("loud (unmuted) unread = %d, want 2", gotByURL["https://loud.test/feed"])
+	}
+	if gotByURL["https://quiet.test/feed"] != 0 {
+		t.Errorf("quiet (muted) unread = %d, want 0 (muted feeds must not count)", gotByURL["https://quiet.test/feed"])
+	}
+}
+
 func TestFeeds_UnsubscribeKeepsFeedWhenOthersSubscribed(t *testing.T) {
 	s := NewTest(t)
 	ctx := context.Background()
