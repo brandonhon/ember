@@ -342,6 +342,7 @@ func run() error {
 		DisableImages:               cfg.DisableImages,
 		AllowPrivateURLs:            cfg.AllowPrivateURLs,
 		InitialBacklogHoursFallback: store.DefaultInitialBacklogHours,
+		MinIntervalFallback:         cfg.PollMinInterval,
 	}, logger.With("component", "poller"))
 
 	// Background workers are tracked in a WaitGroup so shutdown can wait for an
@@ -439,6 +440,7 @@ func run() error {
 			From: cfg.SMTPFrom, StartTLS: cfg.SMTPStartTLS,
 		},
 		InitialBacklogHoursFallback: store.DefaultInitialBacklogHours,
+		PollMinIntervalFallback:     cfg.PollMinInterval,
 		// Handlers that spawn detached goroutines (initial feed refresh on
 		// starter-pack import / add-feed) derive their context from this
 		// parent so they don't outlive process shutdown and end up making

@@ -25,6 +25,11 @@ type Config struct {
 	FreshWindow     time.Duration
 	PollConcurrency int
 	PollTick        time.Duration
+	// PollMinInterval is the floor for the adaptive per-feed fetch interval
+	// ("check feeds every…"). Default 30m. Override via EMBER_POLL_MIN_INTERVAL;
+	// admins can also change it at runtime in Settings (app_settings overrides
+	// this). Validated to [5m, 24h].
+	PollMinInterval time.Duration
 	// SessionTTL is the lifetime of a freshly-issued session cookie. Defaults
 	// to 24h. Override via EMBER_SESSION_TTL (Go duration: e.g. 30m, 12h, 7d
 	// not supported — use 168h for a week).
@@ -92,6 +97,7 @@ func Defaults() Config {
 		FreshWindow:     6 * time.Hour,
 		PollConcurrency: 8,
 		PollTick:        60 * time.Second,
+		PollMinInterval: 30 * time.Minute,
 		SessionTTL:      24 * time.Hour,
 		LogLevel:        slog.LevelInfo,
 		SMTPPort:        587,
@@ -183,6 +189,19 @@ func loadFrom(get func(string) string) (Config, error) {
 			errs = append(errs, "EMBER_POLL_TICK must be > 0")
 		default:
 			cfg.PollTick = d
+		}
+	}
+	if v := get("EMBER_POLL_MIN_INTERVAL"); v != "" {
+		d, err := time.ParseDuration(v)
+		// Bounds mirror store.PollMinInterval{Floor,Ceil} (5m, 24h) — kept as
+		// literals here so the config package stays free of a store import.
+		switch {
+		case err != nil:
+			errs = append(errs, fmt.Sprintf("EMBER_POLL_MIN_INTERVAL invalid: %v", err))
+		case d < 5*time.Minute || d > 24*time.Hour:
+			errs = append(errs, "EMBER_POLL_MIN_INTERVAL must be between 5m and 24h")
+		default:
+			cfg.PollMinInterval = d
 		}
 	}
 	if v := get("EMBER_LOG_LEVEL"); v != "" {
