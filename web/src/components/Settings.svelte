@@ -814,11 +814,24 @@
     from: string;
     starttls: boolean;
     initial_backlog_hours: number;
+    poll_min_interval_seconds: number;
   };
   let emailDraft = $state<EmailDraft>({
     host: "", port: 587, username: "", password: "", clear_password: false,
     from: "", starttls: true, initial_backlog_hours: 48,
+    poll_min_interval_seconds: 1800,
   });
+  // Preset choices for the feed-check interval (all within the 5m–24h bounds).
+  const pollIntervalPresets = [
+    { label: "5 minutes", seconds: 300 },
+    { label: "15 minutes", seconds: 900 },
+    { label: "30 minutes", seconds: 1800 },
+    { label: "1 hour", seconds: 3600 },
+    { label: "2 hours", seconds: 7200 },
+    { label: "6 hours", seconds: 21600 },
+    { label: "12 hours", seconds: 43200 },
+    { label: "24 hours", seconds: 86400 },
+  ];
   let emailLoaded = $state<import("../lib/api").AdminSettings | null>(null);
   let emailBusy = $state(false);
   let emailMsg = $state("");
@@ -840,6 +853,7 @@
         from: res.data.smtp.from,
         starttls: res.data.smtp.starttls,
         initial_backlog_hours: res.data.initial_backlog_hours,
+        poll_min_interval_seconds: res.data.poll_min_interval_seconds,
       };
     } catch (e) {
       emailErr = e instanceof ApiError ? e.message : String(e);
@@ -859,6 +873,7 @@
           starttls: !!emailDraft.starttls,
         },
         initial_backlog_hours: Math.max(0, Number(emailDraft.initial_backlog_hours) || 0),
+        poll_min_interval_seconds: Number(emailDraft.poll_min_interval_seconds) || 1800,
       };
       // Only send the password when the admin actually typed one, OR when
       // they're explicitly clearing the stored value. Otherwise the server
@@ -2088,6 +2103,23 @@
             Hours
             <input type="number" min="0" max="8760" bind:value={emailDraft.initial_backlog_hours} data-testid="backlog-hours" style="width:140px;" />
           </label>
+
+          <hr style="margin:18px 0;border:0;border-top:1px solid var(--line);" />
+          <h4>Feed check interval</h4>
+          <p class="hint">
+            How often Ember checks each feed for new articles. Active feeds settle near this
+            value; quiet ones are checked less often. A longer interval keeps new items from
+            piling up faster than you can read them. Allowed range: 5 minutes to 24 hours.
+          </p>
+          <label>
+            Check feeds every
+            <select bind:value={emailDraft.poll_min_interval_seconds} data-testid="poll-interval" style="width:160px;">
+              {#each pollIntervalPresets as p}
+                <option value={p.seconds}>{p.label}</option>
+              {/each}
+            </select>
+          </label>
+
           <div class="actions" style="margin-top:12px;">
             <button on:click={saveEmailSettings} disabled={emailBusy} data-testid="backlog-save">
               {emailBusy ? "Saving…" : "Save"}

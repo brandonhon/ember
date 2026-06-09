@@ -4,6 +4,7 @@ import (
 	"context"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // app_settings keys for runtime-mutable admin-edited values. Env vars supply
@@ -24,7 +25,49 @@ const (
 
 	// Default backlog when no env override is set and no DB row exists.
 	DefaultInitialBacklogHours = 48
+
+	// Floor for the adaptive per-feed fetch interval (the "check feeds every…"
+	// knob). Admin-configurable via the UI / EMBER_POLL_MIN_INTERVAL, clamped
+	// to [PollMinIntervalFloor, PollMinIntervalCeil]. The default (30m) gives
+	// readers time to work through Fresh without new items piling in.
+	keyPollMinIntervalSeconds = "poll_min_interval_seconds"
 )
+
+// Bounds + default for the admin-configurable adaptive-fetch floor. Canonical
+// here so the poller, the env-var parser, and the settings API all agree.
+const (
+	DefaultPollMinInterval = 30 * time.Minute
+	PollMinIntervalFloor   = 5 * time.Minute
+	PollMinIntervalCeil    = 24 * time.Hour
+)
+
+// ResolvePollMinInterval returns the admin-set minimum fetch interval from
+// app_settings (clamped to the hard bounds), or fallback when unset/invalid.
+func (s *Store) ResolvePollMinInterval(ctx context.Context, fallback time.Duration) time.Duration {
+	if v, _ := s.GetAppSetting(ctx, keyPollMinIntervalSeconds); v != "" {
+		if n, err := strconv.ParseInt(v, 10, 64); err == nil && n > 0 {
+			return clampDuration(time.Duration(n)*time.Second, PollMinIntervalFloor, PollMinIntervalCeil)
+		}
+	}
+	return fallback
+}
+
+// PutPollMinInterval persists the minimum fetch interval (clamped to the hard
+// bounds), stored as whole seconds.
+func (s *Store) PutPollMinInterval(ctx context.Context, d time.Duration) error {
+	d = clampDuration(d, PollMinIntervalFloor, PollMinIntervalCeil)
+	return s.PutAppSetting(ctx, keyPollMinIntervalSeconds, strconv.FormatInt(int64(d.Seconds()), 10))
+}
+
+func clampDuration(d, lo, hi time.Duration) time.Duration {
+	if d < lo {
+		return lo
+	}
+	if d > hi {
+		return hi
+	}
+	return d
+}
 
 // SMTPSettings mirrors the shape of digest.SMTPConfig — kept here so the store
 // layer doesn't import digest (would be a backwards dependency). cmd/ember and
