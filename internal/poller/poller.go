@@ -51,6 +51,25 @@ type Config struct {
 	// preferring the app_settings row over this fallback. Set 0 to disable
 	// the gate (ingest the feed's full upstream history).
 	InitialBacklogHoursFallback int
+	// MinIntervalFallback is the env-derived floor for the adaptive fetch
+	// interval (EMBER_POLL_MIN_INTERVAL, default store.DefaultPollMinInterval).
+	// The poller resolves the live value by preferring the app_settings row
+	// over this fallback, so admin changes apply on the next fetch without a
+	// restart.
+	MinIntervalFallback time.Duration
+}
+
+// effectiveBounds resolves the live adaptive-interval floor (admin-set in
+// app_settings, overlaying the env fallback, clamped to the hard safety
+// range) and the matching ceiling (MaxInterval, raised to the floor if a high
+// floor would otherwise exceed it).
+func (p *Poller) effectiveBounds(ctx context.Context) (minIv, maxIv time.Duration) {
+	minIv = p.Store.ResolvePollMinInterval(ctx, p.Config.MinIntervalFallback)
+	maxIv = MaxInterval
+	if minIv > maxIv {
+		maxIv = minIv
+	}
+	return minIv, maxIv
 }
 
 // Metrics is an in-memory snapshot for observability/tests.
@@ -249,13 +268,14 @@ func (p *Poller) fetchAndStore(ctx context.Context, f models.Feed) {
 	p.Metrics.FetchesTotal.Add(1)
 	res, err := p.Fetcher.Fetch(ctx, f.URL, f.ETag, f.LastModified)
 	now := p.Config.Now()
+	minIv, maxIv := p.effectiveBounds(ctx)
 	if err != nil {
 		p.Metrics.FetchesErrored.Add(1)
 		errCount := f.ErrorCount + 1
 		next := now.Add(AdaptiveInterval(IntervalInputs{
 			HadError: true, ErrorCount: errCount,
 			Current: time.Duration(f.FetchInterval) * time.Second,
-		}))
+		}, minIv, maxIv))
 		_ = p.Store.UpdateFeedFetch(ctx, f.ID, store.UpdateFeedFetchPatch{
 			LastFetched: now.Unix(),
 			NextFetch:   next.Unix(),
@@ -271,7 +291,7 @@ func (p *Poller) fetchAndStore(ctx context.Context, f models.Feed) {
 		next := now.Add(AdaptiveInterval(IntervalInputs{
 			NewArticles: 0,
 			Current:     time.Duration(f.FetchInterval) * time.Second,
-		}))
+		}, minIv, maxIv))
 		_ = p.Store.UpdateFeedFetch(ctx, f.ID, store.UpdateFeedFetchPatch{
 			LastFetched: now.Unix(),
 			NextFetch:   next.Unix(),
@@ -285,7 +305,7 @@ func (p *Poller) fetchAndStore(ctx context.Context, f models.Feed) {
 		p.Metrics.FetchesErrored.Add(1)
 		_ = p.Store.UpdateFeedFetch(ctx, f.ID, store.UpdateFeedFetchPatch{
 			LastFetched: now.Unix(),
-			NextFetch:   now.Add(MinInterval).Unix(),
+			NextFetch:   now.Add(minIv).Unix(),
 			ErrorCount:  f.ErrorCount + 1,
 			LastError:   err.Error(),
 		})
@@ -370,7 +390,7 @@ func (p *Poller) fetchAndStore(ctx context.Context, f models.Feed) {
 		NextFetch: now.Add(AdaptiveInterval(IntervalInputs{
 			NewArticles: newCount,
 			Current:     time.Duration(f.FetchInterval) * time.Second,
-		})).Unix(),
+		}, minIv, maxIv)).Unix(),
 		ErrorCount: 0,
 	}
 	if res.ETag != "" {

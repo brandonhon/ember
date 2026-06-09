@@ -55,17 +55,18 @@ func TestLoad_DefaultsWithSessionKey(t *testing.T) {
 
 func TestLoad_OverridesApplied(t *testing.T) {
 	cfg, err := LoadFromMap(map[string]string{
-		"EMBER_SESSION_KEY":      strings.Repeat("k", 32),
-		"EMBER_ADDR":             ":9090",
-		"EMBER_DB_PATH":          "/tmp/x.db",
-		"EMBER_OLLAMA_URL":       "http://localhost:11434",
-		"EMBER_OLLAMA_MODEL":     "llama3.2:1b",
-		"EMBER_FRESH_WINDOW":     "12h",
-		"EMBER_POLL_CONCURRENCY": "4",
-		"EMBER_POLL_TICK":        "30s",
-		"EMBER_LOG_LEVEL":        "debug",
-		"EMBER_ADMIN_USER":       "root",
-		"EMBER_ADMIN_PASSWORD":   "secret",
+		"EMBER_SESSION_KEY":       strings.Repeat("k", 32),
+		"EMBER_ADDR":              ":9090",
+		"EMBER_DB_PATH":           "/tmp/x.db",
+		"EMBER_OLLAMA_URL":        "http://localhost:11434",
+		"EMBER_OLLAMA_MODEL":      "llama3.2:1b",
+		"EMBER_FRESH_WINDOW":      "12h",
+		"EMBER_POLL_CONCURRENCY":  "4",
+		"EMBER_POLL_TICK":         "30s",
+		"EMBER_POLL_MIN_INTERVAL": "45m",
+		"EMBER_LOG_LEVEL":         "debug",
+		"EMBER_ADMIN_USER":        "root",
+		"EMBER_ADMIN_PASSWORD":    "secret",
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -88,11 +89,35 @@ func TestLoad_OverridesApplied(t *testing.T) {
 	if cfg.PollTick != 30*time.Second {
 		t.Errorf("PollTick = %v", cfg.PollTick)
 	}
+	if cfg.PollMinInterval != 45*time.Minute {
+		t.Errorf("PollMinInterval = %v", cfg.PollMinInterval)
+	}
 	if cfg.LogLevel != slog.LevelDebug {
 		t.Errorf("LogLevel = %v", cfg.LogLevel)
 	}
 	if cfg.AdminUser != "root" || cfg.AdminPassword != "secret" {
 		t.Errorf("admin = %q/%q", cfg.AdminUser, cfg.AdminPassword)
+	}
+}
+
+func TestLoad_PollMinIntervalRange(t *testing.T) {
+	base := map[string]string{"EMBER_SESSION_KEY": strings.Repeat("k", 32)}
+	// Default applies when unset.
+	if cfg, err := LoadFromMap(base); err != nil || cfg.PollMinInterval != 30*time.Minute {
+		t.Fatalf("default PollMinInterval = %v, err %v; want 30m", cfg.PollMinInterval, err)
+	}
+	for _, bad := range []string{"1m", "48h", "0s"} {
+		m := map[string]string{"EMBER_SESSION_KEY": strings.Repeat("k", 32), "EMBER_POLL_MIN_INTERVAL": bad}
+		if _, err := LoadFromMap(m); err == nil {
+			t.Errorf("EMBER_POLL_MIN_INTERVAL=%q should be rejected", bad)
+		}
+	}
+	// Boundary values accepted.
+	for _, ok := range []string{"5m", "24h"} {
+		m := map[string]string{"EMBER_SESSION_KEY": strings.Repeat("k", 32), "EMBER_POLL_MIN_INTERVAL": ok}
+		if _, err := LoadFromMap(m); err != nil {
+			t.Errorf("EMBER_POLL_MIN_INTERVAL=%q should be accepted, got %v", ok, err)
+		}
 	}
 }
 

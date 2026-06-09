@@ -3,7 +3,9 @@ package api
 import (
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/brandonhon/ember/internal/auth"
 	"github.com/brandonhon/ember/internal/digest"
@@ -24,6 +26,12 @@ type adminSettings struct {
 		StartTLS    bool   `json:"starttls"`
 	} `json:"smtp"`
 	InitialBacklogHours int `json:"initial_backlog_hours"`
+	// PollMinIntervalSeconds is the adaptive fetch-interval floor ("check feeds
+	// every…"), in seconds. The floor/ceil are echoed so the UI can bound its
+	// control without hardcoding them.
+	PollMinIntervalSeconds      int `json:"poll_min_interval_seconds"`
+	PollMinIntervalFloorSeconds int `json:"poll_min_interval_floor_seconds"`
+	PollMinIntervalCeilSeconds  int `json:"poll_min_interval_ceil_seconds"`
 }
 
 func (d *Dependencies) handleGetAdminSettings(w http.ResponseWriter, r *http.Request) {
@@ -39,6 +47,9 @@ func (d *Dependencies) handleGetAdminSettings(w http.ResponseWriter, r *http.Req
 	out.SMTP.From = smtp.From
 	out.SMTP.StartTLS = smtp.StartTLS
 	out.InitialBacklogHours = backlog
+	out.PollMinIntervalSeconds = int(d.Store.ResolvePollMinInterval(ctx, d.PollMinIntervalFallback).Seconds())
+	out.PollMinIntervalFloorSeconds = int(store.PollMinIntervalFloor.Seconds())
+	out.PollMinIntervalCeilSeconds = int(store.PollMinIntervalCeil.Seconds())
 	writeData(w, http.StatusOK, out, nil)
 }
 
@@ -54,7 +65,8 @@ type setAdminSettingsReq struct {
 		From          *string `json:"from,omitempty"`
 		StartTLS      *bool   `json:"starttls,omitempty"`
 	} `json:"smtp,omitempty"`
-	InitialBacklogHours *int `json:"initial_backlog_hours,omitempty"`
+	InitialBacklogHours    *int `json:"initial_backlog_hours,omitempty"`
+	PollMinIntervalSeconds *int `json:"poll_min_interval_seconds,omitempty"`
 }
 
 func (d *Dependencies) handleSetAdminSettings(w http.ResponseWriter, r *http.Request) {
@@ -85,6 +97,20 @@ func (d *Dependencies) handleSetAdminSettings(w http.ResponseWriter, r *http.Req
 			return
 		}
 		if err := d.Store.PutBacklogHours(ctx, n); err != nil {
+			internalError(w, "internal", err)
+			return
+		}
+	}
+	if req.PollMinIntervalSeconds != nil {
+		iv := time.Duration(*req.PollMinIntervalSeconds) * time.Second
+		if iv < store.PollMinIntervalFloor || iv > store.PollMinIntervalCeil {
+			writeError(w, http.StatusBadRequest, "bad_request",
+				"poll_min_interval_seconds must be between "+
+					strconv.Itoa(int(store.PollMinIntervalFloor.Seconds()))+" and "+
+					strconv.Itoa(int(store.PollMinIntervalCeil.Seconds())))
+			return
+		}
+		if err := d.Store.PutPollMinInterval(ctx, iv); err != nil {
 			internalError(w, "internal", err)
 			return
 		}

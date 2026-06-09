@@ -79,6 +79,10 @@ type Dependencies struct {
 	// first-ingest backlog window. The poller resolves the live value by
 	// preferring an app_settings row over this fallback.
 	InitialBacklogHoursFallback int
+	// PollMinIntervalFallback is the env-derived default for the adaptive
+	// fetch-interval floor; the settings endpoints overlay an app_settings
+	// row on it.
+	PollMinIntervalFallback time.Duration
 	// Push fans out Web Push notifications. Nil disables the feature
 	// (the /api/me/push-* endpoints return 503).
 	Push *push.Notifier
