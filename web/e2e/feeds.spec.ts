@@ -18,8 +18,10 @@ test.describe("feeds", () => {
     await page.getByTestId("open-add-feed").click();
     await page.getByTestId("add-feed-input").fill("https://added.test/feed");
     await page.getByTestId("add-feed-submit").click();
+    // add-feed runs discovery (real DNS lookup of the fake .test domain), which
+    // can take up to the ~10s discover timeout under load — generous margin.
     await expect(page.locator("button", { hasText: "added.test" })).toBeVisible({
-      timeout: 5_000,
+      timeout: 15_000,
     });
   });
 

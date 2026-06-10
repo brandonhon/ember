@@ -92,30 +92,32 @@ func TestImport(t *testing.T) {
 
 	// Body HTML should be reduced to plain text so cards get an excerpt and
 	// the article is full-text searchable (e.g. "Body one" from <p>Body one</p>).
-	var first *models.ArticleView
+	firstIdx := -1
 	for i := range starred {
 		if starred[i].Title == "First starred" {
-			first = &starred[i]
+			firstIdx = i
 		}
 	}
-	if first == nil {
+	if firstIdx < 0 {
 		t.Fatal("first article missing")
 	}
+	first := starred[firstIdx]
 	if !strings.Contains(first.ContentText, "Body one") {
 		t.Errorf("content_text not derived from HTML, got %q", first.ContentText)
 	}
 
 	// The javascript: link must have been dropped to "" (stored, but href
 	// neutralized).
-	var jsArticle *models.ArticleView
+	jsIdx := -1
 	for i := range starred {
 		if starred[i].Title == "Dangerous link" {
-			jsArticle = &starred[i]
+			jsIdx = i
 		}
 	}
-	if jsArticle == nil {
+	if jsIdx < 0 {
 		t.Fatal("dangerous-link article missing")
 	}
+	jsArticle := starred[jsIdx]
 	if jsArticle.URL != "" {
 		t.Errorf("javascript: link should be blanked, got %q", jsArticle.URL)
 	}
