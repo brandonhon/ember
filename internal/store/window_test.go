@@ -179,6 +179,28 @@ func TestRepointSubscriptionFeed(t *testing.T) {
 	if err := s.RepointSubscriptionFeed(ctx, u.ID, sub2.ID, newFeed.ID); err != ErrConflict {
 		t.Errorf("repoint to already-subscribed feed = %v, want ErrConflict", err)
 	}
+
+	// Unknown subscription → ErrNotFound.
+	if err := s.RepointSubscriptionFeed(ctx, u.ID, 99999, newFeed.ID); err != ErrNotFound {
+		t.Errorf("repoint missing sub = %v, want ErrNotFound", err)
+	}
+	// Same feed → no-op (sub already points at newFeed).
+	if err := s.RepointSubscriptionFeed(ctx, u.ID, sub.ID, newFeed.ID); err != nil {
+		t.Errorf("repoint to same feed = %v, want nil", err)
+	}
+	// Shared-feed retention: a second subscriber on newFeed means repointing
+	// sub off it must NOT delete newFeed.
+	other, _ := s.CreateUser(ctx, models.User{Username: "bob", PasswordHash: "h"})
+	if _, err := s.Subscribe(ctx, models.Subscription{UserID: other.ID, FeedID: newFeed.ID}); err != nil {
+		t.Fatal(err)
+	}
+	fresh, _ := s.UpsertFeed(ctx, models.Feed{URL: "https://fresh.test/feed", Title: "Fresh"})
+	if err := s.RepointSubscriptionFeed(ctx, u.ID, sub.ID, fresh.ID); err != nil {
+		t.Fatalf("repoint to fresh: %v", err)
+	}
+	if _, err := s.GetFeed(ctx, newFeed.ID); err != nil {
+		t.Error("newFeed should be retained (other user still subscribed)")
+	}
 }
 
 // TestResolveWindowHours_Clamps locks the bounds on the two window settings.

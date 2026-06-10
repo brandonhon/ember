@@ -1076,3 +1076,121 @@ func TestAdminSettings_PollMinInterval(t *testing.T) {
 		t.Errorf("after rejected PATCHes: code %d value %d (want 200/3600)", code, got.Data.PollMinIntervalSeconds)
 	}
 }
+
+// TestAdminSettings_Windows covers the reading/search-window admin knobs:
+// defaults + bounds on GET, valid PATCH persists, out-of-range PATCH is 400.
+func TestAdminSettings_Windows(t *testing.T) {
+	h := newHarness(t)
+	h.seedUser(t, "admin", "hunter2", true)
+	cl := h.login(t, "admin", "hunter2")
+	url := h.srv.URL + "/api/admin/settings"
+
+	var got struct {
+		Data struct {
+			ReadingWindowHours int `json:"reading_window_hours"`
+			SearchWindowHours  int `json:"search_window_hours"`
+			WindowHoursFloor   int `json:"window_hours_floor"`
+			WindowHoursCeil    int `json:"window_hours_ceil"`
+		} `json:"data"`
+	}
+	if code := get(t, cl, url, &got); code != http.StatusOK {
+		t.Fatalf("GET settings = %d", code)
+	}
+	if got.Data.ReadingWindowHours != 24 || got.Data.SearchWindowHours != 48 {
+		t.Errorf("defaults reading/search = %d/%d, want 24/48", got.Data.ReadingWindowHours, got.Data.SearchWindowHours)
+	}
+	if got.Data.WindowHoursFloor != 24 || got.Data.WindowHoursCeil != 168 {
+		t.Errorf("bounds = %d/%d, want 24/168", got.Data.WindowHoursFloor, got.Data.WindowHoursCeil)
+	}
+
+	// Valid updates persist + echo.
+	if code := patch(t, cl, url, map[string]any{"reading_window_hours": 48, "search_window_hours": 72}, &got); code != http.StatusOK {
+		t.Fatalf("PATCH valid = %d", code)
+	}
+	if got.Data.ReadingWindowHours != 48 || got.Data.SearchWindowHours != 72 {
+		t.Errorf("after PATCH = %d/%d, want 48/72", got.Data.ReadingWindowHours, got.Data.SearchWindowHours)
+	}
+
+	// Out-of-range (below floor 24, above ceil 168) is rejected for both knobs.
+	for _, bad := range []map[string]any{
+		{"reading_window_hours": 12}, {"reading_window_hours": 200},
+		{"search_window_hours": 1}, {"search_window_hours": 999},
+	} {
+		if code := patch(t, cl, url, bad, nil); code != http.StatusBadRequest {
+			t.Errorf("PATCH %v = %d, want 400", bad, code)
+		}
+	}
+	// Rejected writes left the stored values intact.
+	get(t, cl, url, &got)
+	if got.Data.ReadingWindowHours != 48 || got.Data.SearchWindowHours != 72 {
+		t.Errorf("after rejected = %d/%d, want 48/72", got.Data.ReadingWindowHours, got.Data.SearchWindowHours)
+	}
+}
+
+// TestFeeds_RefreshAll covers POST /api/feeds/refresh: 202 + feed count, and
+// the detached goroutine that refreshes every subscribed feed.
+func TestFeeds_RefreshAll(t *testing.T) {
+	h := newHarness(t)
+	h.seedUser(t, "alice", "p", false)
+	cA := h.login(t, "alice", "p")
+	for _, u := range []string{"https://ra.test/feed", "https://rb.test/feed"} {
+		if code := post(t, cA, h.srv.URL+"/api/feeds", map[string]string{"url": u}, nil); code != http.StatusCreated {
+			t.Fatalf("add %s = %d", u, code)
+		}
+	}
+	// Let the add-time fire-and-forget refreshes settle before sampling.
+	time.Sleep(80 * time.Millisecond)
+	h.noopPoller.mu.Lock()
+	before := h.noopPoller.calls
+	h.noopPoller.mu.Unlock()
+
+	var resp struct {
+		Data struct {
+			Feeds int `json:"feeds"`
+		} `json:"data"`
+	}
+	if code := post(t, cA, h.srv.URL+"/api/feeds/refresh", nil, &resp); code != http.StatusAccepted {
+		t.Fatalf("refresh-all = %d", code)
+	}
+	if resp.Data.Feeds != 2 {
+		t.Errorf("refresh-all feeds = %d, want 2", resp.Data.Feeds)
+	}
+	// The detached goroutine calls RefreshFeed once per feed.
+	time.Sleep(120 * time.Millisecond)
+	h.noopPoller.mu.Lock()
+	after := h.noopPoller.calls
+	h.noopPoller.mu.Unlock()
+	if after-before < 2 {
+		t.Errorf("poller refresh delta = %d, want >= 2", after-before)
+	}
+}
+
+// TestFeeds_UpdateMetadata covers the handleUpdateFeed patch path (title
+// override + mute) without the network-bound URL-repoint branch.
+func TestFeeds_UpdateMetadata(t *testing.T) {
+	h := newHarness(t)
+	h.seedUser(t, "alice", "p", false)
+	cA := h.login(t, "alice", "p")
+
+	var add struct {
+		Data struct {
+			Subscription models.Subscription `json:"subscription"`
+		} `json:"data"`
+	}
+	if code := post(t, cA, h.srv.URL+"/api/feeds", map[string]string{"url": "https://um.test/feed"}, &add); code != http.StatusCreated {
+		t.Fatalf("add = %d", code)
+	}
+	subID := add.Data.Subscription.ID
+
+	if code := patch(t, cA, fmt.Sprintf("%s/api/feeds/%d", h.srv.URL, subID),
+		map[string]any{"title_override": "My Feed", "muted": true}, nil); code != http.StatusOK {
+		t.Fatalf("patch = %d", code)
+	}
+	var list struct {
+		Data []models.FeedWithCounts `json:"data"`
+	}
+	get(t, cA, h.srv.URL+"/api/feeds", &list)
+	if len(list.Data) != 1 || list.Data[0].TitleOverride != "My Feed" || !list.Data[0].Muted {
+		t.Errorf("after patch: %+v", list.Data)
+	}
+}

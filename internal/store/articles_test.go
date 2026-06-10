@@ -416,6 +416,17 @@ func TestCountSmartViews(t *testing.T) {
 	a6, _, _ := s.UpsertArticle(ctx, mk("a6", -12*time.Hour, "skipped"))
 	_ = a6
 
+	// A folder with one unread article (older than the 6h fresh window, so it
+	// doesn't shift Fresh) exercises the per-category unread map.
+	cat, _ := s.CreateCategory(ctx, models.Category{UserID: aliceID, Name: "Tech"})
+	catFeed, _ := s.UpsertFeed(ctx, models.Feed{URL: "https://cat.test/feed", Title: "cat"})
+	if _, err := s.Subscribe(ctx, models.Subscription{UserID: aliceID, FeedID: catFeed.ID, CategoryID: &cat.ID}); err != nil {
+		t.Fatal(err)
+	}
+	catArt := mkArticle(catFeed.ID, "c1", "tc1", "hc1", now.Add(-12*time.Hour).Unix())
+	catArt.SummaryModel = "qwen2.5:0.5b" // summarized, so it doesn't shift PendingSummary
+	_, _, _ = s.UpsertArticle(ctx, catArt)
+
 	// cutoff 0 = count unread regardless of age; gate off (no AI).
 	got, err := s.CountSmartViews(ctx, aliceID, 6*time.Hour, 0, false)
 	if err != nil {
@@ -428,6 +439,10 @@ func TestCountSmartViews(t *testing.T) {
 	// comparable with ==; check the scalar fields individually.
 	if got.Fresh != 2 || got.Starred != 1 || got.Later != 1 || got.Shared != 1 || got.PendingSummary != 1 {
 		t.Errorf("got %+v, want Fresh=2 Starred=1 Later=1 Shared=1 PendingSummary=1", got)
+	}
+	// Per-category unread map: the Tech folder has exactly one unread article.
+	if got.UnreadByCategory[cat.ID] != 1 {
+		t.Errorf("UnreadByCategory[%d] = %d, want 1 (full map: %+v)", cat.ID, got.UnreadByCategory[cat.ID], got.UnreadByCategory)
 	}
 }
 
