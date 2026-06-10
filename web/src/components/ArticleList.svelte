@@ -7,10 +7,12 @@
     density,
     feeds,
     loadArticles,
+    loadMore,
     refreshSidebar,
     selectedArticleId,
     toggleStar,
     toggleLater,
+    setRead,
     newArticleCount,
     freshWindowSeconds,
   } from "../lib/stores";
@@ -149,6 +151,17 @@
     if (diff < 86400) return `${Math.round(diff / 3600)} hr ago`;
     return `${Math.round(diff / 86400)} d ago`;
   }
+  // Search-result date pill: when viewing search results, anything older than
+  // 24h gets a pill showing the date it was polled (fetched_at) so it's clear
+  // the hit is from beyond the normal reading window. Returns "" otherwise.
+  function searchDatePill(a: ArticleView): string {
+    if (get(activeView).kind !== "search") return "";
+    const pub = a.published_at ?? 0;
+    if (pub && Date.now() / 1000 - pub < 86400) return "";
+    const when = a.fetched_at || pub;
+    if (!when) return "";
+    return new Date(when * 1000).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  }
   // Window comes from the server (EMBER_FRESH_WINDOW, surfaced via
   // /api/me) so the client filter matches the server's CountSmartViews
   // query + Fresh-list default cutoff. Defaults to 6h until /api/me
@@ -179,14 +192,16 @@
     return out;
   });
 
+  // Mark all read marks only the currently-loaded (shown) cards, not the whole
+  // view — with paging, "all" means "everything you've pulled in." Anything
+  // behind "Load more" stays unread until it's loaded. Reuses the bulk
+  // setRead, which already syncs the per-feed + All-Unread badges optimistically.
   async function onMarkAllRead() {
-    let body: { feed_id?: number; category_id?: number; board_id?: number; view?: string } = {};
-    if ($activeView.kind === "feed") body = { feed_id: $activeView.id };
-    if ($activeView.kind === "category") body = { category_id: $activeView.id };
-    if ($activeView.kind === "board") body = { board_id: $activeView.id };
-    if ($activeView.kind === "smart") body = { view: $activeView.view };
-    await api.markAllRead(body);
-    await Promise.all([loadArticles(get(activeView)), refreshSidebar()]);
+    const ids = $articles.items.filter((a) => !a.is_read).map((a) => a.id);
+    if (ids.length === 0) return;
+    await setRead(ids, true);
+    // Reconcile the per-category badges (setRead doesn't touch that map).
+    await refreshSidebar();
   }
 </script>
 
@@ -286,6 +301,7 @@
               <span class="tag-badge">{a.tags.split(",")[0].trim()}</span>
             {/if}
             {#if isFresh(a.published_at) && !a.is_read}<span class="fresh-tag">Fresh</span>{/if}
+            {#if searchDatePill(a)}<span class="date-pill" title="Polled {searchDatePill(a)} — older than 24h">{searchDatePill(a)}</span>{/if}
             {#if a.dup_count > 0}
               <!-- Visual label inside the story-link button. The interactive
                    trigger sits in story-foot below as a sibling — nested
@@ -367,6 +383,17 @@
         </div>
       </article>
     {/each}
+
+    {#if $articles.hasMore}
+      <button
+        class="load-more"
+        on:click={loadMore}
+        disabled={$articles.loading}
+        data-testid="load-more"
+      >
+        {$articles.loading ? "Loading…" : "Load more"}
+      </button>
+    {/if}
   </div>
 </section>
 
@@ -379,6 +406,21 @@
     display: flex;
     flex-direction: column;
   }
+  .load-more {
+    margin: 14px auto 22px;
+    display: block;
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 9px 20px;
+    font-family: var(--font-ui);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .load-more:hover:not(:disabled) { background: var(--line-soft); }
+  .load-more:disabled { opacity: 0.5; cursor: not-allowed; }
   @media (max-width: 900px) {
     .list-col { border-right: 0; }
     .list-header { padding: 12px 14px 10px; }
@@ -607,6 +649,16 @@
     letter-spacing: 0.06em;
     color: var(--ember);
     background: var(--ember-wash);
+    padding: 2px 7px;
+    border-radius: 5px;
+    text-transform: uppercase;
+  }
+  .date-pill {
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--ink-soft);
+    background: var(--line-soft);
     padding: 2px 7px;
     border-radius: 5px;
     text-transform: uppercase;

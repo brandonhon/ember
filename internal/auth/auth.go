@@ -12,6 +12,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 	"sync"
@@ -237,6 +238,11 @@ func (a *Auth) CreateSession(ctx context.Context, w http.ResponseWriter, r *http
 		VALUES (?, ?, ?, ?, ?)`,
 		sess.ID, sess.UserID, sess.CreatedAt, sess.ExpiresAt, sess.UserAgent); err != nil {
 		return models.Session{}, err
+	}
+	// Shift the user's login timestamps so the unread window can anchor on the
+	// previous visit. Best-effort: a failure here must not block login.
+	if err := a.Store.RecordLogin(ctx, userID); err != nil {
+		slog.Default().Warn("record login time failed", "user_id", userID, "err", err)
 	}
 	encoded, err := a.Cookie.Encode(CookieName, sessionID)
 	if err != nil {

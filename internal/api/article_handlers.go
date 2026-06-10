@@ -25,46 +25,67 @@ func (d *Dependencies) handleListArticles(w http.ResponseWriter, r *http.Request
 		return v == "1" || v == "true"
 	}
 
+	ctx := r.Context()
+	now := time.Now()
+	feedID := atoi("feed_id")
+	categoryID := atoi("category_id")
+
+	// Reading-view window (Today / a feed / a category): admin-configurable,
+	// default 24h, capped at the retention window. Articles older than this are
+	// kept in the DB (so search can reach them) but not shown or counted here.
+	readingWindow := time.Duration(d.Store.ResolveReadingWindowHours(ctx, store.DefaultReadingWindowHours)) * time.Hour
+
+	// freshAfter is the published-after lower bound. The client may pin it via
+	// ?fresh_after=; otherwise it's derived per view. The window bounds which
+	// articles are *eligible*; the list itself is paged 50 at a time (keyset
+	// cursor + "Load more"), so a busy window doesn't dump thousands of rows.
 	freshAfter := atoi("fresh_after")
-	if view == "fresh" && freshAfter == 0 {
-		// Default cutoff comes from cfg.FreshWindow (EMBER_FRESH_WINDOW)
-		// wired through Dependencies. Zero falls back to 6h to match the
-		// legacy hardcoded value.
-		fw := d.FreshWindow
-		if fw <= 0 {
-			fw = 6 * time.Hour
+	if freshAfter == 0 {
+		switch view {
+		case "fresh":
+			fw := d.FreshWindow
+			if fw <= 0 {
+				fw = 6 * time.Hour
+			}
+			freshAfter = now.Add(-fw).Unix()
+		case "today":
+			freshAfter = now.Add(-readingWindow).Unix()
+		case "unread":
+			// All Unread extends back to the user's previous login (clamped to
+			// [reading window, retention]) so time away surfaces everything new
+			// since.
+			freshAfter = d.Store.UnreadCutoff(ctx, u.ID)
+		default:
+			// A specific feed or category is a reading view too. It uses the
+			// same UnreadCutoff as its sidebar badge (the reading window as a
+			// floor, extended back to the previous login on absence) so the
+			// unread items in the column always match the badge count — never
+			// "badge 5, column 2" when you've been away more than a window.
+			if feedID > 0 || categoryID > 0 {
+				freshAfter = d.Store.UnreadCutoff(ctx, u.ID)
+			}
 		}
-		freshAfter = time.Now().Add(-fw).Unix()
-	}
-	if view == "today" && freshAfter == 0 {
-		now := time.Now()
-		dayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-		freshAfter = dayStart.Unix()
 	}
 
 	limit := 50
 	if v := q.Get("limit"); v != "" {
-		// Clamp in the handler too (the store also caps at 200): each returned
-		// row drives a correlated dup_count subquery, so an unbounded limit is
-		// a cheap amplification knob without a fronting proxy to rate-limit.
-		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 200 {
+		// Clamp in the handler too (the store also caps): each returned row
+		// drives a correlated dup_count subquery, so an unbounded limit is a
+		// cheap amplification knob without a fronting proxy to rate-limit.
+		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= store.MaxArticleListLimit {
 			limit = n
 		}
 	}
 
-	// Hide articles the LLM hasn't touched yet — they appear once the poller
-	// stamps a summary_model (success or 'skipped'). Admin/debug callers can
-	// pass ?all=1 to bypass. The Fresh view also bypasses the gate so the
-	// sidebar Fresh badge and the Fresh article list show the same recent-
-	// publication set (un-summarized recent items still count and appear).
-	onlySummarized := !atoB("all")
-	if view == "fresh" {
-		onlySummarized = false
-	}
+	// Summary gate = "is AI summarization on?". When on, hide articles the
+	// summarizer hasn't stamped yet — uniformly across every view (including
+	// Fresh) so badges match lists. When off (no Ollama), nothing is gated and
+	// everything shows everywhere. ?all=1 force-bypasses for admin/debug.
+	onlySummarized := d.summariesOn() && !atoB("all")
 	query := store.ListArticlesQuery{
 		View:            view,
-		FeedID:          atoi("feed_id"),
-		CategoryID:      atoi("category_id"),
+		FeedID:          feedID,
+		CategoryID:      categoryID,
 		BoardID:         atoi("board_id"),
 		Unread:          atoB("unread"),
 		Starred:         atoB("starred"),
@@ -76,12 +97,15 @@ func (d *Dependencies) handleListArticles(w http.ResponseWriter, r *http.Request
 		OnlySummarized:  onlySummarized,
 		Tag:             q.Get("tag"),
 	}
-	articles, err := d.Store.ListArticles(r.Context(), u.ID, query)
+	articles, err := d.Store.ListArticles(ctx, u.ID, query)
 	if mapStoreError(w, err) {
 		return
 	}
+	// Emit a paging cursor only when the page came back full — a short page is
+	// the last one, so a present cursor means "Load more has something." This
+	// is what lets the client show/hide the Load-more button correctly.
 	meta := map[string]any{}
-	if n := len(articles); n > 0 {
+	if n := len(articles); n > 0 && n == query.Limit {
 		last := articles[n-1]
 		meta["next_cursor_pub"] = last.PublishedAt
 		meta["next_cursor_id"] = last.ID
@@ -198,10 +222,16 @@ func (d *Dependencies) handleMarkAllRead(w http.ResponseWriter, r *http.Request)
 	var freshAfter int64
 	switch req.View {
 	case "fresh":
-		freshAfter = time.Now().Add(-6 * time.Hour).Unix()
+		fw := d.FreshWindow
+		if fw <= 0 {
+			fw = 6 * time.Hour
+		}
+		freshAfter = time.Now().Add(-fw).Unix()
 	case "today":
-		now := time.Now()
-		freshAfter = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).Unix()
+		rw := time.Duration(d.Store.ResolveReadingWindowHours(r.Context(), store.DefaultReadingWindowHours)) * time.Hour
+		freshAfter = time.Now().Add(-rw).Unix()
+	case "unread":
+		freshAfter = d.Store.UnreadCutoff(r.Context(), u.ID)
 	}
 	n, err := d.Store.MarkAllRead(r.Context(), u.ID, req.FeedID, req.CategoryID, freshAfter)
 	if mapStoreError(w, err) {

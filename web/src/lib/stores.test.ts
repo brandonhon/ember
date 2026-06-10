@@ -5,6 +5,7 @@ import {
   articles,
   feeds,
   loadArticles,
+  loadMore,
   refreshSmartCounts,
   setRead,
   smartCounts,
@@ -20,7 +21,7 @@ beforeEach(() => {
   fetchMock.mockReset();
   globalThis.fetch = fetchMock;
   user.set(null);
-  articles.set({ items: [], loading: false });
+  articles.set({ items: [], loading: false, hasMore: false });
   feeds.set([]);
   activeView.set({ kind: "smart", view: "fresh" });
 });
@@ -83,6 +84,7 @@ describe("loadArticles", () => {
     articles.set({
       items: [article({ id: 1 })],
       loading: false,
+      hasMore: true,
       cursor: { pub: 500, id: 1 },
     });
     fetchMock.mockResolvedValueOnce(envelope([article({ id: 2 })], {
@@ -94,6 +96,36 @@ describe("loadArticles", () => {
     const [url] = fetchMock.mock.calls[0] as [string, unknown];
     expect(url).toContain("cursor_pub=500");
     expect(url).toContain("cursor_id=1");
+  });
+
+  it("clears hasMore when the page comes back without a cursor (last page)", async () => {
+    fetchMock.mockResolvedValueOnce(envelope([article({ id: 7 })])); // no cursor meta
+    await loadArticles({ kind: "smart", view: "fresh" });
+    const s = get(articles);
+    expect(s.hasMore).toBe(false);
+    expect(s.cursor).toBeUndefined();
+  });
+
+  it("pages search by offset and stops when a short page returns", async () => {
+    activeView.set({ kind: "search", query: "rust" });
+    // First page: a full 25 results → hasMore, offset advances to 25.
+    const full = Array.from({ length: 25 }, (_, i) => article({ id: i + 1, guid: `g${i + 1}` }));
+    fetchMock.mockResolvedValueOnce(envelope(full));
+    await loadArticles({ kind: "search", query: "rust" });
+    let s = get(articles);
+    expect(s.items.length).toBe(25);
+    expect(s.hasMore).toBe(true);
+    expect(s.searchOffset).toBe(25);
+
+    // loadMore requests offset=25; a short page (2) ends paging.
+    fetchMock.mockResolvedValueOnce(envelope([article({ id: 26 }), article({ id: 27 })]));
+    await loadMore();
+    s = get(articles);
+    expect(s.items.length).toBe(27);
+    expect(s.hasMore).toBe(false);
+    const [url] = fetchMock.mock.calls[1] as [string, unknown];
+    expect(url).toContain("offset=25");
+    expect(url).toContain("limit=25");
   });
 
   it("captures errors without throwing", async () => {
@@ -112,6 +144,7 @@ describe("setRead", () => {
     articles.set({
       items: [article({ id: 10, feed_id: 1 }), article({ id: 11, feed_id: 1 })],
       loading: false,
+      hasMore: false,
     });
     fetchMock.mockResolvedValueOnce(envelope({ count: 2 }));
     await setRead([10, 11], true);
@@ -122,7 +155,7 @@ describe("setRead", () => {
 
 describe("toggleStar", () => {
   it("flips is_starred locally", async () => {
-    articles.set({ items: [article({ id: 42, is_starred: false })], loading: false });
+    articles.set({ items: [article({ id: 42, is_starred: false })], loading: false, hasMore: false });
     fetchMock.mockResolvedValueOnce(envelope({ ok: true }));
     await toggleStar(42, true);
     expect(get(articles).items[0].is_starred).toBe(true);
@@ -138,9 +171,9 @@ describe("totalUnread", () => {
 
 describe("refreshSmartCounts", () => {
   it("updates pending_summary from the server (drives the summarizing bar to zero)", async () => {
-    smartCounts.set({ fresh: 0, starred: 0, later: 0, shared: 0, pending_summary: 7 });
+    smartCounts.set({ fresh: 0, starred: 0, later: 0, shared: 0, pending_summary: 7, unread: 0, unread_by_category: {} });
     fetchMock.mockResolvedValueOnce(
-      envelope({ fresh: 2, starred: 1, later: 0, shared: 0, pending_summary: 0 }),
+      envelope({ fresh: 2, starred: 1, later: 0, shared: 0, pending_summary: 0, unread: 0, unread_by_category: {} }),
     );
     await refreshSmartCounts();
     const sc = get(smartCounts);

@@ -62,14 +62,15 @@ test.describe("reading", () => {
     await expect(page.getByTestId("story-2")).toBeVisible();
 
     // Helper: read the trailing digit run from the feed item; that's the
-    // unread badge. Returns null when no badge (the feed-name text alone).
-    const unread = async (): Promise<number | null> => {
+    // unread badge. Returns 0 when no badge is shown (the feed-name text
+    // alone) — the badge is hidden at zero, so "no digit" means zero unread.
+    const unread = async (): Promise<number> => {
       const text = await page.getByTestId("feed-1").innerText();
       const m = text.match(/(\d+)$/);
-      return m ? Number(m[1]) : null;
+      return m ? Number(m[1]) : 0;
     };
 
-    const initial = (await unread()) ?? 0;
+    const initial = await unread();
     if (initial < 1) {
       test.skip(true, "feed has no unread articles to toggle");
       return;

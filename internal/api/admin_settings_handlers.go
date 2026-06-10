@@ -32,6 +32,12 @@ type adminSettings struct {
 	PollMinIntervalSeconds      int `json:"poll_min_interval_seconds"`
 	PollMinIntervalFloorSeconds int `json:"poll_min_interval_floor_seconds"`
 	PollMinIntervalCeilSeconds  int `json:"poll_min_interval_ceil_seconds"`
+	// Reading-view + search windows in hours, with their shared bounds echoed
+	// so the UI can constrain its inputs. RetentionHours is the fixed ceiling.
+	ReadingWindowHours int `json:"reading_window_hours"`
+	SearchWindowHours  int `json:"search_window_hours"`
+	WindowHoursFloor   int `json:"window_hours_floor"`
+	WindowHoursCeil    int `json:"window_hours_ceil"`
 }
 
 func (d *Dependencies) handleGetAdminSettings(w http.ResponseWriter, r *http.Request) {
@@ -50,6 +56,10 @@ func (d *Dependencies) handleGetAdminSettings(w http.ResponseWriter, r *http.Req
 	out.PollMinIntervalSeconds = int(d.Store.ResolvePollMinInterval(ctx, d.PollMinIntervalFallback).Seconds())
 	out.PollMinIntervalFloorSeconds = int(store.PollMinIntervalFloor.Seconds())
 	out.PollMinIntervalCeilSeconds = int(store.PollMinIntervalCeil.Seconds())
+	out.ReadingWindowHours = d.Store.ResolveReadingWindowHours(ctx, store.DefaultReadingWindowHours)
+	out.SearchWindowHours = d.Store.ResolveSearchWindowHours(ctx, store.DefaultSearchWindowHours)
+	out.WindowHoursFloor = store.WindowHoursFloor
+	out.WindowHoursCeil = store.WindowHoursCeil
 	writeData(w, http.StatusOK, out, nil)
 }
 
@@ -67,6 +77,8 @@ type setAdminSettingsReq struct {
 	} `json:"smtp,omitempty"`
 	InitialBacklogHours    *int `json:"initial_backlog_hours,omitempty"`
 	PollMinIntervalSeconds *int `json:"poll_min_interval_seconds,omitempty"`
+	ReadingWindowHours     *int `json:"reading_window_hours,omitempty"`
+	SearchWindowHours      *int `json:"search_window_hours,omitempty"`
 }
 
 func (d *Dependencies) handleSetAdminSettings(w http.ResponseWriter, r *http.Request) {
@@ -111,6 +123,30 @@ func (d *Dependencies) handleSetAdminSettings(w http.ResponseWriter, r *http.Req
 			return
 		}
 		if err := d.Store.PutPollMinInterval(ctx, iv); err != nil {
+			internalError(w, "internal", err)
+			return
+		}
+	}
+	if req.ReadingWindowHours != nil {
+		n := *req.ReadingWindowHours
+		if n < store.WindowHoursFloor || n > store.WindowHoursCeil {
+			writeError(w, http.StatusBadRequest, "bad_request",
+				"reading_window_hours must be between "+strconv.Itoa(store.WindowHoursFloor)+" and "+strconv.Itoa(store.WindowHoursCeil))
+			return
+		}
+		if err := d.Store.PutReadingWindowHours(ctx, n); err != nil {
+			internalError(w, "internal", err)
+			return
+		}
+	}
+	if req.SearchWindowHours != nil {
+		n := *req.SearchWindowHours
+		if n < store.WindowHoursFloor || n > store.WindowHoursCeil {
+			writeError(w, http.StatusBadRequest, "bad_request",
+				"search_window_hours must be between "+strconv.Itoa(store.WindowHoursFloor)+" and "+strconv.Itoa(store.WindowHoursCeil))
+			return
+		}
+		if err := d.Store.PutSearchWindowHours(ctx, n); err != nil {
 			internalError(w, "internal", err)
 			return
 		}

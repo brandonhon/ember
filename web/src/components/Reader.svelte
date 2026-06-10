@@ -278,7 +278,6 @@
         <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
         <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
       </svg>
-      <div class="big">Pick a story</div>
       <div>Pick an article from the list to read.</div>
     </div>
   {:else}
@@ -1030,18 +1029,16 @@
   }
 
   .reader-empty {
-    display: grid;
-    place-items: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
     height: 100%;
+    min-height: 60vh;
     text-align: center;
     color: var(--ink-faint);
     padding: 40px;
-  }
-  .reader-empty .big {
-    font-family: var(--font-display);
-    font-size: 24px;
-    color: var(--ink-soft);
-    margin: 14px 0 6px;
   }
   .reader-empty svg { width: 50px; height: 50px; opacity: 0.4; }
 

@@ -43,7 +43,7 @@
 
   let { onClose }: { onClose: () => void } = $props();
 
-  type Section = "profile" | "inbox" | "passkeys" | "notifications" | "preferences" | "stats" | "digest" | "mobile" | "filters" | "users" | "starter" | "import" | "llm" | "branding" | "database" | "session" | "email" | "about";
+  type Section = "profile" | "inbox" | "passkeys" | "notifications" | "preferences" | "stats" | "digest" | "mobile" | "filters" | "feeds" | "users" | "starter" | "import" | "llm" | "branding" | "database" | "session" | "email" | "about";
   let section = $state<Section>("profile");
 
   // Mobile detection (matches App.svelte's 900px breakpoint). On mobile the
@@ -78,6 +78,7 @@
     inbox: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>`,
     preferences: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M3 12h3M18 12h3M12 3v3M12 18v3"/></svg>`,
     filters: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 5h18l-7 8v6l-4-2v-4z"/></svg>`,
+    feeds: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1.5" fill="currentColor" stroke="none"/></svg>`,
     digest: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5m6 14v-9m6 9V8m4 11H2"/></svg>`,
     stats: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18M7 15l4-5 3 3 5-7"/></svg>`,
     mobile: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="3" width="10" height="18" rx="2"/></svg>`,
@@ -211,6 +212,7 @@
       case "preferences": return "Preferences";
       case "mobile": return "Mobile clients";
       case "filters": return "Filters";
+      case "feeds": return "Feeds";
       case "stats": return "Reading stats";
       case "digest": return "Daily digest";
       case "starter": return "Starter packs";
@@ -744,6 +746,7 @@
     if (section === "database" && $user?.is_admin) void loadDB();
     if (section === "session" && $user?.is_admin) void loadSessionTTL();
     if (section === "email" && $user?.is_admin) void loadEmailSettings();
+    if (section === "feeds" && $user?.is_admin) void loadFeedSettings();
     if (section === "users" && $user?.is_admin) void loadUsers();
     if (section === "stats") void loadStats();
     if (section === "digest") void loadDigest();
@@ -814,12 +817,10 @@
     from: string;
     starttls: boolean;
     initial_backlog_hours: number;
-    poll_min_interval_seconds: number;
   };
   let emailDraft = $state<EmailDraft>({
     host: "", port: 587, username: "", password: "", clear_password: false,
     from: "", starttls: true, initial_backlog_hours: 48,
-    poll_min_interval_seconds: 1800,
   });
   // Preset choices for the feed-check interval (all within the 5m–24h bounds).
   const pollIntervalPresets = [
@@ -832,6 +833,51 @@
     { label: "12 hours", seconds: 43200 },
     { label: "24 hours", seconds: 86400 },
   ];
+
+  // --- Feeds section (admin: poll interval) ----------------------------
+  let feedSettings = $state({
+    poll_min_interval_seconds: 1800,
+    reading_window_hours: 24,
+    search_window_hours: 48,
+    window_hours_floor: 24,
+    window_hours_ceil: 168,
+  });
+  let feedBusy = $state(false);
+  let feedMsg = $state("");
+  let feedErr = $state("");
+  async function loadFeedSettings() {
+    feedErr = "";
+    try {
+      const res = await api.getAdminSettings();
+      feedSettings.poll_min_interval_seconds = res.data.poll_min_interval_seconds;
+      feedSettings.reading_window_hours = res.data.reading_window_hours;
+      feedSettings.search_window_hours = res.data.search_window_hours;
+      feedSettings.window_hours_floor = res.data.window_hours_floor;
+      feedSettings.window_hours_ceil = res.data.window_hours_ceil;
+    } catch (e) {
+      feedErr = e instanceof ApiError ? e.message : String(e);
+    }
+  }
+  async function saveFeedSettings() {
+    feedBusy = true;
+    feedMsg = "";
+    feedErr = "";
+    try {
+      const res = await api.setAdminSettings({
+        poll_min_interval_seconds: Number(feedSettings.poll_min_interval_seconds) || 1800,
+        reading_window_hours: Number(feedSettings.reading_window_hours) || 24,
+        search_window_hours: Number(feedSettings.search_window_hours) || 48,
+      });
+      feedSettings.poll_min_interval_seconds = res.data.poll_min_interval_seconds;
+      feedSettings.reading_window_hours = res.data.reading_window_hours;
+      feedSettings.search_window_hours = res.data.search_window_hours;
+      feedMsg = "Saved";
+    } catch (e) {
+      feedErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      feedBusy = false;
+    }
+  }
   let emailLoaded = $state<import("../lib/api").AdminSettings | null>(null);
   let emailBusy = $state(false);
   let emailMsg = $state("");
@@ -853,7 +899,6 @@
         from: res.data.smtp.from,
         starttls: res.data.smtp.starttls,
         initial_backlog_hours: res.data.initial_backlog_hours,
-        poll_min_interval_seconds: res.data.poll_min_interval_seconds,
       };
     } catch (e) {
       emailErr = e instanceof ApiError ? e.message : String(e);
@@ -873,7 +918,6 @@
           starttls: !!emailDraft.starttls,
         },
         initial_backlog_hours: Math.max(0, Number(emailDraft.initial_backlog_hours) || 0),
-        poll_min_interval_seconds: Number(emailDraft.poll_min_interval_seconds) || 1800,
       };
       // Only send the password when the admin actually typed one, OR when
       // they're explicitly clearing the stored value. Otherwise the server
@@ -941,6 +985,33 @@
     } finally {
       pwBusy = false;
       setTimeout(() => (pwMsg = ""), 4000);
+    }
+  }
+
+  // --- Profile email (self-service) ---------------------------------------
+  let profileEmail = $state($user?.email ?? "");
+  let profileEmailPassword = $state("");
+  let profileEmailBusy = $state(false);
+  let profileEmailMsg = $state("");
+  let profileEmailErr = $state("");
+  async function saveProfileEmail() {
+    profileEmailMsg = "";
+    profileEmailErr = "";
+    if (!profileEmailPassword) {
+      profileEmailErr = "Enter your current password to change your email.";
+      return;
+    }
+    profileEmailBusy = true;
+    try {
+      await api.updateEmail(profileEmail.trim(), profileEmailPassword);
+      profileEmailPassword = "";
+      await refreshMe();
+      profileEmailMsg = "Email saved.";
+    } catch (e) {
+      profileEmailErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      profileEmailBusy = false;
+      setTimeout(() => (profileEmailMsg = ""), 4000);
     }
   }
 
@@ -1094,6 +1165,9 @@
           <div class="nav-label">Reading</div>
           <button class:active={section === "preferences"} on:click={() => pickSection("preferences")} data-testid="settings-preferences"><span class="nav-ic">{@html NAV_ICONS.preferences}</span>Preferences</button>
           <button class:active={section === "filters"} on:click={() => pickSection("filters")} data-testid="settings-filters"><span class="nav-ic">{@html NAV_ICONS.filters}</span>Filters</button>
+          {#if $user?.is_admin}
+            <button class:active={section === "feeds"} on:click={() => pickSection("feeds")} data-testid="settings-feeds"><span class="nav-ic nav-ic-admin">{@html NAV_ICONS.feeds}</span>Feeds</button>
+          {/if}
           <button class:active={section === "digest"} on:click={() => pickSection("digest")} data-testid="settings-digest"><span class="nav-ic">{@html NAV_ICONS.digest}</span>Daily digest</button>
           <button class:active={section === "stats"} on:click={() => pickSection("stats")} data-testid="settings-stats"><span class="nav-ic">{@html NAV_ICONS.stats}</span>Reading stats</button>
           <button class:active={section === "mobile"} on:click={() => pickSection("mobile")} data-testid="settings-mobile"><span class="nav-ic">{@html NAV_ICONS.mobile}</span>Mobile clients</button>
@@ -1123,75 +1197,88 @@
 
       <div class="content">
         {#if section === "profile"}
+          <div class="eyebrow">Account</div>
           <h3>Profile</h3>
-          <div class="row">
-            <label>
-              <span>Username</span>
-              <input type="text" value={$user?.username ?? ""} disabled />
-            </label>
-            <label>
-              <span>Email</span>
-              <input type="email" value={$user?.email ?? ""} disabled placeholder="not set" />
-            </label>
+          <p class="hint">Your account on this server — set your email, manage your password.</p>
+          <div class="identity">
+            <div class="avatar">{($user?.username ?? "?").slice(0, 1).toUpperCase()}</div>
+            <div>
+              <div class="who">{$user?.username}{#if $user?.is_admin}<span class="badge-admin">admin</span>{/if}</div>
+              <div class="mail">{$user?.email || "No email set"}</div>
+            </div>
           </div>
-          <p class="hint">Email is managed by your administrator.</p>
-
-          <h4>Change password</h4>
-          {#if pwError}<p class="error" data-testid="pw-error">{pwError}</p>{/if}
-          {#if pwMsg}<p class="ok" data-testid="pw-msg">{pwMsg}</p>{/if}
-          <label>
-            <span>Current password</span>
-            <input type="password" bind:value={oldPassword} autocomplete="current-password" data-testid="pw-old" />
-          </label>
-          <label>
-            <span>New password</span>
-            <input type="password" bind:value={newPassword} autocomplete="new-password" data-testid="pw-new" />
-          </label>
-          <label>
-            <span>Confirm new password</span>
-            <input type="password" bind:value={confirmPassword} autocomplete="new-password" />
-          </label>
-          <div class="actions">
-            <button on:click={changePassword} disabled={pwBusy || !oldPassword || !newPassword} data-testid="pw-submit">
-              {pwBusy ? "Saving…" : "Change password"}
-            </button>
+          <div class="card">
+            <div class="card-head"><h4>Account details</h4></div>
+            <label class="pref-row">
+              <div><div class="pref-label">Email address</div><div class="pref-hint">Used for the daily digest and account contact. Leave blank to clear.</div></div>
+              <input class="row-input" type="email" bind:value={profileEmail} placeholder="you@example.com" data-testid="profile-email" />
+            </label>
+            <label class="pref-row">
+              <div><div class="pref-label">Current password</div><div class="pref-hint">Required to change your email.</div></div>
+              <input class="row-input" type="password" bind:value={profileEmailPassword} autocomplete="current-password" placeholder="••••••••" data-testid="profile-email-password" />
+            </label>
+            {#if profileEmailErr}<p class="error" data-testid="profile-email-err">{profileEmailErr}</p>{/if}
+            {#if profileEmailMsg}<p class="ok" data-testid="profile-email-msg">{profileEmailMsg}</p>{/if}
+            <div class="actions">
+              <button on:click={saveProfileEmail} disabled={profileEmailBusy} data-testid="profile-email-save">
+                {profileEmailBusy ? "Saving…" : "Save email"}
+              </button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h4>Change password</h4></div>
+            {#if pwError}<p class="error" data-testid="pw-error">{pwError}</p>{/if}
+            {#if pwMsg}<p class="ok" data-testid="pw-msg">{pwMsg}</p>{/if}
+            <label class="pref-row">
+              <div><div class="pref-label">Current password</div></div>
+              <input class="row-input" type="password" bind:value={oldPassword} autocomplete="current-password" data-testid="pw-old" />
+            </label>
+            <label class="pref-row">
+              <div><div class="pref-label">New password</div><div class="pref-hint">At least 8 characters.</div></div>
+              <input class="row-input" type="password" bind:value={newPassword} autocomplete="new-password" data-testid="pw-new" />
+            </label>
+            <label class="pref-row">
+              <div><div class="pref-label">Confirm new password</div></div>
+              <input class="row-input" type="password" bind:value={confirmPassword} autocomplete="new-password" />
+            </label>
+            <div class="actions">
+              <button on:click={changePassword} disabled={pwBusy || !oldPassword || !newPassword} data-testid="pw-submit">
+                {pwBusy ? "Saving…" : "Change password"}
+              </button>
+            </div>
           </div>
         {/if}
 
         {#if section === "passkeys"}
+          <div class="eyebrow">Account</div>
           <h3>Passkeys</h3>
           {#if !canPasskey}
             <p class="hint">Your browser doesn't support passkeys.</p>
           {:else}
-            <p class="hint">
-              Passkeys let you sign in without a password using a fingerprint, face scan, or
-              hardware key. Each device you register here can be used at sign-in.
-            </p>
+            <p class="hint">Sign in with a fingerprint, face scan, or hardware key instead of a password. Each device you register can be used at sign-in.</p>
 
             {#if passkeyErr}<p class="error">{passkeyErr}</p>{/if}
             {#if passkeyMsg}<p class="ok">{passkeyMsg}</p>{/if}
 
-            <h4>Add a passkey</h4>
-            <label>
-              <span>Name this device</span>
-              <input
-                type="text"
-                bind:value={newPasskeyName}
-                placeholder="e.g. MacBook Touch ID"
-                maxlength="60"
-              />
-            </label>
-            <div class="actions">
-              <button
-                on:click={addPasskey}
-                disabled={passkeyBusy === "register"}
-                data-testid="passkey-register"
-              >
-                {passkeyBusy === "register" ? "Waiting for device…" : "Register passkey"}
-              </button>
+            <div class="card">
+              <div class="card-head"><h4>Add a passkey</h4></div>
+              <label class="pref-row">
+                <div><div class="pref-label">Device name</div><div class="pref-hint">Something you'll recognize at sign-in.</div></div>
+                <input class="row-input" type="text" bind:value={newPasskeyName} placeholder="e.g. MacBook Touch ID" maxlength="60" />
+              </label>
+              <div class="actions">
+                <button
+                  on:click={addPasskey}
+                  disabled={passkeyBusy === "register"}
+                  data-testid="passkey-register"
+                >
+                  {passkeyBusy === "register" ? "Waiting for device…" : "Register passkey"}
+                </button>
+              </div>
             </div>
 
-            <h4>Your passkeys</h4>
+            <div class="card">
+            <div class="card-head"><h4>Your passkeys</h4></div>
             {#if passkeys.length === 0}
               <p class="hint">No passkeys registered yet.</p>
             {:else}
@@ -1218,92 +1305,116 @@
                 {/each}
               </ul>
             {/if}
+            </div>
           {/if}
         {/if}
 
         {#if section === "inbox"}
+          <div class="eyebrow">Account</div>
           <h3>Email inbox</h3>
           <p class="hint">
-            Each user gets a unique address. Mail sent to it lands in a
-            "Newsletters" feed — useful for Substack, Beehiiv, or any
-            newsletter that doesn't expose an RSS feed.
+            A private address that turns any newsletter into a feed —
+            Substack, Beehiiv, anything without RSS.
           </p>
           {#if inbox && !inbox.enabled}
-            <div class="hint">
-              The administrator hasn't configured an email domain
-              (<code>EMBER_EMAIL_DOMAIN</code>). See
-              <a href="/docs/email-inbox" target="_blank" rel="noopener noreferrer">the setup docs</a>.
+            <div class="card">
+              <div class="card-head"><h4>Not configured</h4></div>
+              <p class="pref-hint" style="padding: 14px 0;">
+                The administrator hasn't configured an email domain
+                (<code>EMBER_EMAIL_DOMAIN</code>). See
+                <a href="https://brandonhon.github.io/ember/email-inbox" target="_blank" rel="noopener noreferrer">the setup docs</a>.
+              </p>
             </div>
           {:else if inbox && inbox.address}
-            <div class="kv" style="grid-template-columns: 1fr auto;">
-              <dt>Your address</dt>
-              <dd>
-                <code data-testid="inbox-address">{inbox.address}</code>
-              </dd>
+            <div class="card">
+              <div class="card-head"><h4>Your address</h4></div>
+              <div class="pref-row">
+                <div>
+                  <div class="pref-label">Newsletter address</div>
+                  <div class="pref-hint">Mail sent here lands in your “Newsletters” feed within seconds.</div>
+                </div>
+                <code class="mono-addr" data-testid="inbox-address">{inbox.address}</code>
+              </div>
+              {#if inboxErr}<p class="error" data-testid="inbox-err">{inboxErr}</p>{/if}
+              {#if inboxMsg}<p class="ok" data-testid="inbox-msg">{inboxMsg}</p>{/if}
+              <div class="actions">
+                <button on:click={copyInboxAddress} data-testid="inbox-copy">Copy address</button>
+                <button class="ghost" on:click={onRotateInbox} disabled={inboxBusy} data-testid="inbox-rotate">
+                  {inboxBusy ? "Rotating…" : "Rotate address"}
+                </button>
+              </div>
             </div>
-            <div class="actions" style="margin-top: 12px;">
-              <button on:click={copyInboxAddress} data-testid="inbox-copy">Copy address</button>
-              <button class="ghost" on:click={onRotateInbox} disabled={inboxBusy} data-testid="inbox-rotate">
-                {inboxBusy ? "Rotating…" : "Rotate address"}
-              </button>
+            <div class="callout">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>
+              <div>Rotate the address if it gets sold or leaked — the old one keeps working for <strong>7 days</strong>.</div>
             </div>
-            {#if inboxErr}<p class="error" data-testid="inbox-err">{inboxErr}</p>{/if}
-            {#if inboxMsg}<p class="ok" data-testid="inbox-msg">{inboxMsg}</p>{/if}
-            <p class="hint" style="margin-top: 14px;">
-              Sign up for a newsletter using this address. New issues
-              show up in the Newsletters feed within seconds of arrival.
-              Rotate the address if it gets sold or leaked — the old
-              address keeps working for 7 days.
-            </p>
           {:else}
             <p class="hint">Loading…</p>
           {/if}
         {/if}
 
         {#if section === "notifications"}
+          <div class="eyebrow">Account</div>
           <h3>Notifications</h3>
           <p class="hint">
-            Web Push delivers reminders to your browser or installed PWA
-            even when Ember isn't open. Each device you enable shows up
-            below; revoke any you don't recognize.
+            Web Push reminders delivered to your browser or installed app,
+            even when Ember is closed.
           </p>
           {#if !canPush}
             <div class="error" data-testid="push-unsupported">
               This browser doesn't support Web Push notifications.
             </div>
           {:else}
-            <div class="actions" style="margin-bottom: 12px;">
-              <button on:click={onEnablePush} disabled={pushBusy} data-testid="push-enable">
-                {pushBusy ? "Enabling…" : "Enable on this device"}
-              </button>
-              <button class="ghost" on:click={onSendTestPush} disabled={pushSubs.length === 0} data-testid="push-test">
-                Send test notification
-              </button>
+            <div class="card">
+              <div class="pref-row">
+                <div>
+                  <div class="pref-label">This device</div>
+                  <div class="pref-hint">Enable push so new-article reminders reach you here.</div>
+                </div>
+                <button class="pack-btn" on:click={onEnablePush} disabled={pushBusy} data-testid="push-enable">
+                  {pushBusy ? "Enabling…" : "Enable"}
+                </button>
+              </div>
+              <div class="pref-row">
+                <div>
+                  <div class="pref-label">Test it</div>
+                  <div class="pref-hint">Send a sample notification to every enabled device.</div>
+                </div>
+                <button class="ghost" on:click={onSendTestPush} disabled={pushSubs.length === 0} data-testid="push-test">
+                  Send test
+                </button>
+              </div>
             </div>
             {#if pushErr}<p class="error" data-testid="push-err">{pushErr}</p>{/if}
             {#if pushMsg}<p class="ok" data-testid="push-msg">{pushMsg}</p>{/if}
-            <h4>Registered devices</h4>
-            {#if pushSubs.length === 0}
-              <p class="hint">No devices registered yet.</p>
-            {:else}
-              <ul class="list">
-                {#each pushSubs as s (s.id)}
-                  <li class="list-row">
-                    <div>
-                      <div class="list-title">{s.user_agent || "Unknown browser"}</div>
-                    </div>
-                    <button class="btn-danger" on:click={() => onDeletePushSub(s.id)} aria-label="Revoke device">
-                      Revoke
-                    </button>
-                  </li>
-                {/each}
-              </ul>
-            {/if}
+            <div class="card">
+              <div class="card-head"><h4>Registered devices</h4></div>
+              {#if pushSubs.length === 0}
+                <p class="pref-hint" style="padding: 14px 0;">No devices registered yet.</p>
+              {:else}
+                <ul class="list">
+                  {#each pushSubs as s (s.id)}
+                    <li class="list-row">
+                      <div>
+                        <div class="list-title">{s.user_agent || "Unknown browser"}</div>
+                      </div>
+                      <button class="btn-danger" on:click={() => onDeletePushSub(s.id)} aria-label="Revoke device">
+                        Revoke
+                      </button>
+                    </li>
+                  {/each}
+                </ul>
+              {/if}
+            </div>
           {/if}
         {/if}
 
         {#if section === "preferences"}
+          <div class="eyebrow">Reading</div>
           <h3>Preferences</h3>
+          <p class="hint">How Ember looks and reads, stored locally on this device.</p>
+          <div class="card">
+          <div class="card-head"><h4>Appearance</h4></div>
           <div class="pref-row">
             <div>
               <div class="pref-label">Theme</div>
@@ -1355,7 +1466,10 @@
               </div>
             </div>
           {/if}
+          </div>
 
+          <div class="card">
+          <div class="card-head"><h4>Reading</h4></div>
           <div class="pref-row">
             <div>
               <div class="pref-label">Article density</div>
@@ -1376,41 +1490,54 @@
               <button class:on={!$showSummary} on:click={() => showSummary.set(false)} data-testid="pref-summary-off">Off</button>
             </div>
           </div>
+          </div>
         {/if}
 
         {#if section === "mobile"}
+          <div class="eyebrow">Reading</div>
           <h3>Mobile clients</h3>
           <p class="hint">
-            Reeder, FeedMe, and other Fever-compatible apps can connect using the URL and key
-            below. The key is derived from your username and user ID — if it leaks, change your
-            username via the admin.
+            Connect Reeder, FeedMe, or any Fever-compatible app with the URL and key below.
           </p>
-          <label>
-            <span>Fever URL</span>
-            <input type="text" value={feverURL} readonly />
-          </label>
-          <label>
-            <span>API key</span>
-            <input type="text" value={$feverAPIKey} readonly data-testid="fever-key" />
-          </label>
-          <div class="actions">
-            <button on:click={copyKey} class="ghost">Copy key</button>
+          <div class="card">
+            <label class="pref-row">
+              <div><div class="pref-label">Fever URL</div></div>
+              <input class="row-input" type="text" value={feverURL} readonly />
+            </label>
+            <label class="pref-row">
+              <div>
+                <div class="pref-label">API key</div>
+                <div class="pref-hint">Derived from your account — change your username if it leaks.</div>
+              </div>
+              <input class="row-input" type="text" value={$feverAPIKey} readonly data-testid="fever-key" />
+            </label>
+            <div class="actions">
+              <button on:click={copyKey} class="ghost">Copy key</button>
+            </div>
           </div>
         {/if}
 
         {#if section === "filters"}
+          <div class="eyebrow">Reading</div>
           <h3>Filters</h3>
           <p class="hint">
-            Rules applied to new articles as they arrive. Open the editor to add, disable, or
-            delete filters.
+            Rules applied to new articles as they arrive — tag, star, hide, or file into a board.
           </p>
-          <div class="actions">
-            <button on:click={() => (showFilters = true)} data-testid="open-filters">Open filter editor</button>
+          <div class="card">
+            <div class="pref-row">
+              <div>
+                <div class="pref-label">Rule engine</div>
+                <div class="pref-hint">Open the editor to add, reorder, disable, or delete filters.</div>
+              </div>
+              <button class="pack-btn" on:click={() => (showFilters = true)} data-testid="open-filters">Open filter editor</button>
+            </div>
           </div>
         {/if}
 
         {#if section === "stats"}
+          <div class="eyebrow">Reading</div>
           <h3>Reading stats</h3>
+          <p class="hint">Your activity over the last 30 days.</p>
           {#if statsErr}<p class="error">{statsErr}</p>{/if}
           {#if !statsData}
             <p class="muted">Loading…</p>
@@ -1442,75 +1569,88 @@
               </div>
             </div>
             {#if statsData.top_feeds && statsData.top_feeds.length > 0}
-              <h4>Top feeds (last 30 days)</h4>
-              <table class="llm-table">
-                <thead><tr><th>Feed</th><th>Read</th></tr></thead>
-                <tbody>
-                  {#each statsData.top_feeds as f (f.feed_id)}
-                    <tr><td>{f.title}</td><td>{f.read_count}</td></tr>
-                  {/each}
-                </tbody>
-              </table>
+              {@const maxRead = Math.max(...statsData.top_feeds.map((f) => f.read_count), 1)}
+              <div class="card">
+                <div class="card-head"><h4>Top feeds · last 30 days</h4></div>
+                {#each statsData.top_feeds as f, i (f.feed_id)}
+                  <div class="rank-row">
+                    <span class="rank-n">{i + 1}</span>
+                    <span class="rank-name">{f.title}</span>
+                    <span class="rank-bar"><i style="width:{(f.read_count / maxRead) * 100}%"></i></span>
+                    <span class="rank-v">{f.read_count}</span>
+                  </div>
+                {/each}
+              </div>
             {/if}
           {/if}
         {/if}
 
         {#if section === "digest"}
+          <div class="eyebrow">Reading</div>
           <h3>Daily digest</h3>
-          <p class="hint">Get an email at a fixed time each day with the articles in your chosen view. Requires the server to have SMTP configured.</p>
+          <p class="hint">One email a day with the articles in your chosen view. Requires server SMTP.</p>
           {#if digestErr}<p class="error">{digestErr}</p>{/if}
           {#if digestMsg}<p class="ok" data-testid="digest-msg">{digestMsg}</p>{/if}
           {#if !digest}
             <p class="muted">Loading…</p>
           {:else}
-            <div class="pref-row">
-              <div>
-                <div class="pref-label">Enabled</div>
-                <div class="pref-hint">Sends one email per day. Skipped silently when no new articles match.</div>
+            <div class="card">
+              <div class="pref-row">
+                <div>
+                  <div class="pref-label">Daily digest</div>
+                  <div class="pref-hint">Sends one email per day; skipped silently when nothing new matches.</div>
+                </div>
+                <div class="seg">
+                  <button class:on={digest.enabled} on:click={() => (digest!.enabled = true)} data-testid="digest-on">On</button>
+                  <button class:on={!digest.enabled} on:click={() => (digest!.enabled = false)} data-testid="digest-off">Off</button>
+                </div>
               </div>
-              <div class="seg">
-                <button class:on={digest.enabled} on:click={() => (digest!.enabled = true)} data-testid="digest-on">On</button>
-                <button class:on={!digest.enabled} on:click={() => (digest!.enabled = false)} data-testid="digest-off">Off</button>
+
+              <label class="pref-row">
+                <div>
+                  <div class="pref-label">View</div>
+                  <div class="pref-hint">Which articles to include.</div>
+                </div>
+                <select class="row-input" bind:value={digest.view_value} on:change={() => (digest!.view_kind = "smart")} data-testid="digest-view">
+                  <option value="fresh">Fresh (last 24h)</option>
+                  <option value="today">Today</option>
+                  <option value="unread">All unread</option>
+                  <option value="starred">Starred</option>
+                  <option value="later">Read later</option>
+                </select>
+              </label>
+
+              <div class="pref-row">
+                <div>
+                  <div class="pref-label">Send time (UTC)</div>
+                  <div class="pref-hint">24-hour clock.</div>
+                </div>
+                <div class="row-ctl">
+                  <input class="row-input num" type="number" min="0" max="23" bind:value={digest.hour_utc} data-testid="digest-hour" aria-label="Hour (UTC)" />
+                  <span aria-hidden="true">:</span>
+                  <input class="row-input num" type="number" min="0" max="59" bind:value={digest.minute_utc} data-testid="digest-minute" aria-label="Minute (UTC)" />
+                </div>
               </div>
-            </div>
 
-            <label>
-              <span>View</span>
-              <select bind:value={digest.view_value} on:change={() => (digest!.view_kind = "smart")} data-testid="digest-view">
-                <option value="fresh">Fresh (last 24h)</option>
-                <option value="today">Today</option>
-                <option value="unread">All unread</option>
-                <option value="starred">Starred</option>
-                <option value="later">Read later</option>
-              </select>
-              <span class="pref-hint">Saved searches, feeds and folders can be wired in later; smart views are the common case.</span>
-            </label>
-
-            <div class="rec-row">
-              <label class="inline-label">
-                <span>Hour (UTC)</span>
-                <input type="number" min="0" max="23" bind:value={digest.hour_utc} data-testid="digest-hour" />
+              <label class="pref-row">
+                <div>
+                  <div class="pref-label">Email override</div>
+                  <div class="pref-hint">Defaults to your account email.</div>
+                </div>
+                <input class="row-input" type="email" bind:value={digest.email_override} placeholder="optional" data-testid="digest-email" />
               </label>
-              <label class="inline-label">
-                <span>Minute (UTC)</span>
-                <input type="number" min="0" max="59" bind:value={digest.minute_utc} data-testid="digest-minute" />
-              </label>
-            </div>
 
-            <label>
-              <span>Email override</span>
-              <input type="email" bind:value={digest.email_override} placeholder="optional — defaults to your account email" data-testid="digest-email" />
-            </label>
-
-            <div class="actions">
-              <button on:click={saveDigest} disabled={digestBusy} data-testid="digest-save">
-                {digestBusy ? "Saving…" : "Save"}
-              </button>
+              <div class="actions">
+                <button on:click={saveDigest} disabled={digestBusy} data-testid="digest-save">
+                  {digestBusy ? "Saving…" : "Save"}
+                </button>
+              </div>
             </div>
           {/if}
         {/if}
 
         {#if section === "import"}
+          <div class="eyebrow">Import &amp; data</div>
           <h3>Import &amp; migrate</h3>
           <p class="hint">Bring your library and subscriptions into Ember. Nothing here touches your existing feeds.</p>
           {#if importErr}<p class="error" data-testid="import-error">{importErr}</p>{/if}
@@ -1519,9 +1659,11 @@
           <input type="file" accept=".xml,application/xml,text/xml" bind:this={ttrssFileInput} on:change={ttrssFilePick} style="display:none" data-testid="ttrss-file-input" />
           <input type="file" accept=".opml,.xml,application/xml,text/xml" bind:this={opmlFileInput} on:change={opmlFilePick} style="display:none" data-testid="opml-file-input" />
 
-          <div class="import-card">
-            <h4>Tiny Tiny RSS</h4>
-            <p class="import-sub">Migrate your subscriptions and starred &amp; archived articles from a running instance, or upload an article export file.</p>
+          <div class="card">
+            <div class="card-head">
+              <h4>Tiny Tiny RSS</h4>
+              <p>Migrate subscriptions, folders, and starred &amp; archived articles from a running instance — or upload an export file.</p>
+            </div>
             <div class="import-seg" role="tablist">
               <button role="tab" class:on={importTab === "live"} on:click={() => (importTab = "live")} data-testid="ttrss-tab-live">Migrate from running TT-RSS</button>
               <button role="tab" class:on={importTab === "file"} on:click={() => (importTab = "file")} data-testid="ttrss-tab-file">Upload export file</button>
@@ -1553,9 +1695,11 @@
             {/if}
           </div>
 
-          <div class="import-card">
-            <h4>OPML subscriptions</h4>
-            <p class="import-sub">Import or export your feed list in the universal OPML format.</p>
+          <div class="card">
+            <div class="card-head">
+              <h4>OPML subscriptions</h4>
+              <p>Import or export your feed list in the universal OPML format.</p>
+            </div>
             <div class="actions" style="justify-content:flex-start">
               <button on:click={() => opmlFileInput?.click()} disabled={importBusy} data-testid="open-opml-import">Import OPML…</button>
               <button class="ghost" on:click={exportOPML} data-testid="export-opml">Export OPML</button>
@@ -1564,11 +1708,12 @@
         {/if}
 
         {#if section === "starter"}
+          <div class="eyebrow">Import &amp; data</div>
           <h3>Starter packs</h3>
-          <p class="hint">Curated bundles of feeds. Click a pack to create the folder and subscribe — already-subscribed feeds are skipped.</p>
+          <p class="hint">Curated bundles of feeds. Add a pack to create its folder and subscribe in one click — already-subscribed feeds are skipped.</p>
           {#if starterErr}<p class="error">{starterErr}</p>{/if}
           {#if starterMsg}<p class="ok" data-testid="starter-msg">{starterMsg}</p>{/if}
-          <div class="pack-list">
+          <div class="card"><div class="pack-list">
             {#each starterPacks as p (p.slug)}
               {@const installed = packInstalled(p)}
               <div class="pack">
@@ -1602,12 +1747,13 @@
                 {/if}
               </div>
             {/each}
-          </div>
+          </div></div>
         {/if}
 
         {#if section === "llm" && $user?.is_admin}
+          <div class="eyebrow">Administration</div>
           <h3>Language model</h3>
-          <p class="hint">Switch models or pull new ones from Ollama. The recommendation matches what fits your host.</p>
+          <p class="hint">Switch models or pull new ones from Ollama. The recommendation matches your host.</p>
           {#if llmErr}<p class="error" data-testid="llm-error">{llmErr}</p>{/if}
           {#if llmMsg}<p class="ok" data-testid="llm-msg">{llmMsg}</p>{/if}
           {#if !llm}
@@ -1615,53 +1761,64 @@
           {:else if !llm.enabled}
             <p class="muted">Summaries are disabled on this server (EMBER_DISABLE_SUMMARIES=1).</p>
           {:else}
-            <h4>This host</h4>
-            <dl class="kv">
-              <dt>RAM</dt><dd>{gib(llm.system.ram_bytes)}</dd>
-              <dt>CPUs</dt><dd>{llm.system.cpus}</dd>
-              <dt>GPU</dt><dd>{llm.system.gpu || "none detected"}</dd>
-              <dt>OS</dt><dd>{llm.system.os}</dd>
-            </dl>
-            <h4>Recommendation</h4>
-            <div class="rec-row">
-              <div>
-                <div class="pref-label">{llm.recommended.disable_llm ? "Disable summaries" : llm.recommended.model}</div>
-                <div class="pref-hint">{llm.recommended.reason}</div>
-              </div>
-              {#if !llm.recommended.disable_llm && llm.recommended.model !== llm.current_model}
-                <button
-                  class="pack-btn"
-                  on:click={() => switchModel(llm!.recommended.model)}
-                  disabled={llmBusy.startsWith("switch:") || llmBusy.startsWith("pull:")}
-                  data-testid="llm-use-recommended"
-                >
-                  Use this
-                </button>
-              {/if}
+            <div class="callout ember">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9h6v6H9z"/></svg>
+              <div>Admin-only. Summaries run locally — nothing leaves your server.</div>
             </div>
 
-            <h4>Active model</h4>
-            <p data-testid="llm-current"><strong>{llm.current_model || "(none)"}</strong></p>
+            <div class="card">
+              <div class="card-head"><h4>This host</h4></div>
+              <dl class="kv" style="padding: 14px 0;">
+                <dt>RAM</dt><dd>{gib(llm.system.ram_bytes)}</dd>
+                <dt>CPUs</dt><dd>{llm.system.cpus}</dd>
+                <dt>GPU</dt><dd>{llm.system.gpu || "none detected"}</dd>
+                <dt>OS</dt><dd>{llm.system.os}</dd>
+              </dl>
+            </div>
 
-            <h4>Installed</h4>
-            {#if llm.installed_err}
-              <p class="error">Couldn't list installed models: {llm.installed_err}</p>
-            {:else if !llm.installed || llm.installed.length === 0}
-              <p class="muted">No models installed yet. Pull one below.</p>
-            {:else}
-              <table class="llm-table">
-                <thead>
-                  <tr><th>Name</th><th>Size</th><th></th></tr>
-                </thead>
-                <tbody>
+            <div class="card">
+              <div class="card-head"><h4>Recommendation</h4></div>
+              <div class="pref-row">
+                <div>
+                  <div class="pref-label">{llm.recommended.disable_llm ? "Disable summaries" : llm.recommended.model}</div>
+                  <div class="pref-hint">{llm.recommended.reason}</div>
+                </div>
+                {#if !llm.recommended.disable_llm && llm.recommended.model !== llm.current_model}
+                  <button
+                    class="pack-btn"
+                    on:click={() => switchModel(llm!.recommended.model)}
+                    disabled={llmBusy.startsWith("switch:") || llmBusy.startsWith("pull:")}
+                    data-testid="llm-use-recommended"
+                  >
+                    Use this
+                  </button>
+                {/if}
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-head"><h4>Installed models</h4></div>
+              <div class="pref-row">
+                <div><div class="pref-label">Active model</div></div>
+                <code class="mono-addr" data-testid="llm-current">{llm.current_model || "(none)"}</code>
+              </div>
+              {#if llm.installed_err}
+                <p class="error">Couldn't list installed models: {llm.installed_err}</p>
+              {:else if !llm.installed || llm.installed.length === 0}
+                <p class="pref-hint" style="padding: 14px 0;">No models installed yet. Pull one below.</p>
+              {:else}
+                <ul class="list">
                   {#each llm.installed as m (m.name)}
-                    <tr>
-                      <td><code>{m.name}</code></td>
-                      <td>{mib(m.size_bytes)}</td>
-                      <td class="llm-actions">
-                        {#if m.name === llm.current_model}
-                          <span class="muted">active</span>
-                        {:else}
+                    <li class="list-row">
+                      <div>
+                        <div class="list-title">
+                          <code>{m.name}</code>
+                          {#if m.name === llm.current_model}<span class="badge-admin">active</span>{/if}
+                        </div>
+                        <div class="list-sub">{mib(m.size_bytes)}</div>
+                      </div>
+                      {#if m.name !== llm.current_model}
+                        <div class="row-ctl">
                           <button
                             class="pack-btn"
                             on:click={() => switchModel(m.name)}
@@ -1678,270 +1835,255 @@
                           >
                             {llmBusy === "delete:" + m.name ? "Deleting…" : "Delete"}
                           </button>
-                        {/if}
-                      </td>
-                    </tr>
+                        </div>
+                      {/if}
+                    </li>
                   {/each}
-                </tbody>
-              </table>
-            {/if}
-
-            <h4>Tuning</h4>
-            <p class="hint">Generation parameters passed to Ollama. 0 means "use the model default".</p>
-            {#if tuneMsg}<p class="ok" data-testid="tune-msg">{tuneMsg}</p>{/if}
-            <div class="tune-row">
-              <label>
-                <span class="tune-label">Temperature <em>{(+tuneTemp).toFixed(2)}</em></span>
-                <input type="range" min="0" max="2" step="0.05" bind:value={tuneTemp} data-testid="tune-temp" />
-                <span class="tune-hint">0 = deterministic, 1 = default, &gt;1 = creative</span>
-              </label>
-              <label>
-                <span class="tune-label">Top P <em>{(+tuneTopP).toFixed(2)}</em></span>
-                <input type="range" min="0" max="1" step="0.05" bind:value={tuneTopP} data-testid="tune-top-p" />
-                <span class="tune-hint">Lower = focused, higher = diverse</span>
-              </label>
-              <label>
-                <span class="tune-label">Context window <em>{tuneCtx || "default"}</em></span>
-                <input type="range" min="0" max="16384" step="512" bind:value={tuneCtx} data-testid="tune-ctx" />
-                <span class="tune-hint">Max tokens the model considers. 0 = model default (usually 2048)</span>
-              </label>
-            </div>
-            <div class="actions">
-              <button on:click={saveTuning} disabled={tuneBusy} data-testid="tune-save">
-                {tuneBusy ? "Saving…" : "Save tuning"}
-              </button>
+                </ul>
+              {/if}
+              <div class="actions" style="justify-content: flex-start;">
+                <input
+                  class="row-input"
+                  type="text"
+                  bind:value={pullInput}
+                  placeholder="model:tag to pull…"
+                  data-testid="llm-pull-input"
+                  aria-label="Model to pull"
+                />
+                <button
+                  class="pack-btn"
+                  on:click={pullModel}
+                  disabled={!pullInput.trim() || llmBusy.startsWith("pull:")}
+                  data-testid="llm-pull-submit"
+                >
+                  {llmBusy.startsWith("pull:") ? "Pulling…" : "Pull"}
+                </button>
+              </div>
             </div>
 
-            <h4>Pull a new model</h4>
-            <p class="hint">e.g. <code>qwen2.5:0.5b</code>, <code>qwen2.5:1.5b</code>, <code>llama3.2:1b</code>. Downloads can take several minutes.</p>
-            <div class="rec-row">
-              <input
-                type="text"
-                bind:value={pullInput}
-                placeholder="qwen2.5:0.5b"
-                data-testid="llm-pull-input"
-              />
-              <button
-                class="pack-btn"
-                on:click={pullModel}
-                disabled={!pullInput.trim() || llmBusy.startsWith("pull:")}
-                data-testid="llm-pull-submit"
-              >
-                {llmBusy.startsWith("pull:") ? "Pulling…" : "Pull"}
-              </button>
+            <div class="card">
+              <div class="card-head">
+                <h4>Tuning</h4>
+                <p>Generation parameters passed to Ollama. 0 means “use the model default”.</p>
+              </div>
+              {#if tuneMsg}<p class="ok" data-testid="tune-msg">{tuneMsg}</p>{/if}
+              <div class="tune-row">
+                <label>
+                  <span class="tune-label">Temperature <em>{(+tuneTemp).toFixed(2)}</em></span>
+                  <input type="range" min="0" max="2" step="0.05" bind:value={tuneTemp} data-testid="tune-temp" />
+                  <span class="tune-hint">0 = deterministic, 1 = default, &gt;1 = creative</span>
+                </label>
+                <label>
+                  <span class="tune-label">Top P <em>{(+tuneTopP).toFixed(2)}</em></span>
+                  <input type="range" min="0" max="1" step="0.05" bind:value={tuneTopP} data-testid="tune-top-p" />
+                  <span class="tune-hint">Lower = focused, higher = diverse</span>
+                </label>
+                <label>
+                  <span class="tune-label">Context window <em>{tuneCtx || "default"}</em></span>
+                  <input type="range" min="0" max="16384" step="512" bind:value={tuneCtx} data-testid="tune-ctx" />
+                  <span class="tune-hint">Max tokens the model considers. 0 = model default (usually 2048)</span>
+                </label>
+              </div>
+              <div class="actions">
+                <button on:click={saveTuning} disabled={tuneBusy} data-testid="tune-save">
+                  {tuneBusy ? "Saving…" : "Save tuning"}
+                </button>
+              </div>
             </div>
           {/if}
         {/if}
 
         {#if section === "branding" && $user?.is_admin}
+          <div class="eyebrow">Administration</div>
           <h3>Branding</h3>
-          <p class="hint">Change the app name, browser tab title, and favicon shown to all users. Leave a field blank to restore the default.</p>
+          <p class="hint">Customize the name, tab title, and favicon for everyone on this server. Leave a field blank to restore the default.</p>
           {#if brandingErr}<p class="error">{brandingErr}</p>{/if}
           {#if brandingMsg}<p class="ok" data-testid="branding-msg">{brandingMsg}</p>{/if}
-          <label>
-            <span>App name</span>
-            <input type="text" bind:value={brandingDraft.name} placeholder="Ember" data-testid="branding-name" />
-          </label>
-          <label>
-            <span>Browser tab title</span>
-            <input type="text" bind:value={brandingDraft.page_title} placeholder="Ember" data-testid="branding-title" />
-          </label>
-          <label>
-            <span>Favicon URL</span>
-            <input type="text" bind:value={brandingDraft.favicon_url} placeholder="/icon.svg or data:image/svg+xml;..." data-testid="branding-favicon" />
-            <span class="pref-hint">Public URL (e.g. /icon.svg, https://…/icon.png) or a data: URI. Hard-refresh after changing.</span>
-          </label>
-          <div class="actions">
-            <button class="ghost" on:click={resetBranding} disabled={brandingBusy}>Reset to defaults</button>
-            <button on:click={saveBranding} disabled={brandingBusy} data-testid="branding-save">
-              {brandingBusy ? "Saving…" : "Save"}
-            </button>
+          <div class="callout">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+            <div>Admin-only. Applies to every account on this server.</div>
+          </div>
+          <div class="card">
+            <label class="pref-row">
+              <div>
+                <div class="pref-label">App name</div>
+                <div class="pref-hint">Shown in the sidebar and login screen.</div>
+              </div>
+              <input class="row-input" type="text" bind:value={brandingDraft.name} placeholder="Ember" data-testid="branding-name" />
+            </label>
+            <label class="pref-row">
+              <div>
+                <div class="pref-label">Tab title</div>
+                <div class="pref-hint">Browser tab + PWA name.</div>
+              </div>
+              <input class="row-input" type="text" bind:value={brandingDraft.page_title} placeholder="Ember" data-testid="branding-title" />
+            </label>
+            <label class="pref-row">
+              <div>
+                <div class="pref-label">Favicon URL</div>
+                <div class="pref-hint">Public URL (e.g. /icon.svg) or a data: URI. Hard-refresh after changing.</div>
+              </div>
+              <input class="row-input" type="text" bind:value={brandingDraft.favicon_url} placeholder="/icon.svg" data-testid="branding-favicon" />
+            </label>
+            <div class="actions">
+              <button class="ghost" on:click={resetBranding} disabled={brandingBusy}>Reset to defaults</button>
+              <button on:click={saveBranding} disabled={brandingBusy} data-testid="branding-save">
+                {brandingBusy ? "Saving…" : "Save"}
+              </button>
+            </div>
           </div>
         {/if}
 
         {#if section === "database" && $user?.is_admin}
+          <div class="eyebrow">Administration</div>
           <h3>Database</h3>
+          <p class="hint">Backups, retention, and OPML export schedules. Articles auto-prune after one week.</p>
           {#if dbErr}<p class="error">{dbErr}</p>{/if}
           {#if dbMsg}<p class="ok" data-testid="db-msg">{dbMsg}</p>{/if}
           {#if !dbState}
             <p class="muted">Loading…</p>
           {:else}
-            <h4>Status</h4>
-            <dl class="kv">
-              <dt>Size on disk</dt><dd>{gibBytes(dbState.size_bytes)}</dd>
-              <dt>Page count</dt><dd>{dbState.page_count.toLocaleString()}</dd>
-              <dt>Backup directory</dt><dd><code>{dbState.backup_dir}</code></dd>
-            </dl>
-
-            <h4>Manual backup</h4>
-            <p class="hint">Writes a compacted snapshot to <code>{dbState.backup_dir}</code>. Safe to run while ember is serving.</p>
-            <div class="actions">
-              <button on:click={runBackup} disabled={dbBusy === "backup"} data-testid="db-backup">
-                {dbBusy === "backup" ? "Backing up…" : "Back up now"}
-              </button>
+            <div class="callout">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/></svg>
+              <div>Admin-only. Applies to the whole server.</div>
             </div>
 
-            {#if (dbState.backups?.length ?? 0) > 0}
-              <h4>Recent backups</h4>
-              <table class="llm-table">
-                <thead><tr><th>File</th><th>Size</th><th>Created</th></tr></thead>
-                <tbody>
+            <div class="card">
+              <div class="card-head"><h4>Status</h4></div>
+              <dl class="kv" style="padding: 14px 0;">
+                <dt>Size on disk</dt><dd>{gibBytes(dbState.size_bytes)}</dd>
+                <dt>Page count</dt><dd>{dbState.page_count.toLocaleString()}</dd>
+                <dt>Backup directory</dt><dd><code>{dbState.backup_dir}</code></dd>
+              </dl>
+            </div>
+
+            <div class="card">
+              <div class="card-head"><h4>Backups</h4></div>
+              <div class="pref-row">
+                <div>
+                  <div class="pref-label">Schedule</div>
+                  <div class="pref-hint">Automatic backups, run by a background job.</div>
+                </div>
+                <div class="seg">
+                  <button class:on={dbState.backup_schedule === "off"} on:click={() => (dbState!.backup_schedule = "off")}>Off</button>
+                  <button class:on={dbState.backup_schedule === "daily"} on:click={() => (dbState!.backup_schedule = "daily")}>Daily</button>
+                  <button class:on={dbState.backup_schedule === "weekly"} on:click={() => (dbState!.backup_schedule = "weekly")}>Weekly</button>
+                </div>
+              </div>
+              <label class="pref-row">
+                <div>
+                  <div class="pref-label">Keep</div>
+                  <div class="pref-hint">How many backups to retain.</div>
+                </div>
+                <input class="row-input num" type="number" min="1" max="365" bind:value={dbState.backup_keep_count} data-testid="db-keep" />
+              </label>
+              <div class="pref-row">
+                <div>
+                  <div class="pref-label">Run now</div>
+                  <div class="pref-hint">Writes a compacted snapshot to <code>{dbState.backup_dir}</code>. Safe while serving.</div>
+                </div>
+                <button class="pack-btn" on:click={runBackup} disabled={dbBusy === "backup"} data-testid="db-backup">
+                  {dbBusy === "backup" ? "Backing up…" : "Back up now"}
+                </button>
+              </div>
+              {#if (dbState.backups?.length ?? 0) > 0}
+                <ul class="list">
                   {#each (dbState.backups ?? []).slice(0, 8) as b (b.path)}
-                    <tr>
-                      <td><code>{b.path.split("/").slice(-1)[0]}</code></td>
-                      <td>{gibBytes(b.size_bytes)}</td>
-                      <td>{fmtTime(b.created_at)}</td>
-                    </tr>
+                    <li class="list-row">
+                      <div>
+                        <div class="list-title"><code>{b.path.split("/").slice(-1)[0]}</code></div>
+                        <div class="list-sub">{gibBytes(b.size_bytes)} · {fmtTime(b.created_at)}</div>
+                      </div>
+                    </li>
                   {/each}
-                </tbody>
-              </table>
-            {/if}
-
-            <h4>Manual cleanup</h4>
-            <p class="hint">Delete articles older than the chosen window that aren't starred, in a board, or saved for later. Compacts the file afterwards.</p>
-            <div class="rec-row">
-              <label class="inline-label">
-                <span>Older than (days)</span>
-                <input type="number" min="7" max="3650" bind:value={cleanupDays} data-testid="db-cleanup-days" />
-              </label>
-              <button class="ghost-btn" on:click={askCleanup} disabled={dbBusy === "cleanup"} data-testid="db-cleanup">
-                {dbBusy === "cleanup" ? "Cleaning…" : "Clean up now"}
-              </button>
+                </ul>
+              {/if}
             </div>
 
-            <h4>Schedule</h4>
-            <p class="hint">Automatic backups and cleanup, run by a background job. Tick every hour; missed runs catch up on the next tick.</p>
-            <div class="pref-row">
-              <div>
-                <div class="pref-label">Backup</div>
-                <div class="pref-hint">Keep the {dbState.backup_keep_count} most recent.</div>
+            <div class="card">
+              <div class="card-head"><h4>Cleanup</h4></div>
+              <div class="pref-row">
+                <div>
+                  <div class="pref-label">Schedule</div>
+                  <div class="pref-hint">Prune old read articles on a cadence.</div>
+                </div>
+                <div class="seg">
+                  <button class:on={dbState.cleanup_schedule === "off"} on:click={() => (dbState!.cleanup_schedule = "off")}>Off</button>
+                  <button class:on={dbState.cleanup_schedule === "weekly"} on:click={() => (dbState!.cleanup_schedule = "weekly")}>Weekly</button>
+                  <button class:on={dbState.cleanup_schedule === "monthly"} on:click={() => (dbState!.cleanup_schedule = "monthly")}>Monthly</button>
+                </div>
               </div>
-              <div class="seg">
-                <button class:on={dbState.backup_schedule === "off"} on:click={() => (dbState!.backup_schedule = "off")}>Off</button>
-                <button class:on={dbState.backup_schedule === "daily"} on:click={() => (dbState!.backup_schedule = "daily")}>Daily</button>
-                <button class:on={dbState.backup_schedule === "weekly"} on:click={() => (dbState!.backup_schedule = "weekly")}>Weekly</button>
-              </div>
-            </div>
-            <div class="pref-row">
-              <div>
-                <div class="pref-label">Cleanup</div>
-                <div class="pref-hint">Older than {dbState.cleanup_older_days} days, when scheduled.</div>
-              </div>
-              <div class="seg">
-                <button class:on={dbState.cleanup_schedule === "off"} on:click={() => (dbState!.cleanup_schedule = "off")}>Off</button>
-                <button class:on={dbState.cleanup_schedule === "weekly"} on:click={() => (dbState!.cleanup_schedule = "weekly")}>Weekly</button>
-                <button class:on={dbState.cleanup_schedule === "monthly"} on:click={() => (dbState!.cleanup_schedule = "monthly")}>Monthly</button>
-              </div>
-            </div>
-            <div class="pref-row">
-              <div>
-                <div class="pref-label">OPML export</div>
-                <div class="pref-hint">Writes the admin user's subscription list to /data/exports/ on the chosen cadence.</div>
-              </div>
-              <div class="seg">
-                <button class:on={(dbState.opml_schedule || "off") === "off"} on:click={() => (dbState!.opml_schedule = "off")}>Off</button>
-                <button class:on={dbState.opml_schedule === "weekly"} on:click={() => (dbState!.opml_schedule = "weekly")}>Weekly</button>
-                <button class:on={dbState.opml_schedule === "monthly"} on:click={() => (dbState!.opml_schedule = "monthly")}>Monthly</button>
-              </div>
-            </div>
-            <div class="rec-row">
-              <label class="inline-label">
-                <span>Keep N backups</span>
-                <input type="number" min="1" max="365" bind:value={dbState.backup_keep_count} data-testid="db-keep" />
+              <label class="pref-row">
+                <div>
+                  <div class="pref-label">Scheduled window</div>
+                  <div class="pref-hint">Delete read articles older than this when scheduled cleanup runs.</div>
+                </div>
+                <input class="row-input num" type="number" min="7" max="3650" bind:value={dbState.cleanup_older_days} data-testid="db-cleanup-days-sched" aria-label="Scheduled cleanup window (days)" />
               </label>
-              <label class="inline-label">
-                <span>Cleanup window (days)</span>
-                <input type="number" min="7" max="3650" bind:value={dbState.cleanup_older_days} data-testid="db-cleanup-days-sched" />
-              </label>
+              <div class="pref-row">
+                <div>
+                  <div class="pref-label">Run cleanup now</div>
+                  <div class="pref-hint">Delete read articles older than the chosen days that aren't starred, in a board, or saved. Compacts afterwards.</div>
+                </div>
+                <div class="row-ctl">
+                  <input class="row-input num" type="number" min="7" max="3650" bind:value={cleanupDays} data-testid="db-cleanup-days" aria-label="Older than (days)" />
+                  <button class="ghost-btn" on:click={askCleanup} disabled={dbBusy === "cleanup"} data-testid="db-cleanup">
+                    {dbBusy === "cleanup" ? "Cleaning…" : "Clean up now"}
+                  </button>
+                </div>
+              </div>
             </div>
-            <div class="actions">
-              <button on:click={saveDBSchedule} disabled={dbBusy === "schedule"} data-testid="db-schedule-save">
-                {dbBusy === "schedule" ? "Saving…" : "Save schedule"}
-              </button>
+
+            <div class="card">
+              <div class="card-head"><h4>OPML export</h4></div>
+              <div class="pref-row">
+                <div>
+                  <div class="pref-label">Schedule</div>
+                  <div class="pref-hint">Writes the admin user's subscription list to /data/exports/ on the chosen cadence.</div>
+                </div>
+                <div class="seg">
+                  <button class:on={(dbState.opml_schedule || "off") === "off"} on:click={() => (dbState!.opml_schedule = "off")}>Off</button>
+                  <button class:on={dbState.opml_schedule === "weekly"} on:click={() => (dbState!.opml_schedule = "weekly")}>Weekly</button>
+                  <button class:on={dbState.opml_schedule === "monthly"} on:click={() => (dbState!.opml_schedule = "monthly")}>Monthly</button>
+                </div>
+              </div>
+              <div class="actions">
+                <button on:click={saveDBSchedule} disabled={dbBusy === "schedule"} data-testid="db-schedule-save">
+                  {dbBusy === "schedule" ? "Saving…" : "Save schedule"}
+                </button>
+              </div>
             </div>
           {/if}
         {/if}
 
         {#if section === "users" && $user?.is_admin}
+          <div class="eyebrow">Administration</div>
           <h3>Users</h3>
-          <p class="hint">Admin-only. Create new accounts, toggle admin, and remove users.</p>
+          <p class="hint">Everyone with an account on this server.</p>
           {#if usersErr}<p class="error" data-testid="users-error">{usersErr}</p>{/if}
           {#if usersMsg}<p class="ok" data-testid="users-msg">{usersMsg}</p>{/if}
-
-          <h4>New user</h4>
-          <div class="row">
-            <label>
-              <span>Username</span>
-              <input
-                type="text"
-                bind:value={newUsername}
-                autocomplete="username"
-                data-testid="new-user-username"
-              />
-            </label>
-            <label>
-              <span>Email (optional)</span>
-              <input
-                type="email"
-                bind:value={newUserEmail}
-                autocomplete="email"
-                data-testid="new-user-email"
-              />
-            </label>
-          </div>
-          <div class="row">
-            <label>
-              <span>Password</span>
-              <input
-                type="password"
-                bind:value={newUserPassword}
-                autocomplete="new-password"
-                data-testid="new-user-password"
-              />
-            </label>
-          </div>
-          <div class="pref-row">
-            <div>
-              <div class="pref-label">Admin</div>
-              <div class="pref-hint">Grants access to Settings → Branding / Database / Sessions / Users / LLM.</div>
-            </div>
-            <div class="seg">
-              <button class:on={newUserIsAdmin} on:click={() => (newUserIsAdmin = true)} data-testid="new-user-admin-on">Yes</button>
-              <button class:on={!newUserIsAdmin} on:click={() => (newUserIsAdmin = false)} data-testid="new-user-admin-off">No</button>
-            </div>
-          </div>
-          <div class="actions">
-            <button
-              on:click={createNewUser}
-              disabled={usersBusy === "create"}
-              data-testid="create-user-submit"
-            >
-              {usersBusy === "create" ? "Creating…" : "Create user"}
-            </button>
+          <div class="callout">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+            <div>Admin-only.</div>
           </div>
 
-          <h4>Existing users</h4>
-          {#if usersList.length === 0}
-            <p class="muted">Loading…</p>
-          {:else}
-            <table class="llm-table" data-testid="users-table">
-              <thead>
-                <tr>
-                  <th>Username</th>
-                  <th>Email</th>
-                  <th>Admin</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
+          <div class="card">
+            <div class="card-head"><h4>Accounts</h4></div>
+            {#if usersList.length === 0}
+              <p class="pref-hint" style="padding: 14px 0;">Loading…</p>
+            {:else}
+              <ul class="list" data-testid="users-table">
                 {#each usersList as u (u.id)}
-                  <tr data-testid="user-row-{u.id}">
-                    <td>
-                      <strong>{u.username}</strong>
-                      {#if $user?.id === u.id}<span class="muted"> (you)</span>{/if}
-                    </td>
-                    <td>{u.email || "—"}</td>
-                    <td>
+                  <li class="list-row" data-testid="user-row-{u.id}">
+                    <div>
+                      <div class="list-title">
+                        {u.username}
+                        {#if u.is_admin}<span class="badge-admin">admin</span>{/if}
+                        {#if $user?.id === u.id}<span class="muted"> (you)</span>{/if}
+                      </div>
+                      <div class="list-sub">{u.email || "—"}</div>
+                    </div>
+                    <div class="row-ctl">
                       <div class="seg">
                         <button
                           class:on={u.is_admin}
@@ -1949,17 +2091,15 @@
                           disabled={usersBusy === `admin:${u.id}` || $user?.id === u.id}
                           data-testid="user-admin-yes-{u.id}"
                           title={$user?.id === u.id ? "Cannot change your own admin status" : ""}
-                        >Yes</button>
+                        >Admin</button>
                         <button
                           class:on={!u.is_admin}
                           on:click={() => toggleAdmin(u)}
                           disabled={usersBusy === `admin:${u.id}` || $user?.id === u.id}
                           data-testid="user-admin-no-{u.id}"
                           title={$user?.id === u.id ? "Cannot change your own admin status" : ""}
-                        >No</button>
+                        >User</button>
                       </div>
-                    </td>
-                    <td class="llm-actions">
                       {#if $user?.id !== u.id}
                         <button
                           class="ghost-btn"
@@ -1970,184 +2110,304 @@
                           {usersBusy === `delete:${u.id}` ? "Deleting…" : "Delete"}
                         </button>
                       {/if}
-                    </td>
-                  </tr>
+                    </div>
+                  </li>
                 {/each}
-              </tbody>
-            </table>
-          {/if}
+              </ul>
+            {/if}
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h4>Add user</h4></div>
+            <label class="pref-row">
+              <div><div class="pref-label">Username</div></div>
+              <input class="row-input" type="text" bind:value={newUsername} autocomplete="username" data-testid="new-user-username" />
+            </label>
+            <label class="pref-row">
+              <div><div class="pref-label">Email</div><div class="pref-hint">Optional.</div></div>
+              <input class="row-input" type="email" bind:value={newUserEmail} autocomplete="email" data-testid="new-user-email" />
+            </label>
+            <label class="pref-row">
+              <div><div class="pref-label">Password</div><div class="pref-hint">At least 8 characters.</div></div>
+              <input class="row-input" type="password" bind:value={newUserPassword} autocomplete="new-password" data-testid="new-user-password" />
+            </label>
+            <div class="pref-row">
+              <div>
+                <div class="pref-label">Admin</div>
+                <div class="pref-hint">Grants access to Branding / Database / Sessions / Users / LLM.</div>
+              </div>
+              <div class="seg">
+                <button class:on={newUserIsAdmin} on:click={() => (newUserIsAdmin = true)} data-testid="new-user-admin-on">Yes</button>
+                <button class:on={!newUserIsAdmin} on:click={() => (newUserIsAdmin = false)} data-testid="new-user-admin-off">No</button>
+              </div>
+            </div>
+            <div class="actions">
+              <button on:click={createNewUser} disabled={usersBusy === "create"} data-testid="create-user-submit">
+                {usersBusy === "create" ? "Creating…" : "Create user"}
+              </button>
+            </div>
+          </div>
         {/if}
 
         {#if section === "session" && $user?.is_admin}
+          <div class="eyebrow">Administration</div>
           <h3>Sessions</h3>
           <p class="hint">
-            Server-wide session lifetime — how long a freshly-issued login cookie stays valid.
-            Affects newly-issued sessions only; existing sessions keep their stored expiry.
-            Range: 5 minutes to 90 days.
+            How long a sign-in stays valid before re-authentication is required. Applies to
+            newly-issued cookies only; existing sessions keep their stored expiry. Range: 5
+            minutes to 90 days.
           </p>
           {#if sessionErr}<p class="error" data-testid="session-error">{sessionErr}</p>{/if}
           {#if sessionMsg}<p class="ok" data-testid="session-msg">{sessionMsg}</p>{/if}
-          {#if sessionTTL}
-            <p class="pref-hint">
-              Active TTL: {Math.round(sessionTTL.ttl_seconds / 3600)}h
-              <span style="opacity:0.6">({sessionTTL.source === "admin" ? "set in admin UI" : "default / env var"})</span>
-            </p>
-          {/if}
-          <label class="pref-row">
-            <span>Preset</span>
-            <select bind:value={sessionTTLDraft} data-testid="session-preset">
-              {#each ttlPresets as p}
-                <option value={p.seconds}>{p.label}</option>
-              {/each}
-            </select>
-          </label>
-          <label class="pref-row">
-            <span>Custom (seconds)</span>
-            <input
-              type="number"
-              min="300"
-              max="7776000"
-              step="60"
-              bind:value={sessionTTLDraft}
-              data-testid="session-seconds"
-            />
-          </label>
-          <div class="actions">
-            <button on:click={saveSessionTTL} disabled={sessionBusy} data-testid="session-save">
-              {sessionBusy ? "Saving…" : "Save"}
-            </button>
+          <div class="callout">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            <div>
+              Admin-only.{#if sessionTTL}
+                Active TTL: {Math.round(sessionTTL.ttl_seconds / 3600)}h
+                ({sessionTTL.source === "admin" ? "set in admin UI" : "default / env var"}).
+              {/if}
+            </div>
+          </div>
+          <div class="card">
+            <label class="pref-row">
+              <div>
+                <div class="pref-label">Preset</div>
+                <div class="pref-hint">Common session lifetimes.</div>
+              </div>
+              <select class="row-input" bind:value={sessionTTLDraft} data-testid="session-preset">
+                {#each ttlPresets as p}
+                  <option value={p.seconds}>{p.label}</option>
+                {/each}
+              </select>
+            </label>
+            <label class="pref-row">
+              <div>
+                <div class="pref-label">Custom</div>
+                <div class="pref-hint">Exact lifetime in seconds.</div>
+              </div>
+              <input
+                class="row-input"
+                type="number"
+                min="300"
+                max="7776000"
+                step="60"
+                bind:value={sessionTTLDraft}
+                data-testid="session-seconds"
+              />
+            </label>
+            <div class="actions">
+              <button on:click={saveSessionTTL} disabled={sessionBusy} data-testid="session-save">
+                {sessionBusy ? "Saving…" : "Save"}
+              </button>
+            </div>
           </div>
         {/if}
 
         {#if section === "email" && $user?.is_admin}
+          <div class="eyebrow">Administration</div>
           <h3>Email / SMTP</h3>
           <p class="hint">
-            Configure the relay used for daily digest emails. These fields override the
-            corresponding <code>EMBER_SMTP_*</code> environment variables at runtime;
-            changes take effect on the next digest tick (~5 minutes).
+            Outbound mail for the daily digest and test messages. These fields override the
+            <code>EMBER_SMTP_*</code> environment variables at runtime; changes take effect on
+            the next digest tick (~5 minutes).
           </p>
-          <div class="form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;">
-            <label>
-              SMTP host
-              <input type="text" bind:value={emailDraft.host} placeholder="smtp.example.com" data-testid="smtp-host" />
-            </label>
-            <label>
-              Port
-              <input type="number" min="1" max="65535" bind:value={emailDraft.port} data-testid="smtp-port" />
-            </label>
-            <label>
-              Username
-              <input type="text" bind:value={emailDraft.username} autocomplete="off" data-testid="smtp-user" />
-            </label>
-            <label>
-              Password
-              {#if emailLoaded?.smtp.password_set && !emailDraft.password && !emailDraft.clear_password}
-                <input type="password" bind:value={emailDraft.password} placeholder="•••• stored — leave blank to keep" autocomplete="new-password" data-testid="smtp-password" />
-              {:else}
-                <input type="password" bind:value={emailDraft.password} autocomplete="new-password" data-testid="smtp-password" />
-              {/if}
-            </label>
-            <label style="grid-column: 1 / -1;">
-              From address
-              <input type="email" bind:value={emailDraft.from} placeholder="ember@example.com" data-testid="smtp-from" />
-            </label>
-          </div>
-          <!-- STARTTLS is a toggle, not a value field — gets its own labeled
-               row outside the input grid so it reads as on/off rather than
-               "one weird item in a column of text inputs." -->
-          <label class="toggle-row">
-            <span class="toggle-label">
-              <span class="toggle-title">Use STARTTLS</span>
-              <span class="toggle-hint">Recommended for submission ports (587). Disable only when targeting a relay that doesn't support it.</span>
-            </span>
-            <span class="switch">
-              <input type="checkbox" bind:checked={emailDraft.starttls} data-testid="smtp-starttls" />
-              <span class="track" aria-hidden="true"></span>
-            </span>
-          </label>
-          {#if emailLoaded?.smtp.password_set}
-            <label class="check" style="margin-top:8px;">
-              <input type="checkbox" bind:checked={emailDraft.clear_password} data-testid="smtp-clear-password" />
-              Clear stored password on save
-            </label>
-          {/if}
-          {#if emailMsg}<p class="ok" data-testid="email-msg">{emailMsg}</p>{/if}
-          {#if emailErr}<p class="err" data-testid="email-err">{emailErr}</p>{/if}
-          <div class="actions" style="margin-top:12px;">
-            <button on:click={saveEmailSettings} disabled={emailBusy} data-testid="email-save">
-              {emailBusy ? "Saving…" : "Save"}
-            </button>
+          <div class="callout">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+            <div>Admin-only. The password is write-only and never shown back.</div>
           </div>
 
-          <hr style="margin:18px 0;border:0;border-top:1px solid var(--line);" />
-          <h4>Send test email</h4>
-          <p class="hint">Uses the live SMTP settings above. Save first if you've made changes.</p>
-          <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
-            <label style="flex:1 1 240px;">
-              Recipient (defaults to your account email)
-              <input type="email" bind:value={testRecipient} placeholder="you@example.com" data-testid="smtp-test-to" />
+          <div class="card">
+            <div class="card-head"><h4>Relay</h4></div>
+            <label class="pref-row">
+              <div><div class="pref-label">SMTP host</div></div>
+              <input class="row-input" type="text" bind:value={emailDraft.host} placeholder="smtp.example.com" data-testid="smtp-host" />
             </label>
-            <button on:click={sendTestEmail} disabled={testBusy} data-testid="smtp-test-send">
-              {testBusy ? "Sending…" : "Send test"}
-            </button>
+            <label class="pref-row">
+              <div><div class="pref-label">Port</div></div>
+              <input class="row-input num" type="number" min="1" max="65535" bind:value={emailDraft.port} data-testid="smtp-port" />
+            </label>
+            <label class="pref-row">
+              <div><div class="pref-label">Username</div></div>
+              <input class="row-input" type="text" bind:value={emailDraft.username} autocomplete="off" data-testid="smtp-user" />
+            </label>
+            <label class="pref-row">
+              <div>
+                <div class="pref-label">Password</div>
+                {#if emailLoaded?.smtp.password_set && !emailDraft.password && !emailDraft.clear_password}
+                  <div class="pref-hint">Stored — leave blank to keep it unchanged.</div>
+                {/if}
+              </div>
+              <input class="row-input" type="password" bind:value={emailDraft.password} autocomplete="new-password" data-testid="smtp-password" />
+            </label>
+            <label class="pref-row">
+              <div><div class="pref-label">From address</div></div>
+              <input class="row-input" type="email" bind:value={emailDraft.from} placeholder="ember@example.com" data-testid="smtp-from" />
+            </label>
+            <label class="pref-row">
+              <div>
+                <div class="pref-label">Use STARTTLS</div>
+                <div class="pref-hint">Recommended for submission ports (587). Disable only for a relay that doesn't support it.</div>
+              </div>
+              <span class="switch">
+                <input type="checkbox" bind:checked={emailDraft.starttls} data-testid="smtp-starttls" />
+                <span class="track" aria-hidden="true"></span>
+              </span>
+            </label>
+            {#if emailLoaded?.smtp.password_set}
+              <label class="pref-row">
+                <div>
+                  <div class="pref-label">Clear stored password</div>
+                  <div class="pref-hint">Remove the saved password on the next save.</div>
+                </div>
+                <span class="switch">
+                  <input type="checkbox" bind:checked={emailDraft.clear_password} data-testid="smtp-clear-password" />
+                  <span class="track" aria-hidden="true"></span>
+                </span>
+              </label>
+            {/if}
+            {#if emailMsg}<p class="ok" data-testid="email-msg">{emailMsg}</p>{/if}
+            {#if emailErr}<p class="error" data-testid="email-err">{emailErr}</p>{/if}
+            <div class="actions">
+              <button on:click={saveEmailSettings} disabled={emailBusy} data-testid="email-save">
+                {emailBusy ? "Saving…" : "Save"}
+              </button>
+            </div>
           </div>
 
-          <hr style="margin:18px 0;border:0;border-top:1px solid var(--line);" />
-          <h4>Initial backlog window</h4>
-          <p class="hint">
-            When a new feed (or starter pack) is added, articles published more than this
-            many hours ago are skipped. Subsequent polls of the feed are unaffected.
-            Set to <code>0</code> to disable the gate and ingest a feed's full upstream history.
-          </p>
-          <label>
-            Hours
-            <input type="number" min="0" max="8760" bind:value={emailDraft.initial_backlog_hours} data-testid="backlog-hours" style="width:140px;" />
-          </label>
+          <div class="card">
+            <div class="card-head">
+              <h4>Send test email</h4>
+              <p>Uses the live SMTP settings above. Save first if you've made changes.</p>
+            </div>
+            <label class="pref-row">
+              <div>
+                <div class="pref-label">Recipient</div>
+                <div class="pref-hint">Defaults to your account email.</div>
+              </div>
+              <input class="row-input" type="email" bind:value={testRecipient} placeholder="you@example.com" data-testid="smtp-test-to" />
+            </label>
+            <div class="actions">
+              <button class="ghost" on:click={sendTestEmail} disabled={testBusy} data-testid="smtp-test-send">
+                {testBusy ? "Sending…" : "Send test"}
+              </button>
+            </div>
+          </div>
 
-          <hr style="margin:18px 0;border:0;border-top:1px solid var(--line);" />
-          <h4>Feed check interval</h4>
-          <p class="hint">
-            How often Ember checks each feed for new articles. Active feeds settle near this
-            value; quiet ones are checked less often. A longer interval keeps new items from
-            piling up faster than you can read them. Allowed range: 5 minutes to 24 hours.
-          </p>
-          <label>
-            Check feeds every
-            <select bind:value={emailDraft.poll_min_interval_seconds} data-testid="poll-interval" style="width:160px;">
-              {#each pollIntervalPresets as p}
-                <option value={p.seconds}>{p.label}</option>
-              {/each}
-            </select>
-          </label>
+          <div class="card">
+            <div class="card-head">
+              <h4>Initial backlog window</h4>
+              <p>When a new feed or starter pack is added, articles published more than this many hours ago are skipped. Subsequent polls are unaffected. Set to 0 to ingest a feed's full upstream history.</p>
+            </div>
+            <label class="pref-row">
+              <div><div class="pref-label">Hours</div></div>
+              <input class="row-input num" type="number" min="0" max="8760" bind:value={emailDraft.initial_backlog_hours} data-testid="backlog-hours" />
+            </label>
+            <div class="actions">
+              <button on:click={saveEmailSettings} disabled={emailBusy} data-testid="backlog-save">
+                {emailBusy ? "Saving…" : "Save"}
+              </button>
+            </div>
+          </div>
+        {/if}
 
-          <div class="actions" style="margin-top:12px;">
-            <button on:click={saveEmailSettings} disabled={emailBusy} data-testid="backlog-save">
-              {emailBusy ? "Saving…" : "Save"}
-            </button>
+        {#if section === "feeds"}
+          <div class="eyebrow">Reading</div>
+          <h3>Feeds</h3>
+          <p class="hint">How often Ember checks for new articles and how far back the reading &amp; search views reach.</p>
+          {#if feedErr}<p class="error" data-testid="feeds-error">{feedErr}</p>{/if}
+          {#if feedMsg}<p class="ok" data-testid="feeds-msg">{feedMsg}</p>{/if}
+          <div class="callout">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+            <div>Admin-only. Applies to every account on this server.</div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h4>Polling</h4></div>
+            <label class="pref-row">
+              <div>
+                <div class="pref-label">Check feeds every</div>
+                <div class="pref-hint">Adaptive — busy feeds poll faster, quiet ones slower, never below this floor. Range: 5 minutes to 24 hours.</div>
+              </div>
+              <select class="row-input" bind:value={feedSettings.poll_min_interval_seconds} data-testid="poll-interval">
+                {#each pollIntervalPresets as p}
+                  <option value={p.seconds}>{p.label}</option>
+                {/each}
+              </select>
+            </label>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h4>Windows</h4></div>
+            <label class="pref-row">
+              <div>
+                <div class="pref-label">Reading window</div>
+                <div class="pref-hint">Today, a feed, and a folder show articles newer than this. Older ones stay searchable but hidden here and from unread counts. Range {feedSettings.window_hours_floor}–{feedSettings.window_hours_ceil}h.</div>
+              </div>
+              <div class="row-ctl">
+                <input class="row-input num" type="number" min={feedSettings.window_hours_floor} max={feedSettings.window_hours_ceil}
+                  bind:value={feedSettings.reading_window_hours} data-testid="reading-window-hours" />
+                <span class="pref-hint">hours</span>
+              </div>
+            </label>
+            <label class="pref-row">
+              <div>
+                <div class="pref-label">Search window</div>
+                <div class="pref-hint">Full-text search matches articles published within this window. Default 48. Can't exceed the {feedSettings.window_hours_ceil}-hour retention window.</div>
+              </div>
+              <div class="row-ctl">
+                <input class="row-input num" type="number" min={feedSettings.window_hours_floor} max={feedSettings.window_hours_ceil}
+                  bind:value={feedSettings.search_window_hours} data-testid="search-window-hours" />
+                <span class="pref-hint">hours</span>
+              </div>
+            </label>
+            {#if feedMsg}<p class="ok" data-testid="feed-settings-msg">{feedMsg}</p>{/if}
+            {#if feedErr}<p class="error" data-testid="feed-settings-err">{feedErr}</p>{/if}
+            <div class="actions">
+              <button on:click={saveFeedSettings} disabled={feedBusy} data-testid="poll-interval-save">
+                {feedBusy ? "Saving…" : "Save"}
+              </button>
+            </div>
           </div>
         {/if}
 
         {#if section === "about"}
+          <div class="eyebrow">System</div>
           <h3>About</h3>
-          <dl class="kv">
-            <dt>Version</dt>
-            <dd>
-              {#if $appVersion.startsWith("v")}
-                {@const tag = $appVersion.split("-")[0]}
-                <a
-                  class="version-badge"
-                  href={`https://github.com/brandonhon/ember/releases/tag/${tag}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  data-testid="about-version"
-                >{$appVersion}</a>
-              {:else}
-                <span class="version-badge version-badge-dev" data-testid="about-version">{$appVersion}</span>
-              {/if}
-            </dd>
-            <dt>Project</dt><dd><a href="https://github.com/brandonhon/ember" target="_blank" rel="noopener noreferrer">github.com/brandonhon/ember</a></dd>
-            <dt>License</dt><dd><a href="https://github.com/brandonhon/ember/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a></dd>
-          </dl>
+          <p class="hint">Build information and project links.</p>
+          <div class="card">
+            <div class="identity" style="margin: 14px 0;">
+              <div class="avatar" style="width: 48px; height: 48px; font-size: 20px; border-radius: 13px;">E</div>
+              <div>
+                <div class="who" style="font-size: 18px;">Ember</div>
+                <div style="margin-top: 4px;">
+                  {#if $appVersion.startsWith("v")}
+                    {@const tag = $appVersion.split("-")[0]}
+                    <a
+                      class="version-badge"
+                      href={`https://github.com/brandonhon/ember/releases/tag/${tag}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      data-testid="about-version"
+                    >{$appVersion}</a>
+                  {:else}
+                    <span class="version-badge version-badge-dev" data-testid="about-version">{$appVersion}</span>
+                  {/if}
+                </div>
+              </div>
+            </div>
+            <div class="pref-row">
+              <div><div class="pref-label">Project</div></div>
+              <a href="https://github.com/brandonhon/ember" target="_blank" rel="noopener noreferrer">github.com/brandonhon/ember</a>
+            </div>
+            <div class="pref-row">
+              <div><div class="pref-label">Documentation</div></div>
+              <a href="https://brandonhon.github.io/ember" target="_blank" rel="noopener noreferrer">brandonhon.github.io/ember</a>
+            </div>
+            <div class="pref-row">
+              <div><div class="pref-label">License</div></div>
+              <a href="https://github.com/brandonhon/ember/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a>
+            </div>
+          </div>
         {/if}
       </div>
     </div>
@@ -2353,16 +2613,6 @@
   .modal.mobile .actions { flex-direction: column; align-items: stretch; }
   .modal.mobile .actions button { width: 100%; padding: 13px; font-size: 15px; }
 
-  /* Form scaffolding — collapse two-column grids and side-by-side rows so
-     fields stop overflowing the screen on a phone. */
-  @media (max-width: 600px) {
-    .row { flex-direction: column; gap: 8px; }
-    /* The inline form-grid at L1577 uses style="grid-template-columns:1fr 1fr"
-       — override via attribute selector since we can't edit the style attr
-       from here without touching every form section. */
-    [style*="grid-template-columns:1fr 1fr"] { grid-template-columns: 1fr !important; }
-  }
-
   h3 {
     font-family: var(--font-display);
     font-size: 17px;
@@ -2378,6 +2628,10 @@
     margin: 22px 0 8px;
   }
   .hint { color: var(--ink-faint); font-size: 12.5px; margin: 0 0 14px; line-height: 1.5; }
+  /* Links inside settings copy use the brand link color, not the browser
+     default blue/purple (which reads wrong on the warm + dark themes). */
+  .hint a, dd a { color: var(--ember); font-weight: 600; text-decoration: none; }
+  .hint a:hover, dd a:hover { text-decoration: underline; }
   label {
     display: flex;
     flex-direction: column;
@@ -2419,8 +2673,6 @@
   }
   select:focus { outline: none; border-color: var(--ember); box-shadow: 0 0 0 3px var(--ember-wash); }
   select option { background: var(--paper); color: var(--ink); }
-  .row { display: flex; gap: 12px; }
-  .row > label { flex: 1; }
   .pref-row {
     display: flex;
     justify-content: space-between;
@@ -2533,6 +2785,23 @@
   .actions button:hover:not(:disabled) { background: var(--ember-soft); }
   .actions button.ghost:hover { background: var(--line-soft); }
   .actions button:disabled { opacity: 0.5; cursor: not-allowed; }
+  /* Standalone secondary button: same look as `.actions button.ghost` for the
+     ghost buttons that live outside an `.actions` row (Copy key, Export OPML,
+     Reset branding, Rotate inbox, Test push). Without this they fell back to
+     the unstyled browser default — the reported "buttons don't match" bug. */
+  .ghost {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--line);
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-family: var(--font-ui);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .ghost:hover:not(:disabled) { background: var(--line-soft); }
+  .ghost:disabled { opacity: 0.5; cursor: not-allowed; }
 
   /* Settings list rows (passkeys, push devices, etc.). Shared shell so a
      registered passkey and a push-subscribed device read as members of
@@ -2584,16 +2853,6 @@
   }
   .btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
   /* Import & Data section */
-  .import-card {
-    background: var(--card);
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    padding: 18px 20px;
-    margin-bottom: 14px;
-    box-shadow: var(--shadow-card);
-  }
-  .import-card h4 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 16px; }
-  .import-sub { color: var(--ink-faint); font-size: 13px; margin: 5px 0 14px; line-height: 1.5; }
   .import-seg {
     display: inline-flex;
     background: var(--paper-2);
@@ -2659,30 +2918,8 @@
     font-size: 12.5px;
     margin-bottom: 10px;
   }
-  /* Toggle row: label + hint on the left, switch on the right. Used for
-     boolean settings that don't fit the "value input" rhythm of the form
-     grid above (currently STARTTLS in the SMTP section). */
-  .toggle-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 12px 14px;
-    margin-top: 10px;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    background: var(--paper-2);
-    cursor: pointer;
-  }
-  .toggle-row:hover { background: var(--line-soft); }
-  .toggle-label {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-  }
-  .toggle-title { font-weight: 600; font-size: 13.5px; color: var(--ink); }
-  .toggle-hint { font-size: 12px; color: var(--ink-faint); line-height: 1.4; }
+  /* Toggle switch (STARTTLS / clear-password in the SMTP section). Lives on
+     the right of a .pref-row. */
   .switch {
     position: relative;
     flex: 0 0 auto;
@@ -2814,43 +3051,6 @@
     color: #fff;
   }
 
-  .rec-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 14px;
-    border: 1px solid var(--line);
-    background: var(--card);
-    border-radius: 10px;
-    margin-bottom: 10px;
-  }
-  .rec-row input[type="text"],
-  .rec-row input[type="number"] {
-    flex: 1;
-    padding: 7px 10px;
-    border: 1px solid var(--line);
-    border-radius: 7px;
-    font: inherit;
-    font-size: 13px;
-    background: var(--paper);
-    color: var(--ink);
-  }
-  .inline-label {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    flex: 1;
-    margin: 0;
-  }
-  .inline-label > span {
-    font-size: 10.5px;
-    color: var(--ink-faint);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-
   .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
@@ -2876,32 +3076,6 @@
     margin-top: 4px;
     font-weight: 600;
   }
-  .llm-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 6px 0 16px;
-    font-size: 13px;
-  }
-  .llm-table th, .llm-table td {
-    text-align: left;
-    padding: 8px 10px;
-    border-bottom: 1px solid var(--line-soft);
-  }
-  .llm-table th {
-    font-size: 10.5px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--ink-faint);
-    font-weight: 700;
-  }
-  .llm-table code {
-    font-family: ui-monospace, monospace;
-    font-size: 12px;
-    background: var(--line-soft);
-    padding: 1px 5px;
-    border-radius: 4px;
-  }
-  .llm-actions { display: flex; gap: 6px; align-items: center; justify-content: flex-end; }
   .ghost-btn {
     background: transparent;
     color: var(--ink-soft);
@@ -2987,4 +3161,109 @@
     font-size: 11.5px;
     color: var(--ink-faint);
   }
+
+  /* ======================================================================
+     MOCKUP LAYOUT SYSTEM — rebuilt 2026-06-10. Later rules here override the
+     originals above. Section = header (eyebrow + Fraunces title + subtitle +
+     full-width gold rule) then grouped cards of label-left/control-right rows.
+     Reuses the shell + mobile classes (.nav, .actions, .switch); eyebrow stays
+     --ink-faint (gold text fails WCAG AA, blocked by the a11y e2e).
+     ====================================================================== */
+  .eyebrow {
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--ink-faint); margin-bottom: 7px;
+  }
+  h3 {
+    font-family: var(--font-display); font-size: 29px; font-weight: 600; letter-spacing: -0.02em;
+    color: var(--ink); margin: 2px 0 22px; padding-bottom: 16px; position: relative;
+  }
+  h3::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--gold) 50%, transparent), var(--line) 30%, transparent);
+  }
+  h3:has(+ .hint) { padding-bottom: 0; margin-bottom: 9px; }
+  h3:has(+ .hint)::after { display: none; }
+  h3 + .hint {
+    font-family: var(--font-read); font-size: 15px; color: var(--ink-faint);
+    max-width: 58ch; margin: 0 0 24px; padding-bottom: 18px; position: relative; line-height: 1.5;
+  }
+  h3 + .hint::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--gold) 50%, transparent), var(--line) 30%, transparent);
+  }
+
+  /* Grouped card. */
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    box-shadow: var(--shadow-card); margin-bottom: 16px; padding: 4px 18px;
+  }
+  .card-head { padding: 14px 0 12px; border-bottom: 1px solid var(--line-soft); }
+  .card-head h4 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 15px; text-transform: none; letter-spacing: 0; color: var(--ink); }
+  .card-head p { margin: 4px 0 0; font-family: var(--font-read); font-size: 13px; color: var(--ink-faint); line-height: 1.45; }
+
+  /* Row: label + hint on the left, control on the right, hairline divider.
+     flex-direction:row is explicit because label.pref-row would otherwise
+     inherit the global `label { flex-direction: column }` and stack. */
+  .pref-row {
+    display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 20px;
+    padding: 14px 0; border-bottom: 1px solid var(--line-soft); border-top: 0; margin: 0;
+  }
+  .pref-row > div:first-child { min-width: 0; }
+  .pref-row:last-child { border-bottom: 0; }
+  .card > .pref-row:first-child, .card-head + .pref-row { border-top: 0; }
+  .pref-label { font-size: 13.5px; color: var(--ink); font-weight: 600; }
+  .pref-hint { color: var(--ink-faint); font-size: 13px; margin-top: 3px; line-height: 1.4; font-weight: 400; text-transform: none; letter-spacing: 0; }
+  .row-ctl { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; }
+  /* Links that sit as the right-hand control of a row (About section). */
+  .pref-row > a { flex: 0 0 auto; color: var(--ember); font-weight: 600; text-decoration: none; font-size: 13.5px; }
+  .pref-row > a:hover { text-decoration: underline; }
+  /* Right-aligned control inputs (text/number/select live on the right edge). */
+  .row-input { width: 240px; max-width: 42vw; }
+  .row-input.num { width: 92px; }
+  .pref-row .switch { flex: 0 0 auto; }
+
+  /* Segmented pill (mockup). */
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 11px; background: var(--paper-2); padding: 3px; gap: 2px; overflow: visible; }
+  .seg button { flex: 1 1 0; min-width: 56px; padding: 6px 13px; font-size: 12px; font-weight: 600; color: var(--ink-faint); background: transparent; border: 0; border-radius: 8px; cursor: pointer; text-align: center; }
+  .seg button.on { background: var(--card); color: var(--ember); box-shadow: 0 1px 2px rgba(33,29,24,.1); }
+
+  /* Profile identity header. */
+  .identity { display: flex; align-items: center; gap: 16px; margin-bottom: 22px; }
+  .identity .avatar { width: 60px; height: 60px; border-radius: 16px; display: grid; place-items: center; font-family: var(--font-display); font-weight: 600; font-size: 26px; color: #fff; background: linear-gradient(150deg, var(--ember), var(--gold)); box-shadow: var(--shadow-card); }
+  .identity .who { font-family: var(--font-display); font-weight: 600; font-size: 20px; }
+  .identity .mail { color: var(--ink-faint); font-size: 13.5px; margin-top: 2px; }
+  .badge-admin { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ember); background: var(--ember-wash); border: 1px solid color-mix(in srgb, var(--ember) 30%, transparent); padding: 2px 8px; border-radius: 20px; margin-left: 8px; vertical-align: middle; }
+
+  /* Reading-stats: gradient stat tiles + ranked feed bars. */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 12px; margin: 0 0 16px; }
+  .stat-card { padding: 16px 16px 14px; border: 1px solid var(--line); background: var(--card); border-radius: 13px; box-shadow: var(--shadow-card); }
+  .stat-num { font-family: var(--font-display); font-size: 30px; font-weight: 600; letter-spacing: -0.02em; line-height: 1; background: linear-gradient(120deg, var(--ember), var(--gold)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .stat-label { font-size: 11px; color: var(--ink-faint); margin-top: 7px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+  .rank-row { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-top: 1px solid var(--line-soft); }
+  .rank-row:first-of-type { border-top: 0; }
+  .rank-n { font-family: var(--font-display); font-size: 15px; font-weight: 600; color: var(--ink-faint); width: 20px; flex: 0 0 20px; }
+  .rank-name { flex: 0 0 132px; min-width: 0; font-size: 13px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rank-bar { flex: 1; height: 7px; border-radius: 6px; background: var(--paper-2); overflow: hidden; }
+  .rank-bar i { display: block; height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--ember), var(--gold)); }
+  .rank-v { font-size: 12.5px; color: var(--ink-faint); width: 36px; flex: 0 0 36px; text-align: right; }
+
+  /* Buttons inside cards: .actions stays right-aligned; primary = ember. */
+  .card .actions { margin-top: 6px; padding-bottom: 6px; }
+
+  /* Admin-only / informational callout (mockup). Gold wash by default;
+     .ember variant for the local-summaries note. */
+  .callout {
+    display: flex; gap: 11px; align-items: flex-start;
+    background: var(--gold-wash, color-mix(in srgb, var(--gold) 9%, var(--card)));
+    border: 1px solid color-mix(in srgb, var(--gold) 22%, transparent);
+    border-radius: 11px; padding: 12px 14px; margin-bottom: 16px;
+    font-family: var(--font-read); font-size: 13px; color: var(--ink-soft); line-height: 1.5;
+  }
+  .callout svg { width: 17px; height: 17px; flex: 0 0 17px; margin-top: 2px; color: var(--gold); }
+  .callout.ember {
+    background: var(--ember-wash); border-color: color-mix(in srgb, var(--ember) 22%, transparent);
+  }
+  .callout.ember svg { color: var(--ember); }
+  .callout code { font-family: ui-monospace, monospace; font-size: 12px; background: color-mix(in srgb, var(--ink) 8%, transparent); padding: 1px 5px; border-radius: 5px; }
+  .mono-addr { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; color: var(--ember); flex: 0 0 auto; max-width: 42vw; overflow-wrap: anywhere; text-align: right; }
 </style>

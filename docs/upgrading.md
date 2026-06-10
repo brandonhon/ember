@@ -88,6 +88,7 @@ If you didn't take a backup and only need to undo a small change, restore from t
 
 ## Notes
 
+- **Duplicate account emails are de-duplicated.** A migration adds a unique constraint on the account email. If two accounts somehow shared an address, the later (higher-id) one's email is cleared on first boot — sign in and re-enter a unique address under **Settings → Profile** (email is used only for the daily digest). Changing an email now also requires the account's current password.
 - **Pin in production.** Use an immutable `vX.Y.Z` tag so a `docker compose pull` is a deliberate, reviewed upgrade rather than a surprise.
 - **Single instance.** Ember is one process over one SQLite file; there's no rolling/zero-downtime upgrade — the brief restart is expected.
 - **Config drift.** If a release adds or renames an env var, update your `.env` before restarting. Required vars are listed in [Configuration](/configuration#required-env-vars).

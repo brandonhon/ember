@@ -296,7 +296,7 @@ func TestImportFromAPI_MigrateFeeds(t *testing.T) {
 		t.Error("category Tech not created")
 	}
 
-	feeds, err := svc.Store.ListFeedsForUser(ctx, u.ID)
+	feeds, err := svc.Store.ListFeedsForUser(ctx, u.ID, 0, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -359,7 +359,7 @@ func TestImportFromAPI_MigrateDedupsExisting(t *testing.T) {
 	}
 
 	// No duplicate feed rows were created.
-	feeds, err := svc.Store.ListFeedsForUser(ctx, u.ID)
+	feeds, err := svc.Store.ListFeedsForUser(ctx, u.ID, 0, false)
 	if err != nil {
 		t.Fatal(err)
 	}

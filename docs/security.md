@@ -9,8 +9,9 @@ For vulnerability reporting, see [SECURITY.md](https://github.com/brandonhon/emb
 - **Passwords**: argon2id (`time=3`, `memory=64 MiB`, `parallelism=2`, salt=16 bytes). Meets OWASP 2024 recommendations.
 - **Sessions**: 64-hex-char random IDs signed via `gorilla/securecookie`. Server-side row in `sessions` table backs every cookie. Default lifetime 24 hours; override via `EMBER_SESSION_TTL` env var or **Settings → Sessions** (bounded 5 min – 90 days). Destroyed on logout, login (fixation defense), and on password change (both self-service and admin).
 - **Cookies**: `HttpOnly`, `Secure`, `SameSite=Strict`, scoped to `/`.
-- **Rate limiting**: per-IP token bucket on `POST /api/auth/login` and `POST /api/auth/passkey/*` (burst 10/min). A second, higher-burst bucket (30/min) guards the expensive authenticated endpoints — add-feed, feed discovery, refresh-feed, resummarize(-all), OPML import, TT-RSS import (file + live API), starter-pack import, article extract, and search — which spawn outbound fetches / goroutines / FTS work. Buckets key on the real client IP (see Transport / proxy expectations for how that's resolved).
-- **Passkeys / WebAuthn**: optional second sign-in method (FIDO2). Credentials are bound to a relying-party ID derived from `EMBER_PUBLIC_URL`; ceremonies expire after 5 minutes; a stale `webauthn_sessions` row is reaped on a 15-minute cadence. Credentials never leave the device — only the public key is stored.
+- **Rate limiting**: per-IP token bucket on `POST /api/auth/login` and `POST /api/auth/passkey/*` (burst 10/min). A second, higher-burst bucket (30/min) guards the expensive authenticated endpoints — add-feed, feed discovery, edit-feed (URL repoint), refresh-feed, refresh-all-feeds, resummarize(-all), OPML import, TT-RSS import (file + live API), starter-pack import, article extract, and search — which spawn outbound fetches / goroutines / FTS work. "Refresh all" additionally bounds its detached refresh goroutines with a global semaphore so concurrent requests can't pile work onto the single SQLite writer. Buckets key on the real client IP (see Transport / proxy expectations for how that's resolved).
+- **Passkeys / WebAuthn**: optional second sign-in method (FIDO2). Credentials are bound to a relying-party ID derived from `EMBER_PUBLIC_URL`; ceremonies expire after 5 minutes; a stale `webauthn_sessions` row is reaped on a 15-minute cadence. Credentials never leave the device — only the public key is stored. The passkey login-begin path runs a throwaway credential lookup on an unknown username so its response timing matches the found-user path (no username enumeration).
+- **Account email**: the self-service email change (`PATCH /api/me/email`) requires the current password (re-auth), so a stolen session can't silently redirect the account's digest mail. Email addresses are unique (case-insensitive) so two accounts can't converge on one address.
 
 ## Authorization
 
@@ -43,12 +44,14 @@ Every outbound URL fetch passes through `internal/urlcheck.Check`:
 
 - Scheme allowlist: `http`, `https`. Everything else (`file`, `gopher`, `javascript`) is refused.
 - Private-IP block: literal IPs and DNS resolutions inside RFC1918 (`10/8`, `172.16/12`, `192.168/16`), loopback (`127/8`, `::1`), link-local (`169.254/16` — also the AWS / GCP / Azure metadata endpoint — and `fe80::/10`), CGNAT (`100.64/10`), unspecified (`0.0.0.0/8`), and IPv6 ULA (`fc00::/7`) are refused.
-- Redirect chains: feed fetcher rejects 30x to private addresses via `feed.RedirectGuard`.
+- Port block: well-known non-web service ports (SSH `22`, SMTP `25`, Redis `6379`, Memcached `11211`, common databases, …) — a curated subset of the WHATWG "bad ports" list — are refused. A feed always lives on a web port, so this closes a blind port-scan oracle without affecting real feeds, and it applies even under `EMBER_ALLOW_PRIVATE_URLS`.
+- Redirect chains: feed fetcher rejects 30x to private addresses via `feed.RedirectGuard`. The Ollama summarizer client refuses to follow redirects at all (its base URL is admin-set and often loopback, so it gets the redirect guard but not the private-IP block).
 - Opt-in bypass: `EMBER_ALLOW_PRIVATE_URLS=1` skips the IP check for homelabs that need LAN feeds. Scheme allowlist still applies.
 
 Surfaces covered:
 
 - `POST /api/feeds` (add feed)
+- `PATCH /api/feeds/{id}` (edit feed — a changed source URL is validated and re-fetched before the subscription is re-pointed; the route is rate-limited like add-feed)
 - `POST /api/feeds/discover` (multi-feed picker — the target page and every advertised feed link is validated before fetching)
 - `POST /api/feeds/import` (OPML import — each `xmlUrl` is filtered)
 - `POST /api/feeds/import-ttrss-api` (TT-RSS live pull / full migrate — the API endpoint is validated and the client carries `feed.RedirectGuard`; the user-supplied TT-RSS credentials are held only for the request and never persisted). When subscriptions are migrated, every feed URL returned by `getFeeds` is run through `urlcheck.Check` before subscribing (a blocked URL is skipped, not fatal). The file upload `POST /api/feeds/import-ttrss` makes no outbound request, and `javascript:`/`data:` article links in the export are dropped.
@@ -73,10 +76,13 @@ Outbound mail (digests + the test message) never sends credentials or message bo
 - Fever (`/fever`) form body capped at **64 KiB**.
 - Request headers capped at **64 KiB** (`http.Server.MaxHeaderBytes`).
 - `/api/articles/read` (and other bulk endpoints) accept at most **1000** ids per request; `/api/articles?limit=` is clamped to **200**.
+- Readability extraction (poller enrichment + `POST /api/articles/{id}/extract`) caps the fetched page at **8 MiB** before parsing; the feed fetcher caps response bodies at **16 MiB**.
+- Each decoded inbound-email MIME part is capped at **16 MiB** (base64 expands ~4:3, so a near-limit message can't balloon past the 25 MiB message ceiling).
+- `GET /api/search` clamps `limit` to **100** and `offset` to **10000**.
 
 ## Error responses
 
-5xx responses always read `{"error": {"code": "internal", "message": "internal error"}}`. The actual error is logged server-side via `slog.Default().Error(...)`. No SQLite errors, file paths, or constraint details leak to clients.
+5xx responses always read `{"error": {"code": "internal", "message": "internal error"}}`. The actual error is logged server-side via `slog.Default().Error(...)`. No SQLite errors, file paths, or constraint details leak to clients. OPML / TT-RSS import and multipart-parse failures likewise return a generic 400 ("could not read the uploaded file" / "check the file is a valid … export"); the underlying XML offset, SQLite constraint, or temp-path detail is logged only.
 
 Ollama upstream errors (502 from `/api/admin/llm/pull` etc.) return generic "Ollama refused the pull" messages; the upstream text goes to logs.
 
@@ -112,5 +118,5 @@ The Fever-compatible endpoint (`/fever`) uses a per-user random 32-byte token st
 ## CVE posture
 
 - Go stdlib pinned to **1.26.4**.
-- CI runs `go vet` and `govulncheck` on every push.
+- CI runs `go vet`, `golangci-lint`, and `govulncheck` on every push.
 - Dependabot opens PRs weekly for `gomod` + `npm` updates.

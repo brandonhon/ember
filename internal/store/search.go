@@ -16,9 +16,17 @@ type SearchResult struct {
 
 // Search runs an FTS5 query scoped to the user's subscriptions. Results are
 // ranked by bm25 (lower rank = better match in FTS5; we negate for sorting).
-func (s *Store) Search(ctx context.Context, userID int64, query string, limit int) ([]SearchResult, error) {
+//
+// publishedAfter (unix seconds) bounds results to articles published at/after
+// it — the search-window setting, capped at the retention window. Pass 0 to
+// search the full retained set. offset pages the bm25-ranked results (the SPA
+// loads 25 at a time via "Load more"); pass 0 for the first page.
+func (s *Store) Search(ctx context.Context, userID int64, query string, limit int, publishedAfter int64, offset int) ([]SearchResult, error) {
 	if limit <= 0 || limit > 100 {
-		limit = 30
+		limit = 25
+	}
+	if offset < 0 {
+		offset = 0
 	}
 	if query == "" {
 		return nil, nil
@@ -36,8 +44,9 @@ func (s *Store) Search(ctx context.Context, userID int64, query string, limit in
 		JOIN subscriptions s ON s.feed_id = a.feed_id AND s.user_id = ?
 		LEFT JOIN article_state st ON st.article_id = a.id AND st.user_id = ?
 		WHERE articles_fts MATCH ?
+		  AND IFNULL(a.published_at,0) >= ?
 		ORDER BY rank
-		LIMIT ?`, userID, userID, query, limit)
+		LIMIT ? OFFSET ?`, userID, userID, query, publishedAfter, limit, offset)
 	if err != nil {
 		// A malformed MATCH expression (unbalanced quote, bare operator, bad
 		// column filter) is a client mistake, not a server fault — surface it

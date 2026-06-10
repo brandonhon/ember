@@ -9,8 +9,11 @@ test.describe("feed management", () => {
     await page.getByTestId("open-add-feed").click();
     await page.getByTestId("add-feed-input").fill("https://muteme.test/feed");
     await page.getByTestId("add-feed-submit").click();
+    // add-feed runs feed discovery, which does a real DNS lookup of the fake
+    // .test domain; that can take up to the discover client's ~10s timeout to
+    // NXDOMAIN under full-suite load, so allow margin to keep this non-flaky.
     const row = page.locator("button", { hasText: "muteme.test" }).first();
-    await expect(row).toBeVisible({ timeout: 5_000 });
+    await expect(row).toBeVisible({ timeout: 15_000 });
 
     // Find the matching feed-row in the sidebar. The hover trigger only
     // appears on hover, so we use the underlying data attribute selector.
@@ -22,8 +25,9 @@ test.describe("feed management", () => {
     const muteBtn = feedRow.locator("button", { hasText: /Mute/ }).first();
     await muteBtn.click();
 
-    // The row gets the .muted class (visually grays the label).
-    await expect(feedRow).toHaveClass(/muted/);
+    // The row gets the .muted class (visually grays the label). Generous
+    // timeout: the PATCH round-trip + re-render can lag under full-suite load.
+    await expect(feedRow).toHaveClass(/muted/, { timeout: 10_000 });
 
     // Reopen the menu — the option should now read "Unmute".
     await trigger.click({ force: true });
@@ -37,8 +41,9 @@ test.describe("feed management", () => {
     await page.getByTestId("open-add-feed").click();
     await page.getByTestId("add-feed-input").fill("https://gone.test/feed");
     await page.getByTestId("add-feed-submit").click();
+    // Same discover-DNS latency as the mute test above — generous timeout.
     const row = page.locator(".feed-row", { hasText: "gone.test" }).first();
-    await expect(row).toBeVisible({ timeout: 5_000 });
+    await expect(row).toBeVisible({ timeout: 15_000 });
 
     await row.locator("[data-feed-actions-trigger]").click({ force: true });
     await row.locator("button", { hasText: "Delete" }).click();

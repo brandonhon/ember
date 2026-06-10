@@ -27,4 +27,21 @@ test.describe("search", () => {
     await search.fill("zzznothingmatchesthis");
     await expect(page.getByTestId("search-results")).toHaveCount(0);
   });
+
+  test("arrow keys highlight a typeahead hit and Enter opens it in the reader", async ({ page }) => {
+    await signIn(page);
+    const search = page.getByTestId("search-input");
+    await search.click();
+    await search.fill("fixture");
+    const results = page.getByTestId("search-results");
+    await expect(results).toBeVisible();
+    // Down-arrow highlights the first option.
+    await search.press("ArrowDown");
+    await expect(results.getByRole("option").first()).toHaveAttribute("aria-selected", "true");
+    // Enter on the highlighted row opens that article (reader actions appear)
+    // rather than submitting the full search.
+    await search.press("Enter");
+    await expect(page.getByTestId("search-results")).toBeHidden();
+    await expect(page.getByTestId("reader-star")).toBeVisible();
+  });
 });
