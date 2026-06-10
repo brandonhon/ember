@@ -1240,39 +1240,35 @@
         {/if}
 
         {#if section === "passkeys"}
+          <div class="eyebrow">Account</div>
           <h3>Passkeys</h3>
           {#if !canPasskey}
             <p class="hint">Your browser doesn't support passkeys.</p>
           {:else}
-            <p class="hint">
-              Passkeys let you sign in without a password using a fingerprint, face scan, or
-              hardware key. Each device you register here can be used at sign-in.
-            </p>
+            <p class="hint">Sign in with a fingerprint, face scan, or hardware key instead of a password. Each device you register can be used at sign-in.</p>
 
             {#if passkeyErr}<p class="error">{passkeyErr}</p>{/if}
             {#if passkeyMsg}<p class="ok">{passkeyMsg}</p>{/if}
 
-            <h4>Add a passkey</h4>
-            <label>
-              <span>Name this device</span>
-              <input
-                type="text"
-                bind:value={newPasskeyName}
-                placeholder="e.g. MacBook Touch ID"
-                maxlength="60"
-              />
-            </label>
-            <div class="actions">
-              <button
-                on:click={addPasskey}
-                disabled={passkeyBusy === "register"}
-                data-testid="passkey-register"
-              >
-                {passkeyBusy === "register" ? "Waiting for device…" : "Register passkey"}
-              </button>
+            <div class="card">
+              <div class="card-head"><h4>Add a passkey</h4></div>
+              <label class="pref-row">
+                <div><div class="pref-label">Device name</div><div class="pref-hint">Something you'll recognize at sign-in.</div></div>
+                <input class="row-input" type="text" bind:value={newPasskeyName} placeholder="e.g. MacBook Touch ID" maxlength="60" />
+              </label>
+              <div class="actions">
+                <button
+                  on:click={addPasskey}
+                  disabled={passkeyBusy === "register"}
+                  data-testid="passkey-register"
+                >
+                  {passkeyBusy === "register" ? "Waiting for device…" : "Register passkey"}
+                </button>
+              </div>
             </div>
 
-            <h4>Your passkeys</h4>
+            <div class="card">
+            <div class="card-head"><h4>Your passkeys</h4></div>
             {#if passkeys.length === 0}
               <p class="hint">No passkeys registered yet.</p>
             {:else}
@@ -1299,6 +1295,7 @@
                 {/each}
               </ul>
             {/if}
+            </div>
           {/if}
         {/if}
 
