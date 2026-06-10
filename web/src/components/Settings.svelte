@@ -1437,16 +1437,18 @@
             below. The key is derived from your username and user ID — if it leaks, change your
             username via the admin.
           </p>
-          <label>
-            <span>Fever URL</span>
-            <input type="text" value={feverURL} readonly />
-          </label>
-          <label>
-            <span>API key</span>
-            <input type="text" value={$feverAPIKey} readonly data-testid="fever-key" />
-          </label>
-          <div class="actions">
-            <button on:click={copyKey} class="ghost">Copy key</button>
+          <div class="card">
+            <label class="field">
+              <span>Fever URL</span>
+              <input type="text" value={feverURL} readonly />
+            </label>
+            <label class="field">
+              <span>API key</span>
+              <input type="text" value={$feverAPIKey} readonly data-testid="fever-key" />
+            </label>
+            <div class="actions">
+              <button on:click={copyKey} class="ghost">Copy key</button>
+            </div>
           </div>
         {/if}
 
@@ -1797,24 +1799,26 @@
           <p class="hint">Change the app name, browser tab title, and favicon shown to all users. Leave a field blank to restore the default.</p>
           {#if brandingErr}<p class="error">{brandingErr}</p>{/if}
           {#if brandingMsg}<p class="ok" data-testid="branding-msg">{brandingMsg}</p>{/if}
-          <label>
-            <span>App name</span>
-            <input type="text" bind:value={brandingDraft.name} placeholder="Ember" data-testid="branding-name" />
-          </label>
-          <label>
-            <span>Browser tab title</span>
-            <input type="text" bind:value={brandingDraft.page_title} placeholder="Ember" data-testid="branding-title" />
-          </label>
-          <label>
-            <span>Favicon URL</span>
-            <input type="text" bind:value={brandingDraft.favicon_url} placeholder="/icon.svg or data:image/svg+xml;..." data-testid="branding-favicon" />
-            <span class="pref-hint">Public URL (e.g. /icon.svg, https://…/icon.png) or a data: URI. Hard-refresh after changing.</span>
-          </label>
-          <div class="actions">
-            <button class="ghost" on:click={resetBranding} disabled={brandingBusy}>Reset to defaults</button>
-            <button on:click={saveBranding} disabled={brandingBusy} data-testid="branding-save">
-              {brandingBusy ? "Saving…" : "Save"}
-            </button>
+          <div class="card">
+            <label class="field">
+              <span>App name</span>
+              <input type="text" bind:value={brandingDraft.name} placeholder="Ember" data-testid="branding-name" />
+            </label>
+            <label class="field">
+              <span>Browser tab title</span>
+              <input type="text" bind:value={brandingDraft.page_title} placeholder="Ember" data-testid="branding-title" />
+            </label>
+            <label class="field">
+              <span>Favicon URL</span>
+              <input type="text" bind:value={brandingDraft.favicon_url} placeholder="/icon.svg or data:image/svg+xml;..." data-testid="branding-favicon" />
+              <span class="pref-hint">Public URL (e.g. /icon.svg, https://…/icon.png) or a data: URI. Hard-refresh after changing.</span>
+            </label>
+            <div class="actions">
+              <button class="ghost" on:click={resetBranding} disabled={brandingBusy}>Reset to defaults</button>
+              <button on:click={saveBranding} disabled={brandingBusy} data-testid="branding-save">
+                {brandingBusy ? "Saving…" : "Save"}
+              </button>
+            </div>
           </div>
         {/if}
 
@@ -1929,7 +1933,8 @@
           {#if usersErr}<p class="error" data-testid="users-error">{usersErr}</p>{/if}
           {#if usersMsg}<p class="ok" data-testid="users-msg">{usersMsg}</p>{/if}
 
-          <h4>New user</h4>
+          <div class="card">
+          <div class="card-head"><h4>New user</h4></div>
           <div class="row">
             <label>
               <span>Username</span>
@@ -1979,6 +1984,7 @@
             >
               {usersBusy === "create" ? "Creating…" : "Create user"}
             </button>
+          </div>
           </div>
 
           <h4>Existing users</h4>
@@ -2055,6 +2061,7 @@
               <span style="opacity:0.6">({sessionTTL.source === "admin" ? "set in admin UI" : "default / env var"})</span>
             </p>
           {/if}
+          <div class="card">
           <label class="pref-row">
             <span>Preset</span>
             <select bind:value={sessionTTLDraft} data-testid="session-preset">
@@ -2078,6 +2085,7 @@
             <button on:click={saveSessionTTL} disabled={sessionBusy} data-testid="session-save">
               {sessionBusy ? "Saving…" : "Save"}
             </button>
+          </div>
           </div>
         {/if}
 
@@ -3177,8 +3185,9 @@
   /* A full-width stacked field inside a card (passwords, URLs, long inputs). */
   .field { display: flex; flex-direction: column; gap: 5px; padding: 12px 0; border-top: 1px solid var(--line-soft); margin: 0; }
   .field:first-child { border-top: 0; }
-  .field > span { color: var(--ink-faint); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; font-size: 10.5px; }
+  .field > span:first-child { color: var(--ink-faint); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; font-size: 10.5px; }
   .field input { width: 100%; }
+  .field .pref-hint { text-transform: none; letter-spacing: 0; font-weight: 400; }
 
   /* Profile identity header. */
   .identity { display: flex; align-items: center; gap: 16px; margin-bottom: 22px; }
