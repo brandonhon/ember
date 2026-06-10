@@ -20,7 +20,7 @@ Ember reads configuration from environment variables at startup. A handful of se
 | `EMBER_OLLAMA_MODEL` | `qwen2.5:0.5b` | Initial active model. The admin UI can swap to any pulled model live. |
 | `EMBER_DISABLE_SUMMARIES` | `0` | Skip LLM summarization entirely. Articles still surface (poller stamps `summary_model='disabled'`). |
 | `EMBER_DISABLE_IMAGES` | `0` | Drop article hero images at ingest. |
-| `EMBER_ALLOW_PRIVATE_URLS` | `0` | Bypass the SSRF block so feeds on RFC1918 / loopback addresses can be subscribed. **Only set this if you trust every user who can add feeds.** |
+| `EMBER_ALLOW_PRIVATE_URLS` | `0` | Bypass the SSRF private-IP block so feeds on RFC1918 / loopback addresses can be subscribed. The scheme allowlist and the non-web service-port block still apply. **Only set this if you trust every user who can add feeds.** |
 | `EMBER_PUBLIC_URL` | — | Canonical `scheme://host` users hit, e.g. `https://reader.example.com`. Required to enable passkey / WebAuthn sign-in. |
 | `EMBER_SECURE_COOKIES` | `1` | `Secure` flag on the session + CSRF cookies. Ember serves plain HTTP and expects a TLS-terminating proxy in front, so leave this on. Set `0` **only** for a deliberate plain-HTTP deployment (e.g. private VPN) — otherwise browsers drop the cookies over HTTP and login silently fails. |
 | `EMBER_TRUSTED_PROXIES` | — | Comma/space-separated CIDRs or IPs of the proxy in front of Ember. `X-Real-IP` (rate-limit keying) and `X-Forwarded-Proto` (HTTPS detection for HSTS) are honored **only** from these peers. Empty = trust nobody (Ember is the edge; reads the real client from the connection). The bundled compose sets this to the Caddy bridge range. |

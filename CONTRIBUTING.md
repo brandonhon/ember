@@ -7,7 +7,7 @@ Thanks for considering a contribution. This document covers the minimum you need
 1. Open an issue describing the change before you start coding. For trivial fixes (typos, one-line bugs) a PR with a clear description is fine.
 2. Fork the repo, create a topic branch off `main`.
 3. Make the change. Keep commits focused and use conventional commit prefixes (`feat:`, `fix:`, `chore:`, `docs:`, `sec:`, `refactor:`, `style:`, `test:`).
-4. Run `make verify` (vet + tests). Run `make web-check && make web-test` if you touched the SPA.
+4. Run `make verify` (vet + tests) and `make lint` (golangci-lint — `go vet` alone misses gocritic/staticcheck issues CI enforces). Run `make web-check && make web-test` if you touched the SPA.
 5. Open a PR against `main`. CI must pass; a maintainer will review.
 
 ## Code style

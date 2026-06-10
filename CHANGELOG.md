@@ -61,6 +61,18 @@ full commit-level list; this file curates the highlights and behavior changes.
   the email-inbox setup-docs link now points at the live docs page (was a dead
   `/docs/...` path).
 
+### Security
+
+- **Changing your email now requires your current password**, and email
+  addresses must be unique — a borrowed session can't quietly redirect your
+  digest mail, and two accounts can't share an address.
+- **Hardening pass.** The outbound-fetch SSRF guard now also refuses non-web
+  service ports (SSH, databases, Redis, …); the readability extractor and
+  decoded inbound-email parts are size-capped to prevent memory exhaustion;
+  editing a feed's source URL is rate-limited like adding one; OPML/TT-RSS
+  import errors no longer echo internal detail; and search paging is bounded.
+  See [docs/SECURITY_FINDINGS.md](docs/SECURITY_FINDINGS.md) (Review #3).
+
 ## [0.8.7] - 2026-06-08
 
 TT-RSS full migration (subscriptions, folders, starred/archived) and fail-fast

@@ -292,6 +292,48 @@ Per the Fever protocol, mark requests always return HTTP 200 — clients treat a
 
 ---
 
+## Review #3 — 2026-06-10
+
+A third full Go-review pass over the develop tree (settings-rebuild + reading-window + edit-feed superset). **No CRITICAL/HIGH** — no RCE, SQLi, auth bypass, cross-user IDOR, or stored XSS; all prior remediations intact. Surfaced 2 MEDIUM + a LOW hardening cluster, **all fixed**. One reported "gzip decompression bomb in the feed fetcher" was investigated and **rejected**: Go's transport transparently decompresses, so the existing 16 MiB `io.LimitReader` already caps the *decompressed* body.
+
+### V3-1 — Readability Enrichment Fetch Had No Response-Size Cap
+**Severity:** MEDIUM | **Status:** `fixed`
+**File:** `internal/feed/readability.go:44`
+**ATT&CK:** T1499.001 | **NIST CSF:** PR.IR-04 | **D3FEND:** D3-RTSD
+
+`ExtractFromURL` passed `resp.Body` straight into the readability parser with no `io.LimitReader` (the feed fetcher caps at 16 MiB). Reached via the poller enrichment path for short/aggregator articles, where the fetched URL comes from feed content. A hostile page — or a gzip bomb the HTTP stack transparently inflates — could stream an unbounded body into a full DOM and OOM the single-process server for all users. Fix: `readability.FromReader(io.LimitReader(resp.Body, 8<<20), u)`.
+
+### V3-2 — `PATCH /api/feeds/{id}` URL-Repoint Outbound Fetch Not Rate-Limited
+**Severity:** MEDIUM | **Status:** `fixed`
+**File:** `internal/api/server.go` (route), `internal/api/feed_handlers.go:168–193`
+**ATT&CK:** T1499.001, T1046 | **NIST CSF:** PR.IR-04 | **D3FEND:** D3-RTSD, D3-NTA
+
+Every feed route that fetches outbound carried `expensiveLimiter` except the new edit-feed `PATCH /api/feeds/{id}`, whose `url` field runs `urlcheck.Check` + `feed.Discover`. An authenticated user could loop PATCH over their subscription ids unthrottled — an outbound-request amplifier and (with V3-4) a faster port-scan oracle. SSRF guard still blocks private IPs. Fix: add `expensiveLimiter.LimitMiddleware` to the route.
+
+### Review #3 — LOW cluster
+
+| ID | Status | File | Issue & fix |
+|----|--------|------|-------------|
+| V3-3 | `fixed` | `internal/api/feed_handlers.go` | "Refresh all" spawned an unbounded detached goroutine per request, contending on the shared SQLite writer outside the poller pool. Fix: a global `refreshAllSem` (cap 3) bounds concurrent walkers. |
+| V3-4 | `fixed` | `internal/urlcheck/urlcheck.go` | SSRF guard had no port restriction → authenticated blind port-scan oracle against public IPs (`:22`, `:6379`, …). Fix: curated `blockedPorts` denylist (WHATWG bad-ports subset), applied even under `EMBER_ALLOW_PRIVATE_URLS`. |
+| V3-5 | `fixed` | `internal/api/auth_handlers.go`, `internal/store/users.go`, migration `0020` | Self-service email change required no re-auth (stolen-session digest redirect) and email had no uniqueness constraint. Fix: `VerifyPassword` on email change (+ web password field); `UNIQUE` index on `email` (NOCASE) → 409 on collision. |
+| V3-6 | `fixed` | `internal/store/feeds.go` | `UpdateSubscription` accepted any `category_id`; the FK only proved existence, so a user could file their subscription under another user's folder id (self data-corruption; no cross-user read). Fix: verify the category belongs to the caller. |
+| V3-7 | `fixed` | `internal/api/feed_handlers.go` | OPML / TT-RSS import + multipart-parse errors returned raw `err.Error()` (SQLite/XML/temp-path detail) to clients. Fix: generic message; detail to `slog`. |
+| V3-8 | `fixed` | `internal/summarize/ollama.go` | Ollama client followed redirects with the default transport. Fix: `CheckRedirect` rejects redirects — closes redirect-to-internal without an IP block, which would break localhost Ollama. |
+| V3-9 | `fixed` | `internal/feed/sanitize.go`, `parse.go`, `readability.go` | `image_url` wasn't scheme-filtered (unlike the article link). Fix: `SafeImageURL` allows `http(s)` + `data:image/`, drops `javascript:`/`data:text/`. |
+| V3-10 | `fixed` | `internal/api/search_handlers.go` | Search `limit`/`offset` weren't bounded at the handler. Fix: clamp `limit ≤ 100`, `offset ≤ 10000`. |
+| V3-11 | `fixed` | `internal/api/passkey_handlers.go` | Passkey login-begin skipped the timing equalization the password path has → weak username-enum oracle. Fix: throwaway `ListPasskeys(0)` on the not-found path. |
+| V3-12 | `fixed` | `internal/emailinbox/parse.go` | base64/quoted-printable MIME parts decoded with no cap (~33 MiB from a 25 MiB message, ×connections). Fix: `io.LimitReader(16 MiB)` per decoded part. |
+
+---
+
+## Static Analysis Baseline (2026-06-10)
+
+- `go vet ./...` — clean
+- `go test -race -count=1 ./...` — all packages pass
+- `golangci-lint run` (v2.11.4 / go1.26.4) — clean (the 4 pre-existing `SA5011` false-positives in `internal/ttrss/ttrss_test.go` were cleared by restructuring the nil-pointer lookups)
+- `govulncheck` — run in CI (the go.mod toolchain is go1.26.4; a locally-installed govulncheck must be built with a matching toolchain)
+
 ## Static Analysis Baseline (2026-06-07)
 
 - `go vet ./...` — clean

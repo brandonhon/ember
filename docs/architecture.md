@@ -37,7 +37,7 @@ internal/poller/              adaptive scheduler, fetch dispatch, summary queue
 internal/store/               SQLite CRUD, FTS5 search, app_settings KV, dbops, passkeys, digests, cluster backfill + sibling lookup
 internal/summarize/           Summarizer interface + Ollama implementation + noop for tests
 internal/sysinfo/             host-detection (RAM/CPU/GPU) + model recommendation
-internal/urlcheck/            SSRF block (scheme allowlist + private-IP refusal)
+internal/urlcheck/            SSRF block (scheme allowlist + private-IP + service-port refusal)
 internal/web/                 embed.FS handler for the SPA
 web/                          Svelte 5 (runes) source; built via Vite, copied to internal/web/dist
 ```
