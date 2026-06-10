@@ -639,21 +639,14 @@ func (s *Store) CountSmartViews(ctx context.Context, userID int64, freshWindow t
 	}); err != nil {
 		return c, fmt.Errorf("count unread: %w", err)
 	}
-	// Per-category unread badges: same predicate, scoped to each category the
-	// user has. Cross-feed dedup applies (category lists dedup), so a folder
-	// badge can read lower than the sum of its feeds' badges.
-	catIDs, err := s.listCategoryIDs(ctx, userID)
-	if err != nil {
+	// Per-category unread badges: ONE grouped query (not an N+1 per-category
+	// fan-out on every smart-counts poll) that reuses the same predicate —
+	// window, summary gate, cross-feed dedup — as the All-Unread list, so a
+	// folder badge can never disagree with its column.
+	if c.UnreadByCategory, err = s.CountUnreadByCategory(ctx, userID, ListArticlesQuery{
+		FreshAfter: unreadCutoff, OnlySummarized: onlySummarized,
+	}); err != nil {
 		return c, fmt.Errorf("count unread by category: %w", err)
-	}
-	for _, cid := range catIDs {
-		n, err := s.CountArticles(ctx, userID, ListArticlesQuery{
-			CategoryID: cid, Unread: true, FreshAfter: unreadCutoff, OnlySummarized: onlySummarized,
-		})
-		if err != nil {
-			return c, fmt.Errorf("count unread by category %d: %w", cid, err)
-		}
-		c.UnreadByCategory[cid] = n
 	}
 	if err := s.DB.QueryRowContext(ctx, `
 SELECT COUNT(*) FROM article_state WHERE user_id = ? AND is_starred = 1`,
@@ -685,22 +678,35 @@ WHERE sub.muted = 0
 	return c, nil
 }
 
-// listCategoryIDs returns the user's category ids (used to build the per-
-// category unread map without pulling full category rows).
-func (s *Store) listCategoryIDs(ctx context.Context, userID int64) ([]int64, error) {
+// CountUnreadByCategory returns unread counts keyed by category id in a SINGLE
+// grouped query. It reuses buildArticleFilter so the predicate (window, summary
+// gate, cross-feed dedup, muted handling) is byte-for-byte the one the article
+// list + CountArticles apply — a folder badge can never diverge from its
+// column. Only categories with at least one matching article appear in the map
+// (the SPA treats a missing key as zero). q.Unread is forced on; pass
+// FreshAfter / OnlySummarized to scope the window + summary gate.
+func (s *Store) CountUnreadByCategory(ctx context.Context, userID int64, q ListArticlesQuery) (map[int64]int, error) {
+	q.Unread = true
+	from, where, args := s.buildArticleFilter(userID, q, false)
+	if where == "" {
+		where = "WHERE s.category_id IS NOT NULL"
+	} else {
+		where += " AND s.category_id IS NOT NULL"
+	}
 	rows, err := s.DB.QueryContext(ctx,
-		`SELECT id FROM categories WHERE user_id = ?`, userID)
+		fmt.Sprintf("SELECT s.category_id, COUNT(*)\n%s\n%s\nGROUP BY s.category_id", from, where), args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var out []int64
+	out := map[int64]int{}
 	for rows.Next() {
-		var id int64
-		if err := rows.Scan(&id); err != nil {
+		var cid int64
+		var n int
+		if err := rows.Scan(&cid, &n); err != nil {
 			return nil, err
 		}
-		out = append(out, id)
+		out[cid] = n
 	}
 	return out, rows.Err()
 }

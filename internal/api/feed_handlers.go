@@ -291,7 +291,9 @@ func (d *Dependencies) handleRefreshAllFeeds(w http.ResponseWriter, r *http.Requ
 		}
 		go func() {
 			for _, id := range ids {
-				_ = d.Poller.RefreshFeed(ctx, id)
+				if err := d.Poller.RefreshFeed(ctx, id); err != nil {
+					slog.Default().Warn("refresh-all: feed refresh failed", "feed_id", id, "err", err)
+				}
 			}
 		}()
 	}

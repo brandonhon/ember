@@ -2,6 +2,9 @@ package store
 
 import (
 	"context"
+	"database/sql"
+	"errors"
+	"log/slog"
 	"time"
 )
 
@@ -36,8 +39,12 @@ func (s *Store) UnreadCutoff(ctx context.Context, userID int64) int64 {
 	ceil := int64(RetentionHours) * 3600
 
 	var prev int64
-	_ = s.DB.QueryRowContext(ctx,
-		`SELECT IFNULL(prev_login_at,0) FROM users WHERE id = ?`, userID).Scan(&prev)
+	// Best-effort: a query failure falls back to the window floor. Log it so a
+	// persistent DB problem (vs. a first-login zero) isn't silently masked.
+	if err := s.DB.QueryRowContext(ctx,
+		`SELECT IFNULL(prev_login_at,0) FROM users WHERE id = ?`, userID).Scan(&prev); err != nil && !errors.Is(err, sql.ErrNoRows) {
+		slog.Default().Warn("unread cutoff: prev-login query failed, using window floor", "user_id", userID, "err", err)
+	}
 
 	window := floor
 	if prev > 0 {
