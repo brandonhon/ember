@@ -71,8 +71,17 @@ export interface SmartCounts {
   later: number;
   shared: number;
   pending_summary: number;
+  // unread is the global "All Unread" badge; unread_by_category maps a category
+  // id to its unread badge. Both are computed server-side with the same window,
+  // summary gate, and cross-feed dedup as the article list, so a badge always
+  // matches the column it summarizes. May be null on older server responses.
+  unread: number;
+  unread_by_category: Record<number, number> | null;
 }
-const EMPTY_SMART_COUNTS: SmartCounts = { fresh: 0, starred: 0, later: 0, shared: 0, pending_summary: 0 };
+const EMPTY_SMART_COUNTS: SmartCounts = {
+  fresh: 0, starred: 0, later: 0, shared: 0, pending_summary: 0,
+  unread: 0, unread_by_category: {},
+};
 export const smartCounts = writable<SmartCounts>(EMPTY_SMART_COUNTS);
 
 export async function refreshSidebar(): Promise<void> {
@@ -101,8 +110,10 @@ export async function refreshSmartCounts(): Promise<void> {
   smartCounts.set(sc.data ?? EMPTY_SMART_COUNTS);
 }
 
-export const totalUnread = derived(feeds, ($feeds) =>
-  $feeds.reduce((n, f) => n + (f.unread || 0), 0),
+// All-Unread badge: the server's deduped/windowed/gated count. Falls back to
+// summing per-feed counts only if the server didn't provide it (older build).
+export const totalUnread = derived([smartCounts, feeds], ([$sc, $feeds]) =>
+  $sc.unread || $feeds.reduce((n, f) => n + (f.unread || 0), 0),
 );
 
 // View / UI state ------------------------------------------------------------
@@ -228,11 +239,20 @@ persistBool("ember:summary-collapsed", summaryCollapsed, "closed", "open");
 export interface ArticleListState {
   items: ArticleView[];
   loading: boolean;
+  // Keyset cursor for list views (set only when the last page came back full,
+  // i.e. more may exist). searchOffset is the equivalent for the search view,
+  // which pages by offset since FTS ranks aren't keyset-friendly. hasMore
+  // drives the "Load more" button for both.
   cursor?: { pub: number; id: number };
+  searchOffset?: number;
+  hasMore: boolean;
   err?: string;
 }
 
-export const articles = writable<ArticleListState>({ items: [], loading: false });
+export const articles = writable<ArticleListState>({ items: [], loading: false, hasMore: false });
+
+// Page size for the search view's "Load more" (server defaults to 25 too).
+const SEARCH_PAGE_SIZE = 25;
 
 function queryForView(view: ActiveView): ListArticlesQuery {
   switch (view.kind) {
@@ -303,15 +323,20 @@ export async function pollForNewArticles(): Promise<number> {
 export async function loadArticles(view: ActiveView, append = false): Promise<void> {
   articles.update((s) => ({ ...s, loading: true, err: undefined }));
   // Search view: hit /api/search and treat the results as the article list.
-  // FTS is not paginated, so append is ignored.
+  // Paged 25 at a time by offset (append=true loads the next page).
   if (view.kind === "search") {
     try {
-      const res = await api.search(view.query, 100);
-      articles.update(() => ({
-        items: (res.data ?? []) as ArticleView[],
+      const offset = append ? get(articles).searchOffset ?? 0 : 0;
+      const res = await api.search(view.query, SEARCH_PAGE_SIZE, offset);
+      const page = (res.data ?? []) as ArticleView[];
+      articles.update((s) => ({
+        items: append ? [...s.items, ...page] : page,
         loading: false,
+        cursor: undefined,
+        searchOffset: offset + page.length,
+        hasMore: page.length === SEARCH_PAGE_SIZE,
       }));
-      newArticleCount.set(0);
+      if (!append) newArticleCount.set(0);
     } catch (err) {
       articles.update((s) => ({ ...s, loading: false, err: String(err) }));
     }
@@ -328,13 +353,17 @@ export async function loadArticles(view: ActiveView, append = false): Promise<vo
     }
     const res = await api.listArticles(q);
     const meta = res.meta ?? {};
-    const next = res.data?.length
-      ? { pub: Number(meta.next_cursor_pub ?? 0), id: Number(meta.next_cursor_id ?? 0) }
-      : undefined;
+    // The server emits a cursor only when the page came back full, so a present
+    // cursor means "Load more has something." Absent/zero → last page.
+    const pub = Number(meta.next_cursor_pub ?? 0);
+    const id = Number(meta.next_cursor_id ?? 0);
+    const next = pub > 0 || id > 0 ? { pub, id } : undefined;
     articles.update((s) => ({
       items: append ? [...s.items, ...(res.data ?? [])] : res.data ?? [],
       loading: false,
       cursor: next,
+      searchOffset: undefined,
+      hasMore: !!next,
     }));
     if (!append) {
       // Switching views resets the "new" indicator — the user is looking at
@@ -344,6 +373,16 @@ export async function loadArticles(view: ActiveView, append = false): Promise<vo
   } catch (err) {
     articles.update((s) => ({ ...s, loading: false, err: String(err) }));
   }
+}
+
+// loadMore appends the next page to the current view. No-op while a load is in
+// flight or when the view has no further pages. Works for both list views
+// (keyset cursor) and search (offset) — loadArticles' append path picks the
+// right paging mechanism.
+export async function loadMore(): Promise<void> {
+  const s = get(articles);
+  if (s.loading || !s.hasMore) return;
+  await loadArticles(get(activeView), true);
 }
 
 // Read/star toggles update the local list optimistically so the UI feels snappy.
@@ -363,6 +402,12 @@ export async function setRead(ids: number[], read: boolean): Promise<void> {
     if (!!a.is_read === read) return n;
     return n + 1;
   }, 0);
+  // Items whose read-state actually flips — drives the optimistic All-Unread
+  // badge update below (computed pre-flip, like freshDelta).
+  const flipped = get(articles).items.reduce(
+    (n, a) => (idSet.has(a.id) && !!a.is_read !== read ? n + 1 : n),
+    0,
+  );
 
   articles.update((s) => ({
     ...s,
@@ -396,6 +441,14 @@ export async function setRead(ids: number[], read: boolean): Promise<void> {
       return { ...f, unread: Math.max(0, f.unread + (read ? -delta : delta)) };
     }),
   );
+  // Keep the global All-Unread badge (server-computed smartCounts.unread) in
+  // sync optimistically.
+  if (flipped !== 0) {
+    smartCounts.update((c) => ({
+      ...c,
+      unread: Math.max(0, c.unread + (read ? -flipped : flipped)),
+    }));
+  }
 }
 
 // toggleStar / toggleLater do two optimistic updates so the UI feels

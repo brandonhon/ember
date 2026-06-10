@@ -28,7 +28,7 @@ func TestSearch_RankedHits(t *testing.T) {
 		ContentText: "wellness column unrelated to programming", ContentHash: "h3", PublishedAt: 3000,
 	})
 
-	hits, err := s.Search(ctx, alice.ID, "rust", 10)
+	hits, err := s.Search(ctx, alice.ID, "rust", 10, 0, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +37,7 @@ func TestSearch_RankedHits(t *testing.T) {
 	}
 
 	// Multi-term + ranking.
-	hits, _ = s.Search(ctx, alice.ID, "programming", 10)
+	hits, _ = s.Search(ctx, alice.ID, "programming", 10, 0, 0)
 	if len(hits) != 2 {
 		t.Errorf("expected 2 programming hits, got %d", len(hits))
 	}
@@ -53,14 +53,14 @@ func TestSearch_MalformedQueryIsInvalid(t *testing.T) {
 	// Each of these is a distinct FTS5 syntax failure class; all must map to
 	// ErrInvalidQuery (-> 400) rather than a bare error (-> 500).
 	for _, q := range []string{`"`, `(`, `NOT NOT`, `AND`, `foo:`, `*`} {
-		_, err := s.Search(ctx, u.ID, q, 10)
+		_, err := s.Search(ctx, u.ID, q, 10, 0, 0)
 		if !errors.Is(err, ErrInvalidQuery) {
 			t.Errorf("query %q: want ErrInvalidQuery, got %v", q, err)
 		}
 	}
 
 	// A valid query against an empty index is not an error.
-	if _, err := s.Search(ctx, u.ID, "rust", 10); err != nil {
+	if _, err := s.Search(ctx, u.ID, "rust", 10, 0, 0); err != nil {
 		t.Errorf("valid query errored: %v", err)
 	}
 }
@@ -86,12 +86,12 @@ func TestSearch_ScopedToSubscriptions(t *testing.T) {
 	})
 
 	// Alice only finds her feed's article.
-	hits, _ := s.Search(ctx, alice.ID, "rust", 10)
+	hits, _ := s.Search(ctx, alice.ID, "rust", 10, 0, 0)
 	if len(hits) != 1 || hits[0].GUID != "ga" {
 		t.Errorf("alice should only see ga, got %+v", hits)
 	}
 	// Bob only finds his.
-	hits, _ = s.Search(ctx, bob.ID, "rust", 10)
+	hits, _ = s.Search(ctx, bob.ID, "rust", 10, 0, 0)
 	if len(hits) != 1 || hits[0].GUID != "gb" {
 		t.Errorf("bob should only see gb, got %+v", hits)
 	}
@@ -101,7 +101,7 @@ func TestSearch_EmptyQuery(t *testing.T) {
 	s := NewTest(t)
 	ctx := context.Background()
 	u, _ := s.CreateUser(ctx, models.User{Username: "u", PasswordHash: "h"})
-	if hits, err := s.Search(ctx, u.ID, "", 10); err != nil || hits != nil {
+	if hits, err := s.Search(ctx, u.ID, "", 10, 0, 0); err != nil || hits != nil {
 		t.Errorf("empty query should yield no hits and no error, got %v %v", hits, err)
 	}
 }

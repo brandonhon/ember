@@ -111,15 +111,16 @@
     showSettings = true;
   }
 
-  // Auto-refresh: every 15s while the tab is visible, poll the active view
-  // for new articles. The store prepends them and bumps newArticleCount,
-  // which drives the favicon-dot indicator below. We also poll once on tab
-  // re-focus so coming back from a long Slack rabbit hole feels instant.
+  // Auto-refresh: every 15s, poll the active view for new articles — even when
+  // the tab is backgrounded, so the favicon dot + title count + PWA badge
+  // light up while you're in another tab. The store prepends new items and
+  // bumps newArticleCount, which drives the indicators below. We also poll
+  // once on tab re-focus so coming back from a long Slack rabbit hole feels
+  // instant.
   let pollTimer: ReturnType<typeof setInterval> | null = null;
   function startPolling() {
     stopPolling();
     pollTimer = setInterval(() => {
-      if (document.hidden) return;
       void pollForNewArticles();
       // While the summary worker is chewing through a backlog, refresh the
       // counts each tick so the "Summarizing N…" indicator counts down and
