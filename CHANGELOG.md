@@ -9,6 +9,8 @@ full commit-level list; this file curates the highlights and behavior changes.
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-06-10
+
 ### Added
 
 - **Create folders** — a **+** in the sidebar Folders header makes a new folder
@@ -32,8 +34,6 @@ full commit-level list; this file curates the highlights and behavior changes.
   48h) reach, both capped at a fixed rolling 1-week retention window.
 - **Automatic retention** — articles past the 1-week window are pruned daily;
   starred, read-later, board-pinned, and shared articles are kept indefinitely.
-- **Admin-configurable feed check interval** — the poll interval moved into its
-  own Feeds settings section (default 30 minutes).
 
 ### Changed
 
@@ -79,5 +79,6 @@ TT-RSS full migration (subscriptions, folders, starred/archived) and fail-fast
 admin bootstrap. See the
 [v0.8.7 release](https://github.com/brandonhon/ember/releases/tag/v0.8.7).
 
-[Unreleased]: https://github.com/brandonhon/ember/compare/v0.8.7...develop
+[Unreleased]: https://github.com/brandonhon/ember/compare/v0.9.0...develop
+[0.9.0]: https://github.com/brandonhon/ember/compare/v0.8.9...v0.9.0
 [0.8.7]: https://github.com/brandonhon/ember/releases/tag/v0.8.7
