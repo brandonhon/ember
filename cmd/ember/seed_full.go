@@ -23,18 +23,25 @@ import (
 // against a throwaway compose stack. Distinct from the minimal EMBER_TEST_MODE
 // seed (the frozen e2e contract) — do not merge the two.
 func runSeedFull() {
+	// Wrapper so the actual work can defer dbh.Close() and return errors —
+	// os.Exit lives only here, where no defer is pending (gocritic exitAfterDefer).
+	if err := seedFullMain(); err != nil {
+		fmt.Fprintf(os.Stderr, "seed: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func seedFullMain() error {
 	cfg, err := config.Load()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "seed: config: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("config: %w", err)
 	}
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: cfg.LogLevel}))
 
 	ctx := context.Background()
 	dbh, err := db.Open(ctx, cfg.DBPath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "seed: db open: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("db open: %w", err)
 	}
 	defer dbh.Close()
 	st := store.New(dbh)
@@ -45,14 +52,10 @@ func runSeedFull() {
 	}
 	a, err := auth.New(st, sessionKey)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "seed: auth: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("auth: %w", err)
 	}
 
-	if err := seedFull(ctx, st, a, cfg, logger); err != nil {
-		fmt.Fprintf(os.Stderr, "seed: %v\n", err)
-		os.Exit(1)
-	}
+	return seedFull(ctx, st, a, cfg, logger)
 }
 
 func seedFull(ctx context.Context, st *store.Store, a *auth.Auth, cfg config.Config, logger *slog.Logger) error {
