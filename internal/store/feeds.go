@@ -234,6 +234,53 @@ func (s *Store) UpdateSubscription(ctx context.Context, userID, subID int64, p U
 	return nil
 }
 
+// RepointSubscriptionFeed changes which feed a subscription points at — used
+// when a user edits a feed's source URL. The subscription's title override,
+// category, mute, and position are preserved; only feed_id changes. If the
+// user is already subscribed to newFeedID, returns ErrConflict (the unique
+// (user_id, feed_id) constraint). The previously-pointed feed is dropped if no
+// subscription references it any more, mirroring Unsubscribe's cleanup.
+func (s *Store) RepointSubscriptionFeed(ctx context.Context, userID, subID, newFeedID int64) error {
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var oldFeedID int64
+	err = tx.QueryRowContext(ctx,
+		`SELECT feed_id FROM subscriptions WHERE id = ? AND user_id = ?`, subID, userID).Scan(&oldFeedID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrNotFound
+	}
+	if err != nil {
+		return err
+	}
+	if oldFeedID == newFeedID {
+		return nil // no-op: same feed
+	}
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE subscriptions SET feed_id = ? WHERE id = ? AND user_id = ?`,
+		newFeedID, subID, userID); err != nil {
+		if isUniqueViolation(err) {
+			return ErrConflict
+		}
+		return err
+	}
+	// Drop the old feed if nothing references it now.
+	var refs int
+	if err := tx.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM subscriptions WHERE feed_id = ?`, oldFeedID).Scan(&refs); err != nil {
+		return err
+	}
+	if refs == 0 {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM feeds WHERE id = ?`, oldFeedID); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
 // Unsubscribe deletes a user's subscription to a feed. The shared feed row is
 // retained if any other user is still subscribed.
 func (s *Store) Unsubscribe(ctx context.Context, userID, subID int64) error {
@@ -317,18 +364,24 @@ func (s *Store) ListSubscriberIDs(ctx context.Context, feedID int64) ([]int64, e
 }
 
 // ListFeedsForUser returns the user's subscriptions joined with feed metadata
-// and unread counts.
-func (s *Store) ListFeedsForUser(ctx context.Context, userID int64) ([]models.FeedWithCounts, error) {
-	// Per-feed unread count: every unread article in a non-muted subscription
-	// counts, including those the summarizer hasn't touched yet. PR #45
-	// dropped the same summary_model gate from the Fresh smart-view count +
-	// list so the badge matches what the user actually sees in the list;
-	// this query is the analogous fix for the sidebar's per-feed and
-	// per-category counts (which derive from this row's `unread` column via
-	// `feeds[].category_id` aggregation client-side). The `s.muted = 0`
-	// guard keeps muted subscriptions out of the per-feed (and therefore
-	// the client-summed "All Unread") count — muted means "I don't want to
-	// see these right now," so they shouldn't inflate the badge.
+// and per-feed unread counts.
+//
+// unreadCutoff (unix seconds) bounds the unread count to articles published
+// at/after it — the sidebar passes the user's UnreadCutoff so a per-feed badge
+// reflects "unread since you were last here" rather than all-time. Pass 0 to
+// count regardless of age (Fever / starter-pack callers that don't want the
+// window). onlySummarized gates on the summary marker when AI summarization is
+// enabled, mirroring the article list so the badge never disagrees with it.
+func (s *Store) ListFeedsForUser(ctx context.Context, userID, unreadCutoff int64, onlySummarized bool) ([]models.FeedWithCounts, error) {
+	// Per-feed unread count: unread, non-muted, within the window, and (when AI
+	// is on) summarizer-touched — the same predicate the article list applies,
+	// minus the cross-feed dedup that only makes sense across feeds. The
+	// `s.muted = 0` guard keeps muted subscriptions out of the per-feed (and
+	// therefore the client-summed) count.
+	gate := ""
+	if onlySummarized {
+		gate = " AND a.summary_model IS NOT NULL AND a.summary_model <> ''"
+	}
 	rows, err := s.DB.QueryContext(ctx, `
 		SELECT f.id, f.url, IFNULL(f.site_url,''), f.title, IFNULL(f.favicon_url,''),
 		       IFNULL(f.etag,''), IFNULL(f.last_modified,''),
@@ -341,11 +394,12 @@ func (s *Store) ListFeedsForUser(ctx context.Context, userID int64) ([]models.Fe
 		         WHERE a.feed_id = f.id
 		           AND IFNULL(st.is_read,0) = 0
 		           AND s.muted = 0
+		           AND IFNULL(a.published_at,0) >= ?`+gate+`
 		           ) AS unread
 		FROM feeds f
 		JOIN subscriptions s ON s.feed_id = f.id
 		WHERE s.user_id = ?
-		ORDER BY s.position, LOWER(IFNULL(NULLIF(s.title_override,''), f.title))`, userID)
+		ORDER BY s.position, LOWER(IFNULL(NULLIF(s.title_override,''), f.title))`, unreadCutoff, userID)
 	if err != nil {
 		return nil, err
 	}

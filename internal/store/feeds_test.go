@@ -58,11 +58,11 @@ func TestFeeds_SubscriptionPerUser(t *testing.T) {
 	}
 
 	// Each user sees only their own feed list.
-	listA, _ := s.ListFeedsForUser(ctx, a.ID)
+	listA, _ := s.ListFeedsForUser(ctx, a.ID, 0, false)
 	if len(listA) != 1 || listA[0].SubscriptionID != subA.ID {
 		t.Errorf("A's list wrong: %+v", listA)
 	}
-	listB, _ := s.ListFeedsForUser(ctx, b.ID)
+	listB, _ := s.ListFeedsForUser(ctx, b.ID, 0, false)
 	if len(listB) != 1 || listB[0].SubscriptionID != subB.ID {
 		t.Errorf("B's list wrong: %+v", listB)
 	}
@@ -92,7 +92,7 @@ func TestListFeedsForUser_UnreadCountsIncludeUnsummarized(t *testing.T) {
 	}
 	_, _, _ = s.UpsertArticle(ctx, mkArticle(f.ID, "a3", "pending", "h3", 2000))
 
-	list, err := s.ListFeedsForUser(ctx, u.ID)
+	list, err := s.ListFeedsForUser(ctx, u.ID, 0, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +129,7 @@ func TestListFeedsForUser_UnreadExcludesMuted(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	list, err := s.ListFeedsForUser(ctx, u.ID)
+	list, err := s.ListFeedsForUser(ctx, u.ID, 0, false)
 	if err != nil {
 		t.Fatal(err)
 	}

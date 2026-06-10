@@ -161,7 +161,7 @@ func (s *Service) Export(ctx context.Context, userID int64, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	feeds, err := s.Store.ListFeedsForUser(ctx, userID)
+	feeds, err := s.Store.ListFeedsForUser(ctx, userID, 0, false)
 	if err != nil {
 		return err
 	}

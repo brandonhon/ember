@@ -292,6 +292,17 @@ func (s *Store) UpdateArticleContent(ctx context.Context, articleID int64, conte
 	return nil
 }
 
+// Article-list paging bounds. Lists page 50 at a time via the keyset cursor
+// ("Load more"); MaxArticleListLimit is the hard ceiling on a client-supplied
+// ?limit=, protecting the correlated dup_count subquery from an unbounded
+// fan-out.
+const (
+	defaultArticleListLimit = 50
+	// MaxArticleListLimit caps a caller-requested page size. Exported so the
+	// API handler clamps ?limit= to the same ceiling the store enforces.
+	MaxArticleListLimit = 1000
+)
+
 // ListArticlesQuery parameterizes a user article list.
 type ListArticlesQuery struct {
 	View       string // today|fresh|unread|starred|later|shared (optional)
@@ -318,21 +329,19 @@ type ListArticlesQuery struct {
 	Tag string
 }
 
-// ListArticles returns articles for the user under the given filters using
-// keyset pagination on (published_at DESC, id DESC).
-func (s *Store) ListArticles(ctx context.Context, userID int64, q ListArticlesQuery) ([]models.ArticleView, error) {
-	if q.Limit <= 0 || q.Limit > 200 {
-		q.Limit = 50
-	}
-
-	var (
-		conds []string
-		args  []any
-	)
+// buildArticleFilter assembles the FROM + WHERE clauses (and their args, in
+// positional order) shared by ListArticles and CountArticles so a count can
+// never diverge from the list it summarizes. It applies the view's read/star/
+// later flags, feed/category/board/tag scope, the published-after window, the
+// summary gate, the muted-feed exclusion, and cross-feed dedup. It does NOT
+// apply keyset-cursor paging (list-only) — pass q.PublishedBefore/IDBefore for
+// that via ListArticles.
+func (s *Store) buildArticleFilter(userID int64, q ListArticlesQuery, withCursor bool) (from, where string, args []any) {
+	var conds []string
 
 	// Source clause: shared-with-me uses a different join; other views all
 	// scope to the user's subscriptions.
-	from := `
+	from = `
 FROM articles a
 JOIN subscriptions s ON s.feed_id = a.feed_id AND s.user_id = ?
 LEFT JOIN article_state st ON st.article_id = a.id AND st.user_id = ?`
@@ -395,7 +404,7 @@ JOIN article_tags atg ON atg.article_id = a.id AND atg.user_id = ? AND atg.tag =
 		conds = append(conds, "IFNULL(a.published_at,0) >= ?")
 		args = append(args, q.FreshAfter)
 	}
-	if q.PublishedBefore > 0 || q.IDBefore > 0 {
+	if withCursor && (q.PublishedBefore > 0 || q.IDBefore > 0) {
 		conds = append(conds, "(IFNULL(a.published_at,0) < ? OR (IFNULL(a.published_at,0) = ? AND a.id < ?))")
 		args = append(args, q.PublishedBefore, q.PublishedBefore, q.IDBefore)
 	}
@@ -441,10 +450,21 @@ JOIN article_tags atg ON atg.article_id = a.id AND atg.user_id = ? AND atg.tag =
 		args = append(args, userID)
 	}
 
-	where := ""
+	where = ""
 	if len(conds) > 0 {
 		where = "WHERE " + strings.Join(conds, " AND ")
 	}
+	return from, where, args
+}
+
+// ListArticles returns articles for the user under the given filters using
+// keyset pagination on (published_at DESC, id DESC).
+func (s *Store) ListArticles(ctx context.Context, userID int64, q ListArticlesQuery) ([]models.ArticleView, error) {
+	if q.Limit <= 0 || q.Limit > MaxArticleListLimit {
+		q.Limit = defaultArticleListLimit
+	}
+
+	from, where, args := s.buildArticleFilter(userID, q, true)
 
 	// dup_count: when an article has a cluster_id, count how many OTHER
 	// articles in the same cluster the user is subscribed to via different
@@ -500,6 +520,20 @@ LIMIT ?`, from, where)
 		out = append(out, v)
 	}
 	return out, rows.Err()
+}
+
+// CountArticles returns how many articles match the same filter ListArticles
+// would return for q (ignoring keyset paging + limit). Sharing
+// buildArticleFilter guarantees a badge can never disagree with the list it
+// summarizes — the long-standing "sidebar says 9, column shows 6" bug came
+// from count queries that omitted the summary gate and cross-feed dedup the
+// list applied.
+func (s *Store) CountArticles(ctx context.Context, userID int64, q ListArticlesQuery) (int, error) {
+	from, where, args := s.buildArticleFilter(userID, q, false)
+	var n int
+	err := s.DB.QueryRowContext(ctx,
+		fmt.Sprintf("SELECT COUNT(*)\n%s\n%s", from, where), args...).Scan(&n)
+	return n, err
 }
 
 // CountUnread returns the user's unread count, optionally scoped to a feed or
@@ -560,6 +594,13 @@ type SmartViewCounts struct {
 	Starred int `json:"starred"`
 	Later   int `json:"later"`
 	Shared  int `json:"shared"`
+	// Unread is the global "All Unread" badge: unread articles within the
+	// user's unread window, deduped + gated identically to the All-Unread
+	// list. UnreadByCategory is the same, scoped per category id, so a folder
+	// badge matches the category list (cross-feed dedup means it can be less
+	// than the sum of the per-feed badges inside it).
+	Unread           int           `json:"unread"`
+	UnreadByCategory map[int64]int `json:"unread_by_category"`
 	// PendingSummary: articles in the user's subscribed feeds that the
 	// summarizer hasn't touched yet (summary_model NULL or empty). Drains
 	// as the poller's summary worker processes them. Drives the
@@ -577,50 +618,42 @@ type SmartViewCounts struct {
 // published within the window). The caller passes cfg.FreshWindow so the
 // EMBER_FRESH_WINDOW env var actually takes effect; a zero or negative
 // window falls back to 6h to match the legacy hardcoded value.
-func (s *Store) CountSmartViews(ctx context.Context, userID int64, freshWindow time.Duration) (SmartViewCounts, error) {
+func (s *Store) CountSmartViews(ctx context.Context, userID int64, freshWindow time.Duration, unreadCutoff int64, onlySummarized bool) (SmartViewCounts, error) {
 	var c SmartViewCounts
+	c.UnreadByCategory = map[int64]int{}
 	if freshWindow <= 0 {
 		freshWindow = 6 * time.Hour
 	}
-	// Fresh: unread + published within the configured window. The summary_model
-	// gate was dropped so the badge matches the time-based "Fresh" pill on
-	// article cards — recent articles that haven't been summarized yet still
-	// count. Pair with the handler override that drops OnlySummarized for the
-	// Fresh list view so the badge and the list stay in sync.
-	//
-	// Cross-feed dedup: when two of the user's feeds publish the same article
-	// URL (e.g. Krebs on Security is in both a "security" pack and a
-	// "news" pack), the article-list query keeps only the lowest-id row.
-	// Without the same dedup here, the badge would over-count by the size of
-	// the overlap. The NOT EXISTS clause mirrors the one in ListArticles
-	// (articles.go around line 376).
+	// Fresh + All-Unread badges go through CountArticles so they share the exact
+	// predicate (window, summary gate, cross-feed dedup) of the Fresh and
+	// All-Unread lists — the badge can never disagree with the column.
 	freshCutoff := s.nowUnix() - int64(freshWindow.Seconds())
-	err := s.DB.QueryRowContext(ctx, `
-SELECT COUNT(*)
-FROM articles a
-JOIN subscriptions sub ON sub.feed_id = a.feed_id AND sub.user_id = ?
-LEFT JOIN article_state st ON st.article_id = a.id AND st.user_id = ?
-WHERE IFNULL(st.is_read,0) = 0
-  AND sub.muted = 0
-  AND IFNULL(a.published_at,0) >= ?
-  AND (
-    (IFNULL(a.cluster_id,'') = '' AND IFNULL(a.title_fingerprint,'') = '')
-    OR NOT EXISTS (
-      SELECT 1 FROM articles a2
-      JOIN subscriptions sub2 ON sub2.feed_id = a2.feed_id AND sub2.user_id = ?
-      WHERE sub2.muted = 0 AND a2.id < a.id AND (
-        (a2.cluster_id = a.cluster_id AND a2.cluster_id <> '')
-        OR (
-          a2.title_fingerprint = a.title_fingerprint
-          AND a2.title_fingerprint <> ''
-          AND ABS(IFNULL(a2.published_at,0) - IFNULL(a.published_at,0)) < 172800
-        )
-      )
-    )
-  )`,
-		userID, userID, freshCutoff, userID).Scan(&c.Fresh)
-	if err != nil {
+	var err error
+	if c.Fresh, err = s.CountArticles(ctx, userID, ListArticlesQuery{
+		View: "fresh", FreshAfter: freshCutoff, OnlySummarized: onlySummarized,
+	}); err != nil {
 		return c, fmt.Errorf("count fresh: %w", err)
+	}
+	if c.Unread, err = s.CountArticles(ctx, userID, ListArticlesQuery{
+		View: "unread", FreshAfter: unreadCutoff, OnlySummarized: onlySummarized,
+	}); err != nil {
+		return c, fmt.Errorf("count unread: %w", err)
+	}
+	// Per-category unread badges: same predicate, scoped to each category the
+	// user has. Cross-feed dedup applies (category lists dedup), so a folder
+	// badge can read lower than the sum of its feeds' badges.
+	catIDs, err := s.listCategoryIDs(ctx, userID)
+	if err != nil {
+		return c, fmt.Errorf("count unread by category: %w", err)
+	}
+	for _, cid := range catIDs {
+		n, err := s.CountArticles(ctx, userID, ListArticlesQuery{
+			CategoryID: cid, Unread: true, FreshAfter: unreadCutoff, OnlySummarized: onlySummarized,
+		})
+		if err != nil {
+			return c, fmt.Errorf("count unread by category %d: %w", cid, err)
+		}
+		c.UnreadByCategory[cid] = n
 	}
 	if err := s.DB.QueryRowContext(ctx, `
 SELECT COUNT(*) FROM article_state WHERE user_id = ? AND is_starred = 1`,
@@ -650,6 +683,26 @@ WHERE sub.muted = 0
 		return c, fmt.Errorf("count pending summary: %w", err)
 	}
 	return c, nil
+}
+
+// listCategoryIDs returns the user's category ids (used to build the per-
+// category unread map without pulling full category rows).
+func (s *Store) listCategoryIDs(ctx context.Context, userID int64) ([]int64, error) {
+	rows, err := s.DB.QueryContext(ctx,
+		`SELECT id FROM categories WHERE user_id = ?`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
 }
 
 func scanArticle(row scannable) (models.Article, error) {

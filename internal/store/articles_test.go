@@ -416,16 +416,18 @@ func TestCountSmartViews(t *testing.T) {
 	a6, _, _ := s.UpsertArticle(ctx, mk("a6", -12*time.Hour, "skipped"))
 	_ = a6
 
-	got, err := s.CountSmartViews(ctx, aliceID, 6*time.Hour)
+	// cutoff 0 = count unread regardless of age; gate off (no AI).
+	got, err := s.CountSmartViews(ctx, aliceID, 6*time.Hour, 0, false)
 	if err != nil {
 		t.Fatalf("CountSmartViews: %v", err)
 	}
 	// Fresh = 2: a1 (fresh+summarized) and a3 (fresh+un-summarized) both
 	// count. a2 is outside the window; a4/a5 belong to bob; a6 is outside
 	// the window. PendingSummary = 1: only a3 has summary_model="".
-	want := SmartViewCounts{Fresh: 2, Starred: 1, Later: 1, Shared: 1, PendingSummary: 1}
-	if got != want {
-		t.Errorf("got %+v, want %+v", got, want)
+	// SmartViewCounts now carries a map (UnreadByCategory) so it isn't
+	// comparable with ==; check the scalar fields individually.
+	if got.Fresh != 2 || got.Starred != 1 || got.Later != 1 || got.Shared != 1 || got.PendingSummary != 1 {
+		t.Errorf("got %+v, want Fresh=2 Starred=1 Later=1 Shared=1 PendingSummary=1", got)
 	}
 }
 
@@ -473,7 +475,7 @@ func TestArticles_FreshListExcludesRead(t *testing.T) {
 	}
 
 	// Cross-check: CountSmartViews.Fresh must agree with the list length.
-	counts, err := s.CountSmartViews(ctx, aliceID, 6*time.Hour)
+	counts, err := s.CountSmartViews(ctx, aliceID, 6*time.Hour, 0, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -525,7 +527,7 @@ func TestCountSmartViews_FreshAppliesCrossFeedDedup(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := s.CountSmartViews(ctx, u.ID, 6*time.Hour)
+	got, err := s.CountSmartViews(ctx, u.ID, 6*time.Hour, 0, false)
 	if err != nil {
 		t.Fatal(err)
 	}

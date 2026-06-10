@@ -92,6 +92,13 @@ type Dependencies struct {
 	EmailDomain string
 }
 
+// summariesOn reports whether AI summarization is wired up (an Ollama backend
+// is configured). It is the single switch for the article summary gate: when
+// on, every reading view + every count hides articles the summarizer hasn't
+// stamped yet; when off, the gate is bypassed everywhere. Mirrors the
+// summaries_enabled flag surfaced to the SPA via /api/me.
+func (d *Dependencies) summariesOn() bool { return d.Ollama != nil }
+
 // backgroundCtx returns d.BackgroundCtx or context.Background if unset.
 // Used by handlers that spawn detached goroutines.
 func (d *Dependencies) backgroundCtx() context.Context {

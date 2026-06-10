@@ -485,11 +485,13 @@ func TestSearch_ScopedToUser(t *testing.T) {
 	fb, _ := h.store.UpsertFeed(context.Background(), models.Feed{URL: "https://b.test/feed", Title: "B"})
 	_, _ = h.store.Subscribe(context.Background(), models.Subscription{UserID: alice.ID, FeedID: fa.ID})
 	_, _ = h.store.Subscribe(context.Background(), models.Subscription{UserID: bob.ID, FeedID: fb.ID})
+	// Published recently so they fall inside the default search window.
+	nowUnix := time.Now().Unix()
 	_, _, _ = h.store.UpsertArticle(context.Background(), models.Article{
-		FeedID: fa.ID, GUID: "ga", Title: "Rust update", ContentText: "alice", ContentHash: "h1", PublishedAt: 1,
+		FeedID: fa.ID, GUID: "ga", Title: "Rust update", ContentText: "alice", ContentHash: "h1", PublishedAt: nowUnix - 1,
 	})
 	_, _, _ = h.store.UpsertArticle(context.Background(), models.Article{
-		FeedID: fb.ID, GUID: "gb", Title: "Rust news", ContentText: "bob", ContentHash: "h2", PublishedAt: 2,
+		FeedID: fb.ID, GUID: "gb", Title: "Rust news", ContentText: "bob", ContentHash: "h2", PublishedAt: nowUnix,
 	})
 
 	var res struct {
@@ -583,7 +585,7 @@ func TestOPMLRoundtrip(t *testing.T) {
 	if len(cats) != 1 || cats[0].Name != "Tech" {
 		t.Errorf("imported categories: %+v", cats)
 	}
-	feeds, _ := h.store.ListFeedsForUser(context.Background(), u.ID)
+	feeds, _ := h.store.ListFeedsForUser(context.Background(), u.ID, 0, false)
 	if len(feeds) != 2 {
 		t.Errorf("imported feeds = %d, want 2", len(feeds))
 	}

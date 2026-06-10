@@ -45,7 +45,7 @@ func (d *Dependencies) handleFever(w http.ResponseWriter, r *http.Request) {
 			groups = append(groups, map[string]any{"id": c.ID, "title": c.Name})
 		}
 		resp["groups"] = groups
-		feeds, _ := d.Store.ListFeedsForUser(r.Context(), user.ID)
+		feeds, _ := d.Store.ListFeedsForUser(r.Context(), user.ID, 0, false)
 		fg := map[int64][]int64{}
 		for _, f := range feeds {
 			if f.CategoryID != nil {
@@ -67,7 +67,7 @@ func (d *Dependencies) handleFever(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if _, ok := q["feeds"]; ok {
-		feeds, _ := d.Store.ListFeedsForUser(r.Context(), user.ID)
+		feeds, _ := d.Store.ListFeedsForUser(r.Context(), user.ID, 0, false)
 		out := make([]map[string]any, 0, len(feeds))
 		for _, f := range feeds {
 			out = append(out, map[string]any{
