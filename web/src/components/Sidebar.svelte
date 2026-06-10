@@ -18,6 +18,7 @@
   import EditFeedModal from "./EditFeedModal.svelte";
 
   import { onMount, onDestroy } from "svelte";
+  import { get } from "svelte/store";
 
   // The feed currently open in the edit modal (null = closed).
   let editingFeed = $state<FeedWithCounts | null>(null);
@@ -50,8 +51,27 @@
     }
   }
 
-  let collapsedCategories = $state<Record<number, boolean>>({});
-  let collapsedUncategorized = $state(false);
+  // Folder collapse state, persisted to localStorage so it survives reloads.
+  const COLLAPSE_KEY = "ember:folders-collapsed";
+  const UNCAT_KEY = "ember:uncat-collapsed";
+  function loadCollapsed(): Record<number, boolean> {
+    try {
+      return JSON.parse(localStorage.getItem(COLLAPSE_KEY) || "{}") as Record<number, boolean>;
+    } catch {
+      return {};
+    }
+  }
+  let collapsedCategories = $state<Record<number, boolean>>(loadCollapsed());
+  let collapsedUncategorized = $state(localStorage.getItem(UNCAT_KEY) === "1");
+  $effect(() => {
+    try { localStorage.setItem(COLLAPSE_KEY, JSON.stringify(collapsedCategories)); } catch { /* quota / private mode */ }
+  });
+  $effect(() => {
+    try { localStorage.setItem(UNCAT_KEY, collapsedUncategorized ? "1" : "0"); } catch { /* quota / private mode */ }
+  });
+  // The category a dragged feed is hovering over (for the drop highlight).
+  // 0 = the Uncategorized folder. null = not dragging onto a folder.
+  let feedDropCat = $state<number | null>(null);
   let addFormOpen = $state(false);
   // Cursor jumps into the URL field the moment the add-feed form expands —
   // saves a click for the common case (user clicked "Add feed" because
@@ -410,6 +430,77 @@
     collapsedCategories[catID] = !collapsedCategories[catID];
   }
 
+  // True when every folder (named + Uncategorized) is collapsed — drives the
+  // collapse-all toggle's icon + label.
+  const everythingCollapsed = $derived.by(() => {
+    const anyOpen =
+      $categories.some((c) => !collapsedCategories[c.id]) ||
+      (grouped.uncat.length > 0 && !collapsedUncategorized);
+    return !anyOpen;
+  });
+  function toggleCollapseAll() {
+    const collapse = !everythingCollapsed; // anything open → collapse all
+    const next: Record<number, boolean> = {};
+    for (const c of get(categories)) next[c.id] = collapse;
+    collapsedCategories = next;
+    collapsedUncategorized = collapse;
+  }
+
+  // Create a new empty folder and drop straight into inline-rename so the user
+  // names it immediately (reuses the rename input + commit path).
+  async function createFolder() {
+    try {
+      const res = await api.createCategory({ name: "New folder" });
+      await refreshSidebar();
+      const id = (res.data as { id?: number } | undefined)?.id;
+      if (id) startRenameCategory(id, "New folder");
+    } catch (err) {
+      console.error("createFolder", err);
+    }
+  }
+
+  // --- Feed → folder drag/drop. Every folder header (named + Uncategorized) is
+  // a drop target, so a feed can be moved into a folder that has no rows to
+  // land on. catID 0 = Uncategorized (clears the feed's category). ---
+  function onFolderHeadOver(e: DragEvent, catID: number) {
+    if (!drag) return;
+    if (drag.kind === "folder") {
+      onDragOver(e, { kind: "folder", id: catID });
+    } else if (drag.kind === "feed") {
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+      feedDropCat = catID;
+    }
+  }
+  function onFolderHeadDrop(e: DragEvent, catID: number) {
+    if (drag?.kind === "folder") {
+      void onFolderDrop(e, catID);
+    } else if (drag?.kind === "feed") {
+      void onFolderFeedDrop(e, catID);
+    }
+  }
+  async function onFolderFeedDrop(e: DragEvent, catID: number) {
+    e.preventDefault();
+    feedDropCat = null;
+    const d = drag;
+    if (!d || d.kind !== "feed") {
+      onDragEnd();
+      return;
+    }
+    if (d.cat === catID) {
+      onDragEnd();
+      return; // already in this folder
+    }
+    try {
+      await api.updateFeed(d.id, { category_id: catID }); // 0 → NULL (Uncategorized)
+      await refreshSidebar();
+    } catch (err) {
+      console.error("move feed to folder", err);
+      await refreshSidebar();
+    }
+    onDragEnd();
+  }
+
   function startRenameCategory(catID: number, current: string) {
     categoryMenuFor = null;
     renamingCategoryID = catID;
@@ -698,7 +789,25 @@
 
   <!-- Folders + feeds -->
   <div class="rail-section">
-    <div class="rail-head"><h3>Folders</h3></div>
+    <div class="rail-head">
+      <h3>Folders</h3>
+      <span class="rail-head-btns">
+        <button
+          class="head-add"
+          on:click={toggleCollapseAll}
+          aria-label={everythingCollapsed ? "Expand all folders" : "Collapse all folders"}
+          title={everythingCollapsed ? "Expand all" : "Collapse all"}
+          data-testid="toggle-collapse-all"
+        >
+          {#if everythingCollapsed}
+            <svg viewBox="0 0 24 24" width="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 13l5 5 5-5M7 6l5 5 5-5" /></svg>
+          {:else}
+            <svg viewBox="0 0 24 24" width="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 11l5-5 5 5M7 18l5-5 5 5" /></svg>
+          {/if}
+        </button>
+        <button class="head-add" on:click={createFolder} aria-label="New folder" title="New folder" data-testid="new-folder">+</button>
+      </span>
+    </div>
 
     {#each $categories as cat (cat.id)}
       <div
@@ -708,11 +817,12 @@
       >
         <div
           class="folder-head"
+          class:feed-drop={feedDropCat === cat.id}
           draggable="true"
           on:dragstart={(e) => onFolderDragStart(e, cat.id)}
-          on:dragover={(e) => onDragOver(e, { kind: "folder", id: cat.id })}
-          on:dragleave={() => (dropTarget = null)}
-          on:drop={(e) => onFolderDrop(e, cat.id)}
+          on:dragover={(e) => onFolderHeadOver(e, cat.id)}
+          on:dragleave={() => { dropTarget = null; feedDropCat = null; }}
+          on:drop={(e) => onFolderHeadDrop(e, cat.id)}
           on:dragend={onDragEnd}
         >
           <button class="chev-btn" on:click={() => toggleCategory(cat.id)} aria-label="Toggle folder">
@@ -789,7 +899,13 @@
 
     {#if grouped.uncat.length > 0}
       <div class="folder" class:collapsed={collapsedUncategorized}>
-        <div class="folder-head">
+        <div
+          class="folder-head"
+          class:feed-drop={feedDropCat === 0}
+          on:dragover={(e) => onFolderHeadOver(e, 0)}
+          on:dragleave={() => (feedDropCat = null)}
+          on:drop={(e) => onFolderHeadDrop(e, 0)}
+        >
           <button class="chev-btn" on:click={() => (collapsedUncategorized = !collapsedUncategorized)} aria-label="Toggle folder">
             <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6" /></svg>
           </button>
@@ -1086,6 +1202,14 @@
   .folder.drop-target > .folder-head {
     box-shadow: 0 -2px 0 var(--ember) inset;
   }
+  /* Highlight a folder header while a feed is dragged onto it (incl. empty
+     folders, which are just their header). */
+  .folder-head.feed-drop {
+    background: var(--ember-wash);
+    box-shadow: 0 0 0 1.5px var(--ember) inset;
+    border-radius: 9px;
+  }
+  .rail-head-btns { display: flex; align-items: center; gap: 2px; }
   .folder-head {
     display: flex;
     align-items: center;

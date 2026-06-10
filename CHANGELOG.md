@@ -11,6 +11,16 @@ full commit-level list; this file curates the highlights and behavior changes.
 
 ### Added
 
+- **Create folders** — a **+** in the sidebar Folders header makes a new folder
+  and drops straight into renaming it.
+- **Collapse / expand all folders** — a one-click toggle in the Folders header;
+  the collapsed state is remembered across reloads.
+- **Drag feeds into any folder** — every folder header (including empty ones and
+  Uncategorized) is now a drop target, so a feed can be moved into a folder that
+  has no rows to drop onto.
+- **Keyboard search preview** — the type-ahead dropdown is arrow-key navigable
+  (↑/↓ to highlight, Enter to open) with a **Load more** row that fetches the
+  next 6 previews.
 - **Edit feed** — the sidebar feed menu now has an _Edit_ option to change a
   feed's title, folder, or **source URL**. Changing the URL re-points the
   subscription to the new feed (validated and re-fetched) without affecting
