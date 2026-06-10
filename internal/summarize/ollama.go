@@ -41,10 +41,20 @@ type Ollama struct {
 // NewOllama constructs an Ollama summarizer. Both URL and model are required.
 func NewOllama(baseURL, model string) *Ollama {
 	o := &Ollama{
-		BaseURL:    strings.TrimRight(baseURL, "/"),
-		HTTPClient: &http.Client{Timeout: 90 * time.Second},
-		Timeout:    90 * time.Second,
-		MaxInput:   8000,
+		BaseURL: strings.TrimRight(baseURL, "/"),
+		HTTPClient: &http.Client{
+			Timeout: 90 * time.Second,
+			// Ollama's API never redirects. Refuse to follow one so a
+			// misconfigured or compromised base URL can't bounce the request
+			// to an internal address. We deliberately don't apply the private-
+			// IP SSRF block here: the base URL is admin-set and commonly points
+			// at localhost/LAN Ollama, which that block would break.
+			CheckRedirect: func(*http.Request, []*http.Request) error {
+				return errors.New("ollama: unexpected redirect")
+			},
+		},
+		Timeout:  90 * time.Second,
+		MaxInput: 8000,
 	}
 	o.model.Store(model)
 	return o

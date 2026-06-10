@@ -3,12 +3,19 @@ package feed
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
 
 	"github.com/go-shiori/go-readability"
 )
+
+// maxReadableBytes caps the page body fed to the readability parser. Unlike the
+// feed fetcher this path had no limit, so a hostile article URL (reached via the
+// enrichment path) could stream an unbounded body — or a gzip bomb the HTTP
+// stack transparently inflates — into a full DOM and OOM the process.
+const maxReadableBytes = 8 << 20 // 8 MiB
 
 // Readable holds the extracted full-content view of an article.
 type Readable struct {
@@ -41,7 +48,7 @@ func ExtractFromURL(ctx context.Context, c *http.Client, target string) (Readabl
 		return Readable{}, errors.New("readability: non-2xx status")
 	}
 	u, _ := url.Parse(target)
-	art, err := readability.FromReader(resp.Body, u)
+	art, err := readability.FromReader(io.LimitReader(resp.Body, maxReadableBytes), u)
 	if err != nil {
 		return Readable{}, err
 	}
@@ -49,7 +56,7 @@ func ExtractFromURL(ctx context.Context, c *http.Client, target string) (Readabl
 		Title:    strings.TrimSpace(art.Title),
 		HTML:     SanitizeHTML(art.Content),
 		Text:     strings.TrimSpace(art.TextContent),
-		ImageURL: art.Image,
+		ImageURL: SafeImageURL(art.Image),
 	}, nil
 }
 
@@ -65,6 +72,6 @@ func extractFromHTML(body, target string) (Readable, error) {
 		Title:    strings.TrimSpace(art.Title),
 		HTML:     SanitizeHTML(art.Content),
 		Text:     strings.TrimSpace(art.TextContent),
-		ImageURL: art.Image,
+		ImageURL: SafeImageURL(art.Image),
 	}, nil
 }

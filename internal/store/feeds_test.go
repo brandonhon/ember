@@ -217,6 +217,25 @@ func TestFeeds_UpdateSubscriptionCategory(t *testing.T) {
 	}
 }
 
+func TestFeeds_UpdateSubscriptionRejectsForeignCategory(t *testing.T) {
+	s := NewTest(t)
+	ctx := context.Background()
+	alice, _ := s.CreateUser(ctx, models.User{Username: "alice", PasswordHash: "h"})
+	bob, _ := s.CreateUser(ctx, models.User{Username: "bob", PasswordHash: "h"})
+	bobCat, _ := s.CreateCategory(ctx, models.Category{UserID: bob.ID, Name: "Bob"})
+	f, _ := s.UpsertFeed(ctx, models.Feed{URL: "https://x.test/feed", Title: "X"})
+	sub, _ := s.Subscribe(ctx, models.Subscription{UserID: alice.ID, FeedID: f.ID})
+
+	// Alice cannot file her subscription under Bob's category id.
+	if err := s.UpdateSubscription(ctx, alice.ID, sub.ID, UpdateSubscriptionPatch{CategoryID: &bobCat.ID}); !errors.Is(err, ErrNotFound) {
+		t.Errorf("foreign category = %v, want ErrNotFound", err)
+	}
+	got, _ := s.GetSubscriptionByID(ctx, alice.ID, sub.ID)
+	if got.CategoryID != nil {
+		t.Errorf("subscription category should be unchanged: %+v", got)
+	}
+}
+
 func TestFeeds_DueAndFetchUpdate(t *testing.T) {
 	s := NewTest(t)
 	ctx := context.Background()

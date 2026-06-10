@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { signIn } from "./helpers";
+import { signIn, TEST_PASSWORD } from "./helpers";
 
 test.describe("profile settings", () => {
   async function openSettings(page: Page) {
@@ -16,6 +16,7 @@ test.describe("profile settings", () => {
     const input = page.getByTestId("profile-email");
     await expect(input).toBeVisible();
     await input.fill("me@example.com");
+    await page.getByTestId("profile-email-password").fill(TEST_PASSWORD);
     await page.getByTestId("profile-email-save").click();
     await expect(page.getByTestId("profile-email-msg")).toBeVisible();
 
@@ -33,6 +34,7 @@ test.describe("profile settings", () => {
     await page.getByTestId("settings-profile").click();
 
     await page.getByTestId("profile-email").fill("not-an-email");
+    await page.getByTestId("profile-email-password").fill(TEST_PASSWORD);
     await page.getByTestId("profile-email-save").click();
     await expect(page.getByTestId("profile-email-err")).toBeVisible();
   });

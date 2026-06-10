@@ -179,6 +179,9 @@ func (s *Store) UpdateUser(ctx context.Context, id int64, patch UpdateUserPatch)
 	res, err := s.DB.ExecContext(ctx,
 		"UPDATE users SET "+strings.Join(sets, ", ")+" WHERE id = ?", args...)
 	if err != nil {
+		if isUniqueViolation(err) {
+			return ErrConflict
+		}
 		return err
 	}
 	n, _ := res.RowsAffected()

@@ -193,7 +193,8 @@ func (d *Dependencies) handleUpdateSettings(w http.ResponseWriter, r *http.Reque
 }
 
 type updateEmailReq struct {
-	Email string `json:"email"`
+	Email           string `json:"email"`
+	CurrentPassword string `json:"current_password"`
 }
 
 // handleUpdateEmail lets a signed-in user set or clear their own profile email
@@ -204,6 +205,13 @@ func (d *Dependencies) handleUpdateEmail(w http.ResponseWriter, r *http.Request)
 	u, _ := auth.FromContext(r.Context())
 	var req updateEmailReq
 	if !decodeJSON(w, r, &req) {
+		return
+	}
+	// Re-authenticate with the current password: a stolen session shouldn't be
+	// able to silently redirect the account's digest email. Mirrors the
+	// password-change requirement.
+	if err := d.Auth.VerifyPassword(req.CurrentPassword, u.PasswordHash); err != nil {
+		writeError(w, http.StatusUnauthorized, "invalid_credentials", "current password is wrong")
 		return
 	}
 	email := strings.TrimSpace(req.Email)
@@ -217,7 +225,12 @@ func (d *Dependencies) handleUpdateEmail(w http.ResponseWriter, r *http.Request)
 			return
 		}
 	}
-	if mapStoreError(w, d.Store.UpdateUser(r.Context(), u.ID, store.UpdateUserPatch{Email: &email})) {
+	err := d.Store.UpdateUser(r.Context(), u.ID, store.UpdateUserPatch{Email: &email})
+	if errors.Is(err, store.ErrConflict) {
+		writeError(w, http.StatusConflict, "conflict", "that email address is already in use")
+		return
+	}
+	if mapStoreError(w, err) {
 		return
 	}
 	writeData(w, http.StatusOK, map[string]string{"email": email}, nil)

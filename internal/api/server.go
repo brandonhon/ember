@@ -208,7 +208,7 @@ func NewRouter(d Dependencies) http.Handler {
 		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/feeds", d.handleAddFeed)
 		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/feeds/discover", d.handleDiscoverFeeds)
 		r.With(d.Auth.RequireAuth).Post("/feeds/reorder", d.handleReorderFeeds)
-		r.With(d.Auth.RequireAuth).Patch("/feeds/{id}", d.handleUpdateFeed)
+		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Patch("/feeds/{id}", d.handleUpdateFeed)
 		r.With(d.Auth.RequireAuth).Delete("/feeds/{id}", d.handleDeleteFeed)
 		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/feeds/refresh", d.handleRefreshAllFeeds)
 		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/feeds/{id}/refresh", d.handleRefreshFeed)

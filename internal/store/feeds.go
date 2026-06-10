@@ -201,6 +201,21 @@ type UpdateSubscriptionPatch struct {
 
 // UpdateSubscription updates a subscription's category or title override.
 func (s *Store) UpdateSubscription(ctx context.Context, userID, subID int64, p UpdateSubscriptionPatch) error {
+	// A non-zero target category must belong to the caller. The subscriptions
+	// FK only proves the category row exists, not that it's this user's — without
+	// this check a user could file their subscription under another user's
+	// folder id.
+	if p.CategoryID != nil && *p.CategoryID > 0 {
+		var ok int
+		err := s.DB.QueryRowContext(ctx,
+			`SELECT 1 FROM categories WHERE id = ? AND user_id = ?`, *p.CategoryID, userID).Scan(&ok)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
+		}
+		if err != nil {
+			return err
+		}
+	}
 	sets := []string{}
 	args := []any{}
 	switch {

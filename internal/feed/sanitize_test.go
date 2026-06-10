@@ -77,3 +77,27 @@ func TestSafeHTTPURL(t *testing.T) {
 		}
 	}
 }
+
+func TestSafeImageURL(t *testing.T) {
+	tests := []struct {
+		in, want string
+	}{
+		{"https://example.com/a.png", "https://example.com/a.png"},
+		{"http://example.com/a.jpg?v=2", "http://example.com/a.jpg?v=2"},
+		{"  https://example.com/a.png  ", "https://example.com/a.png"},
+		// data:image is allowed (inline images) and preserves original casing.
+		{"data:image/png;base64,iVBORw0KGgo=", "data:image/png;base64,iVBORw0KGgo="},
+		{"DATA:IMAGE/PNG;base64,iVBORw0KGgo=", "DATA:IMAGE/PNG;base64,iVBORw0KGgo="},
+		// Script-y and non-image data URIs are dropped.
+		{"javascript:alert(1)", ""},
+		{"vbscript:msgbox(1)", ""},
+		{"data:text/html,<script>alert(1)</script>", ""},
+		{"//example.com/a.png", ""},
+		{"", ""},
+	}
+	for _, tt := range tests {
+		if got := SafeImageURL(tt.in); got != tt.want {
+			t.Errorf("SafeImageURL(%q) = %q, want %q", tt.in, got, tt.want)
+		}
+	}
+}

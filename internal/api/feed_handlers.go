@@ -273,6 +273,12 @@ func (d *Dependencies) handleRefreshFeed(w http.ResponseWriter, r *http.Request)
 	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
 }
 
+// refreshAllSem bounds how many "refresh all" walkers run concurrently across
+// all callers. The expensive limiter caps the request rate per IP, but without
+// this each accepted request would spawn a goroutine that hammers the shared
+// SQLite writer outside the poller's worker pool.
+var refreshAllSem = make(chan struct{}, 3)
+
 // handleRefreshAllFeeds kicks an immediate fetch of every feed the user is
 // subscribed to (the "Refresh feeds now" button). Each refresh is network-
 // bound, so they run in a detached goroutine and the handler returns 202
@@ -290,6 +296,8 @@ func (d *Dependencies) handleRefreshAllFeeds(w http.ResponseWriter, r *http.Requ
 			ids[i] = f.ID
 		}
 		go func() {
+			refreshAllSem <- struct{}{}
+			defer func() { <-refreshAllSem }()
 			for _, id := range ids {
 				if err := d.Poller.RefreshFeed(ctx, id); err != nil {
 					slog.Default().Warn("refresh-all: feed refresh failed", "feed_id", id, "err", err)
@@ -362,7 +370,8 @@ func (d *Dependencies) handleOPMLImport(w http.ResponseWriter, r *http.Request) 
 	// MaxBytesReader enforces the actual ceiling.
 	r.Body = http.MaxBytesReader(w, r.Body, 8<<20)
 	if err := r.ParseMultipartForm(8 << 20); err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
+		slog.Default().Info("api: OPML upload read failed", "err", err)
+		writeError(w, http.StatusBadRequest, "bad_request", "could not read the uploaded file")
 		return
 	}
 	file, _, err := r.FormFile("file")
@@ -374,7 +383,8 @@ func (d *Dependencies) handleOPMLImport(w http.ResponseWriter, r *http.Request) 
 
 	n, err := d.OPML.Import(r.Context(), u.ID, file)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
+		slog.Default().Info("api: OPML import failed", "err", err)
+		writeError(w, http.StatusBadRequest, "bad_request", "could not import OPML — check the file is a valid OPML export")
 		return
 	}
 	writeData(w, http.StatusOK, map[string]int{"imported": n}, nil)
@@ -389,7 +399,8 @@ func (d *Dependencies) handleTTRSSImport(w http.ResponseWriter, r *http.Request)
 	// TT-RSS exports embed full article HTML and can be large; cap at 50 MiB.
 	r.Body = http.MaxBytesReader(w, r.Body, 50<<20)
 	if err := r.ParseMultipartForm(8 << 20); err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
+		slog.Default().Info("api: TT-RSS upload read failed", "err", err)
+		writeError(w, http.StatusBadRequest, "bad_request", "could not read the uploaded file")
 		return
 	}
 	file, _, err := r.FormFile("file")
@@ -401,7 +412,8 @@ func (d *Dependencies) handleTTRSSImport(w http.ResponseWriter, r *http.Request)
 
 	res, err := d.TTRSS.Import(r.Context(), u.ID, file)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
+		slog.Default().Info("api: TT-RSS import failed", "err", err)
+		writeError(w, http.StatusBadRequest, "bad_request", "could not import — check the file is a valid TT-RSS export")
 		return
 	}
 	writeData(w, http.StatusOK, res, nil)

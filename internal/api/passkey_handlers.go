@@ -184,7 +184,10 @@ func (d *Dependencies) handlePasskeyLoginBegin(w http.ResponseWriter, r *http.Re
 	}
 	u, err := d.Store.GetUserByUsername(r.Context(), req.Username)
 	if errors.Is(err, store.ErrNotFound) {
-		// Same error as "no passkeys" so we don't leak account existence.
+		// Equalize work with the found-user path (which also runs a passkey
+		// lookup inside BeginLogin) so response timing doesn't reveal whether
+		// the username exists, then return the same generic error.
+		_, _ = d.Store.ListPasskeys(r.Context(), 0)
 		writeError(w, http.StatusUnauthorized, "no_passkey", "this account has no passkey")
 		return
 	}

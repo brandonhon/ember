@@ -9,6 +9,14 @@ import (
 	"github.com/brandonhon/ember/internal/store"
 )
 
+// Handler-side bounds on search paging. The store also clamps the limit, but
+// guarding here keeps the contract explicit and caps the offset the store
+// otherwise passes straight to SQLite.
+const (
+	maxSearchLimit  = 100
+	maxSearchOffset = 10000
+)
+
 func (d *Dependencies) handleSearch(w http.ResponseWriter, r *http.Request) {
 	u, _ := auth.FromContext(r.Context())
 	q := r.URL.Query()
@@ -19,15 +27,16 @@ func (d *Dependencies) handleSearch(w http.ResponseWriter, r *http.Request) {
 	}
 	limit := 25
 	if v := q.Get("limit"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil {
-			limit = n
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			limit = min(n, maxSearchLimit)
 		}
 	}
 	// offset pages the ranked results 25 at a time for the SPA's "Load more".
+	// Cap it so a caller can't make SQLite skip an unbounded row count.
 	offset := 0
 	if v := q.Get("offset"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
-			offset = n
+			offset = min(n, maxSearchOffset)
 		}
 	}
 	// Search window: default 48h, admin-extendable up to the retention cap.

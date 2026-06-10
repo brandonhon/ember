@@ -29,6 +29,26 @@ var ErrPrivate = errors.New("urlcheck: URL resolves to a private or loopback add
 // ErrScheme is returned for non-http(s) URLs.
 var ErrScheme = errors.New("urlcheck: only http and https URLs are allowed")
 
+// ErrPort is returned for URLs whose port is a well-known non-web service
+// (SSH, SMTP, databases, …). A feed is always served over a web port, so
+// blocking these stops the fetcher from being turned into a probe against
+// services on those ports. Applied even when private URLs are allowed —
+// homelab feeds still live on web ports, never on SSH/Redis/etc.
+var ErrPort = errors.New("urlcheck: URL port is not allowed")
+
+// blockedPorts is a curated subset of the WHATWG "bad ports" list, limited to
+// the non-web service ports that are useful SSRF-probe targets. Keyed by the
+// decimal string url.URL.Port() returns.
+var blockedPorts = map[string]struct{}{
+	"22": {}, "23": {}, "25": {}, "43": {}, "69": {}, "110": {}, "115": {},
+	"119": {}, "135": {}, "137": {}, "139": {}, "143": {}, "161": {}, "179": {},
+	"389": {}, "427": {}, "465": {}, "512": {}, "513": {}, "514": {}, "515": {},
+	"543": {}, "544": {}, "548": {}, "554": {}, "563": {}, "587": {}, "636": {},
+	"989": {}, "990": {}, "993": {}, "995": {}, "1433": {}, "1521": {}, "2049": {},
+	"3306": {}, "3389": {}, "5432": {}, "5060": {}, "5061": {}, "6379": {},
+	"9200": {}, "11211": {}, "27017": {},
+}
+
 // privateBlocks are the CIDRs we refuse to make outbound requests against.
 // Pulled from RFC1918, RFC4193, and common metadata/loopback ranges.
 var privateBlocks = mustParseCIDRs(
@@ -79,6 +99,11 @@ func CheckWith(ctx context.Context, raw string, allowPrivate bool, resolve Resol
 	}
 	if u.Host == "" {
 		return errors.New("urlcheck: missing host")
+	}
+	if p := u.Port(); p != "" {
+		if _, bad := blockedPorts[p]; bad {
+			return fmt.Errorf("%w: %s", ErrPort, p)
+		}
 	}
 	if allowPrivate {
 		return nil

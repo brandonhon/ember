@@ -990,15 +990,21 @@
 
   // --- Profile email (self-service) ---------------------------------------
   let profileEmail = $state($user?.email ?? "");
+  let profileEmailPassword = $state("");
   let profileEmailBusy = $state(false);
   let profileEmailMsg = $state("");
   let profileEmailErr = $state("");
   async function saveProfileEmail() {
     profileEmailMsg = "";
     profileEmailErr = "";
+    if (!profileEmailPassword) {
+      profileEmailErr = "Enter your current password to change your email.";
+      return;
+    }
     profileEmailBusy = true;
     try {
-      await api.updateEmail(profileEmail.trim());
+      await api.updateEmail(profileEmail.trim(), profileEmailPassword);
+      profileEmailPassword = "";
       await refreshMe();
       profileEmailMsg = "Email saved.";
     } catch (e) {
@@ -1206,6 +1212,10 @@
             <label class="pref-row">
               <div><div class="pref-label">Email address</div><div class="pref-hint">Used for the daily digest and account contact. Leave blank to clear.</div></div>
               <input class="row-input" type="email" bind:value={profileEmail} placeholder="you@example.com" data-testid="profile-email" />
+            </label>
+            <label class="pref-row">
+              <div><div class="pref-label">Current password</div><div class="pref-hint">Required to change your email.</div></div>
+              <input class="row-input" type="password" bind:value={profileEmailPassword} autocomplete="current-password" placeholder="••••••••" data-testid="profile-email-password" />
             </label>
             {#if profileEmailErr}<p class="error" data-testid="profile-email-err">{profileEmailErr}</p>{/if}
             {#if profileEmailMsg}<p class="ok" data-testid="profile-email-msg">{profileEmailMsg}</p>{/if}

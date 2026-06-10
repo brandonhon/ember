@@ -285,14 +285,15 @@ func TestProfile_UpdateEmail(t *testing.T) {
 		return u.Email
 	}
 
-	// Set a valid email — response echoes it and it persists.
+	// Set a valid email — response echoes it and it persists. Re-auth with the
+	// current password is required.
 	var resp struct {
 		Data struct {
 			Email string `json:"email"`
 		} `json:"data"`
 	}
 	if code := patch(t, cl, h.srv.URL+"/api/me/email",
-		map[string]string{"email": "alice@example.com"}, &resp); code != http.StatusOK {
+		map[string]string{"email": "alice@example.com", "current_password": "hunter2"}, &resp); code != http.StatusOK {
 		t.Fatalf("set email = %d", code)
 	}
 	if resp.Data.Email != "alice@example.com" {
@@ -304,42 +305,59 @@ func TestProfile_UpdateEmail(t *testing.T) {
 
 	// Surrounding whitespace is trimmed before storage.
 	if code := patch(t, cl, h.srv.URL+"/api/me/email",
-		map[string]string{"email": "  spaced@example.com  "}, nil); code != http.StatusOK {
+		map[string]string{"email": "  spaced@example.com  ", "current_password": "hunter2"}, nil); code != http.StatusOK {
 		t.Fatalf("trim email = %d", code)
 	}
 	if got := emailOf(); got != "spaced@example.com" {
 		t.Errorf("stored trimmed email = %q, want spaced@example.com", got)
 	}
 
+	// Wrong current password → 401, stored value unchanged.
+	if code := patch(t, cl, h.srv.URL+"/api/me/email",
+		map[string]string{"email": "moved@example.com", "current_password": "nope"}, nil); code != http.StatusUnauthorized {
+		t.Errorf("wrong password = %d, want 401", code)
+	}
+	if got := emailOf(); got != "spaced@example.com" {
+		t.Errorf("email changed after wrong-password attempt: %q", got)
+	}
+
 	// Invalid address → 400, stored value unchanged.
 	if code := patch(t, cl, h.srv.URL+"/api/me/email",
-		map[string]string{"email": "not-an-email"}, nil); code != http.StatusBadRequest {
+		map[string]string{"email": "not-an-email", "current_password": "hunter2"}, nil); code != http.StatusBadRequest {
 		t.Errorf("invalid email = %d, want 400", code)
 	}
 	// Over 254 chars → 400, stored value unchanged.
 	long := strings.Repeat("a", 250) + "@example.com"
 	if code := patch(t, cl, h.srv.URL+"/api/me/email",
-		map[string]string{"email": long}, nil); code != http.StatusBadRequest {
+		map[string]string{"email": long, "current_password": "hunter2"}, nil); code != http.StatusBadRequest {
 		t.Errorf("too-long email = %d, want 400", code)
 	}
 	if got := emailOf(); got != "spaced@example.com" {
 		t.Errorf("email changed after rejected updates: %q", got)
 	}
 
+	// A second user can't claim an address already in use (case-insensitive).
+	h.seedUser(t, "bob", "hunter2", false)
+	cB := h.login(t, "bob", "hunter2")
+	if code := patch(t, cB, h.srv.URL+"/api/me/email",
+		map[string]string{"email": "SPACED@example.com", "current_password": "hunter2"}, nil); code != http.StatusConflict {
+		t.Errorf("duplicate email = %d, want 409", code)
+	}
+
 	// Empty string clears it.
 	if code := patch(t, cl, h.srv.URL+"/api/me/email",
-		map[string]string{"email": ""}, nil); code != http.StatusOK {
+		map[string]string{"email": "", "current_password": "hunter2"}, nil); code != http.StatusOK {
 		t.Fatalf("clear email = %d", code)
 	}
 	if got := emailOf(); got != "" {
 		t.Errorf("email not cleared: %q", got)
 	}
 
-	// Unauthenticated → 401.
+	// Unauthenticated → 401 (RequireAuth runs before the handler).
 	anonJar, _ := newJar()
 	anon := h.newClient(anonJar)
 	if code := patch(t, anon, h.srv.URL+"/api/me/email",
-		map[string]string{"email": "x@example.com"}, nil); code != http.StatusUnauthorized {
+		map[string]string{"email": "x@example.com", "current_password": "hunter2"}, nil); code != http.StatusUnauthorized {
 		t.Errorf("anon set email = %d, want 401", code)
 	}
 }
