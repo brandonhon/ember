@@ -125,6 +125,7 @@ export const api = {
       category_id?: number;
       clear_category?: boolean;
       muted?: boolean;
+      url?: string;
     },
   ) => call<unknown>("PATCH", `/api/feeds/${id}`, req),
   deleteFeed: (id: number) => call<unknown>("DELETE", `/api/feeds/${id}`),
@@ -266,8 +267,8 @@ export const api = {
     call<unknown>("POST", `/api/shares/${id}/seen`),
 
   // Search ------------------------------------------------------------
-  search: (q: string, limit = 30) =>
-    call<SearchResult[]>("GET", `/api/search?q=${encodeURIComponent(q)}&limit=${limit}`),
+  search: (q: string, limit = 25, offset = 0) =>
+    call<SearchResult[]>("GET", `/api/search?q=${encodeURIComponent(q)}&limit=${limit}&offset=${offset}`),
   listSavedSearches: () => call<SavedSearch[]>("GET", "/api/saved-searches"),
   createSavedSearch: (name: string, query: string) =>
     call<SavedSearch>("POST", "/api/saved-searches", { name, query }),
@@ -471,6 +472,12 @@ export interface AdminSettings {
   poll_min_interval_seconds: number;
   poll_min_interval_floor_seconds: number;
   poll_min_interval_ceil_seconds: number;
+  // Reading-view + search windows in hours, with their shared bounds. The
+  // ceiling is the fixed retention window — you can't surface what's pruned.
+  reading_window_hours: number;
+  search_window_hours: number;
+  window_hours_floor: number;
+  window_hours_ceil: number;
 }
 
 // AdminSettingsPatch mirrors the backend's pointer-bag: only fields included
@@ -487,6 +494,8 @@ export interface AdminSettingsPatch {
   };
   initial_backlog_hours?: number;
   poll_min_interval_seconds?: number;
+  reading_window_hours?: number;
+  search_window_hours?: number;
 }
 
 export interface TopFeed {
@@ -515,6 +524,11 @@ export interface SmartCounts {
   // "Summarizing N articles" indicator at the bottom of the sidebar.
   // 0 → indicator hidden.
   pending_summary: number;
+  // unread: global All-Unread badge. unread_by_category: per-category badge,
+  // keyed by category id. Both server-computed with the same window + summary
+  // gate + cross-feed dedup as the article list so they match the column.
+  unread: number;
+  unread_by_category: Record<number, number> | null;
 }
 
 export interface UserDigest {

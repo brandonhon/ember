@@ -15,8 +15,17 @@
   import type { DiscoveredFeed, FeedWithCounts } from "../lib/types";
   import ConfirmDialog from "./ConfirmDialog.svelte";
   import FeedPickerModal from "./FeedPickerModal.svelte";
+  import EditFeedModal from "./EditFeedModal.svelte";
 
   import { onMount, onDestroy } from "svelte";
+
+  // The feed currently open in the edit modal (null = closed).
+  let editingFeed = $state<FeedWithCounts | null>(null);
+  async function saveFeedEdit(req: { title_override?: string; category_id?: number; clear_category?: boolean; url?: string }): Promise<void> {
+    if (!editingFeed) return;
+    await api.updateFeed(editingFeed.subscription_id, req);
+    await refreshSidebar();
+  }
 
   // Confirmation modal state. Set to an object to open the dialog; the
   // onConfirm callback runs the destructive action, and we clear state when
@@ -312,6 +321,11 @@
   }
 
   function unreadInCategory(catID: number): number {
+    // Prefer the server's per-category count (deduped + windowed + summary-
+    // gated, so it matches the category list). Fall back to summing per-feed
+    // counts if an older server response omitted the map.
+    const byCat = $smartCounts.unread_by_category;
+    if (byCat && catID in byCat) return byCat[catID];
     let sum = 0;
     const list = grouped.byCat.get(catID) ?? [];
     for (const f of list) sum += f.unread || 0;
@@ -578,6 +592,7 @@
       class:active={isActiveFeed(f.id)}
       class:read={f.unread === 0}
       on:click={() => pickFeed(f.id)}
+      title={f.url}
       data-testid="feed-{f.id}"
     >
       <span class="favicon" style="background:{favColor(f.id)}">{faviconLetter(f.title_override || f.title)}</span>
@@ -605,6 +620,9 @@
     </button>
     {#if menuFor === f.id}
       <div class="feed-menu" data-feed-menu-for={f.id}>
+        <button on:click={() => { editingFeed = f; menuFor = null; }} data-testid="feed-edit-{f.id}">
+          Edit feed
+        </button>
         <button on:click={() => markFeedRead(f)} data-testid="feed-mark-read-{f.id}">
           Mark feed read
         </button>
@@ -973,6 +991,15 @@
     feeds={pickerFeeds}
     onAdd={addPickedFeeds}
     onClose={() => (pickerFeeds = null)}
+  />
+{/if}
+
+{#if editingFeed}
+  <EditFeedModal
+    feed={editingFeed}
+    categories={$categories}
+    onSave={saveFeedEdit}
+    onClose={() => (editingFeed = null)}
   />
 {/if}
 

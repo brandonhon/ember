@@ -26,11 +26,19 @@ type updateFeedReq struct {
 	CategoryID    *int64  `json:"category_id,omitempty"`
 	ClearCategory bool    `json:"clear_category,omitempty"`
 	Muted         *bool   `json:"muted,omitempty"`
+	// URL, when set, re-points the subscription to a new source. Validated +
+	// SSRF-checked + discovered like add-feed; the shared feed row is never
+	// mutated in place (other subscribers keep theirs).
+	URL *string `json:"url,omitempty"`
 }
 
 func (d *Dependencies) handleListFeeds(w http.ResponseWriter, r *http.Request) {
 	u, _ := auth.FromContext(r.Context())
-	feeds, err := d.Store.ListFeedsForUser(r.Context(), u.ID)
+	// Sidebar per-feed badges: unread since the user's previous login (clamped
+	// to [1d, retention]) and gated on the summary marker when AI is on, so a
+	// badge agrees with the article list.
+	cutoff := d.Store.UnreadCutoff(r.Context(), u.ID)
+	feeds, err := d.Store.ListFeedsForUser(r.Context(), u.ID, cutoff, d.summariesOn())
 	if mapStoreError(w, err) {
 		return
 	}
@@ -157,6 +165,33 @@ func (d *Dependencies) handleUpdateFeed(w http.ResponseWriter, r *http.Request) 
 	if !decodeJSON(w, r, &req) {
 		return
 	}
+	// Source-URL change: resolve + validate the new URL, then re-point this
+	// subscription at it. Done before the metadata patch so a bad URL fails
+	// without half-applying.
+	if req.URL != nil {
+		if newURL := feed.NormalizeInputURL(*req.URL); newURL != "" {
+			target, ok := d.resolveFeedURL(w, r, newURL)
+			if !ok {
+				return
+			}
+			f, err := d.Store.UpsertFeed(r.Context(), models.Feed{URL: target, Title: target})
+			if mapStoreError(w, err) {
+				return
+			}
+			if err := d.Store.RepointSubscriptionFeed(r.Context(), u.ID, id, f.ID); err != nil {
+				if errors.Is(err, store.ErrConflict) {
+					writeError(w, http.StatusConflict, "conflict", "you're already subscribed to that feed")
+					return
+				}
+				if mapStoreError(w, err) {
+					return
+				}
+			}
+			if d.Poller != nil {
+				_ = d.Poller.RefreshFeed(d.backgroundCtx(), f.ID)
+			}
+		}
+	}
 	patch := store.UpdateSubscriptionPatch{
 		TitleOverride: req.TitleOverride,
 		CategoryID:    req.CategoryID,
@@ -167,6 +202,38 @@ func (d *Dependencies) handleUpdateFeed(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
+}
+
+// resolveFeedURL validates a candidate feed URL (SSRF guard) and runs feed
+// discovery, returning the concrete feed URL to subscribe to. On rejection it
+// writes the error response and returns ok=false. Shared by add-feed and the
+// edit-feed URL change so both apply the same guards.
+func (d *Dependencies) resolveFeedURL(w http.ResponseWriter, r *http.Request, rawURL string) (string, bool) {
+	if err := urlcheck.Check(r.Context(), rawURL, d.AllowPrivateURLs); err != nil {
+		slog.Default().Info("api: feed URL rejected", "url", rawURL, "reason", err)
+		writeError(w, http.StatusBadRequest, "bad_request", "URL is not allowed")
+		return "", false
+	}
+	dctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+	disco := &http.Client{
+		Timeout:   10 * time.Second,
+		Transport: urlcheck.GuardedTransport(d.AllowPrivateURLs),
+		CheckRedirect: feed.RedirectGuard(func(u string) error {
+			return urlcheck.Check(dctx, u, d.AllowPrivateURLs)
+		}),
+	}
+	validate := func(u string) error { return urlcheck.Check(dctx, u, d.AllowPrivateURLs) }
+	target := rawURL
+	if discovered, derr := feed.Discover(dctx, disco, rawURL, validate); derr == nil && discovered != "" {
+		if err := urlcheck.Check(dctx, discovered, d.AllowPrivateURLs); err != nil {
+			slog.Default().Info("api: discovered feed URL rejected", "url", discovered, "reason", err)
+			writeError(w, http.StatusBadRequest, "bad_request", "URL is not allowed")
+			return "", false
+		}
+		target = discovered
+	}
+	return target, true
 }
 
 func (d *Dependencies) handleDeleteFeed(w http.ResponseWriter, r *http.Request) {
