@@ -44,8 +44,12 @@ export async function refreshMe(): Promise<User | null> {
 }
 
 export async function login(username: string, password: string): Promise<void> {
-  const res = await api.login(username, password);
-  user.set(res.data);
+  await api.login(username, password);
+  // Pull the full /api/me payload so post-login state (version, fever key,
+  // fresh window, summaries flag) matches a fresh page load. The login
+  // response only carries the user, so without this appVersion stays empty
+  // until the next reload — a blank version badge in Settings → About.
+  await refreshMe();
 }
 
 export async function logout(): Promise<void> {
