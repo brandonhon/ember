@@ -175,5 +175,9 @@ docs-preview: docs-build ## serve the built site locally
 # ----- Misc --------------------------------------------------------------
 
 .PHONY: clean
-clean: ## remove build artifacts
-	rm -rf ./bin $(COVER_OUT) $(COVER_HTML) $(EMBED_DIR) $(WEB_DIR)/dist $(WEB_DIR)/node_modules $(DOCS_OUT)
+clean: ## remove build artifacts (leaves installed deps so you can rebuild immediately)
+	rm -rf ./bin $(COVER_OUT) $(COVER_HTML) $(EMBED_DIR) $(WEB_DIR)/dist $(DOCS_OUT)
+
+.PHONY: distclean
+distclean: clean ## also remove installed dependencies (full reset; re-run make web-install after)
+	rm -rf $(WEB_DIR)/node_modules $(DOCS_DIR)/node_modules
