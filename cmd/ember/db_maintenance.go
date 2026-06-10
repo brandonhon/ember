@@ -41,6 +41,14 @@ func runDBMaintenance(ctx context.Context, st *store.Store, op *opml.Service, lg
 
 func tickMaintenance(ctx context.Context, st *store.Store, op *opml.Service, lg *slog.Logger) {
 	now := time.Now()
+	// Fixed retention: always-on, prunes articles older than the rolling
+	// 1-week window (except starred / read-later / pinned / shared). Runs at
+	// most once a day. This is the floor that backs the search-window cap —
+	// you can't search what's been pruned. Distinct from the optional admin
+	// "cleanup" below, which is operator-tunable and also VACUUMs.
+	if dueSince(ctx, st, "retention_prune_last", 24*time.Hour, now) {
+		runRetentionPrune(ctx, st, lg)
+	}
 	// Backups
 	switch readSetting(ctx, st, "db_backup_schedule", "off") {
 	case "daily":
@@ -128,6 +136,21 @@ func runBackup(ctx context.Context, st *store.Store, lg *slog.Logger) {
 	pruned, _ := st.PruneBackups(defaultBackupDir, keep)
 	lg.Info("scheduled backup complete", "path", info.Path, "size_bytes", info.SizeBytes, "pruned", pruned)
 	_ = st.PutAppSetting(ctx, "db_backup_last", strconv.FormatInt(time.Now().Unix(), 10))
+}
+
+// runRetentionPrune removes articles past the fixed RetentionHours window.
+// Delete-only (no VACUUM) so it's cheap enough to run daily; disk compaction
+// is the optional admin Cleanup's job.
+func runRetentionPrune(ctx context.Context, st *store.Store, lg *slog.Logger) {
+	n, err := st.PruneArticles(ctx, time.Duration(store.RetentionHours)*time.Hour)
+	if err != nil {
+		lg.Warn("retention prune failed", "err", err)
+		return
+	}
+	if n > 0 {
+		lg.Info("retention prune complete", "articles_deleted", n, "retention_hours", store.RetentionHours)
+	}
+	_ = st.PutAppSetting(ctx, "retention_prune_last", strconv.FormatInt(time.Now().Unix(), 10))
 }
 
 func runCleanup(ctx context.Context, st *store.Store, lg *slog.Logger) {
