@@ -40,6 +40,31 @@ func TestCheck_Scheme(t *testing.T) {
 	}
 }
 
+func TestCheck_BlockedPorts(t *testing.T) {
+	resolver := fakeResolver(map[string][]string{"example.com": {"93.184.216.34"}})
+	for _, u := range []string{
+		"https://example.com:22/",
+		"http://example.com:25/feed",
+		"https://example.com:6379/",
+		"http://example.com:3306/",
+		"https://example.com:11211/",
+	} {
+		if err := CheckWith(context.Background(), u, false, resolver); !errors.Is(err, ErrPort) {
+			t.Errorf("%s: expected ErrPort, got %v", u, err)
+		}
+	}
+	// Blocked even when private URLs are allowed (a service port is never a feed).
+	if err := CheckWith(context.Background(), "https://example.com:22/", true, fakeResolver(nil)); !errors.Is(err, ErrPort) {
+		t.Errorf("allowPrivate should still block port 22, got %v", err)
+	}
+	// Web ports pass through to the address check.
+	for _, u := range []string{"https://example.com/", "https://example.com:443/", "http://example.com:8080/feed"} {
+		if err := CheckWith(context.Background(), u, false, resolver); err != nil {
+			t.Errorf("%s: expected ok, got %v", u, err)
+		}
+	}
+}
+
 func TestCheck_PrivateIPLiteral(t *testing.T) {
 	priv := []string{
 		"http://127.0.0.1/",

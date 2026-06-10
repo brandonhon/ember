@@ -20,7 +20,7 @@ Ember reads configuration from environment variables at startup. A handful of se
 | `EMBER_OLLAMA_MODEL` | `qwen2.5:0.5b` | Initial active model. The admin UI can swap to any pulled model live. |
 | `EMBER_DISABLE_SUMMARIES` | `0` | Skip LLM summarization entirely. Articles still surface (poller stamps `summary_model='disabled'`). |
 | `EMBER_DISABLE_IMAGES` | `0` | Drop article hero images at ingest. |
-| `EMBER_ALLOW_PRIVATE_URLS` | `0` | Bypass the SSRF block so feeds on RFC1918 / loopback addresses can be subscribed. **Only set this if you trust every user who can add feeds.** |
+| `EMBER_ALLOW_PRIVATE_URLS` | `0` | Bypass the SSRF private-IP block so feeds on RFC1918 / loopback addresses can be subscribed. The scheme allowlist and the non-web service-port block still apply. **Only set this if you trust every user who can add feeds.** |
 | `EMBER_PUBLIC_URL` | — | Canonical `scheme://host` users hit, e.g. `https://reader.example.com`. Required to enable passkey / WebAuthn sign-in. |
 | `EMBER_SECURE_COOKIES` | `1` | `Secure` flag on the session + CSRF cookies. Ember serves plain HTTP and expects a TLS-terminating proxy in front, so leave this on. Set `0` **only** for a deliberate plain-HTTP deployment (e.g. private VPN) — otherwise browsers drop the cookies over HTTP and login silently fails. |
 | `EMBER_TRUSTED_PROXIES` | — | Comma/space-separated CIDRs or IPs of the proxy in front of Ember. `X-Real-IP` (rate-limit keying) and `X-Forwarded-Proto` (HTTPS detection for HSTS) are honored **only** from these peers. Empty = trust nobody (Ember is the edge; reads the real client from the connection). The bundled compose sets this to the Caddy bridge range. |
@@ -56,7 +56,38 @@ Stored in the `app_settings` KV. Edit via the admin UI in **Settings → ...**.
 | Cleanup schedule + window (`db_cleanup_older_days`, default 90) | Database |
 | OPML export schedule + retention (`opml_keep`, default 12) | Database |
 | SMTP host / port / username / password / from / STARTTLS | Email / SMTP |
-| Initial feed-backlog window (default 48 hours; 0 = no gate) | Email / SMTP → Initial backlog window |
+| Initial feed-backlog window (default **24 hours**; 0 = no gate) | Email / SMTP → Initial backlog window |
+| Reading window (default 24h; range 24–168h) | Feeds → Reading window |
+| Search window (default 48h; range 24–168h) | Feeds → Search window |
+
+### Time windows, retention, and counts
+
+Ember keeps articles for a **fixed rolling 1-week (168h) retention window**, then prunes
+them automatically (a daily delete-only sweep). Starred, Read-Later, board-pinned, and
+shared articles are exempt and kept indefinitely. This retention window is **not**
+configurable — it's the hard ceiling for the two settings below, because you can't surface
+what's already been pruned.
+
+- **Ingest** — a brand-new feed pulls only the last 24h on its first fetch (the *initial
+  backlog window*). Existing feeds only add genuinely new items (GUID + content-hash dedup),
+  so reposts don't reappear.
+- **Reading window** (default 24h, extendable to 168h) — the *floor* for how far back the
+  unread views and counts reach. *Today* always shows exactly this window, newest first.
+  A feed, a category, and *All Unread* show at least this window but **extend back to your
+  previous login** when you've been away longer (so time away surfaces everything new since),
+  clamped at the retention window. Older articles stay in the database (searchable) but are
+  hidden from these views. Because a feed/category list and its sidebar badge share this one
+  cutoff, the badge counts exactly the set the column pages through — the list loads 50 at a
+  time with a **Load more** button (search loads 25 at a time), so the badge is the running
+  total and "Load more" reveals the rest.
+- **Search window** (default 48h, extendable to 168h) — full-text search matches articles
+  published within this window. Results older than 24h are tagged with a date pill showing
+  when they were polled. The window can't exceed retention — that's the safeguard.
+
+Sidebar badges (All Unread, per-folder, per-feed) are computed server-side with the **same**
+window, summary gate, and cross-feed dedup as the article list, so a badge always matches the
+column it summarizes. When AI summarization is enabled, articles are hidden from every view
+and count until the summarizer has processed them; when it's disabled, nothing is gated.
 
 Each user also has client-side preferences stored in browser `localStorage`:
 

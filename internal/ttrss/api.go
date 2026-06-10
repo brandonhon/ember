@@ -127,7 +127,7 @@ func (s *Service) importSubscriptions(ctx context.Context, client *http.Client, 
 	// Snapshot the feeds the user is already subscribed to so we skip them
 	// rather than re-subscribe (and re-count) — same dedup pattern as the
 	// starter-pack import.
-	existing, err := s.Store.ListFeedsForUser(ctx, userID)
+	existing, err := s.Store.ListFeedsForUser(ctx, userID, 0, false)
 	if err != nil {
 		return fmt.Errorf("ttrss: list existing feeds: %w", err)
 	}

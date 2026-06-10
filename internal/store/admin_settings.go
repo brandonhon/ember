@@ -23,8 +23,20 @@ const (
 	// reader. Subsequent polls of the same feed never apply this gate.
 	keyInitialBacklogHours = "initial_backlog_hours"
 
-	// Default backlog when no env override is set and no DB row exists.
-	DefaultInitialBacklogHours = 48
+	// Default backlog when no env override is set and no DB row exists. A new
+	// feed pulls only the last 24h on its first fetch.
+	DefaultInitialBacklogHours = 24
+
+	// Reading-view window: Today / a feed / a category / All Unread only show
+	// (and count) articles published within this many hours. Admin-configurable
+	// up to the retention cap. Default 24h.
+	keyReadingWindowHours     = "reading_window_hours"
+	DefaultReadingWindowHours = 24
+
+	// Search window: full-text search only matches articles published within
+	// this many hours. Default 48h, extendable up to the retention cap.
+	keySearchWindowHours     = "search_window_hours"
+	DefaultSearchWindowHours = 48
 
 	// Floor for the adaptive per-feed fetch interval (the "check feeds every…"
 	// knob). Admin-configurable via the UI / EMBER_POLL_MIN_INTERVAL, clamped
@@ -40,6 +52,64 @@ const (
 	PollMinIntervalFloor   = 5 * time.Minute
 	PollMinIntervalCeil    = 24 * time.Hour
 )
+
+// RetentionHours is the fixed rolling retention window. Articles older than
+// this are pruned from the database (except starred / read-later / pinned /
+// shared). It is the hard ceiling for both the reading-window and search-
+// window settings — you can't surface what's already been pruned. Not
+// admin-configurable by design.
+const RetentionHours = 7 * 24
+
+// Bounds for the two window settings. Floor is 24h (the unread/count logic
+// assumes at least a day); the ceiling is the retention window.
+const (
+	WindowHoursFloor = 24
+	WindowHoursCeil  = RetentionHours
+)
+
+func clampInt(n, lo, hi int) int {
+	if n < lo {
+		return lo
+	}
+	if n > hi {
+		return hi
+	}
+	return n
+}
+
+// ResolveReadingWindowHours returns the effective reading-view window in hours
+// (DB row wins, clamped to [WindowHoursFloor, WindowHoursCeil]), else fallback.
+func (s *Store) ResolveReadingWindowHours(ctx context.Context, fallback int) int {
+	if v, _ := s.GetAppSetting(ctx, keyReadingWindowHours); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return clampInt(n, WindowHoursFloor, WindowHoursCeil)
+		}
+	}
+	return clampInt(fallback, WindowHoursFloor, WindowHoursCeil)
+}
+
+// PutReadingWindowHours persists the reading-view window (clamped).
+func (s *Store) PutReadingWindowHours(ctx context.Context, n int) error {
+	n = clampInt(n, WindowHoursFloor, WindowHoursCeil)
+	return s.PutAppSetting(ctx, keyReadingWindowHours, strconv.Itoa(n))
+}
+
+// ResolveSearchWindowHours returns the effective search window in hours (DB
+// row wins, clamped to [WindowHoursFloor, WindowHoursCeil]), else fallback.
+func (s *Store) ResolveSearchWindowHours(ctx context.Context, fallback int) int {
+	if v, _ := s.GetAppSetting(ctx, keySearchWindowHours); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return clampInt(n, WindowHoursFloor, WindowHoursCeil)
+		}
+	}
+	return clampInt(fallback, WindowHoursFloor, WindowHoursCeil)
+}
+
+// PutSearchWindowHours persists the search window (clamped).
+func (s *Store) PutSearchWindowHours(ctx context.Context, n int) error {
+	n = clampInt(n, WindowHoursFloor, WindowHoursCeil)
+	return s.PutAppSetting(ctx, keySearchWindowHours, strconv.Itoa(n))
+}
 
 // ResolvePollMinInterval returns the admin-set minimum fetch interval from
 // app_settings (clamped to the hard bounds), or fallback when unset/invalid.

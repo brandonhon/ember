@@ -31,6 +31,10 @@
   let searchQ = $state("");
   let searchResults = $state<{ id: number; title: string; url?: string }[]>([]);
   let showResults = $state(false);
+  // Keyboard-highlighted row in the typeahead dropdown (-1 = none). The
+  // "Load more" row, when shown, is the index just past the last result.
+  let selectedIndex = $state(-1);
+  let searchHasMore = $state(false);
   let popoverOpen = $state(false);
   let polling = $state(false);
 
@@ -73,6 +77,8 @@
     searchQ = "";
     searchResults = [];
     showResults = false;
+    selectedIndex = -1;
+    searchHasMore = false;
     if (get(activeView).kind === "search") {
       const fresh = { kind: "smart" as const, view: "fresh" as const };
       activeView.set(fresh);
@@ -93,14 +99,65 @@
     }
     searchTimer = setTimeout(async () => {
       try {
-        const res = await api.search(q, 6);
+        const res = await api.search(q, 6, 0);
         searchResults = (res.data ?? []).map((r) => ({ id: r.id, title: r.title, url: r.url }));
+        searchHasMore = (res.data?.length ?? 0) === 6;
+        selectedIndex = -1;
         showResults = searchResults.length > 0;
       } catch {
         searchResults = [];
+        searchHasMore = false;
       }
     }, 220);
   }
+
+  // Append the next 6 typeahead hits (offset = current count). Hides the
+  // "Load more" affordance once a short page comes back.
+  async function loadMoreResults() {
+    const q = searchQ.trim();
+    if (!q) return;
+    try {
+      const res = await api.search(q, 6, searchResults.length);
+      const more = (res.data ?? []).map((r) => ({ id: r.id, title: r.title, url: r.url }));
+      searchResults = [...searchResults, ...more];
+      searchHasMore = more.length === 6;
+    } catch {
+      searchHasMore = false;
+    }
+  }
+
+  // Arrow keys move the highlight through the dropdown (incl. the trailing
+  // "Load more" slot); Enter activates the highlighted row, or — when nothing
+  // is highlighted — falls through to the form submit (full search view).
+  function onSearchKeydown(e: KeyboardEvent) {
+    if (e.key === "Escape") {
+      clearSearch();
+      return;
+    }
+    if (!showResults || searchResults.length === 0) return;
+    const lastIndex = searchResults.length - 1 + (searchHasMore ? 1 : 0);
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      selectedIndex = selectedIndex >= lastIndex ? lastIndex : selectedIndex + 1;
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      selectedIndex = selectedIndex <= 0 ? -1 : selectedIndex - 1;
+    } else if (e.key === "Enter" && selectedIndex >= 0) {
+      e.preventDefault();
+      if (selectedIndex < searchResults.length) {
+        void openResult(searchResults[selectedIndex]);
+      } else {
+        void loadMoreResults();
+      }
+    }
+  }
+
+  // Keep the highlighted row scrolled into view as the dropdown grows.
+  $effect(() => {
+    if (selectedIndex >= 0) {
+      document.getElementById(`search-opt-${selectedIndex}`)?.scrollIntoView({ block: "nearest" });
+    }
+  });
 
   // Clicking a typeahead hit opens that article inside Ember (not the source
   // site). Switch the list pane to the search view so the article is loaded,
@@ -108,6 +165,7 @@
   // against the loaded $articles.items, so the article must be in the list.)
   async function openResult(r: { id: number }) {
     showResults = false;
+    selectedIndex = -1;
     const q = searchQ.trim();
     if (q) {
       activeView.set({ kind: "search", query: q });
@@ -124,6 +182,15 @@
     if (polling) return;
     polling = true;
     try {
+      // Kick a real fetch of every subscribed feed, then give the background
+      // fetches a moment to ingest before reloading the view + counts. Fast
+      // feeds show up immediately; slower ones arrive on the next 15s poll.
+      await api.refreshAllFeeds();
+      await new Promise((r) => setTimeout(r, 2000));
+      await refreshSidebar();
+      await loadArticles(get(activeView));
+    } catch {
+      // Best-effort: even if the trigger fails, refresh what we have.
       await refreshSidebar();
       await loadArticles(get(activeView));
     } finally {
@@ -172,7 +239,12 @@
     <input
       bind:value={searchQ}
       on:input={onSearchInput}
-      on:keydown={(e) => { if (e.key === "Escape") clearSearch(); }}
+      on:keydown={onSearchKeydown}
+      role="combobox"
+      aria-expanded={showResults}
+      aria-controls="search-results-list"
+      aria-activedescendant={selectedIndex >= 0 ? `search-opt-${selectedIndex}` : undefined}
+      autocomplete="off"
       placeholder={mobile ? "Search…" : "Search all articles, sources, and notes…"}
       data-testid="search-input"
     />
@@ -259,10 +331,31 @@
   </div>
 
   {#if showResults && searchResults.length > 0}
-    <div class="search-results" data-search-results data-testid="search-results">
-      {#each searchResults as r (r.id)}
-        <button type="button" on:click={() => openResult(r)}>{r.title}</button>
+    <div class="search-results" id="search-results-list" data-search-results data-testid="search-results" role="listbox">
+      {#each searchResults as r, i (r.id)}
+        <button
+          type="button"
+          id="search-opt-{i}"
+          role="option"
+          aria-selected={selectedIndex === i}
+          class:active={selectedIndex === i}
+          on:mousemove={() => (selectedIndex = i)}
+          on:click={() => openResult(r)}
+        >{r.title}</button>
       {/each}
+      {#if searchHasMore}
+        <button
+          type="button"
+          class="search-more"
+          id="search-opt-{searchResults.length}"
+          role="option"
+          aria-selected={selectedIndex === searchResults.length}
+          class:active={selectedIndex === searchResults.length}
+          on:mousemove={() => (selectedIndex = searchResults.length)}
+          on:click={loadMoreResults}
+          data-testid="search-load-more"
+        >Load more</button>
+      {/if}
     </div>
   {/if}
 
@@ -564,7 +657,15 @@
     border-radius: 8px;
     line-height: 1.4;
   }
-  .search-results button:hover { background: var(--line-soft); }
+  .search-results button:hover,
+  .search-results button.active { background: var(--line-soft); }
+  .search-more {
+    color: var(--ember);
+    font-weight: 600;
+    font-size: 12px;
+    border-top: 1px solid var(--line-soft) !important;
+    border-radius: 0 0 8px 8px !important;
+  }
   /* Mobile: the desktop offset (left: rail-w + 16) + fixed 420px width push
      the panel off the right edge of a phone. Pin it under the full-width
      search bar with small side margins instead. */

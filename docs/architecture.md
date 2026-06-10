@@ -9,7 +9,7 @@ caddy ─┬─> ember (Go binary)
        │     ├─ HTTP API + Fever shim + SPA serve
        │     ├─ Background poller (per-feed adaptive ticker)
        │     ├─ Summary worker pool (Ollama HTTP client)
-       │     ├─ DB maintenance goroutine (backup / cleanup / OPML / hourly)
+       │     ├─ DB maintenance goroutine (retention prune / backup / cleanup / OPML / hourly)
        │     └─ Cluster backfill goroutine (one-time at startup; idempotent)
        │
        └─> SPA (embedded static files served by ember)
@@ -37,7 +37,7 @@ internal/poller/              adaptive scheduler, fetch dispatch, summary queue
 internal/store/               SQLite CRUD, FTS5 search, app_settings KV, dbops, passkeys, digests, cluster backfill + sibling lookup
 internal/summarize/           Summarizer interface + Ollama implementation + noop for tests
 internal/sysinfo/             host-detection (RAM/CPU/GPU) + model recommendation
-internal/urlcheck/            SSRF block (scheme allowlist + private-IP refusal)
+internal/urlcheck/            SSRF block (scheme allowlist + private-IP + service-port refusal)
 internal/web/                 embed.FS handler for the SPA
 web/                          Svelte 5 (runes) source; built via Vite, copied to internal/web/dist
 ```
@@ -46,14 +46,14 @@ web/                          Svelte 5 (runes) source; built via Vite, copied to
 
 SQLite. Migrations in `internal/db/migrations/*.sql`, applied at startup. Key tables:
 
-- `users` — argon2id-hashed passwords; admin flag.
+- `users` — argon2id-hashed passwords; admin flag. `last_login_at` / `prev_login_at` track logins so the All-Unread window can extend back to the previous visit.
 - `sessions` — server-side rows backing cookies; pruned periodically.
 - `feeds` — shared across users; URL-unique. Tracks etag/last-modified/error counters.
 - `subscriptions` — `(user_id, feed_id)` with category, title override, muted flag, and `position` for drag-reorder.
 - `categories` — user-scoped folders with color + position.
 - `articles` — shared across users; per-feed dedup by `guid` and `content_hash`. Carries `cleaned_html` (AI ad-stripped). Also stores `canonical_url`, `cluster_id`, and `title_fingerprint` for cross-feed dedup (see [Cross-feed dedup](#cross-feed-dedup)); partial indexes `idx_articles_cluster` and `idx_articles_fp_pub` skip empty values so unfilled rows never falsely match.
 - `article_state` — per-user read/star/later flags.
-- `articles_fts` — FTS5 virtual table on title/text/author; kept in sync via triggers.
+- `articles_fts` — FTS5 virtual table on title/text/author; kept in sync via triggers. Search is bounded by the admin **search window** (default 48h, capped at the 1-week retention window).
 - `boards` + `board_articles` — user-curated collections.
 - `filters` — rule store; engine in `internal/filters`.
 - `shares` — user-to-user article shares.

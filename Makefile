@@ -91,6 +91,41 @@ build: ## build the ember binary
 run: build ## build then run with seeded test data
 	EMBER_TEST_MODE=1 $(BIN)
 
+# ----- Local feature sandbox --------------------------------------------
+# Always builds from the develop branch (via `git archive develop`), so the
+# stack reflects develop regardless of your current branch/working tree.
+SANDBOX_PORT    ?= 8095
+SANDBOX_COMPOSE := docker compose -f deploy/docker-compose.sandbox.yml
+
+.PHONY: sandbox
+sandbox: ## build develop into an isolated, fully-seeded compose stack (http://localhost:8095)
+	@git rev-parse --verify --quiet develop >/dev/null || { echo "error: no local 'develop' branch to build from"; exit 1; }
+	@echo ">>> building ember:sandbox from develop ($$(git rev-parse --short develop))"
+	@git archive develop | docker build -q -f Dockerfile \
+		--build-arg VERSION="$$(git describe --tags --always develop 2>/dev/null || echo dev)" \
+		-t ember:sandbox - >/dev/null
+	@echo ">>> (re)creating sandbox stack"
+	@$(SANDBOX_COMPOSE) down -v >/dev/null 2>&1 || true
+	@SANDBOX_PORT=$(SANDBOX_PORT) $(SANDBOX_COMPOSE) up -d
+	@echo ">>> waiting for ember on :$(SANDBOX_PORT) ..."
+	@for i in $$(seq 1 60); do \
+		curl -fsS "http://localhost:$(SANDBOX_PORT)/healthz" >/dev/null 2>&1 && break; \
+		[ $$i = 60 ] && { echo "ember did not become healthy"; $(SANDBOX_COMPOSE) logs ember | tail -20; exit 1; }; \
+		sleep 2; \
+	done
+	@echo ">>> seeding all features"
+	@$(SANDBOX_COMPOSE) exec -T ember /ember seed
+	@echo ""
+	@echo "  Sandbox ready:  http://localhost:$(SANDBOX_PORT)"
+	@echo "    admin user:   admin / admintest"
+	@echo "    second user:  reader / readerpass"
+	@echo "  Live AI summaries: the model pull runs in the background (first run: a few min)."
+	@echo "  Tear down + wipe:  make sandbox-down"
+
+.PHONY: sandbox-down
+sandbox-down: ## stop the sandbox stack and wipe its data + volumes
+	$(SANDBOX_COMPOSE) down -v
+
 .PHONY: docker
 docker: ## build the docker image
 	docker build -t ember:$(VERSION) -f Dockerfile .
@@ -140,5 +175,9 @@ docs-preview: docs-build ## serve the built site locally
 # ----- Misc --------------------------------------------------------------
 
 .PHONY: clean
-clean: ## remove build artifacts
-	rm -rf ./bin $(COVER_OUT) $(COVER_HTML) $(EMBED_DIR) $(WEB_DIR)/dist $(WEB_DIR)/node_modules $(DOCS_OUT)
+clean: ## remove build artifacts (leaves installed deps so you can rebuild immediately)
+	rm -rf ./bin $(COVER_OUT) $(COVER_HTML) $(EMBED_DIR) $(WEB_DIR)/dist $(DOCS_OUT)
+
+.PHONY: distclean
+distclean: clean ## also remove installed dependencies (full reset; re-run make web-install after)
+	rm -rf $(WEB_DIR)/node_modules $(DOCS_DIR)/node_modules

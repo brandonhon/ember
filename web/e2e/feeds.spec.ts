@@ -18,17 +18,21 @@ test.describe("feeds", () => {
     await page.getByTestId("open-add-feed").click();
     await page.getByTestId("add-feed-input").fill("https://added.test/feed");
     await page.getByTestId("add-feed-submit").click();
+    // add-feed runs discovery (real DNS lookup of the fake .test domain), which
+    // can take up to the ~10s discover timeout under load — generous margin.
     await expect(page.locator("button", { hasText: "added.test" })).toBeVisible({
-      timeout: 5_000,
+      timeout: 15_000,
     });
   });
 
   test("clicking the seeded feed scopes the article list to that feed", async ({ page }) => {
     await signIn(page);
     await page.getByTestId("feed-1").click();
-    // The seeded fixtures each render as a story card.
+    // The feed view is bounded by the reading window (24h), so the two recent
+    // fixtures render and the 2-day-old one (story-3) is hidden — the same
+    // window the Fresh view and the feed's unread badge use.
     await expect(page.getByTestId("story-1")).toBeVisible();
     await expect(page.getByTestId("story-2")).toBeVisible();
-    await expect(page.getByTestId("story-3")).toBeVisible();
+    await expect(page.getByTestId("story-3")).toHaveCount(0);
   });
 });

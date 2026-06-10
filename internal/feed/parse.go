@@ -107,7 +107,10 @@ func normalizeItem(it *gofeed.Item, feedID int64, base *url.URL) models.Article 
 	default:
 		a.ImageURL = firstImageInHTML(a.ContentHTML)
 	}
-	a.ImageURL = resolveLink(base, a.ImageURL)
+	// Rendered as <img src>; allow only http(s)/data:image and drop script-y
+	// schemes. firstImageInHTML pulls from already-sanitized HTML, but the
+	// enclosure/itunes paths above are raw feed input.
+	a.ImageURL = SafeImageURL(resolveLink(base, a.ImageURL))
 
 	// Tags: keep up to 3 of gofeed's per-item categories, comma-joined.
 	if len(it.Categories) > 0 {

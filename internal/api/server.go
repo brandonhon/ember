@@ -92,6 +92,13 @@ type Dependencies struct {
 	EmailDomain string
 }
 
+// summariesOn reports whether AI summarization is wired up (an Ollama backend
+// is configured). It is the single switch for the article summary gate: when
+// on, every reading view + every count hides articles the summarizer hasn't
+// stamped yet; when off, the gate is bypassed everywhere. Mirrors the
+// summaries_enabled flag surfaced to the SPA via /api/me.
+func (d *Dependencies) summariesOn() bool { return d.Ollama != nil }
+
 // backgroundCtx returns d.BackgroundCtx or context.Background if unset.
 // Used by handlers that spawn detached goroutines.
 func (d *Dependencies) backgroundCtx() context.Context {
@@ -174,6 +181,7 @@ func NewRouter(d Dependencies) http.Handler {
 		r.With(d.Auth.RequireAuth).Post("/auth/logout", d.handleLogout)
 		r.With(d.Auth.RequireAuth).Get("/me", d.handleMe)
 		r.With(d.Auth.RequireAuth).Patch("/me/settings", d.handleUpdateSettings)
+		r.With(d.Auth.RequireAuth).Patch("/me/email", d.handleUpdateEmail)
 		r.With(d.Auth.RequireAuth).Post("/me/password", d.handleChangePassword)
 		// Passkeys (self-service registration + management).
 		r.With(d.Auth.RequireAuth).Get("/me/passkeys", d.handleListPasskeys)
@@ -200,8 +208,9 @@ func NewRouter(d Dependencies) http.Handler {
 		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/feeds", d.handleAddFeed)
 		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/feeds/discover", d.handleDiscoverFeeds)
 		r.With(d.Auth.RequireAuth).Post("/feeds/reorder", d.handleReorderFeeds)
-		r.With(d.Auth.RequireAuth).Patch("/feeds/{id}", d.handleUpdateFeed)
+		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Patch("/feeds/{id}", d.handleUpdateFeed)
 		r.With(d.Auth.RequireAuth).Delete("/feeds/{id}", d.handleDeleteFeed)
+		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/feeds/refresh", d.handleRefreshAllFeeds)
 		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/feeds/{id}/refresh", d.handleRefreshFeed)
 		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/feeds/{id}/resummarize", d.handleResummarizeFeed)
 		r.With(d.Auth.RequireAdmin, expensiveLimiter.LimitMiddleware).Post("/feeds/resummarize-all", d.handleResummarizeAll)

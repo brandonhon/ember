@@ -165,23 +165,31 @@ func walkMultipart(body io.Reader, boundary string, depth int) (string, string, 
 	return html, text, nil
 }
 
+// maxDecodedBodyBytes caps a single decoded MIME part. Newsletters are well
+// under this; the bound exists to stop base64/quoted-printable expansion from
+// amplifying memory use per connection.
+const maxDecodedBodyBytes = 16 << 20 // 16 MiB
+
 // decodeBody applies the message's Content-Transfer-Encoding (mostly
 // 7bit / 8bit / quoted-printable / base64). Charsets other than UTF-8
 // are read as-is — corrupted display is the only cost and full charset
 // transcoding pulls in a heavy dep.
 func decodeBody(r io.Reader, encoding, charset string) ([]byte, error) {
 	_ = charset // accepted but not used for transcoding
+	// Cap the decoded output. base64 expands ~4:3, so a part near the raw
+	// message ceiling could otherwise balloon past it (×concurrent connections);
+	// the LimitReader bounds each decoded part to a sane newsletter size.
 	switch strings.ToLower(strings.TrimSpace(encoding)) {
 	case "quoted-printable":
-		return io.ReadAll(quotedprintable.NewReader(r))
+		return io.ReadAll(io.LimitReader(quotedprintable.NewReader(r), maxDecodedBodyBytes))
 	case "base64":
 		// Common for HTML parts from Substack/Beehiiv; without this the body
 		// is stored as raw base64 text and renders as garbage. The streaming
 		// decoder ignores the CRLF line breaks MIME wraps base64 at.
-		return io.ReadAll(base64.NewDecoder(base64.StdEncoding, r))
+		return io.ReadAll(io.LimitReader(base64.NewDecoder(base64.StdEncoding, r), maxDecodedBodyBytes))
 	default:
 		// 7bit / 8bit / no encoding all read raw.
-		return io.ReadAll(r)
+		return io.ReadAll(io.LimitReader(r, maxDecodedBodyBytes))
 	}
 }
 

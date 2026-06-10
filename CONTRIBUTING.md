@@ -7,7 +7,7 @@ Thanks for considering a contribution. This document covers the minimum you need
 1. Open an issue describing the change before you start coding. For trivial fixes (typos, one-line bugs) a PR with a clear description is fine.
 2. Fork the repo, create a topic branch off `main`.
 3. Make the change. Keep commits focused and use conventional commit prefixes (`feat:`, `fix:`, `chore:`, `docs:`, `sec:`, `refactor:`, `style:`, `test:`).
-4. Run `make verify` (vet + tests). Run `make web-check && make web-test` if you touched the SPA.
+4. Run `make verify` (vet + tests) and `make lint` (golangci-lint — `go vet` alone misses gocritic/staticcheck issues CI enforces). Run `make web-check && make web-test` if you touched the SPA.
 5. Open a PR against `main`. CI must pass; a maintainer will review.
 
 ## Code style
@@ -49,6 +49,29 @@ cd web && npm run dev
 EMBER_TEST_MODE=1 ./bin/ember
 # open http://localhost:5173
 ```
+
+### Full-feature sandbox
+
+To click through *every* feature against a fully-seeded database (two users,
+folders, feeds in varied states, ~115 articles across all time windows incl. a
+high-volume "Firehose" feed so **Load more** + **Mark all read** are
+exercisable, read/star/later/shared state, cross-feed dedup, filters, boards,
+tags, saved searches, an email inbox, a tail of unsummarized articles to drive
+the live summarizer, non-default admin settings) plus a live local Ollama for AI
+summaries:
+
+```
+make sandbox        # builds the image from the develop branch, seeds everything
+# → http://localhost:8095   admin/admintest, reader/readerpass
+make sandbox-down   # stop + wipe its volumes
+```
+
+`make sandbox` always builds from **develop** (via `git archive develop`), so it
+reflects the integration branch regardless of the branch you're on. It runs an
+isolated compose project (`ember-sandbox`) with its own volumes — it won't touch
+any real deploy. The first run pulls the Ollama model in the background (a few
+minutes) before AI summaries appear. Some features can't be pre-seeded and need
+live interaction: passkeys, Web Push, OPML/TT-RSS import, and SMTP email flows.
 
 ## Before opening a PR
 

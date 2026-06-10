@@ -269,6 +269,99 @@ func TestAuth_Login_LogoutMe(t *testing.T) {
 	}
 }
 
+// TestProfile_UpdateEmail covers the self-service PATCH /api/me/email endpoint:
+// set/trim/clear a valid address, reject invalid + over-long ones (without
+// mutating the stored value), and require authentication.
+func TestProfile_UpdateEmail(t *testing.T) {
+	h := newHarness(t)
+	alice := h.seedUser(t, "alice", "hunter2", false)
+	cl := h.login(t, "alice", "hunter2")
+
+	emailOf := func() string {
+		u, err := h.store.GetUser(context.Background(), alice.ID)
+		if err != nil {
+			t.Fatalf("GetUser: %v", err)
+		}
+		return u.Email
+	}
+
+	// Set a valid email — response echoes it and it persists. Re-auth with the
+	// current password is required.
+	var resp struct {
+		Data struct {
+			Email string `json:"email"`
+		} `json:"data"`
+	}
+	if code := patch(t, cl, h.srv.URL+"/api/me/email",
+		map[string]string{"email": "alice@example.com", "current_password": "hunter2"}, &resp); code != http.StatusOK {
+		t.Fatalf("set email = %d", code)
+	}
+	if resp.Data.Email != "alice@example.com" {
+		t.Errorf("response email = %q, want alice@example.com", resp.Data.Email)
+	}
+	if got := emailOf(); got != "alice@example.com" {
+		t.Errorf("stored email = %q, want alice@example.com", got)
+	}
+
+	// Surrounding whitespace is trimmed before storage.
+	if code := patch(t, cl, h.srv.URL+"/api/me/email",
+		map[string]string{"email": "  spaced@example.com  ", "current_password": "hunter2"}, nil); code != http.StatusOK {
+		t.Fatalf("trim email = %d", code)
+	}
+	if got := emailOf(); got != "spaced@example.com" {
+		t.Errorf("stored trimmed email = %q, want spaced@example.com", got)
+	}
+
+	// Wrong current password → 401, stored value unchanged.
+	if code := patch(t, cl, h.srv.URL+"/api/me/email",
+		map[string]string{"email": "moved@example.com", "current_password": "nope"}, nil); code != http.StatusUnauthorized {
+		t.Errorf("wrong password = %d, want 401", code)
+	}
+	if got := emailOf(); got != "spaced@example.com" {
+		t.Errorf("email changed after wrong-password attempt: %q", got)
+	}
+
+	// Invalid address → 400, stored value unchanged.
+	if code := patch(t, cl, h.srv.URL+"/api/me/email",
+		map[string]string{"email": "not-an-email", "current_password": "hunter2"}, nil); code != http.StatusBadRequest {
+		t.Errorf("invalid email = %d, want 400", code)
+	}
+	// Over 254 chars → 400, stored value unchanged.
+	long := strings.Repeat("a", 250) + "@example.com"
+	if code := patch(t, cl, h.srv.URL+"/api/me/email",
+		map[string]string{"email": long, "current_password": "hunter2"}, nil); code != http.StatusBadRequest {
+		t.Errorf("too-long email = %d, want 400", code)
+	}
+	if got := emailOf(); got != "spaced@example.com" {
+		t.Errorf("email changed after rejected updates: %q", got)
+	}
+
+	// A second user can't claim an address already in use (case-insensitive).
+	h.seedUser(t, "bob", "hunter2", false)
+	cB := h.login(t, "bob", "hunter2")
+	if code := patch(t, cB, h.srv.URL+"/api/me/email",
+		map[string]string{"email": "SPACED@example.com", "current_password": "hunter2"}, nil); code != http.StatusConflict {
+		t.Errorf("duplicate email = %d, want 409", code)
+	}
+
+	// Empty string clears it.
+	if code := patch(t, cl, h.srv.URL+"/api/me/email",
+		map[string]string{"email": "", "current_password": "hunter2"}, nil); code != http.StatusOK {
+		t.Fatalf("clear email = %d", code)
+	}
+	if got := emailOf(); got != "" {
+		t.Errorf("email not cleared: %q", got)
+	}
+
+	// Unauthenticated → 401 (RequireAuth runs before the handler).
+	anonJar, _ := newJar()
+	anon := h.newClient(anonJar)
+	if code := patch(t, anon, h.srv.URL+"/api/me/email",
+		map[string]string{"email": "x@example.com", "current_password": "hunter2"}, nil); code != http.StatusUnauthorized {
+		t.Errorf("anon set email = %d, want 401", code)
+	}
+}
+
 func TestCategories_CRUD_CrossUser(t *testing.T) {
 	h := newHarness(t)
 	h.seedUser(t, "alice", "p", false)
@@ -485,11 +578,13 @@ func TestSearch_ScopedToUser(t *testing.T) {
 	fb, _ := h.store.UpsertFeed(context.Background(), models.Feed{URL: "https://b.test/feed", Title: "B"})
 	_, _ = h.store.Subscribe(context.Background(), models.Subscription{UserID: alice.ID, FeedID: fa.ID})
 	_, _ = h.store.Subscribe(context.Background(), models.Subscription{UserID: bob.ID, FeedID: fb.ID})
+	// Published recently so they fall inside the default search window.
+	nowUnix := time.Now().Unix()
 	_, _, _ = h.store.UpsertArticle(context.Background(), models.Article{
-		FeedID: fa.ID, GUID: "ga", Title: "Rust update", ContentText: "alice", ContentHash: "h1", PublishedAt: 1,
+		FeedID: fa.ID, GUID: "ga", Title: "Rust update", ContentText: "alice", ContentHash: "h1", PublishedAt: nowUnix - 1,
 	})
 	_, _, _ = h.store.UpsertArticle(context.Background(), models.Article{
-		FeedID: fb.ID, GUID: "gb", Title: "Rust news", ContentText: "bob", ContentHash: "h2", PublishedAt: 2,
+		FeedID: fb.ID, GUID: "gb", Title: "Rust news", ContentText: "bob", ContentHash: "h2", PublishedAt: nowUnix,
 	})
 
 	var res struct {
@@ -583,7 +678,7 @@ func TestOPMLRoundtrip(t *testing.T) {
 	if len(cats) != 1 || cats[0].Name != "Tech" {
 		t.Errorf("imported categories: %+v", cats)
 	}
-	feeds, _ := h.store.ListFeedsForUser(context.Background(), u.ID)
+	feeds, _ := h.store.ListFeedsForUser(context.Background(), u.ID, 0, false)
 	if len(feeds) != 2 {
 		t.Errorf("imported feeds = %d, want 2", len(feeds))
 	}
@@ -1072,5 +1167,123 @@ func TestAdminSettings_PollMinInterval(t *testing.T) {
 	// Rejected writes left the stored value untouched.
 	if code := get(t, cl, url, &got); code != http.StatusOK || got.Data.PollMinIntervalSeconds != 3600 {
 		t.Errorf("after rejected PATCHes: code %d value %d (want 200/3600)", code, got.Data.PollMinIntervalSeconds)
+	}
+}
+
+// TestAdminSettings_Windows covers the reading/search-window admin knobs:
+// defaults + bounds on GET, valid PATCH persists, out-of-range PATCH is 400.
+func TestAdminSettings_Windows(t *testing.T) {
+	h := newHarness(t)
+	h.seedUser(t, "admin", "hunter2", true)
+	cl := h.login(t, "admin", "hunter2")
+	url := h.srv.URL + "/api/admin/settings"
+
+	var got struct {
+		Data struct {
+			ReadingWindowHours int `json:"reading_window_hours"`
+			SearchWindowHours  int `json:"search_window_hours"`
+			WindowHoursFloor   int `json:"window_hours_floor"`
+			WindowHoursCeil    int `json:"window_hours_ceil"`
+		} `json:"data"`
+	}
+	if code := get(t, cl, url, &got); code != http.StatusOK {
+		t.Fatalf("GET settings = %d", code)
+	}
+	if got.Data.ReadingWindowHours != 24 || got.Data.SearchWindowHours != 48 {
+		t.Errorf("defaults reading/search = %d/%d, want 24/48", got.Data.ReadingWindowHours, got.Data.SearchWindowHours)
+	}
+	if got.Data.WindowHoursFloor != 24 || got.Data.WindowHoursCeil != 168 {
+		t.Errorf("bounds = %d/%d, want 24/168", got.Data.WindowHoursFloor, got.Data.WindowHoursCeil)
+	}
+
+	// Valid updates persist + echo.
+	if code := patch(t, cl, url, map[string]any{"reading_window_hours": 48, "search_window_hours": 72}, &got); code != http.StatusOK {
+		t.Fatalf("PATCH valid = %d", code)
+	}
+	if got.Data.ReadingWindowHours != 48 || got.Data.SearchWindowHours != 72 {
+		t.Errorf("after PATCH = %d/%d, want 48/72", got.Data.ReadingWindowHours, got.Data.SearchWindowHours)
+	}
+
+	// Out-of-range (below floor 24, above ceil 168) is rejected for both knobs.
+	for _, bad := range []map[string]any{
+		{"reading_window_hours": 12}, {"reading_window_hours": 200},
+		{"search_window_hours": 1}, {"search_window_hours": 999},
+	} {
+		if code := patch(t, cl, url, bad, nil); code != http.StatusBadRequest {
+			t.Errorf("PATCH %v = %d, want 400", bad, code)
+		}
+	}
+	// Rejected writes left the stored values intact.
+	get(t, cl, url, &got)
+	if got.Data.ReadingWindowHours != 48 || got.Data.SearchWindowHours != 72 {
+		t.Errorf("after rejected = %d/%d, want 48/72", got.Data.ReadingWindowHours, got.Data.SearchWindowHours)
+	}
+}
+
+// TestFeeds_RefreshAll covers POST /api/feeds/refresh: 202 + feed count, and
+// the detached goroutine that refreshes every subscribed feed.
+func TestFeeds_RefreshAll(t *testing.T) {
+	h := newHarness(t)
+	h.seedUser(t, "alice", "p", false)
+	cA := h.login(t, "alice", "p")
+	for _, u := range []string{"https://ra.test/feed", "https://rb.test/feed"} {
+		if code := post(t, cA, h.srv.URL+"/api/feeds", map[string]string{"url": u}, nil); code != http.StatusCreated {
+			t.Fatalf("add %s = %d", u, code)
+		}
+	}
+	// Let the add-time fire-and-forget refreshes settle before sampling.
+	time.Sleep(80 * time.Millisecond)
+	h.noopPoller.mu.Lock()
+	before := h.noopPoller.calls
+	h.noopPoller.mu.Unlock()
+
+	var resp struct {
+		Data struct {
+			Feeds int `json:"feeds"`
+		} `json:"data"`
+	}
+	if code := post(t, cA, h.srv.URL+"/api/feeds/refresh", nil, &resp); code != http.StatusAccepted {
+		t.Fatalf("refresh-all = %d", code)
+	}
+	if resp.Data.Feeds != 2 {
+		t.Errorf("refresh-all feeds = %d, want 2", resp.Data.Feeds)
+	}
+	// The detached goroutine calls RefreshFeed once per feed.
+	time.Sleep(120 * time.Millisecond)
+	h.noopPoller.mu.Lock()
+	after := h.noopPoller.calls
+	h.noopPoller.mu.Unlock()
+	if after-before < 2 {
+		t.Errorf("poller refresh delta = %d, want >= 2", after-before)
+	}
+}
+
+// TestFeeds_UpdateMetadata covers the handleUpdateFeed patch path (title
+// override + mute) without the network-bound URL-repoint branch.
+func TestFeeds_UpdateMetadata(t *testing.T) {
+	h := newHarness(t)
+	h.seedUser(t, "alice", "p", false)
+	cA := h.login(t, "alice", "p")
+
+	var add struct {
+		Data struct {
+			Subscription models.Subscription `json:"subscription"`
+		} `json:"data"`
+	}
+	if code := post(t, cA, h.srv.URL+"/api/feeds", map[string]string{"url": "https://um.test/feed"}, &add); code != http.StatusCreated {
+		t.Fatalf("add = %d", code)
+	}
+	subID := add.Data.Subscription.ID
+
+	if code := patch(t, cA, fmt.Sprintf("%s/api/feeds/%d", h.srv.URL, subID),
+		map[string]any{"title_override": "My Feed", "muted": true}, nil); code != http.StatusOK {
+		t.Fatalf("patch = %d", code)
+	}
+	var list struct {
+		Data []models.FeedWithCounts `json:"data"`
+	}
+	get(t, cA, h.srv.URL+"/api/feeds", &list)
+	if len(list.Data) != 1 || list.Data[0].TitleOverride != "My Feed" || !list.Data[0].Muted {
+		t.Errorf("after patch: %+v", list.Data)
 	}
 }

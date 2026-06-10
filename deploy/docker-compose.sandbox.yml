@@ -1,0 +1,80 @@
+# Local feature sandbox — NOT a production file.
+#
+# A throwaway stack for clicking through every feature against a fully-seeded
+# database. Driven by `make sandbox`, which builds the `ember:sandbox` image
+# from the *develop* branch (via `git archive develop | docker build`) so the
+# sandbox always reflects develop regardless of your current branch, brings
+# this stack up, waits for health, then runs `ember seed` to populate it.
+#
+# Isolated from any real deploy: its own compose project name + volumes. Tear
+# down (and wipe) with `make sandbox-down`.
+name: ember-sandbox
+
+services:
+  ember:
+    image: ember:sandbox
+    pull_policy: never # built locally by `make sandbox`, never pulled
+    restart: unless-stopped
+    ports:
+      # Exposed directly on the host (no Caddy) — use http://localhost:PORT.
+      # localhost is a browser "secure context", so Secure session cookies work
+      # over plain HTTP and login is fine without TLS.
+      - "${SANDBOX_PORT:-8095}:8080"
+    environment:
+      EMBER_ADDR: ":8080"
+      EMBER_DB_PATH: /data/ember.db
+      # Fixed dev key (long enough to pass validation). NEVER use in production.
+      EMBER_SESSION_KEY: "ember-sandbox-dev-session-key-000000000000000000"
+      EMBER_ADMIN_USER: admin
+      EMBER_ADMIN_PASSWORD: admintest
+      EMBER_OLLAMA_URL: http://ollama:11434
+      EMBER_OLLAMA_MODEL: ${EMBER_OLLAMA_MODEL:-qwen2.5:0.5b}
+      EMBER_FRESH_WINDOW: 6h
+      EMBER_LOG_LEVEL: info
+    volumes:
+      - sandbox-data:/data
+    healthcheck:
+      # Distroless image has no shell/curl; re-exec the binary (exits 0).
+      test: ["CMD", "/ember", "version"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 8s
+    depends_on:
+      ollama:
+        condition: service_started
+
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    expose:
+      - "11434"
+    volumes:
+      - sandbox-ollama:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # One-shot model pull so live AI summaries work. Exits when done.
+  ollama-pull:
+    image: ollama/ollama:latest
+    restart: "no"
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    volumes:
+      - sandbox-ollama:/root/.ollama
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >
+        until ollama list >/dev/null 2>&1; do sleep 1; done;
+        ollama pull "${EMBER_OLLAMA_MODEL:-qwen2.5:0.5b}"
+    depends_on:
+      ollama:
+        condition: service_started
+
+volumes:
+  sandbox-data:
+  sandbox-ollama:

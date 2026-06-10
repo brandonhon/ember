@@ -50,3 +50,23 @@ func SafeHTTPURL(raw string) string {
 	}
 	return raw
 }
+
+// SafeImageURL is SafeHTTPURL for values rendered as an <img src>. It permits
+// http(s) URLs and inline data:image/* URIs (some feeds embed images that way,
+// and a data: image is inert as a script vector in an img tag) but drops
+// javascript:, vbscript:, and data:text/* so a feed author can't smuggle an
+// active-content URL into the image slot.
+func SafeImageURL(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+	if u, err := url.Parse(raw); err == nil &&
+		(u.Scheme == "http" || u.Scheme == "https") && u.Host != "" {
+		return raw
+	}
+	if strings.HasPrefix(strings.ToLower(raw), "data:image/") {
+		return raw
+	}
+	return ""
+}

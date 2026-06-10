@@ -21,7 +21,8 @@ func (d *Dependencies) handleGetStats(w http.ResponseWriter, r *http.Request) {
 // alongside the unread refresh so the badges stay live.
 func (d *Dependencies) handleSmartCounts(w http.ResponseWriter, r *http.Request) {
 	u, _ := auth.FromContext(r.Context())
-	out, err := d.Store.CountSmartViews(r.Context(), u.ID, d.FreshWindow)
+	cutoff := d.Store.UnreadCutoff(r.Context(), u.ID)
+	out, err := d.Store.CountSmartViews(r.Context(), u.ID, d.FreshWindow, cutoff, d.summariesOn())
 	if mapStoreError(w, err) {
 		return
 	}

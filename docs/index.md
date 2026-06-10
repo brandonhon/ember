@@ -41,7 +41,7 @@ features:
     details: Auto (matches OS), Light, Dark, Solarized, Sepia, Nord, Gruvbox, High contrast, plus a custom theme that derives the rest of the palette from 3 colors you pick.
   - icon: 🔐
     title: Hardened by default
-    details: argon2id passwords, SameSite=Strict cookies, CSRF double-submit, SSRF block on outbound fetches, generic error responses, govulncheck-clean stdlib.
+    details: argon2id passwords, SameSite=Strict cookies, CSRF double-submit, SSRF block (private-IP + service-port) on outbound fetches, per-IP rate limiting, generic error responses, govulncheck-clean stdlib.
   - icon: ⚖️
     title: Smart cross-feed dedup
     details: Tracking-param-stripped canonical URL + title-fingerprint clustering (48h window) collapse syndicated wire stories into one row. Click the "Also in N feeds" pill to expand the sibling list with per-feed read/star state.
