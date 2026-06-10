@@ -2464,6 +2464,10 @@
     margin: 22px 0 8px;
   }
   .hint { color: var(--ink-faint); font-size: 12.5px; margin: 0 0 14px; line-height: 1.5; }
+  /* Links inside settings copy use the brand link color, not the browser
+     default blue/purple (which reads wrong on the warm + dark themes). */
+  .hint a, dd a { color: var(--ember); font-weight: 600; text-decoration: none; }
+  .hint a:hover, dd a:hover { text-decoration: underline; }
   label {
     display: flex;
     flex-direction: column;

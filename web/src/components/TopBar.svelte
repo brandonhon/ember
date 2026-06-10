@@ -182,6 +182,15 @@
     if (polling) return;
     polling = true;
     try {
+      // Kick a real fetch of every subscribed feed, then give the background
+      // fetches a moment to ingest before reloading the view + counts. Fast
+      // feeds show up immediately; slower ones arrive on the next 15s poll.
+      await api.refreshAllFeeds();
+      await new Promise((r) => setTimeout(r, 2000));
+      await refreshSidebar();
+      await loadArticles(get(activeView));
+    } catch {
+      // Best-effort: even if the trigger fails, refresh what we have.
       await refreshSidebar();
       await loadArticles(get(activeView));
     } finally {
@@ -654,7 +663,6 @@
     color: var(--ember);
     font-weight: 600;
     font-size: 12px;
-    text-align: center !important;
     border-top: 1px solid var(--line-soft) !important;
     border-radius: 0 0 8px 8px !important;
   }

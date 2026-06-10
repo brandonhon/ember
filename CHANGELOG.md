@@ -49,6 +49,17 @@ full commit-level list; this file curates the highlights and behavior changes.
 - **New feeds pull only the last 24 hours** on first fetch (was 48h); existing
   feeds add only genuinely new items.
 
+### Fixed
+
+- **"Refresh feeds now"** now triggers an actual fetch of every subscribed feed
+  to pull new articles, instead of only re-reading already-stored ones.
+- Renaming a folder (and editing a feed's title) **pre-selects** the existing
+  text so you can type the new name without clearing it first.
+- The empty reading pane is centered and no longer shows the redundant "Pick a
+  story" heading.
+- Settings links (e.g. the email-inbox setup docs) use the brand link color
+  instead of default browser blue.
+
 ## [0.8.7] - 2026-06-08
 
 TT-RSS full migration (subscriptions, folders, starred/archived) and fail-fast

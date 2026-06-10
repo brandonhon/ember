@@ -273,6 +273,31 @@ func (d *Dependencies) handleRefreshFeed(w http.ResponseWriter, r *http.Request)
 	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
 }
 
+// handleRefreshAllFeeds kicks an immediate fetch of every feed the user is
+// subscribed to (the "Refresh feeds now" button). Each refresh is network-
+// bound, so they run in a detached goroutine and the handler returns 202
+// straight away; newly-ingested articles surface via the next poll/merge.
+func (d *Dependencies) handleRefreshAllFeeds(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.FromContext(r.Context())
+	feeds, err := d.Store.ListFeedsForUser(r.Context(), u.ID, 0, false)
+	if mapStoreError(w, err) {
+		return
+	}
+	if d.Poller != nil {
+		ctx := d.backgroundCtx()
+		ids := make([]int64, len(feeds))
+		for i, f := range feeds {
+			ids[i] = f.ID
+		}
+		go func() {
+			for _, id := range ids {
+				_ = d.Poller.RefreshFeed(ctx, id)
+			}
+		}()
+	}
+	writeData(w, http.StatusAccepted, map[string]int{"feeds": len(feeds)}, nil)
+}
+
 // handleResummarizeFeed clears the 'skipped' summary marker on every article
 // in the feed and re-enqueues each one for summarization. Used when the
 // summarizer was previously unavailable (Ollama down, model missing) and

@@ -130,6 +130,9 @@ export const api = {
   ) => call<unknown>("PATCH", `/api/feeds/${id}`, req),
   deleteFeed: (id: number) => call<unknown>("DELETE", `/api/feeds/${id}`),
   refreshFeed: (id: number) => call<unknown>("POST", `/api/feeds/${id}/refresh`),
+  // Kick an immediate fetch of every subscribed feed (the "Refresh feeds now"
+  // button). Returns 202; new articles arrive via the next poll/merge.
+  refreshAllFeeds: () => call<{ feeds: number }>("POST", "/api/feeds/refresh"),
   reorderFeeds: (ids: number[]) =>
     call<unknown>("POST", "/api/feeds/reorder", { ids }),
   resummarizeFeed: (id: number) =>

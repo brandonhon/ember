@@ -837,6 +837,7 @@
                 if (e.key === "Enter") commitRename(cat.id);
                 if (e.key === "Escape") cancelRename();
               }}
+              on:focus={(e) => (e.currentTarget as HTMLInputElement).select()}
               on:blur={() => commitRename(cat.id)}
               autofocus
               data-testid="folder-rename-{cat.id}"

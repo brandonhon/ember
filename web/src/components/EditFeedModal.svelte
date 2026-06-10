@@ -56,7 +56,7 @@
 
     <label class="field">
       <span>Title</span>
-      <input type="text" bind:value={title} disabled={busy} data-testid="edit-feed-title-input" />
+      <input type="text" bind:value={title} disabled={busy} on:focus={(e) => (e.currentTarget as HTMLInputElement).select()} data-testid="edit-feed-title-input" />
     </label>
 
     <label class="field">
