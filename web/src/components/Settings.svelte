@@ -1170,38 +1170,37 @@
 
       <div class="content">
         {#if section === "profile"}
+          <div class="eyebrow">Account</div>
           <h3>Profile</h3>
-          <div class="row">
-            <label>
-              <span>Username</span>
-              <input type="text" value={$user?.username ?? ""} disabled />
-            </label>
-            <label>
-              <span>Email</span>
-              <input type="email" value={$user?.email ?? ""} disabled placeholder="not set" />
-            </label>
+          <p class="hint">Your identity on this server. Email is managed by your administrator.</p>
+          <div class="identity">
+            <div class="avatar">{($user?.username ?? "?").slice(0, 1).toUpperCase()}</div>
+            <div>
+              <div class="who">{$user?.username}{#if $user?.is_admin}<span class="badge-admin">admin</span>{/if}</div>
+              <div class="mail">{$user?.email || "No email set"}</div>
+            </div>
           </div>
-          <p class="hint">Email is managed by your administrator.</p>
-
-          <h4>Change password</h4>
-          {#if pwError}<p class="error" data-testid="pw-error">{pwError}</p>{/if}
-          {#if pwMsg}<p class="ok" data-testid="pw-msg">{pwMsg}</p>{/if}
-          <label>
-            <span>Current password</span>
-            <input type="password" bind:value={oldPassword} autocomplete="current-password" data-testid="pw-old" />
-          </label>
-          <label>
-            <span>New password</span>
-            <input type="password" bind:value={newPassword} autocomplete="new-password" data-testid="pw-new" />
-          </label>
-          <label>
-            <span>Confirm new password</span>
-            <input type="password" bind:value={confirmPassword} autocomplete="new-password" />
-          </label>
-          <div class="actions">
-            <button on:click={changePassword} disabled={pwBusy || !oldPassword || !newPassword} data-testid="pw-submit">
-              {pwBusy ? "Saving…" : "Change password"}
-            </button>
+          <div class="card">
+            <div class="card-head"><h4>Change password</h4></div>
+            {#if pwError}<p class="error" data-testid="pw-error">{pwError}</p>{/if}
+            {#if pwMsg}<p class="ok" data-testid="pw-msg">{pwMsg}</p>{/if}
+            <label class="pref-row">
+              <div><div class="pref-label">Current password</div></div>
+              <input class="row-input" type="password" bind:value={oldPassword} autocomplete="current-password" data-testid="pw-old" />
+            </label>
+            <label class="pref-row">
+              <div><div class="pref-label">New password</div><div class="pref-hint">At least 8 characters.</div></div>
+              <input class="row-input" type="password" bind:value={newPassword} autocomplete="new-password" data-testid="pw-new" />
+            </label>
+            <label class="pref-row">
+              <div><div class="pref-label">Confirm new password</div></div>
+              <input class="row-input" type="password" bind:value={confirmPassword} autocomplete="new-password" />
+            </label>
+            <div class="actions">
+              <button on:click={changePassword} disabled={pwBusy || !oldPassword || !newPassword} data-testid="pw-submit">
+                {pwBusy ? "Saving…" : "Change password"}
+              </button>
+            </div>
           </div>
         {/if}
 
@@ -3094,4 +3093,89 @@
     font-size: 11.5px;
     color: var(--ink-faint);
   }
+
+  /* ======================================================================
+     MOCKUP LAYOUT SYSTEM — rebuilt 2026-06-10. Later rules here override the
+     originals above. Section = header (eyebrow + Fraunces title + subtitle +
+     full-width gold rule) then grouped cards of label-left/control-right rows.
+     Reuses the shell + mobile classes (.nav, .actions, .switch); eyebrow stays
+     --ink-faint (gold text fails WCAG AA, blocked by the a11y e2e).
+     ====================================================================== */
+  .eyebrow {
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--ink-faint); margin-bottom: 7px;
+  }
+  h3 {
+    font-family: var(--font-display); font-size: 29px; font-weight: 600; letter-spacing: -0.02em;
+    color: var(--ink); margin: 2px 0 22px; padding-bottom: 16px; position: relative;
+  }
+  h3::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--gold) 50%, transparent), var(--line) 30%, transparent);
+  }
+  h3:has(+ .hint) { padding-bottom: 0; margin-bottom: 9px; }
+  h3:has(+ .hint)::after { display: none; }
+  h3 + .hint {
+    font-family: var(--font-read); font-size: 15px; color: var(--ink-faint);
+    max-width: 58ch; margin: 0 0 24px; padding-bottom: 18px; position: relative; line-height: 1.5;
+  }
+  h3 + .hint::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--gold) 50%, transparent), var(--line) 30%, transparent);
+  }
+
+  /* Grouped card. */
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    box-shadow: var(--shadow-card); margin-bottom: 16px; padding: 4px 18px;
+  }
+  .card-head { padding: 14px 0 12px; border-bottom: 1px solid var(--line-soft); }
+  .card-head h4 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 15px; text-transform: none; letter-spacing: 0; color: var(--ink); }
+  .card-head p { margin: 4px 0 0; font-family: var(--font-read); font-size: 13px; color: var(--ink-faint); line-height: 1.45; }
+
+  /* Row: label + hint on the left, control on the right, hairline divider.
+     flex-direction:row is explicit because label.pref-row would otherwise
+     inherit the global `label { flex-direction: column }` and stack. */
+  .pref-row {
+    display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 20px;
+    padding: 14px 0; border-bottom: 1px solid var(--line-soft); border-top: 0; margin: 0;
+  }
+  .pref-row > div:first-child { min-width: 0; }
+  .pref-row:last-child { border-bottom: 0; }
+  .card > .pref-row:first-child, .card-head + .pref-row { border-top: 0; }
+  .pref-label { font-size: 13.5px; color: var(--ink); font-weight: 600; }
+  .pref-hint { color: var(--ink-faint); font-size: 13px; margin-top: 3px; line-height: 1.4; font-weight: 400; text-transform: none; letter-spacing: 0; }
+  .row-ctl { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; }
+  /* Right-aligned control inputs (text/number/select live on the right edge). */
+  .row-input { width: 240px; max-width: 42vw; }
+  .row-input.num { width: 92px; }
+  .pref-row .switch { flex: 0 0 auto; }
+
+  /* Segmented pill (mockup). */
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 11px; background: var(--paper-2); padding: 3px; gap: 2px; overflow: visible; }
+  .seg button { flex: 1 1 0; min-width: 56px; padding: 6px 13px; font-size: 12px; font-weight: 600; color: var(--ink-faint); background: transparent; border: 0; border-radius: 8px; cursor: pointer; text-align: center; }
+  .seg button.on { background: var(--card); color: var(--ember); box-shadow: 0 1px 2px rgba(33,29,24,.1); }
+
+  /* Profile identity header. */
+  .identity { display: flex; align-items: center; gap: 16px; margin-bottom: 22px; }
+  .identity .avatar { width: 60px; height: 60px; border-radius: 16px; display: grid; place-items: center; font-family: var(--font-display); font-weight: 600; font-size: 26px; color: #fff; background: linear-gradient(150deg, var(--ember), var(--gold)); box-shadow: var(--shadow-card); }
+  .identity .who { font-family: var(--font-display); font-weight: 600; font-size: 20px; }
+  .identity .mail { color: var(--ink-faint); font-size: 13.5px; margin-top: 2px; }
+  .badge-admin { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ember); background: var(--ember-wash); border: 1px solid color-mix(in srgb, var(--ember) 30%, transparent); padding: 2px 8px; border-radius: 20px; margin-left: 8px; vertical-align: middle; }
+
+  /* Reading-stats: gradient stat tiles + ranked feed bars. */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 12px; margin: 0 0 16px; }
+  .stat-card { padding: 16px 16px 14px; border: 1px solid var(--line); background: var(--card); border-radius: 13px; box-shadow: var(--shadow-card); }
+  .stat-num { font-family: var(--font-display); font-size: 30px; font-weight: 600; letter-spacing: -0.02em; line-height: 1; background: linear-gradient(120deg, var(--ember), var(--gold)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .stat-label { font-size: 11px; color: var(--ink-faint); margin-top: 7px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+  .rank-row { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-top: 1px solid var(--line-soft); }
+  .rank-row:first-of-type { border-top: 0; }
+  .rank-n { font-family: var(--font-display); font-size: 15px; font-weight: 600; color: var(--ink-faint); width: 20px; flex: 0 0 20px; }
+  .rank-name { flex: 0 0 132px; min-width: 0; font-size: 13px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rank-bar { flex: 1; height: 7px; border-radius: 6px; background: var(--paper-2); overflow: hidden; }
+  .rank-bar i { display: block; height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--ember), var(--gold)); }
+  .rank-v { font-size: 12.5px; color: var(--ink-faint); width: 36px; flex: 0 0 36px; text-align: right; }
+
+  /* Buttons inside cards: .actions stays right-aligned; primary = ember. */
+  .card .actions { margin-top: 6px; padding-bottom: 6px; }
 </style>
