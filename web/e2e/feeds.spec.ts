@@ -26,9 +26,11 @@ test.describe("feeds", () => {
   test("clicking the seeded feed scopes the article list to that feed", async ({ page }) => {
     await signIn(page);
     await page.getByTestId("feed-1").click();
-    // The seeded fixtures each render as a story card.
+    // The feed view is bounded by the reading window (24h), so the two recent
+    // fixtures render and the 2-day-old one (story-3) is hidden — the same
+    // window the Fresh view and the feed's unread badge use.
     await expect(page.getByTestId("story-1")).toBeVisible();
     await expect(page.getByTestId("story-2")).toBeVisible();
-    await expect(page.getByTestId("story-3")).toBeVisible();
+    await expect(page.getByTestId("story-3")).toHaveCount(0);
   });
 });
