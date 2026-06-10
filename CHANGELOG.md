@@ -49,10 +49,6 @@ full commit-level list; this file curates the highlights and behavior changes.
 - **New feeds pull only the last 24 hours** on first fetch (was 48h); existing
   feeds add only genuinely new items.
 
-- **Settings redesign** — every section now opens with a clear header (group
-  eyebrow, large display title, gold accent rule, and a one-line subtitle),
-  refined segmented controls, and a polished Profile with an identity card.
-
 ### Fixed
 
 - **"Refresh feeds now"** now triggers an actual fetch of every subscribed feed

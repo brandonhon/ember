@@ -1170,43 +1170,42 @@
 
       <div class="content">
         {#if section === "profile"}
-          <div class="eyebrow">Account</div>
           <h3>Profile</h3>
-          <p class="hint">Your identity on this server. Email is managed by your administrator.</p>
-          <div class="identity">
-            <div class="avatar">{($user?.username ?? "?").slice(0, 1).toUpperCase()}</div>
-            <div>
-              <div class="who">{$user?.username}{#if $user?.is_admin}<span class="badge-admin">admin</span>{/if}</div>
-              <div class="mail">{$user?.email || "No email set"}</div>
-            </div>
+          <div class="row">
+            <label>
+              <span>Username</span>
+              <input type="text" value={$user?.username ?? ""} disabled />
+            </label>
+            <label>
+              <span>Email</span>
+              <input type="email" value={$user?.email ?? ""} disabled placeholder="not set" />
+            </label>
           </div>
+          <p class="hint">Email is managed by your administrator.</p>
 
-          <div class="card">
-            <div class="card-head"><h4>Change password</h4></div>
-            {#if pwError}<p class="error" data-testid="pw-error">{pwError}</p>{/if}
-            {#if pwMsg}<p class="ok" data-testid="pw-msg">{pwMsg}</p>{/if}
-            <label class="field">
-              <span>Current password</span>
-              <input type="password" bind:value={oldPassword} autocomplete="current-password" data-testid="pw-old" />
-            </label>
-            <label class="field">
-              <span>New password</span>
-              <input type="password" bind:value={newPassword} autocomplete="new-password" data-testid="pw-new" />
-            </label>
-            <label class="field">
-              <span>Confirm new password</span>
-              <input type="password" bind:value={confirmPassword} autocomplete="new-password" />
-            </label>
-            <div class="actions">
-              <button on:click={changePassword} disabled={pwBusy || !oldPassword || !newPassword} data-testid="pw-submit">
-                {pwBusy ? "Saving…" : "Change password"}
-              </button>
-            </div>
+          <h4>Change password</h4>
+          {#if pwError}<p class="error" data-testid="pw-error">{pwError}</p>{/if}
+          {#if pwMsg}<p class="ok" data-testid="pw-msg">{pwMsg}</p>{/if}
+          <label>
+            <span>Current password</span>
+            <input type="password" bind:value={oldPassword} autocomplete="current-password" data-testid="pw-old" />
+          </label>
+          <label>
+            <span>New password</span>
+            <input type="password" bind:value={newPassword} autocomplete="new-password" data-testid="pw-new" />
+          </label>
+          <label>
+            <span>Confirm new password</span>
+            <input type="password" bind:value={confirmPassword} autocomplete="new-password" />
+          </label>
+          <div class="actions">
+            <button on:click={changePassword} disabled={pwBusy || !oldPassword || !newPassword} data-testid="pw-submit">
+              {pwBusy ? "Saving…" : "Change password"}
+            </button>
           </div>
         {/if}
 
         {#if section === "passkeys"}
-          <div class="eyebrow">Account</div>
           <h3>Passkeys</h3>
           {#if !canPasskey}
             <p class="hint">Your browser doesn't support passkeys.</p>
@@ -1219,30 +1218,27 @@
             {#if passkeyErr}<p class="error">{passkeyErr}</p>{/if}
             {#if passkeyMsg}<p class="ok">{passkeyMsg}</p>{/if}
 
-            <div class="card">
-              <div class="card-head"><h4>Add a passkey</h4></div>
-              <label class="field">
-                <span>Name this device</span>
-                <input
-                  type="text"
-                  bind:value={newPasskeyName}
-                  placeholder="e.g. MacBook Touch ID"
-                  maxlength="60"
-                />
-              </label>
-              <div class="actions">
-                <button
-                  on:click={addPasskey}
-                  disabled={passkeyBusy === "register"}
-                  data-testid="passkey-register"
-                >
-                  {passkeyBusy === "register" ? "Waiting for device…" : "Register passkey"}
-                </button>
-              </div>
+            <h4>Add a passkey</h4>
+            <label>
+              <span>Name this device</span>
+              <input
+                type="text"
+                bind:value={newPasskeyName}
+                placeholder="e.g. MacBook Touch ID"
+                maxlength="60"
+              />
+            </label>
+            <div class="actions">
+              <button
+                on:click={addPasskey}
+                disabled={passkeyBusy === "register"}
+                data-testid="passkey-register"
+              >
+                {passkeyBusy === "register" ? "Waiting for device…" : "Register passkey"}
+              </button>
             </div>
 
-            <div class="card">
-            <div class="card-head"><h4>Your passkeys</h4></div>
+            <h4>Your passkeys</h4>
             {#if passkeys.length === 0}
               <p class="hint">No passkeys registered yet.</p>
             {:else}
@@ -1269,12 +1265,10 @@
                 {/each}
               </ul>
             {/if}
-            </div>
           {/if}
         {/if}
 
         {#if section === "inbox"}
-          <div class="eyebrow">Account</div>
           <h3>Email inbox</h3>
           <p class="hint">
             Each user gets a unique address. Mail sent to it lands in a
@@ -1288,22 +1282,20 @@
               <a href="https://brandonhon.github.io/ember/email-inbox" target="_blank" rel="noopener noreferrer">the setup docs</a>.
             </div>
           {:else if inbox && inbox.address}
-            <div class="card">
-              <div class="kv" style="grid-template-columns: 1fr auto;">
-                <dt>Your address</dt>
-                <dd>
-                  <code data-testid="inbox-address">{inbox.address}</code>
-                </dd>
-              </div>
-              <div class="actions" style="margin-top: 12px;">
-                <button on:click={copyInboxAddress} data-testid="inbox-copy">Copy address</button>
-                <button class="ghost" on:click={onRotateInbox} disabled={inboxBusy} data-testid="inbox-rotate">
-                  {inboxBusy ? "Rotating…" : "Rotate address"}
-                </button>
-              </div>
-              {#if inboxErr}<p class="error" data-testid="inbox-err">{inboxErr}</p>{/if}
-              {#if inboxMsg}<p class="ok" data-testid="inbox-msg">{inboxMsg}</p>{/if}
+            <div class="kv" style="grid-template-columns: 1fr auto;">
+              <dt>Your address</dt>
+              <dd>
+                <code data-testid="inbox-address">{inbox.address}</code>
+              </dd>
             </div>
+            <div class="actions" style="margin-top: 12px;">
+              <button on:click={copyInboxAddress} data-testid="inbox-copy">Copy address</button>
+              <button class="ghost" on:click={onRotateInbox} disabled={inboxBusy} data-testid="inbox-rotate">
+                {inboxBusy ? "Rotating…" : "Rotate address"}
+              </button>
+            </div>
+            {#if inboxErr}<p class="error" data-testid="inbox-err">{inboxErr}</p>{/if}
+            {#if inboxMsg}<p class="ok" data-testid="inbox-msg">{inboxMsg}</p>{/if}
             <p class="hint" style="margin-top: 14px;">
               Sign up for a newsletter using this address. New issues
               show up in the Newsletters feed within seconds of arrival.
@@ -1316,7 +1308,6 @@
         {/if}
 
         {#if section === "notifications"}
-          <div class="eyebrow">Account</div>
           <h3>Notifications</h3>
           <p class="hint">
             Web Push delivers reminders to your browser or installed PWA
@@ -1338,8 +1329,7 @@
             </div>
             {#if pushErr}<p class="error" data-testid="push-err">{pushErr}</p>{/if}
             {#if pushMsg}<p class="ok" data-testid="push-msg">{pushMsg}</p>{/if}
-            <div class="card">
-            <div class="card-head"><h4>Registered devices</h4></div>
+            <h4>Registered devices</h4>
             {#if pushSubs.length === 0}
               <p class="hint">No devices registered yet.</p>
             {:else}
@@ -1356,12 +1346,10 @@
                 {/each}
               </ul>
             {/if}
-            </div>
           {/if}
         {/if}
 
         {#if section === "preferences"}
-          <div class="eyebrow">Reading</div>
           <h3>Preferences</h3>
           <div class="pref-row">
             <div>
@@ -1438,47 +1426,38 @@
         {/if}
 
         {#if section === "mobile"}
-          <div class="eyebrow">Reading</div>
           <h3>Mobile clients</h3>
           <p class="hint">
             Reeder, FeedMe, and other Fever-compatible apps can connect using the URL and key
             below. The key is derived from your username and user ID — if it leaks, change your
             username via the admin.
           </p>
-          <div class="card">
-            <label class="field">
-              <span>Fever URL</span>
-              <input type="text" value={feverURL} readonly />
-            </label>
-            <label class="field">
-              <span>API key</span>
-              <input type="text" value={$feverAPIKey} readonly data-testid="fever-key" />
-            </label>
-            <div class="actions">
-              <button on:click={copyKey} class="ghost">Copy key</button>
-            </div>
+          <label>
+            <span>Fever URL</span>
+            <input type="text" value={feverURL} readonly />
+          </label>
+          <label>
+            <span>API key</span>
+            <input type="text" value={$feverAPIKey} readonly data-testid="fever-key" />
+          </label>
+          <div class="actions">
+            <button on:click={copyKey} class="ghost">Copy key</button>
           </div>
         {/if}
 
         {#if section === "filters"}
-          <div class="eyebrow">Reading</div>
           <h3>Filters</h3>
-          <p class="hint">Rules applied to new articles as they arrive — tag, star, hide, or file into a board.</p>
-          <div class="card">
-            <div class="pref-row">
-              <div>
-                <div class="pref-label">Filter rules</div>
-                <div class="pref-hint">Add, reorder, disable, or delete the rules applied at ingest.</div>
-              </div>
-              <button on:click={() => (showFilters = true)} data-testid="open-filters" class="pack-btn">Open filter editor</button>
-            </div>
+          <p class="hint">
+            Rules applied to new articles as they arrive. Open the editor to add, disable, or
+            delete filters.
+          </p>
+          <div class="actions">
+            <button on:click={() => (showFilters = true)} data-testid="open-filters">Open filter editor</button>
           </div>
         {/if}
 
         {#if section === "stats"}
-          <div class="eyebrow">Reading</div>
           <h3>Reading stats</h3>
-          <p class="hint">Your reading activity over the last 30 days.</p>
           {#if statsErr}<p class="error">{statsErr}</p>{/if}
           {#if !statsData}
             <p class="muted">Loading…</p>
@@ -1510,24 +1489,20 @@
               </div>
             </div>
             {#if statsData.top_feeds && statsData.top_feeds.length > 0}
-              {@const maxRead = Math.max(...statsData.top_feeds.map((f) => f.read_count), 1)}
-              <div class="card">
-                <div class="card-head"><h4>Top feeds · last 30 days</h4></div>
-                {#each statsData.top_feeds as f, i (f.feed_id)}
-                  <div class="rank-row">
-                    <span class="rank-n">{i + 1}</span>
-                    <span class="rank-name">{f.title}</span>
-                    <span class="rank-bar"><i style="width:{Math.round((f.read_count / maxRead) * 100)}%"></i></span>
-                    <span class="rank-v">{f.read_count}</span>
-                  </div>
-                {/each}
-              </div>
+              <h4>Top feeds (last 30 days)</h4>
+              <table class="llm-table">
+                <thead><tr><th>Feed</th><th>Read</th></tr></thead>
+                <tbody>
+                  {#each statsData.top_feeds as f (f.feed_id)}
+                    <tr><td>{f.title}</td><td>{f.read_count}</td></tr>
+                  {/each}
+                </tbody>
+              </table>
             {/if}
           {/if}
         {/if}
 
         {#if section === "digest"}
-          <div class="eyebrow">Reading</div>
           <h3>Daily digest</h3>
           <p class="hint">Get an email at a fixed time each day with the articles in your chosen view. Requires the server to have SMTP configured.</p>
           {#if digestErr}<p class="error">{digestErr}</p>{/if}
@@ -1535,7 +1510,6 @@
           {#if !digest}
             <p class="muted">Loading…</p>
           {:else}
-            <div class="card">
             <div class="pref-row">
               <div>
                 <div class="pref-label">Enabled</div>
@@ -1547,7 +1521,7 @@
               </div>
             </div>
 
-            <label class="field">
+            <label>
               <span>View</span>
               <select bind:value={digest.view_value} on:change={() => (digest!.view_kind = "smart")} data-testid="digest-view">
                 <option value="fresh">Fresh (last 24h)</option>
@@ -1570,7 +1544,7 @@
               </label>
             </div>
 
-            <label class="field">
+            <label>
               <span>Email override</span>
               <input type="email" bind:value={digest.email_override} placeholder="optional — defaults to your account email" data-testid="digest-email" />
             </label>
@@ -1580,12 +1554,10 @@
                 {digestBusy ? "Saving…" : "Save"}
               </button>
             </div>
-            </div>
           {/if}
         {/if}
 
         {#if section === "import"}
-          <div class="eyebrow">Import &amp; data</div>
           <h3>Import &amp; migrate</h3>
           <p class="hint">Bring your library and subscriptions into Ember. Nothing here touches your existing feeds.</p>
           {#if importErr}<p class="error" data-testid="import-error">{importErr}</p>{/if}
@@ -1639,7 +1611,6 @@
         {/if}
 
         {#if section === "starter"}
-          <div class="eyebrow">Import &amp; data</div>
           <h3>Starter packs</h3>
           <p class="hint">Curated bundles of feeds. Click a pack to create the folder and subscribe — already-subscribed feeds are skipped.</p>
           {#if starterErr}<p class="error">{starterErr}</p>{/if}
@@ -1682,7 +1653,6 @@
         {/if}
 
         {#if section === "llm" && $user?.is_admin}
-          <div class="eyebrow">Administration</div>
           <h3>Language model</h3>
           <p class="hint">Switch models or pull new ones from Ollama. The recommendation matches what fits your host.</p>
           {#if llmErr}<p class="error" data-testid="llm-error">{llmErr}</p>{/if}
@@ -1811,36 +1781,32 @@
         {/if}
 
         {#if section === "branding" && $user?.is_admin}
-          <div class="eyebrow">Administration</div>
           <h3>Branding</h3>
           <p class="hint">Change the app name, browser tab title, and favicon shown to all users. Leave a field blank to restore the default.</p>
           {#if brandingErr}<p class="error">{brandingErr}</p>{/if}
           {#if brandingMsg}<p class="ok" data-testid="branding-msg">{brandingMsg}</p>{/if}
-          <div class="card">
-            <label class="field">
-              <span>App name</span>
-              <input type="text" bind:value={brandingDraft.name} placeholder="Ember" data-testid="branding-name" />
-            </label>
-            <label class="field">
-              <span>Browser tab title</span>
-              <input type="text" bind:value={brandingDraft.page_title} placeholder="Ember" data-testid="branding-title" />
-            </label>
-            <label class="field">
-              <span>Favicon URL</span>
-              <input type="text" bind:value={brandingDraft.favicon_url} placeholder="/icon.svg or data:image/svg+xml;..." data-testid="branding-favicon" />
-              <span class="pref-hint">Public URL (e.g. /icon.svg, https://…/icon.png) or a data: URI. Hard-refresh after changing.</span>
-            </label>
-            <div class="actions">
-              <button class="ghost" on:click={resetBranding} disabled={brandingBusy}>Reset to defaults</button>
-              <button on:click={saveBranding} disabled={brandingBusy} data-testid="branding-save">
-                {brandingBusy ? "Saving…" : "Save"}
-              </button>
-            </div>
+          <label>
+            <span>App name</span>
+            <input type="text" bind:value={brandingDraft.name} placeholder="Ember" data-testid="branding-name" />
+          </label>
+          <label>
+            <span>Browser tab title</span>
+            <input type="text" bind:value={brandingDraft.page_title} placeholder="Ember" data-testid="branding-title" />
+          </label>
+          <label>
+            <span>Favicon URL</span>
+            <input type="text" bind:value={brandingDraft.favicon_url} placeholder="/icon.svg or data:image/svg+xml;..." data-testid="branding-favicon" />
+            <span class="pref-hint">Public URL (e.g. /icon.svg, https://…/icon.png) or a data: URI. Hard-refresh after changing.</span>
+          </label>
+          <div class="actions">
+            <button class="ghost" on:click={resetBranding} disabled={brandingBusy}>Reset to defaults</button>
+            <button on:click={saveBranding} disabled={brandingBusy} data-testid="branding-save">
+              {brandingBusy ? "Saving…" : "Save"}
+            </button>
           </div>
         {/if}
 
         {#if section === "database" && $user?.is_admin}
-          <div class="eyebrow">Administration</div>
           <h3>Database</h3>
           {#if dbErr}<p class="error">{dbErr}</p>{/if}
           {#if dbMsg}<p class="ok" data-testid="db-msg">{dbMsg}</p>{/if}
@@ -1944,14 +1910,12 @@
         {/if}
 
         {#if section === "users" && $user?.is_admin}
-          <div class="eyebrow">Administration</div>
           <h3>Users</h3>
           <p class="hint">Admin-only. Create new accounts, toggle admin, and remove users.</p>
           {#if usersErr}<p class="error" data-testid="users-error">{usersErr}</p>{/if}
           {#if usersMsg}<p class="ok" data-testid="users-msg">{usersMsg}</p>{/if}
 
-          <div class="card">
-          <div class="card-head"><h4>New user</h4></div>
+          <h4>New user</h4>
           <div class="row">
             <label>
               <span>Username</span>
@@ -2001,7 +1965,6 @@
             >
               {usersBusy === "create" ? "Creating…" : "Create user"}
             </button>
-          </div>
           </div>
 
           <h4>Existing users</h4>
@@ -2063,7 +2026,6 @@
         {/if}
 
         {#if section === "session" && $user?.is_admin}
-          <div class="eyebrow">Administration</div>
           <h3>Sessions</h3>
           <p class="hint">
             Server-wide session lifetime — how long a freshly-issued login cookie stays valid.
@@ -2078,7 +2040,6 @@
               <span style="opacity:0.6">({sessionTTL.source === "admin" ? "set in admin UI" : "default / env var"})</span>
             </p>
           {/if}
-          <div class="card">
           <label class="pref-row">
             <span>Preset</span>
             <select bind:value={sessionTTLDraft} data-testid="session-preset">
@@ -2103,11 +2064,9 @@
               {sessionBusy ? "Saving…" : "Save"}
             </button>
           </div>
-          </div>
         {/if}
 
         {#if section === "email" && $user?.is_admin}
-          <div class="eyebrow">Administration</div>
           <h3>Email / SMTP</h3>
           <p class="hint">
             Configure the relay used for daily digest emails. These fields override the
@@ -2200,7 +2159,6 @@
         {/if}
 
         {#if section === "feeds"}
-          <div class="eyebrow">Reading</div>
           <h3>Feeds</h3>
           <p class="hint">Server-wide controls for how Ember fetches your feeds. Admin only.</p>
           {#if feedErr}<p class="error" data-testid="feeds-error">{feedErr}</p>{/if}
@@ -2256,9 +2214,7 @@
         {/if}
 
         {#if section === "about"}
-          <div class="eyebrow">System</div>
           <h3>About</h3>
-          <p class="hint">Build information and project links.</p>
           <dl class="kv">
             <dt>Version</dt>
             <dd>
@@ -2493,49 +2449,12 @@
     [style*="grid-template-columns:1fr 1fr"] { grid-template-columns: 1fr !important; }
   }
 
-  /* Section header (mockup): large Fraunces title, then — when present — a
-     Newsreader subtitle, with a full-width gold→line→transparent rule below the
-     header block. The rule is non-text decoration so it sidesteps the WCAG
-     gold-on-paper contrast limit that affects gold *text*. */
   h3 {
     font-family: var(--font-display);
-    font-size: 29px;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    margin: 2px 0 22px;
-    padding-bottom: 16px;
+    font-size: 17px;
+    font-weight: 500;
+    margin: 0 0 12px;
     color: var(--ink);
-    position: relative;
-  }
-  h3::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: 1px;
-    background: linear-gradient(90deg, color-mix(in srgb, var(--gold) 50%, transparent), var(--line) 30%, transparent);
-  }
-  /* When a subtitle follows, the rule moves below it instead. */
-  h3:has(+ .hint) { padding-bottom: 0; margin-bottom: 9px; }
-  h3:has(+ .hint)::after { display: none; }
-  h3 + .hint {
-    font-family: var(--font-read);
-    font-size: 15px;
-    color: var(--ink-faint);
-    max-width: 56ch;
-    margin: 0 0 24px;
-    padding-bottom: 18px;
-    position: relative;
-  }
-  h3 + .hint::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: 1px;
-    background: linear-gradient(90deg, color-mix(in srgb, var(--gold) 50%, transparent), var(--line) 30%, transparent);
   }
   h4 {
     font-size: 11.5px;
@@ -2606,10 +2525,9 @@
   .seg {
     display: inline-flex;
     border: 1px solid var(--line);
-    border-radius: 11px;
-    background: var(--paper-2);
-    padding: 3px;
-    gap: 2px;
+    border-radius: 20px;
+    overflow: hidden;
+    background: var(--card);
   }
   .seg button {
     /* Equal width across all buttons in a group so the segmented control
@@ -2617,18 +2535,17 @@
        Monthly vary by 2-3 characters). flex: 1 distributes available space;
        min-width keeps single-char labels from collapsing. */
     flex: 1 1 0;
-    min-width: 60px;
-    padding: 6px 13px;
+    min-width: 64px;
+    padding: 5px 12px;
     font-size: 12px;
     font-weight: 600;
     color: var(--ink-faint);
     background: transparent;
     border: none;
-    border-radius: 8px;
     cursor: pointer;
     text-align: center;
   }
-  .seg button.on { background: var(--card); color: var(--ember); box-shadow: 0 1px 2px rgba(33, 29, 24, 0.1); }
+  .seg button.on { background: var(--ink); color: var(--paper); }
 
   /* Theme grid: tiles with three-stripe color preview each. The .swatches
      inner spans render per-theme via [data-theme-preview="..."] selectors so
@@ -3055,14 +2972,10 @@
   }
   .stat-num {
     font-family: var(--font-display);
-    font-size: 30px;
-    font-weight: 600;
-    letter-spacing: -0.02em;
+    font-size: 28px;
+    font-weight: 500;
+    color: var(--ember);
     line-height: 1;
-    background: linear-gradient(120deg, var(--ember), var(--gold));
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
   }
   .stat-label {
     font-size: 11.5px;
@@ -3181,74 +3094,4 @@
     font-size: 11.5px;
     color: var(--ink-faint);
   }
-
-  /* ---- Redesign system (2026-06-10) ----------------------------------- */
-  /* Section header: gold eyebrow (group name) above the Fraunces title.
-     Eyebrow uses --ink-faint, NOT gold: gold-on-paper fails WCAG AA for
-     small bold text (same reason the nav-label is ink-faint). */
-  .eyebrow {
-    font-size: 10.5px;
-    font-weight: 700;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--ink-faint);
-    margin-bottom: 7px;
-  }
-  /* Grouped settings card — same shell as .import-card, reused everywhere. */
-  .card {
-    background: var(--card);
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    box-shadow: var(--shadow-card);
-    margin-bottom: 16px;
-    padding: 4px 18px;
-  }
-  .card-head {
-    padding: 13px 0 10px;
-    border-bottom: 1px solid var(--line-soft);
-    margin-bottom: 4px;
-  }
-  .card-head h4 {
-    margin: 0;
-    font-family: var(--font-display);
-    font-weight: 600;
-    font-size: 15px;
-    text-transform: none;
-    letter-spacing: 0;
-    color: var(--ink);
-  }
-  /* A full-width stacked field inside a card (passwords, URLs, long inputs). */
-  .field { display: flex; flex-direction: column; gap: 5px; padding: 12px 0; border-top: 1px solid var(--line-soft); margin: 0; }
-  .field:first-child { border-top: 0; }
-  .field > span:first-child { color: var(--ink-faint); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; font-size: 10.5px; }
-  .field input, .field select { width: 100%; }
-  .field .pref-hint { text-transform: none; letter-spacing: 0; font-weight: 400; }
-
-  /* Profile identity header. */
-  .identity { display: flex; align-items: center; gap: 16px; margin-bottom: 22px; }
-  .identity .avatar {
-    width: 60px; height: 60px; border-radius: 16px; display: grid; place-items: center;
-    font-family: var(--font-display); font-weight: 600; font-size: 26px; color: #fff;
-    background: linear-gradient(150deg, var(--ember), var(--gold)); box-shadow: var(--shadow-card);
-  }
-  .identity .who { font-family: var(--font-display); font-weight: 600; font-size: 20px; }
-  .identity .mail { color: var(--ink-faint); font-size: 13.5px; margin-top: 2px; }
-  .badge-admin {
-    display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
-    color: var(--ember); background: var(--ember-wash);
-    border: 1px solid color-mix(in srgb, var(--ember) 30%, transparent);
-    padding: 2px 8px; border-radius: 20px; margin-left: 8px; vertical-align: middle;
-  }
-
-  /* Consistent soft shadow on the existing card-ish blocks. */
-  .stat-card, .pack, .rec-row, .toggle-row { box-shadow: var(--shadow-card); }
-
-  /* Reading-stats ranked feed bars (mockup). */
-  .rank-row { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-top: 1px solid var(--line-soft); }
-  .rank-row:first-of-type { border-top: 0; }
-  .rank-n { font-family: var(--font-display); font-size: 15px; font-weight: 600; color: var(--ink-faint); width: 20px; flex: 0 0 20px; }
-  .rank-name { flex: 0 0 132px; min-width: 0; font-size: 13px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .rank-bar { flex: 1; height: 7px; border-radius: 6px; background: var(--paper-2); overflow: hidden; }
-  .rank-bar i { display: block; height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--ember), var(--gold)); }
-  .rank-v { font-size: 12.5px; color: var(--ink-faint); width: 36px; flex: 0 0 36px; text-align: right; }
 </style>
