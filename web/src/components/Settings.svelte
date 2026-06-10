@@ -1478,6 +1478,7 @@
         {#if section === "stats"}
           <div class="eyebrow">Reading</div>
           <h3>Reading stats</h3>
+          <p class="hint">Your reading activity over the last 30 days.</p>
           {#if statsErr}<p class="error">{statsErr}</p>{/if}
           {#if !statsData}
             <p class="muted">Loading…</p>
@@ -1509,15 +1510,18 @@
               </div>
             </div>
             {#if statsData.top_feeds && statsData.top_feeds.length > 0}
-              <h4>Top feeds (last 30 days)</h4>
-              <table class="llm-table">
-                <thead><tr><th>Feed</th><th>Read</th></tr></thead>
-                <tbody>
-                  {#each statsData.top_feeds as f (f.feed_id)}
-                    <tr><td>{f.title}</td><td>{f.read_count}</td></tr>
-                  {/each}
-                </tbody>
-              </table>
+              {@const maxRead = Math.max(...statsData.top_feeds.map((f) => f.read_count), 1)}
+              <div class="card">
+                <div class="card-head"><h4>Top feeds · last 30 days</h4></div>
+                {#each statsData.top_feeds as f, i (f.feed_id)}
+                  <div class="rank-row">
+                    <span class="rank-n">{i + 1}</span>
+                    <span class="rank-name">{f.title}</span>
+                    <span class="rank-bar"><i style="width:{Math.round((f.read_count / maxRead) * 100)}%"></i></span>
+                    <span class="rank-v">{f.read_count}</span>
+                  </div>
+                {/each}
+              </div>
             {/if}
           {/if}
         {/if}
@@ -2254,6 +2258,7 @@
         {#if section === "about"}
           <div class="eyebrow">System</div>
           <h3>About</h3>
+          <p class="hint">Build information and project links.</p>
           <dl class="kv">
             <dt>Version</dt>
             <dd>
@@ -2488,36 +2493,49 @@
     [style*="grid-template-columns:1fr 1fr"] { grid-template-columns: 1fr !important; }
   }
 
+  /* Section header (mockup): large Fraunces title, then — when present — a
+     Newsreader subtitle, with a full-width gold→line→transparent rule below the
+     header block. The rule is non-text decoration so it sidesteps the WCAG
+     gold-on-paper contrast limit that affects gold *text*. */
   h3 {
     font-family: var(--font-display);
-    font-size: 25px;
+    font-size: 29px;
     font-weight: 600;
     letter-spacing: -0.02em;
-    margin: 0 0 20px;
-    padding-bottom: 14px;
+    margin: 2px 0 22px;
+    padding-bottom: 16px;
     color: var(--ink);
-    border-bottom: 1px solid var(--line);
     position: relative;
   }
-  /* Gold accent under the section title — non-text decoration, so it sidesteps
-     the WCAG gold-on-paper contrast limit that affects gold *text*. */
   h3::after {
     content: "";
     position: absolute;
     left: 0;
-    bottom: -1px;
-    width: 54px;
-    height: 2px;
-    border-radius: 2px;
-    background: linear-gradient(90deg, var(--gold), color-mix(in srgb, var(--gold) 8%, transparent));
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--gold) 50%, transparent), var(--line) 30%, transparent);
   }
-  /* The lead paragraph right under a section title reads as a subtitle. */
+  /* When a subtitle follows, the rule moves below it instead. */
+  h3:has(+ .hint) { padding-bottom: 0; margin-bottom: 9px; }
+  h3:has(+ .hint)::after { display: none; }
   h3 + .hint {
     font-family: var(--font-read);
-    font-size: 14.5px;
+    font-size: 15px;
     color: var(--ink-faint);
-    margin: -8px 0 18px;
     max-width: 56ch;
+    margin: 0 0 24px;
+    padding-bottom: 18px;
+    position: relative;
+  }
+  h3 + .hint::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--gold) 50%, transparent), var(--line) 30%, transparent);
   }
   h4 {
     font-size: 11.5px;
@@ -3037,10 +3055,14 @@
   }
   .stat-num {
     font-family: var(--font-display);
-    font-size: 28px;
-    font-weight: 500;
-    color: var(--ember);
+    font-size: 30px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
     line-height: 1;
+    background: linear-gradient(120deg, var(--ember), var(--gold));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
   .stat-label {
     font-size: 11.5px;
@@ -3220,4 +3242,13 @@
 
   /* Consistent soft shadow on the existing card-ish blocks. */
   .stat-card, .pack, .rec-row, .toggle-row { box-shadow: var(--shadow-card); }
+
+  /* Reading-stats ranked feed bars (mockup). */
+  .rank-row { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-top: 1px solid var(--line-soft); }
+  .rank-row:first-of-type { border-top: 0; }
+  .rank-n { font-family: var(--font-display); font-size: 15px; font-weight: 600; color: var(--ink-faint); width: 20px; flex: 0 0 20px; }
+  .rank-name { flex: 0 0 132px; min-width: 0; font-size: 13px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rank-bar { flex: 1; height: 7px; border-radius: 6px; background: var(--paper-2); overflow: hidden; }
+  .rank-bar i { display: block; height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--ember), var(--gold)); }
+  .rank-v { font-size: 12.5px; color: var(--ink-faint); width: 36px; flex: 0 0 36px; text-align: right; }
 </style>
