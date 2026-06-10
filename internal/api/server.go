@@ -181,6 +181,7 @@ func NewRouter(d Dependencies) http.Handler {
 		r.With(d.Auth.RequireAuth).Post("/auth/logout", d.handleLogout)
 		r.With(d.Auth.RequireAuth).Get("/me", d.handleMe)
 		r.With(d.Auth.RequireAuth).Patch("/me/settings", d.handleUpdateSettings)
+		r.With(d.Auth.RequireAuth).Patch("/me/email", d.handleUpdateEmail)
 		r.With(d.Auth.RequireAuth).Post("/me/password", d.handleChangePassword)
 		// Passkeys (self-service registration + management).
 		r.With(d.Auth.RequireAuth).Get("/me/passkeys", d.handleListPasskeys)

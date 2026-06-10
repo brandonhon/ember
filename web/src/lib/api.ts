@@ -88,6 +88,8 @@ export const api = {
     call<{ ok: boolean }>("POST", "/api/me/password", { old_password, new_password }),
   updateSettings: (settings_json: string) =>
     call<unknown>("PATCH", "/api/me/settings", { settings_json }),
+  updateEmail: (email: string) =>
+    call<{ email: string }>("PATCH", "/api/me/email", { email }),
 
   // Users -------------------------------------------------------------
   listUsers: () => call<User[]>("GET", "/api/users"),

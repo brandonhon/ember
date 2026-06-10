@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/mail"
+	"strings"
 	"time"
 
 	"github.com/brandonhon/ember/internal/auth"
@@ -188,4 +190,35 @@ func (d *Dependencies) handleUpdateSettings(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
+}
+
+type updateEmailReq struct {
+	Email string `json:"email"`
+}
+
+// handleUpdateEmail lets a signed-in user set or clear their own profile email
+// (used for the daily digest + account contact). Empty clears it; a non-empty
+// value must parse as a single RFC 5322 address. Self-service only — the admin
+// Users section can still set anyone's email.
+func (d *Dependencies) handleUpdateEmail(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.FromContext(r.Context())
+	var req updateEmailReq
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	email := strings.TrimSpace(req.Email)
+	if len(email) > 254 {
+		writeError(w, http.StatusBadRequest, "bad_request", "email too long")
+		return
+	}
+	if email != "" {
+		if _, err := mail.ParseAddress(email); err != nil {
+			writeError(w, http.StatusBadRequest, "bad_request", "not a valid email address")
+			return
+		}
+	}
+	if mapStoreError(w, d.Store.UpdateUser(r.Context(), u.ID, store.UpdateUserPatch{Email: &email})) {
+		return
+	}
+	writeData(w, http.StatusOK, map[string]string{"email": email}, nil)
 }

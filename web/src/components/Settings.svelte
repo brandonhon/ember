@@ -988,6 +988,27 @@
     }
   }
 
+  // --- Profile email (self-service) ---------------------------------------
+  let profileEmail = $state($user?.email ?? "");
+  let profileEmailBusy = $state(false);
+  let profileEmailMsg = $state("");
+  let profileEmailErr = $state("");
+  async function saveProfileEmail() {
+    profileEmailMsg = "";
+    profileEmailErr = "";
+    profileEmailBusy = true;
+    try {
+      await api.updateEmail(profileEmail.trim());
+      await refreshMe();
+      profileEmailMsg = "Email saved.";
+    } catch (e) {
+      profileEmailErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      profileEmailBusy = false;
+      setTimeout(() => (profileEmailMsg = ""), 4000);
+    }
+  }
+
   // Persist theme + density to localStorage so they survive reload.
   $effect(() => {
     if (typeof localStorage === "undefined") return;
@@ -1172,12 +1193,26 @@
         {#if section === "profile"}
           <div class="eyebrow">Account</div>
           <h3>Profile</h3>
-          <p class="hint">Your identity on this server. Email is managed by your administrator.</p>
+          <p class="hint">Your account on this server — set your email, manage your password.</p>
           <div class="identity">
             <div class="avatar">{($user?.username ?? "?").slice(0, 1).toUpperCase()}</div>
             <div>
               <div class="who">{$user?.username}{#if $user?.is_admin}<span class="badge-admin">admin</span>{/if}</div>
               <div class="mail">{$user?.email || "No email set"}</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h4>Account details</h4></div>
+            <label class="pref-row">
+              <div><div class="pref-label">Email address</div><div class="pref-hint">Used for the daily digest and account contact. Leave blank to clear.</div></div>
+              <input class="row-input" type="email" bind:value={profileEmail} placeholder="you@example.com" data-testid="profile-email" />
+            </label>
+            {#if profileEmailErr}<p class="error" data-testid="profile-email-err">{profileEmailErr}</p>{/if}
+            {#if profileEmailMsg}<p class="ok" data-testid="profile-email-msg">{profileEmailMsg}</p>{/if}
+            <div class="actions">
+              <button on:click={saveProfileEmail} disabled={profileEmailBusy} data-testid="profile-email-save">
+                {profileEmailBusy ? "Saving…" : "Save email"}
+              </button>
             </div>
           </div>
           <div class="card">
