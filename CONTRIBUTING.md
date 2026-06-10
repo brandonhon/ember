@@ -50,6 +50,27 @@ EMBER_TEST_MODE=1 ./bin/ember
 # open http://localhost:5173
 ```
 
+### Full-feature sandbox
+
+To click through *every* feature against a fully-seeded database (two users,
+folders, feeds in varied states, articles across all time windows, read/star/
+later/shared state, cross-feed dedup, filters, boards, tags, saved searches, an
+email inbox, non-default admin settings) plus a live local Ollama for AI
+summaries:
+
+```
+make sandbox        # builds the image from the develop branch, seeds everything
+# → http://localhost:8095   admin/admintest, reader/readerpass
+make sandbox-down   # stop + wipe its volumes
+```
+
+`make sandbox` always builds from **develop** (via `git archive develop`), so it
+reflects the integration branch regardless of the branch you're on. It runs an
+isolated compose project (`ember-sandbox`) with its own volumes — it won't touch
+any real deploy. The first run pulls the Ollama model in the background (a few
+minutes) before AI summaries appear. Some features can't be pre-seeded and need
+live interaction: passkeys, Web Push, OPML/TT-RSS import, and SMTP email flows.
+
 ## Before opening a PR
 
 ```

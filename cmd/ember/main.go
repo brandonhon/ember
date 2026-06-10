@@ -48,6 +48,11 @@ func main() {
 		case "probe":
 			runProbe()
 			return
+		case "seed":
+			// Populate the database with the full-feature fixture set used by
+			// `make sandbox`. Reads the same env/config as the server.
+			runSeedFull()
+			return
 		}
 	}
 	if err := run(); err != nil {
