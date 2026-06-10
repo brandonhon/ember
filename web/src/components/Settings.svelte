@@ -1219,27 +1219,30 @@
             {#if passkeyErr}<p class="error">{passkeyErr}</p>{/if}
             {#if passkeyMsg}<p class="ok">{passkeyMsg}</p>{/if}
 
-            <h4>Add a passkey</h4>
-            <label>
-              <span>Name this device</span>
-              <input
-                type="text"
-                bind:value={newPasskeyName}
-                placeholder="e.g. MacBook Touch ID"
-                maxlength="60"
-              />
-            </label>
-            <div class="actions">
-              <button
-                on:click={addPasskey}
-                disabled={passkeyBusy === "register"}
-                data-testid="passkey-register"
-              >
-                {passkeyBusy === "register" ? "Waiting for device…" : "Register passkey"}
-              </button>
+            <div class="card">
+              <div class="card-head"><h4>Add a passkey</h4></div>
+              <label class="field">
+                <span>Name this device</span>
+                <input
+                  type="text"
+                  bind:value={newPasskeyName}
+                  placeholder="e.g. MacBook Touch ID"
+                  maxlength="60"
+                />
+              </label>
+              <div class="actions">
+                <button
+                  on:click={addPasskey}
+                  disabled={passkeyBusy === "register"}
+                  data-testid="passkey-register"
+                >
+                  {passkeyBusy === "register" ? "Waiting for device…" : "Register passkey"}
+                </button>
+              </div>
             </div>
 
-            <h4>Your passkeys</h4>
+            <div class="card">
+            <div class="card-head"><h4>Your passkeys</h4></div>
             {#if passkeys.length === 0}
               <p class="hint">No passkeys registered yet.</p>
             {:else}
@@ -1266,6 +1269,7 @@
                 {/each}
               </ul>
             {/if}
+            </div>
           {/if}
         {/if}
 
@@ -1284,20 +1288,22 @@
               <a href="https://brandonhon.github.io/ember/email-inbox" target="_blank" rel="noopener noreferrer">the setup docs</a>.
             </div>
           {:else if inbox && inbox.address}
-            <div class="kv" style="grid-template-columns: 1fr auto;">
-              <dt>Your address</dt>
-              <dd>
-                <code data-testid="inbox-address">{inbox.address}</code>
-              </dd>
+            <div class="card">
+              <div class="kv" style="grid-template-columns: 1fr auto;">
+                <dt>Your address</dt>
+                <dd>
+                  <code data-testid="inbox-address">{inbox.address}</code>
+                </dd>
+              </div>
+              <div class="actions" style="margin-top: 12px;">
+                <button on:click={copyInboxAddress} data-testid="inbox-copy">Copy address</button>
+                <button class="ghost" on:click={onRotateInbox} disabled={inboxBusy} data-testid="inbox-rotate">
+                  {inboxBusy ? "Rotating…" : "Rotate address"}
+                </button>
+              </div>
+              {#if inboxErr}<p class="error" data-testid="inbox-err">{inboxErr}</p>{/if}
+              {#if inboxMsg}<p class="ok" data-testid="inbox-msg">{inboxMsg}</p>{/if}
             </div>
-            <div class="actions" style="margin-top: 12px;">
-              <button on:click={copyInboxAddress} data-testid="inbox-copy">Copy address</button>
-              <button class="ghost" on:click={onRotateInbox} disabled={inboxBusy} data-testid="inbox-rotate">
-                {inboxBusy ? "Rotating…" : "Rotate address"}
-              </button>
-            </div>
-            {#if inboxErr}<p class="error" data-testid="inbox-err">{inboxErr}</p>{/if}
-            {#if inboxMsg}<p class="ok" data-testid="inbox-msg">{inboxMsg}</p>{/if}
             <p class="hint" style="margin-top: 14px;">
               Sign up for a newsletter using this address. New issues
               show up in the Newsletters feed within seconds of arrival.
@@ -1332,7 +1338,8 @@
             </div>
             {#if pushErr}<p class="error" data-testid="push-err">{pushErr}</p>{/if}
             {#if pushMsg}<p class="ok" data-testid="push-msg">{pushMsg}</p>{/if}
-            <h4>Registered devices</h4>
+            <div class="card">
+            <div class="card-head"><h4>Registered devices</h4></div>
             {#if pushSubs.length === 0}
               <p class="hint">No devices registered yet.</p>
             {:else}
@@ -1349,6 +1356,7 @@
                 {/each}
               </ul>
             {/if}
+            </div>
           {/if}
         {/if}
 
@@ -1455,12 +1463,15 @@
         {#if section === "filters"}
           <div class="eyebrow">Reading</div>
           <h3>Filters</h3>
-          <p class="hint">
-            Rules applied to new articles as they arrive. Open the editor to add, disable, or
-            delete filters.
-          </p>
-          <div class="actions">
-            <button on:click={() => (showFilters = true)} data-testid="open-filters">Open filter editor</button>
+          <p class="hint">Rules applied to new articles as they arrive — tag, star, hide, or file into a board.</p>
+          <div class="card">
+            <div class="pref-row">
+              <div>
+                <div class="pref-label">Filter rules</div>
+                <div class="pref-hint">Add, reorder, disable, or delete the rules applied at ingest.</div>
+              </div>
+              <button on:click={() => (showFilters = true)} data-testid="open-filters" class="pack-btn">Open filter editor</button>
+            </div>
           </div>
         {/if}
 
@@ -1520,6 +1531,7 @@
           {#if !digest}
             <p class="muted">Loading…</p>
           {:else}
+            <div class="card">
             <div class="pref-row">
               <div>
                 <div class="pref-label">Enabled</div>
@@ -1531,7 +1543,7 @@
               </div>
             </div>
 
-            <label>
+            <label class="field">
               <span>View</span>
               <select bind:value={digest.view_value} on:change={() => (digest!.view_kind = "smart")} data-testid="digest-view">
                 <option value="fresh">Fresh (last 24h)</option>
@@ -1554,7 +1566,7 @@
               </label>
             </div>
 
-            <label>
+            <label class="field">
               <span>Email override</span>
               <input type="email" bind:value={digest.email_override} placeholder="optional — defaults to your account email" data-testid="digest-email" />
             </label>
@@ -1563,6 +1575,7 @@
               <button on:click={saveDigest} disabled={digestBusy} data-testid="digest-save">
                 {digestBusy ? "Saving…" : "Save"}
               </button>
+            </div>
             </div>
           {/if}
         {/if}
@@ -3186,7 +3199,7 @@
   .field { display: flex; flex-direction: column; gap: 5px; padding: 12px 0; border-top: 1px solid var(--line-soft); margin: 0; }
   .field:first-child { border-top: 0; }
   .field > span:first-child { color: var(--ink-faint); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; font-size: 10.5px; }
-  .field input { width: 100%; }
+  .field input, .field select { width: 100%; }
   .field .pref-hint { text-transform: none; letter-spacing: 0; font-weight: 400; }
 
   /* Profile identity header. */
