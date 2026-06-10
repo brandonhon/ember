@@ -1279,7 +1279,7 @@
             <div class="hint">
               The administrator hasn't configured an email domain
               (<code>EMBER_EMAIL_DOMAIN</code>). See
-              <a href="/docs/email-inbox" target="_blank" rel="noopener noreferrer">the setup docs</a>.
+              <a href="https://brandonhon.github.io/ember/email-inbox" target="_blank" rel="noopener noreferrer">the setup docs</a>.
             </div>
           {:else if inbox && inbox.address}
             <div class="kv" style="grid-template-columns: 1fr auto;">

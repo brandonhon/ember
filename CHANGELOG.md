@@ -57,8 +57,9 @@ full commit-level list; this file curates the highlights and behavior changes.
   text so you can type the new name without clearing it first.
 - The empty reading pane is centered and no longer shows the redundant "Pick a
   story" heading.
-- Settings links (e.g. the email-inbox setup docs) use the brand link color
-  instead of default browser blue.
+- Settings links use the brand link color instead of default browser blue, and
+  the email-inbox setup-docs link now points at the live docs page (was a dead
+  `/docs/...` path).
 
 ## [0.8.7] - 2026-06-08
 
