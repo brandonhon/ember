@@ -835,7 +835,13 @@
   ];
 
   // --- Feeds section (admin: poll interval) ----------------------------
-  let feedSettings = $state({ poll_min_interval_seconds: 1800 });
+  let feedSettings = $state({
+    poll_min_interval_seconds: 1800,
+    reading_window_hours: 24,
+    search_window_hours: 48,
+    window_hours_floor: 24,
+    window_hours_ceil: 168,
+  });
   let feedBusy = $state(false);
   let feedMsg = $state("");
   let feedErr = $state("");
@@ -844,6 +850,10 @@
     try {
       const res = await api.getAdminSettings();
       feedSettings.poll_min_interval_seconds = res.data.poll_min_interval_seconds;
+      feedSettings.reading_window_hours = res.data.reading_window_hours;
+      feedSettings.search_window_hours = res.data.search_window_hours;
+      feedSettings.window_hours_floor = res.data.window_hours_floor;
+      feedSettings.window_hours_ceil = res.data.window_hours_ceil;
     } catch (e) {
       feedErr = e instanceof ApiError ? e.message : String(e);
     }
@@ -855,8 +865,12 @@
     try {
       const res = await api.setAdminSettings({
         poll_min_interval_seconds: Number(feedSettings.poll_min_interval_seconds) || 1800,
+        reading_window_hours: Number(feedSettings.reading_window_hours) || 24,
+        search_window_hours: Number(feedSettings.search_window_hours) || 48,
       });
       feedSettings.poll_min_interval_seconds = res.data.poll_min_interval_seconds;
+      feedSettings.reading_window_hours = res.data.reading_window_hours;
+      feedSettings.search_window_hours = res.data.search_window_hours;
       feedMsg = "Saved";
     } catch (e) {
       feedErr = e instanceof ApiError ? e.message : String(e);
@@ -2165,6 +2179,33 @@
             </select>
           </label>
 
+          <h4 style="margin-top:18px;">Reading window</h4>
+          <p class="hint">
+            Today, a feed, and a category show only articles published within this many hours
+            (newest first). Older articles are kept for search but hidden from these views and
+            from the unread counts. Range: {feedSettings.window_hours_floor}–{feedSettings.window_hours_ceil} hours
+            (capped at the 1-week retention window).
+          </p>
+          <label>
+            Show last
+            <input type="number" min={feedSettings.window_hours_floor} max={feedSettings.window_hours_ceil}
+              bind:value={feedSettings.reading_window_hours} data-testid="reading-window-hours" style="width:120px;" /> hours
+          </label>
+
+          <h4 style="margin-top:18px;">Search window</h4>
+          <p class="hint">
+            Full-text search matches articles published within this many hours. Default 48.
+            It can't exceed the {feedSettings.window_hours_ceil}-hour retention window — you can't
+            search what's already been pruned (the safeguard).
+          </p>
+          <label>
+            Search last
+            <input type="number" min={feedSettings.window_hours_floor} max={feedSettings.window_hours_ceil}
+              bind:value={feedSettings.search_window_hours} data-testid="search-window-hours" style="width:120px;" /> hours
+          </label>
+
+          {#if feedMsg}<p class="hint" data-testid="feed-settings-msg">{feedMsg}</p>{/if}
+          {#if feedErr}<p class="error" data-testid="feed-settings-err">{feedErr}</p>{/if}
           <div class="actions" style="margin-top:12px;">
             <button on:click={saveFeedSettings} disabled={feedBusy} data-testid="poll-interval-save">
               {feedBusy ? "Saving…" : "Save"}
@@ -2578,6 +2619,23 @@
   .actions button:hover:not(:disabled) { background: var(--ember-soft); }
   .actions button.ghost:hover { background: var(--line-soft); }
   .actions button:disabled { opacity: 0.5; cursor: not-allowed; }
+  /* Standalone secondary button: same look as `.actions button.ghost` for the
+     ghost buttons that live outside an `.actions` row (Copy key, Export OPML,
+     Reset branding, Rotate inbox, Test push). Without this they fell back to
+     the unstyled browser default — the reported "buttons don't match" bug. */
+  .ghost {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--line);
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-family: var(--font-ui);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .ghost:hover:not(:disabled) { background: var(--line-soft); }
+  .ghost:disabled { opacity: 0.5; cursor: not-allowed; }
 
   /* Settings list rows (passkeys, push devices, etc.). Shared shell so a
      registered passkey and a push-subscribed device read as members of
