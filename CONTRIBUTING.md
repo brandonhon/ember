@@ -53,9 +53,11 @@ EMBER_TEST_MODE=1 ./bin/ember
 ### Full-feature sandbox
 
 To click through *every* feature against a fully-seeded database (two users,
-folders, feeds in varied states, articles across all time windows, read/star/
-later/shared state, cross-feed dedup, filters, boards, tags, saved searches, an
-email inbox, non-default admin settings) plus a live local Ollama for AI
+folders, feeds in varied states, ~115 articles across all time windows incl. a
+high-volume "Firehose" feed so **Load more** + **Mark all read** are
+exercisable, read/star/later/shared state, cross-feed dedup, filters, boards,
+tags, saved searches, an email inbox, a tail of unsummarized articles to drive
+the live summarizer, non-default admin settings) plus a live local Ollama for AI
 summaries:
 
 ```

@@ -147,6 +147,7 @@ func seedFull(ctx context.Context, st *store.Store, a *auth.Auth, cfg config.Con
 		{"reuters", "Reuters World", "https://reutersworld.test/feed", "https://www.reuters.com", "World", 0, false},
 		{"flaky", "Flaky Feed", "https://flaky.test/feed", "https://flaky.test", "News", 5, false},
 		{"noisy", "Noisy Newswire", "https://noisy.test/feed", "https://noisy.test", "News", 0, true},
+		{"firehose", "Firehose Daily", "https://firehose.test/feed", "https://firehose.test", "News", 0, false},
 	}
 	for _, f := range feeds {
 		if err := subscribe(f.key, f.title, f.url, f.site, f.cat, f.errCount, f.muted); err != nil {
@@ -218,6 +219,62 @@ func seedFull(ctx context.Context, st *store.Store, a *auth.Auth, cfg config.Con
 		artID = append(artID, id)
 	}
 
+	// --- Bulk volume so paging + mark-all-read are exercisable. The "Firehose"
+	// feed gets 64 recent unread articles (>50 → Load more in the feed view AND
+	// in Fresh / Today / All Unread); the shared "update"/"AI" keywords make
+	// search paginate too (>25 hits). 30 more spread across the other feeds
+	// inside the 48h reading window. Every bulk item shares the same word pool
+	// so a search like "update" returns far more than one page.
+	bulkIDs := make([]int64, 0, 96)
+	for i := 0; i < 64; i++ {
+		// Stagger within the last ~5h so they all land in the 6h Fresh window.
+		pub := now.Add(-time.Duration(i*4) * time.Minute).Unix()
+		summary := ""
+		if i%3 == 0 {
+			summary = "• Auto-generated digest point\n• Second point\n• Third point"
+		}
+		id, err := addArticle("firehose",
+			fmt.Sprintf("Firehose update #%02d — release notes and AI roundup", i+1),
+			fmt.Sprintf("<p>Item %d in the firehose, mentioning AI, release, and update for search testing.</p>", i+1),
+			summary, pub)
+		if err != nil {
+			return err
+		}
+		bulkIDs = append(bulkIDs, id)
+	}
+	spread := []string{"verge", "ars", "smashing", "reuters"}
+	for i := 0; i < 30; i++ {
+		pub := now.Add(-time.Duration(2+i) * time.Hour).Unix() // 2h..31h ago
+		f := spread[i%len(spread)]
+		id, err := addArticle(f,
+			fmt.Sprintf("%s briefing %d: an AI + design + world-news update", f, i+1),
+			fmt.Sprintf("<p>Briefing %d with an AI update and a release mention.</p>", i+1),
+			"", pub)
+		if err != nil {
+			return err
+		}
+		bulkIDs = append(bulkIDs, id)
+	}
+
+	// --- Pending-summary tail: 10 firehose items left UNSUMMARIZED on purpose.
+	// With AI on they're hidden by the summary gate until the Ollama worker
+	// stamps them — which is what drives the sidebar "Summarizing N…" indicator
+	// and proves the gate. (Stamped bulk above stays visible for paging.)
+	for i := 0; i < 10; i++ {
+		artN++
+		guid := fmt.Sprintf("pending-%d", artN)
+		if _, _, err := st.UpsertArticle(ctx, models.Article{
+			FeedID: feedID["firehose"], GUID: guid,
+			Title:       fmt.Sprintf("Pending summary #%d (awaiting the AI worker)", i+1),
+			URL:         "https://example.test/posts/" + guid,
+			ContentHTML: "<p>Unsummarized on purpose — hidden until the summarizer stamps it.</p>",
+			ContentText: "Unsummarized pending article.",
+			ContentHash: "h-" + guid, PublishedAt: now.Add(-time.Duration(i) * time.Minute).Unix(),
+		}); err != nil {
+			return fmt.Errorf("pending article: %w", err)
+		}
+	}
+
 	// --- Cross-feed dedup: same headline syndicated by Reuters + The Verge in
 	// the Fresh window → collapses to one card with the "Also in 2" pill. ---
 	for _, d := range []struct{ feed, title, url string }{
@@ -237,12 +294,23 @@ func seedFull(ctx context.Context, st *store.Store, a *auth.Auth, cfg config.Con
 		_ = st.UpdateSummary(ctx, saved.ID, "", "skipped")
 	}
 
-	// --- Per-user state: read / starred / read-later / shared. ---
-	_ = st.SetRead(ctx, admin.ID, []int64{artID[4], artID[5]}, true) // two older ones read
+	// --- Per-user state: read / starred / read-later / shared. The bulk pool
+	// feeds these so mark-all-read leaves plenty unread behind Load more, and
+	// reading stats have read history. (~15 read, ~14 starred, ~14 later.)
+	_ = st.SetRead(ctx, admin.ID, []int64{artID[4], artID[5]}, true)
+	for i := 0; i < 13 && i < len(bulkIDs); i++ {
+		_ = st.SetRead(ctx, admin.ID, []int64{bulkIDs[i]}, true)
+	}
 	_ = st.SetStarred(ctx, admin.ID, artID[0], true)
 	_ = st.SetStarred(ctx, admin.ID, artID[3], true)
+	for i := 20; i < 32 && i < len(bulkIDs); i++ {
+		_ = st.SetStarred(ctx, admin.ID, bulkIDs[i], true)
+	}
 	_ = st.SetLater(ctx, admin.ID, artID[1], true)
 	_ = st.SetLater(ctx, admin.ID, artID[2], true)
+	for i := 40; i < 52 && i < len(bulkIDs); i++ {
+		_ = st.SetLater(ctx, admin.ID, bulkIDs[i], true)
+	}
 	if _, err := st.CreateShare(ctx, models.Share{
 		ArticleID: artID[0], FromUser: admin.ID, ToUser: reader.ID, Note: "Thought you'd like this",
 	}); err != nil {
