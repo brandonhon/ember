@@ -19,6 +19,12 @@ full commit-level list; this file curates the highlights and behavior changes.
   treat a missing folder as 0 (not "unknown"), count the rendered list rather
   than the raw loaded page, and reconcile against the server after optimistic
   read toggles.
+- **Fever sync completeness** — `unread_item_ids` / `saved_item_ids` now return
+  the complete set (they were capped at 200) and are no longer cross-feed
+  deduplicated, so a Fever client's unread tally matches what Ember actually
+  holds. The `items` call honors `since_id` / `max_id` / `with_ids` paging and
+  reports the true `total_items`, letting clients sync the full backlog instead
+  of only the latest 50.
 
 ## [0.9.0] - 2026-06-10
 

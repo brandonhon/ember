@@ -115,6 +115,8 @@ Protect the SQLite file at the filesystem layer:
 
 The Fever-compatible endpoint (`/fever`) uses a per-user random 32-byte token stored in the `fever_token` column. Constant-time compare in the auth path. Lazy-backfilled on first `/api/me` hit for users created before the column existed. The token is shown to the owning user only via `/api/me`; admin user lists never include it.
 
+`unread_item_ids` / `saved_item_ids` return the user's complete id set (a Fever client diffs it against local state) — they are intentionally uncapped, so the response scales with the per-user unread/saved backlog (small integers; authenticated and per-user). Bulk item content is fetched only through the paginated `items` surface (`since_id` / `max_id` / `with_ids`, ≤ 50 per call).
+
 ## CVE posture
 
 - Go stdlib pinned to **1.26.4**.
