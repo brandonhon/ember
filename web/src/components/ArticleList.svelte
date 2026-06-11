@@ -204,6 +204,15 @@
     const ids = $articles.items.filter((a) => !a.is_read).map((a) => a.id);
     if (ids.length === 0) return;
     await setRead(ids, true);
+    // Fresh lists only unread articles, so the just-read cards no longer
+    // belong there — reload the view so they drop out and any unread behind
+    // "Load more" pages in. Other views (a feed, All Unread, a category) keep
+    // the cards visible after marking read, matching their existing behavior.
+    const v = $activeView;
+    if (v.kind === "smart" && v.view === "fresh") {
+      await loadArticles(v);
+      if (containerEl) containerEl.scrollTop = 0;
+    }
     // Reconcile the per-category badges (setRead doesn't touch that map).
     await refreshSidebar();
   }
