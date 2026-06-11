@@ -552,3 +552,75 @@ func TestCountSmartViews_FreshAppliesCrossFeedDedup(t *testing.T) {
 		t.Errorf("Fresh count not deduped: got %d, want 2", got.Fresh)
 	}
 }
+
+// TestCountSmartViews_StarredLaterMatchList locks in badge==list parity for the
+// Starred and Read Later smart views. The badges used to be a raw
+// COUNT(*) FROM article_state, so a starred/saved item living in a MUTED feed
+// (or duplicated across feeds) inflated the sidebar number above the list it
+// opens. They now route through CountArticles(View=starred/later), sharing the
+// muted-exclusion + cross-feed dedup the lists apply.
+func TestCountSmartViews_StarredLaterMatchList(t *testing.T) {
+	s := NewTest(t)
+	now := time.Unix(1_700_000_000, 0)
+	s.Now = func() time.Time { return now }
+	ctx := context.Background()
+	aliceID, normalFeed := seedUserAndFeed(t, s, "alice")
+
+	// A muted feed: starred/saved items here must NOT count or list.
+	muted, _ := s.UpsertFeed(ctx, models.Feed{URL: "https://muted.test/feed", Title: "Muted"})
+	subMuted, _ := s.Subscribe(ctx, models.Subscription{UserID: aliceID, FeedID: muted.ID})
+	mute := true
+	if err := s.UpdateSubscription(ctx, aliceID, subMuted.ID, UpdateSubscriptionPatch{Muted: &mute}); err != nil {
+		t.Fatal(err)
+	}
+	// A second normal feed that mirrors a URL from the first → cross-feed dup.
+	dupFeed, _ := s.UpsertFeed(ctx, models.Feed{URL: "https://dup.test/feed", Title: "Dup"})
+	if _, err := s.Subscribe(ctx, models.Subscription{UserID: aliceID, FeedID: dupFeed.ID}); err != nil {
+		t.Fatal(err)
+	}
+
+	mk := func(feedID int64, guid, url, title string) models.Article {
+		a := mkArticle(feedID, guid, title, "h-"+guid, now.Unix())
+		a.URL = url
+		return a
+	}
+	keep, _, _ := s.UpsertArticle(ctx, mk(normalFeed, "keep", "https://ex.com/keep", "Keep"))
+	hidden, _, _ := s.UpsertArticle(ctx, mk(muted.ID, "hidden", "https://ex.com/muted", "Muted star"))
+	dupA, _, _ := s.UpsertArticle(ctx, mk(normalFeed, "dupA", "https://ex.com/dup", "Dup A"))
+	dupB, _, _ := s.UpsertArticle(ctx, mk(dupFeed.ID, "dupB", "https://ex.com/dup", "Dup B"))
+
+	// Star all four; dedup keeps the lower-id dup row, mute hides `hidden`.
+	for _, id := range []int64{keep.ID, hidden.ID, dupA.ID, dupB.ID} {
+		if err := s.SetStarred(ctx, aliceID, id, true); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Save only the muted item for later → Later list/badge must both be 0.
+	if err := s.SetLater(ctx, aliceID, hidden.ID, true); err != nil {
+		t.Fatal(err)
+	}
+
+	counts, err := s.CountSmartViews(ctx, aliceID, 6*time.Hour, 0, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	starredList, err := s.ListArticles(ctx, aliceID, ListArticlesQuery{View: "starred"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// keep + one dup row = 2 (hidden muted out, dup collapsed). A raw COUNT(*)
+	// would have reported 4.
+	if len(starredList) != 2 {
+		t.Fatalf("starred list = %d, want 2 (muted excluded, dup collapsed): %+v", len(starredList), starredList)
+	}
+	if counts.Starred != len(starredList) {
+		t.Errorf("Starred badge=%d, list=%d — must match", counts.Starred, len(starredList))
+	}
+	laterList, err := s.ListArticles(ctx, aliceID, ListArticlesQuery{View: "later"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if counts.Later != len(laterList) || counts.Later != 0 {
+		t.Errorf("Later badge=%d, list=%d — want both 0 (only saved item is in a muted feed)", counts.Later, len(laterList))
+	}
+}
