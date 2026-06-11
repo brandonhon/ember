@@ -648,14 +648,20 @@ func (s *Store) CountSmartViews(ctx context.Context, userID int64, freshWindow t
 	}); err != nil {
 		return c, fmt.Errorf("count unread by category: %w", err)
 	}
-	if err := s.DB.QueryRowContext(ctx, `
-SELECT COUNT(*) FROM article_state WHERE user_id = ? AND is_starred = 1`,
-		userID).Scan(&c.Starred); err != nil {
+	// Starred + Read Later badges go through CountArticles (View=starred/later)
+	// so they apply the SAME muted-exclusion, cross-feed dedup, and summary gate
+	// as their lists. A raw COUNT(*) over article_state over-counts starred/saved
+	// items that live in muted feeds, are duplicated across feeds, or whose
+	// subscription is gone — making "Starred N" disagree with the column. No
+	// window: the starred/later lists show items of any age (freshAfter unset).
+	if c.Starred, err = s.CountArticles(ctx, userID, ListArticlesQuery{
+		View: "starred", OnlySummarized: onlySummarized,
+	}); err != nil {
 		return c, fmt.Errorf("count starred: %w", err)
 	}
-	if err := s.DB.QueryRowContext(ctx, `
-SELECT COUNT(*) FROM article_state WHERE user_id = ? AND is_later = 1`,
-		userID).Scan(&c.Later); err != nil {
+	if c.Later, err = s.CountArticles(ctx, userID, ListArticlesQuery{
+		View: "later", OnlySummarized: onlySummarized,
+	}); err != nil {
 		return c, fmt.Errorf("count later: %w", err)
 	}
 	if err := s.DB.QueryRowContext(ctx, `

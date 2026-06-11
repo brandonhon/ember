@@ -84,17 +84,30 @@ func (d *Dependencies) handleFever(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if _, ok := q["unread_item_ids"]; ok {
-		ids, _ := d.feverIDsForFlag(r.Context(), user.ID, "unread")
-		resp["unread_item_ids"] = ids
+		ids, _ := d.Store.FeverItemIDs(r.Context(), user.ID, "unread")
+		resp["unread_item_ids"] = joinIDs(ids)
 	}
 	if _, ok := q["saved_item_ids"]; ok {
-		ids, _ := d.feverIDsForFlag(r.Context(), user.ID, "saved")
-		resp["saved_item_ids"] = ids
+		ids, _ := d.Store.FeverItemIDs(r.Context(), user.ID, "saved")
+		resp["saved_item_ids"] = joinIDs(ids)
 	}
 
 	if _, ok := q["items"]; ok {
-		// Fever items: newest first, up to 50.
-		articles, err := d.Store.ListArticles(r.Context(), user.ID, store.ListArticlesQuery{Limit: 50})
+		// Fever items are paged by id: since_id walks forward (the normal sync
+		// path), max_id backfills, with_ids fetches an explicit set, and no
+		// argument returns the most recent page. Non-deduped, so every id in
+		// unread_item_ids is fetchable here.
+		fq := store.FeverItemQuery{Limit: 50}
+		if v := q.Get("since_id"); v != "" {
+			fq.SinceID, _ = strconv.ParseInt(v, 10, 64)
+		}
+		if v := q.Get("max_id"); v != "" {
+			fq.MaxID, _ = strconv.ParseInt(v, 10, 64)
+		}
+		if v := q.Get("with_ids"); v != "" {
+			fq.WithIDs = parseFeverIDs(v)
+		}
+		articles, err := d.Store.FeverItems(r.Context(), user.ID, fq)
 		if err != nil {
 			// Fever clients expect HTTP 200 always — return what we have.
 			writeJSON(w, http.StatusOK, resp)
@@ -115,7 +128,13 @@ func (d *Dependencies) handleFever(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 		resp["items"] = out
-		resp["total_items"] = len(out)
+		// total_items is the full per-user item count (Fever uses it to gauge
+		// paging progress), not the size of this page.
+		if total, terr := d.Store.FeverTotalItems(r.Context(), user.ID); terr == nil {
+			resp["total_items"] = total
+		} else {
+			resp["total_items"] = len(out)
+		}
 	}
 
 	if mark := r.FormValue("mark"); mark != "" {
@@ -164,23 +183,35 @@ func (d *Dependencies) feverFindUser(ctx context.Context, apiKey string) (models
 	return u, nil
 }
 
-func (d *Dependencies) feverIDsForFlag(ctx context.Context, userID int64, flag string) (string, error) {
-	q := store.ListArticlesQuery{Limit: 200}
-	switch flag {
-	case "unread":
-		q.Unread = true
-	case "saved":
-		q.Starred = true
+// joinIDs renders an id slice as the comma-separated string the Fever protocol
+// expects for unread_item_ids / saved_item_ids.
+func joinIDs(ids []int64) string {
+	parts := make([]string, len(ids))
+	for i, id := range ids {
+		parts[i] = strconv.FormatInt(id, 10)
 	}
-	rows, err := d.Store.ListArticles(ctx, userID, q)
-	if err != nil {
-		return "", err
+	return strings.Join(parts, ",")
+}
+
+// parseFeverIDs parses a Fever with_ids value (comma-separated ids), dropping
+// blanks and non-numeric entries and capping at the 50-item per-call ceiling.
+func parseFeverIDs(s string) []int64 {
+	out := make([]int64, 0, 50)
+	for _, part := range strings.Split(s, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		id, err := strconv.ParseInt(part, 10, 64)
+		if err != nil {
+			continue
+		}
+		out = append(out, id)
+		if len(out) == 50 {
+			break
+		}
 	}
-	parts := make([]string, 0, len(rows))
-	for _, a := range rows {
-		parts = append(parts, strconv.FormatInt(a.ID, 10))
-	}
-	return strings.Join(parts, ","), nil
+	return out
 }
 
 func boolInt(b bool) int {

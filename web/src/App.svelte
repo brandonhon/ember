@@ -362,11 +362,12 @@
         <div class="mobile-drawer" class:open={mobileSidebarOpen}>
           <Sidebar />
         </div>
-        {#if mobilePane === "list"}
-          <ArticleList />
-        {:else}
-          <Reader />
-        {/if}
+        <!-- Both panes stay mounted; CSS (driven by data-mobile-pane on
+             .panes) toggles which is visible. Keeping ArticleList mounted
+             preserves its scroll position when returning from the reader,
+             instead of remounting at the top. -->
+        <ArticleList />
+        <Reader />
       {:else}
         {#if !$sidebarCollapsed}
           <Sidebar />
@@ -608,6 +609,11 @@
   /* Mobile single-pane layout. Sidebar slides in as a drawer on top of
      the visible pane; list and reader take turns at full width. */
   .panes.mobile { grid-template-columns: 1fr; position: relative; }
+  /* Single-pane toggle: both ArticleList and Reader stay mounted (so the
+     list's scroll position survives a round-trip into the reader); CSS shows
+     only the active pane. :global() reaches the child-component roots. */
+  .panes.mobile[data-mobile-pane="reader"] :global(.list-col) { display: none; }
+  .panes.mobile[data-mobile-pane="list"] :global(.reader) { display: none; }
   .mobile-scrim {
     position: fixed;
     inset: var(--topbar-h) 0 0 0;

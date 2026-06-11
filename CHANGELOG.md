@@ -9,6 +9,53 @@ full commit-level list; this file curates the highlights and behavior changes.
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-06-11
+
+### Added
+
+- **Lead image in the reader** — when a feed provides an article image (the same
+  one shown on the list card) but the article body has no inline image, the
+  reader now shows it as a lead image at the top, so the story no longer looks
+  image-less.
+
+### Changed
+
+- **"Mark all read" clears Fresh and All Unread as you go.** In the unread-only
+  views (Fresh, All Unread), marking read now drops the read cards and pages in
+  the next unread batch, so the column reflects what's left to read. Today,
+  Starred, Read Later, and Shared keep their cards, since those views show read
+  and unread together.
+
+### Fixed
+
+- **Unread/fresh badges stay consistent with the lists they label** — several
+  sidebar and header counts fell back to a non-deduped, non-windowed value when
+  the server's authoritative deduped + windowed count was legitimately 0 (or a
+  zero-count folder was omitted from the per-category map), so a badge could
+  disagree with the cards it summarizes. Badges now honor a genuine server 0,
+  treat a missing folder as 0 (not "unknown"), count the rendered list rather
+  than the raw loaded page, and reconcile against the server after optimistic
+  read toggles.
+- **Starred / Read Later badges match their lists** — these two counts ignored
+  the muted-feed exclusion and cross-feed deduplication their lists apply, so a
+  badge could exceed the cards shown when a starred/saved item lived in a muted
+  feed or was duplicated across feeds; they now share the same filters.
+- **Sidebar counts no longer lag after "Mark all read"** — a slower, in-flight
+  count request could overwrite the up-to-date numbers with stale ones, leaving
+  e.g. "All Unread 53" hanging over an empty column until the next poll. The
+  newest count now always wins.
+- **New articles appear right after Refresh** — clicking Refresh briefly polls
+  for the feeds it just kicked off, so freshly-pulled articles surface without
+  reselecting the view or reloading the page.
+- **Reading position kept on mobile** — returning from an article to the list no
+  longer jumps back to the top of the column.
+- **Fever sync completeness** — `unread_item_ids` / `saved_item_ids` now return
+  the complete set (they were capped at 200) and are no longer cross-feed
+  deduplicated, so a Fever client's unread tally matches what Ember actually
+  holds. The `items` call honors `since_id` / `max_id` / `with_ids` paging and
+  reports the true `total_items`, letting clients sync the full backlog instead
+  of only the latest 50.
+
 ## [0.9.0] - 2026-06-10
 
 ### Added
@@ -79,6 +126,7 @@ TT-RSS full migration (subscriptions, folders, starred/archived) and fail-fast
 admin bootstrap. See the
 [v0.8.7 release](https://github.com/brandonhon/ember/releases/tag/v0.8.7).
 
-[Unreleased]: https://github.com/brandonhon/ember/compare/v0.9.0...develop
+[Unreleased]: https://github.com/brandonhon/ember/compare/v0.9.1...develop
+[0.9.1]: https://github.com/brandonhon/ember/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/brandonhon/ember/compare/v0.8.9...v0.9.0
 [0.8.7]: https://github.com/brandonhon/ember/releases/tag/v0.8.7
