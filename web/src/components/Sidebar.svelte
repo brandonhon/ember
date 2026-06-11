@@ -342,10 +342,14 @@
 
   function unreadInCategory(catID: number): number {
     // Prefer the server's per-category count (deduped + windowed + summary-
-    // gated, so it matches the category list). Fall back to summing per-feed
-    // counts if an older server response omitted the map.
+    // gated, so it matches the category list). The server omits zero-count
+    // categories from the map entirely, so a *missing key* means 0 — NOT
+    // "unknown." Only fall back to the non-deduped per-feed sum when the whole
+    // map is absent (an older server that never sent one); otherwise a folder
+    // whose unread are all cross-feed dedup losers would show the per-feed sum
+    // and inflate the folder totals past the deduped All-Unread badge.
     const byCat = $smartCounts.unread_by_category;
-    if (byCat && catID in byCat) return byCat[catID];
+    if (byCat) return byCat[catID] ?? 0;
     let sum = 0;
     const list = grouped.byCat.get(catID) ?? [];
     for (const f of list) sum += f.unread || 0;

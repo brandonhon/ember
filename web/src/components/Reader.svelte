@@ -28,6 +28,18 @@
     return $feeds.find((f) => f.id === selected.feed_id) ?? null;
   });
 
+  // Lead image: many feeds expose an article image (og:image / media) that
+  // shows on the list card but isn't embedded in the body HTML, so the reader
+  // looked image-less. Surface it as a hero at the top of the body — but only
+  // when the rendered body has no <img> of its own, to avoid duplicating an
+  // image the article already includes inline.
+  const heroImage = $derived.by(() => {
+    if (!selected?.image_url) return null;
+    const body = selected.content_html || selected.cleaned_html || "";
+    if (/<img\b/i.test(body)) return null;
+    return selected.image_url;
+  });
+
   // Opening an article marks it read. Always-on (matches Feedly/Reeder/
   // Inoreader). Triggered for both mouse-clicks (ArticleList → select()) and
   // keyboard nav (j/k → moveSelection() → selectedArticleId.set). Guarded on
@@ -471,6 +483,15 @@
       {/if}
 
       <div class="article-body">
+        {#if heroImage}
+          <img
+            class="reader-hero"
+            src={heroImage}
+            alt=""
+            loading="lazy"
+            on:error={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")}
+          />
+        {/if}
         {#if selected.content_html}
           <!-- eslint-disable-next-line svelte/no-at-html-tags -->
           {@html selected.content_html}
@@ -970,6 +991,17 @@
   }
   .article-body :global(img) { border-radius: 6px; margin: 12px 0; }
   .article-body :global(figure) { margin: 18px 0; }
+  /* Lead/hero image (shown only when the body has no inline image). Capped in
+     height and never upscaled, so a small logo-style image stays its natural
+     size rather than stretching to the column width. */
+  .article-body img.reader-hero {
+    display: block;
+    max-width: 100%;
+    max-height: 440px;
+    height: auto;
+    border-radius: 8px;
+    margin: 0 0 20px;
+  }
   /* Wide tables get horizontal scroll instead of pushing the layout. */
   .article-body :global(table) {
     display: block;

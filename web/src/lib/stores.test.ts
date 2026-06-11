@@ -163,7 +163,25 @@ describe("toggleStar", () => {
 });
 
 describe("totalUnread", () => {
-  it("sums across feeds", () => {
+  it("uses the server's deduped count when present (positive)", () => {
+    smartCounts.set({ fresh: 0, starred: 0, later: 0, shared: 0, pending_summary: 0, unread: 7, unread_by_category: {} });
+    feeds.set([feedRow({ id: 1, unread: 3 }), feedRow({ id: 2, unread: 2, url: "https://y.test/feed" })]);
+    expect(get(totalUnread)).toBe(7);
+  });
+
+  it("trusts a genuine server count of 0 over the non-deduped per-feed sum", () => {
+    // Regression: when every in-window unread article is a cross-feed dedup
+    // loser, the server's deduped All-Unread count is 0 while the per-feed
+    // sum (no dedup) is positive. The badge must show 0 so it matches the
+    // empty list — not the per-feed sum.
+    smartCounts.set({ fresh: 0, starred: 0, later: 0, shared: 0, pending_summary: 0, unread: 0, unread_by_category: {} });
+    feeds.set([feedRow({ id: 1, unread: 3 }), feedRow({ id: 2, unread: 2, url: "https://y.test/feed" })]);
+    expect(get(totalUnread)).toBe(0);
+  });
+
+  it("falls back to summing per-feed counts when an older server omits unread", () => {
+    // Older builds return no `unread` key at all (undefined, not 0).
+    smartCounts.set({ fresh: 0, starred: 0, later: 0, shared: 0, pending_summary: 0, unread_by_category: null } as never);
     feeds.set([feedRow({ id: 1, unread: 3 }), feedRow({ id: 2, unread: 2, url: "https://y.test/feed" })]);
     expect(get(totalUnread)).toBe(5);
   });
@@ -183,5 +201,25 @@ describe("refreshSmartCounts", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url] = fetchMock.mock.calls[0] as [string, unknown];
     expect(url).toContain("/api/me/smart-counts");
+  });
+
+  it("a stale in-flight response cannot clobber a newer one", async () => {
+    const counts = (unread: number) =>
+      envelope({ fresh: 0, starred: 0, later: 0, shared: 0, pending_summary: 0, unread, unread_by_category: {} });
+    // First refresh (stale unread=53) resolves LATE; second (fresh unread=0)
+    // resolves first — mirrors a poll-issued count landing after a post-mark
+    // refresh. The older response must be dropped.
+    let resolveStale!: (r: Response) => void;
+    const stale = new Promise<Response>((r) => (resolveStale = r));
+    fetchMock.mockReturnValueOnce(stale).mockResolvedValueOnce(counts(0));
+
+    const p1 = refreshSmartCounts(); // seq N, pending
+    const p2 = refreshSmartCounts(); // seq N+1, resolves now
+    await p2;
+    expect(get(smartCounts).unread).toBe(0);
+
+    resolveStale(counts(53));
+    await p1;
+    expect(get(smartCounts).unread).toBe(0); // stale 53 ignored
   });
 });

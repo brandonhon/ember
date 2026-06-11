@@ -88,7 +88,20 @@ const EMPTY_SMART_COUNTS: SmartCounts = {
 };
 export const smartCounts = writable<SmartCounts>(EMPTY_SMART_COUNTS);
 
+// Monotonic guard for the badge counts. refreshSidebar, refreshSmartCounts and
+// the 15s poll all fetch /me/smart-counts independently, so a request issued
+// BEFORE a mutation (e.g. Mark all read) can resolve AFTER the post-mutation
+// refresh and clobber the correct counts back to stale values — the badge then
+// shows e.g. "All Unread 53" over an empty column until the next poll heals it.
+// Stamping each fetch and only applying the newest response keeps the latest
+// authoritative count from being overwritten by an older in-flight one.
+let smartCountsSeq = 0;
+function applySmartCounts(seq: number, data: SmartCounts | undefined): void {
+  if (seq === smartCountsSeq) smartCounts.set(data ?? EMPTY_SMART_COUNTS);
+}
+
 export async function refreshSidebar(): Promise<void> {
+  const seq = ++smartCountsSeq;
   const [f, c, b, ss, sc] = await Promise.all([
     api.listFeeds(),
     api.listCategories(),
@@ -100,7 +113,7 @@ export async function refreshSidebar(): Promise<void> {
   categories.set(c.data ?? []);
   boards.set(b.data ?? []);
   savedSearches.set(ss.data ?? []);
-  smartCounts.set(sc.data ?? EMPTY_SMART_COUNTS);
+  applySmartCounts(seq, sc.data);
 }
 
 // refreshSmartCounts refreshes only the smart-view badge counts (incl.
@@ -110,14 +123,19 @@ export async function refreshSidebar(): Promise<void> {
 // articles happen to arrive, leaving the bar stuck after summarization
 // finishes.
 export async function refreshSmartCounts(): Promise<void> {
+  const seq = ++smartCountsSeq;
   const sc = await api.getSmartCounts();
-  smartCounts.set(sc.data ?? EMPTY_SMART_COUNTS);
+  applySmartCounts(seq, sc.data);
 }
 
 // All-Unread badge: the server's deduped/windowed/gated count. Falls back to
 // summing per-feed counts only if the server didn't provide it (older build).
+// Use ?? not || so a genuine server count of 0 wins over the non-deduped
+// per-feed sum — otherwise a view where every in-window unread article is a
+// cross-feed dedup loser shows a badge (e.g. "3") the empty list can never
+// match. Mirrors the per-category logic in Sidebar.unreadInCategory.
 export const totalUnread = derived([smartCounts, feeds], ([$sc, $feeds]) =>
-  $sc.unread || $feeds.reduce((n, f) => n + (f.unread || 0), 0),
+  $sc.unread ?? $feeds.reduce((n, f) => n + (f.unread || 0), 0),
 );
 
 // View / UI state ------------------------------------------------------------
@@ -389,6 +407,23 @@ export async function loadMore(): Promise<void> {
   await loadArticles(get(activeView), true);
 }
 
+// After an optimistic read/unread flip we bump the All-Unread, Fresh, and
+// per-folder badges client-side, but those server counts are cross-feed DEDUPED
+// and WINDOWED on a cutoff the client can't reproduce (UnreadCutoff is anchored
+// on the user's previous login, not just the fresh window). Marking an
+// out-of-window or cross-feed-duplicate article read therefore drifts the badge,
+// and the poll loop only reconciles when new articles arrive or a summary is
+// pending — so a quiet session never heals. This debounced reconcile pulls the
+// authoritative deduped/windowed counts back without firing a request per read.
+let countReconcileTimer: ReturnType<typeof setTimeout> | null = null;
+function scheduleCountReconcile(): void {
+  if (countReconcileTimer) clearTimeout(countReconcileTimer);
+  countReconcileTimer = setTimeout(() => {
+    countReconcileTimer = null;
+    void refreshSmartCounts();
+  }, 1000);
+}
+
 // Read/star toggles update the local list optimistically so the UI feels snappy.
 export async function setRead(ids: number[], read: boolean): Promise<void> {
   // Capture which items were fresh+unread BEFORE the optimistic flip so we can
@@ -453,6 +488,9 @@ export async function setRead(ids: number[], read: boolean): Promise<void> {
       unread: Math.max(0, c.unread + (read ? -flipped : flipped)),
     }));
   }
+  // Heal any drift between the optimistic bump and the server's deduped/windowed
+  // counts (All-Unread + Fresh + per-folder badges).
+  scheduleCountReconcile();
 }
 
 // toggleStar / toggleLater do two optimistic updates so the UI feels

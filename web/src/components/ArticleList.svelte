@@ -120,8 +120,23 @@
         return `Search: ${$activeView.query}`;
     }
   });
+  const filtered = $derived.by(() => {
+    let out = $articles.items;
+    if (freshOnly) out = out.filter((a) => isFresh(a.published_at));
+    if (unreadOnly) out = out.filter((a) => !a.is_read);
+    // Note: Fresh view used to re-sort read items to the bottom (PR #54),
+    // but the user found the position-shifting jarring. Now read-fresh
+    // items just visually fade via .story.read (opacity 0.62) and lose the
+    // Fresh pill — they stay in their published_at position so the list
+    // doesn't reflow under the cursor when an article gets marked read.
+    return out;
+  });
+
   const headerSub = $derived.by(() => {
-    const n = $articles.items.length;
+    // Count the rendered list (post freshOnly/unreadOnly pills), not the raw
+    // loaded page — otherwise the subtitle ("25 articles") contradicts the
+    // cards actually shown when a filter pill is active.
+    const n = filtered.length;
     if ($articles.loading) return "Loading…";
     if (n === 0) return "No articles";
     return `${n} article${n === 1 ? "" : "s"}`;
@@ -180,17 +195,6 @@
     return Math.max(1, Math.round(words / 200));
   }
 
-  const filtered = $derived.by(() => {
-    let out = $articles.items;
-    if (freshOnly) out = out.filter((a) => isFresh(a.published_at));
-    if (unreadOnly) out = out.filter((a) => !a.is_read);
-    // Note: Fresh view used to re-sort read items to the bottom (PR #54),
-    // but the user found the position-shifting jarring. Now read-fresh
-    // items just visually fade via .story.read (opacity 0.62) and lose the
-    // Fresh pill — they stay in their published_at position so the list
-    // doesn't reflow under the cursor when an article gets marked read.
-    return out;
-  });
 
   // Mark all read marks only the currently-loaded (shown) cards, not the whole
   // view — with paging, "all" means "everything you've pulled in." Anything
@@ -200,6 +204,17 @@
     const ids = $articles.items.filter((a) => !a.is_read).map((a) => a.id);
     if (ids.length === 0) return;
     await setRead(ids, true);
+    // Fresh and All Unread list ONLY unread articles, so the just-read cards no
+    // longer belong — reload the view so they drop out and the next batch of
+    // unread pages in from the top. The other views deliberately keep the
+    // marked cards in place: Today shows the calendar day's read+unread;
+    // Starred / Read Later / Shared (and an explicit feed/category) all mix
+    // read and unread, so marking read shouldn't make cards vanish there.
+    const v = $activeView;
+    if (v.kind === "smart" && (v.view === "fresh" || v.view === "unread")) {
+      await loadArticles(v);
+      if (containerEl) containerEl.scrollTop = 0;
+    }
     // Reconcile the per-category badges (setRead doesn't touch that map).
     await refreshSidebar();
   }

@@ -7,6 +7,7 @@
     refreshSidebar,
     activeView,
     loadArticles,
+    pollForNewArticles,
     selectedArticleId,
     sidebarCollapsed,
     branding,
@@ -182,13 +183,18 @@
     if (polling) return;
     polling = true;
     try {
-      // Kick a real fetch of every subscribed feed, then give the background
-      // fetches a moment to ingest before reloading the view + counts. Fast
-      // feeds show up immediately; slower ones arrive on the next 15s poll.
+      // /feeds/refresh returns 202 immediately and fetches every feed in a
+      // background goroutine, so a single reload races ingestion and usually
+      // runs before the new articles land. Poll a few times over ~9s instead,
+      // merging newly-ingested articles into the current view as they arrive
+      // (merge preserves scroll/selection). Slower feeds still surface on the
+      // app's 15s background poll.
       await api.refreshAllFeeds();
-      await new Promise((r) => setTimeout(r, 2000));
       await refreshSidebar();
-      await loadArticles(get(activeView));
+      for (let i = 0; i < 6; i++) {
+        await new Promise((r) => setTimeout(r, 1500));
+        await pollForNewArticles();
+      }
     } catch {
       // Best-effort: even if the trigger fails, refresh what we have.
       await refreshSidebar();
