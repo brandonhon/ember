@@ -202,4 +202,24 @@ describe("refreshSmartCounts", () => {
     const [url] = fetchMock.mock.calls[0] as [string, unknown];
     expect(url).toContain("/api/me/smart-counts");
   });
+
+  it("a stale in-flight response cannot clobber a newer one", async () => {
+    const counts = (unread: number) =>
+      envelope({ fresh: 0, starred: 0, later: 0, shared: 0, pending_summary: 0, unread, unread_by_category: {} });
+    // First refresh (stale unread=53) resolves LATE; second (fresh unread=0)
+    // resolves first — mirrors a poll-issued count landing after a post-mark
+    // refresh. The older response must be dropped.
+    let resolveStale!: (r: Response) => void;
+    const stale = new Promise<Response>((r) => (resolveStale = r));
+    fetchMock.mockReturnValueOnce(stale).mockResolvedValueOnce(counts(0));
+
+    const p1 = refreshSmartCounts(); // seq N, pending
+    const p2 = refreshSmartCounts(); // seq N+1, resolves now
+    await p2;
+    expect(get(smartCounts).unread).toBe(0);
+
+    resolveStale(counts(53));
+    await p1;
+    expect(get(smartCounts).unread).toBe(0); // stale 53 ignored
+  });
 });

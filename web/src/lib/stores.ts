@@ -88,7 +88,20 @@ const EMPTY_SMART_COUNTS: SmartCounts = {
 };
 export const smartCounts = writable<SmartCounts>(EMPTY_SMART_COUNTS);
 
+// Monotonic guard for the badge counts. refreshSidebar, refreshSmartCounts and
+// the 15s poll all fetch /me/smart-counts independently, so a request issued
+// BEFORE a mutation (e.g. Mark all read) can resolve AFTER the post-mutation
+// refresh and clobber the correct counts back to stale values — the badge then
+// shows e.g. "All Unread 53" over an empty column until the next poll heals it.
+// Stamping each fetch and only applying the newest response keeps the latest
+// authoritative count from being overwritten by an older in-flight one.
+let smartCountsSeq = 0;
+function applySmartCounts(seq: number, data: SmartCounts | undefined): void {
+  if (seq === smartCountsSeq) smartCounts.set(data ?? EMPTY_SMART_COUNTS);
+}
+
 export async function refreshSidebar(): Promise<void> {
+  const seq = ++smartCountsSeq;
   const [f, c, b, ss, sc] = await Promise.all([
     api.listFeeds(),
     api.listCategories(),
@@ -100,7 +113,7 @@ export async function refreshSidebar(): Promise<void> {
   categories.set(c.data ?? []);
   boards.set(b.data ?? []);
   savedSearches.set(ss.data ?? []);
-  smartCounts.set(sc.data ?? EMPTY_SMART_COUNTS);
+  applySmartCounts(seq, sc.data);
 }
 
 // refreshSmartCounts refreshes only the smart-view badge counts (incl.
@@ -110,8 +123,9 @@ export async function refreshSidebar(): Promise<void> {
 // articles happen to arrive, leaving the bar stuck after summarization
 // finishes.
 export async function refreshSmartCounts(): Promise<void> {
+  const seq = ++smartCountsSeq;
   const sc = await api.getSmartCounts();
-  smartCounts.set(sc.data ?? EMPTY_SMART_COUNTS);
+  applySmartCounts(seq, sc.data);
 }
 
 // All-Unread badge: the server's deduped/windowed/gated count. Falls back to
