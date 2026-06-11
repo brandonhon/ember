@@ -204,12 +204,14 @@
     const ids = $articles.items.filter((a) => !a.is_read).map((a) => a.id);
     if (ids.length === 0) return;
     await setRead(ids, true);
-    // Fresh lists only unread articles, so the just-read cards no longer
-    // belong there — reload the view so they drop out and any unread behind
-    // "Load more" pages in. Other views (a feed, All Unread, a category) keep
-    // the cards visible after marking read, matching their existing behavior.
+    // Fresh and All Unread list ONLY unread articles, so the just-read cards no
+    // longer belong — reload the view so they drop out and the next batch of
+    // unread pages in from the top. The other views deliberately keep the
+    // marked cards in place: Today shows the calendar day's read+unread;
+    // Starred / Read Later / Shared (and an explicit feed/category) all mix
+    // read and unread, so marking read shouldn't make cards vanish there.
     const v = $activeView;
-    if (v.kind === "smart" && v.view === "fresh") {
+    if (v.kind === "smart" && (v.view === "fresh" || v.view === "unread")) {
       await loadArticles(v);
       if (containerEl) containerEl.scrollTop = 0;
     }
