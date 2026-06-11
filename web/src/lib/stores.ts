@@ -116,8 +116,12 @@ export async function refreshSmartCounts(): Promise<void> {
 
 // All-Unread badge: the server's deduped/windowed/gated count. Falls back to
 // summing per-feed counts only if the server didn't provide it (older build).
+// Use ?? not || so a genuine server count of 0 wins over the non-deduped
+// per-feed sum — otherwise a view where every in-window unread article is a
+// cross-feed dedup loser shows a badge (e.g. "3") the empty list can never
+// match. Mirrors the per-category logic in Sidebar.unreadInCategory.
 export const totalUnread = derived([smartCounts, feeds], ([$sc, $feeds]) =>
-  $sc.unread || $feeds.reduce((n, f) => n + (f.unread || 0), 0),
+  $sc.unread ?? $feeds.reduce((n, f) => n + (f.unread || 0), 0),
 );
 
 // View / UI state ------------------------------------------------------------
@@ -389,6 +393,23 @@ export async function loadMore(): Promise<void> {
   await loadArticles(get(activeView), true);
 }
 
+// After an optimistic read/unread flip we bump the All-Unread, Fresh, and
+// per-folder badges client-side, but those server counts are cross-feed DEDUPED
+// and WINDOWED on a cutoff the client can't reproduce (UnreadCutoff is anchored
+// on the user's previous login, not just the fresh window). Marking an
+// out-of-window or cross-feed-duplicate article read therefore drifts the badge,
+// and the poll loop only reconciles when new articles arrive or a summary is
+// pending — so a quiet session never heals. This debounced reconcile pulls the
+// authoritative deduped/windowed counts back without firing a request per read.
+let countReconcileTimer: ReturnType<typeof setTimeout> | null = null;
+function scheduleCountReconcile(): void {
+  if (countReconcileTimer) clearTimeout(countReconcileTimer);
+  countReconcileTimer = setTimeout(() => {
+    countReconcileTimer = null;
+    void refreshSmartCounts();
+  }, 1000);
+}
+
 // Read/star toggles update the local list optimistically so the UI feels snappy.
 export async function setRead(ids: number[], read: boolean): Promise<void> {
   // Capture which items were fresh+unread BEFORE the optimistic flip so we can
@@ -453,6 +474,9 @@ export async function setRead(ids: number[], read: boolean): Promise<void> {
       unread: Math.max(0, c.unread + (read ? -flipped : flipped)),
     }));
   }
+  // Heal any drift between the optimistic bump and the server's deduped/windowed
+  // counts (All-Unread + Fresh + per-folder badges).
+  scheduleCountReconcile();
 }
 
 // toggleStar / toggleLater do two optimistic updates so the UI feels

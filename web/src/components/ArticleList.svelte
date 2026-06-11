@@ -120,8 +120,23 @@
         return `Search: ${$activeView.query}`;
     }
   });
+  const filtered = $derived.by(() => {
+    let out = $articles.items;
+    if (freshOnly) out = out.filter((a) => isFresh(a.published_at));
+    if (unreadOnly) out = out.filter((a) => !a.is_read);
+    // Note: Fresh view used to re-sort read items to the bottom (PR #54),
+    // but the user found the position-shifting jarring. Now read-fresh
+    // items just visually fade via .story.read (opacity 0.62) and lose the
+    // Fresh pill — they stay in their published_at position so the list
+    // doesn't reflow under the cursor when an article gets marked read.
+    return out;
+  });
+
   const headerSub = $derived.by(() => {
-    const n = $articles.items.length;
+    // Count the rendered list (post freshOnly/unreadOnly pills), not the raw
+    // loaded page — otherwise the subtitle ("25 articles") contradicts the
+    // cards actually shown when a filter pill is active.
+    const n = filtered.length;
     if ($articles.loading) return "Loading…";
     if (n === 0) return "No articles";
     return `${n} article${n === 1 ? "" : "s"}`;
@@ -180,17 +195,6 @@
     return Math.max(1, Math.round(words / 200));
   }
 
-  const filtered = $derived.by(() => {
-    let out = $articles.items;
-    if (freshOnly) out = out.filter((a) => isFresh(a.published_at));
-    if (unreadOnly) out = out.filter((a) => !a.is_read);
-    // Note: Fresh view used to re-sort read items to the bottom (PR #54),
-    // but the user found the position-shifting jarring. Now read-fresh
-    // items just visually fade via .story.read (opacity 0.62) and lose the
-    // Fresh pill — they stay in their published_at position so the list
-    // doesn't reflow under the cursor when an article gets marked read.
-    return out;
-  });
 
   // Mark all read marks only the currently-loaded (shown) cards, not the whole
   // view — with paging, "all" means "everything you've pulled in." Anything

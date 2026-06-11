@@ -9,6 +9,17 @@ full commit-level list; this file curates the highlights and behavior changes.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Unread/fresh badges stay consistent with the lists they label** — several
+  sidebar and header counts fell back to a non-deduped, non-windowed value when
+  the server's authoritative deduped + windowed count was legitimately 0 (or a
+  zero-count folder was omitted from the per-category map), so a badge could
+  disagree with the cards it summarizes. Badges now honor a genuine server 0,
+  treat a missing folder as 0 (not "unknown"), count the rendered list rather
+  than the raw loaded page, and reconcile against the server after optimistic
+  read toggles.
+
 ## [0.9.0] - 2026-06-10
 
 ### Added
