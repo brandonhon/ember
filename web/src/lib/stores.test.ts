@@ -193,11 +193,18 @@ describe("pollForNewArticles", () => {
   it("merges a newly-arrived article, counts it, and sorts by published_at desc", async () => {
     newArticleCount.set(0);
     articles.set({ items: [article({ id: 1, published_at: 100 })], loading: false, hasMore: false });
-    fetchMock.mockResolvedValueOnce(
-      envelope([article({ id: 2, published_at: 200 }), article({ id: 1, published_at: 100 })]),
+    // Call 0 = the poll's top page. newCount>0 then fires a fire-and-forget
+    // refreshSidebar (5 more fetches), so EACH call needs its own Response — a
+    // body can only be read once. mockImplementation returns a fresh envelope
+    // per call (a shared mockResolvedValue throws "Body already read").
+    let call = 0;
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(
+        call++ === 0
+          ? envelope([article({ id: 2, published_at: 200 }), article({ id: 1, published_at: 100 })])
+          : envelope([]),
+      ),
     );
-    // newCount>0 triggers a fire-and-forget refreshSidebar; benign default mock.
-    fetchMock.mockResolvedValue(envelope([]));
     const n = await pollForNewArticles();
     expect(n).toBe(1);
     expect(get(articles).items.map((a) => a.id)).toEqual([2, 1]);
