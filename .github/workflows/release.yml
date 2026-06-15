@@ -252,11 +252,31 @@ jobs:
           name: release-artifacts
           path: dist
 
+      # Release notes = the curated CHANGELOG section for this version (the
+      # "highlights"), with the auto-generated commit list + compare link
+      # appended below it by generate_release_notes. The version tag is vX.Y.Z;
+      # the CHANGELOG header is "## [X.Y.Z]" (no leading v).
+      - name: Extract CHANGELOG section for this version
+        run: |
+          ver="${{ needs.prepare.outputs.version }}"
+          ver="${ver#v}"
+          awk -v ver="$ver" '
+            index($0, "## [" ver "]") == 1 { grab = 1; next }
+            grab && index($0, "## [") == 1 { exit }
+            grab { print }
+          ' CHANGELOG.md > release-body.md
+          if [ -s release-body.md ]; then
+            echo "Extracted CHANGELOG section for $ver:"; cat release-body.md
+          else
+            echo "No CHANGELOG section for $ver; release notes will be the generated commit list only." > release-body.md
+          fi
+
       - uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda  # v3.0.0
         with:
           tag_name: ${{ needs.prepare.outputs.version }}
           name: ${{ needs.prepare.outputs.version }}
           prerelease: ${{ needs.prepare.outputs.is_prerelease == 'true' }}
+          body_path: release-body.md
           generate_release_notes: true
           files: |
             dist/ember-*.tar.gz
