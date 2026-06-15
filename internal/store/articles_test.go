@@ -316,10 +316,16 @@ func TestArticles_CrossFeedDedup(t *testing.T) {
 		t.Errorf("dup_count = %d, want 1 (other feed has the same url)", list[0].DupCount)
 	}
 
-	// Per-feed view still shows the article from that specific feed.
-	direct, _ := s.ListArticles(ctx, u.ID, ListArticlesQuery{FeedID: tc.ID, OnlySummarized: true})
-	if len(direct) != 1 || direct[0].ID != r2.ID {
-		t.Errorf("per-feed view should show its own row; got %+v", direct)
+	// Per-feed views dedup too: a duplicate story is owned by its lowest-id
+	// feed and hidden from the others. Opening the winner feed (HN, r1) shows
+	// it; opening the loser feed (TC, r2) hides it.
+	winner, _ := s.ListArticles(ctx, u.ID, ListArticlesQuery{FeedID: hn.ID, DedupUnread: true, OnlySummarized: true})
+	if len(winner) != 1 || winner[0].ID != r1.ID {
+		t.Errorf("winner feed should show its own row r1=%d; got %+v", r1.ID, winner)
+	}
+	loser, _ := s.ListArticles(ctx, u.ID, ListArticlesQuery{FeedID: tc.ID, DedupUnread: true, OnlySummarized: true})
+	if len(loser) != 0 {
+		t.Errorf("loser feed should hide the duplicate (owned by HN); got %+v", loser)
 	}
 }
 

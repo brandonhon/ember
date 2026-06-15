@@ -96,6 +96,10 @@ func (d *Dependencies) handleListArticles(w http.ResponseWriter, r *http.Request
 		IDBefore:        atoi("cursor_id"),
 		OnlySummarized:  onlySummarized,
 		Tag:             q.Get("tag"),
+		// Feed/category columns show read+unread but their sidebar badges count
+		// only unread; dedup unread copies the same way the badge does so the
+		// unread cards shown always equal the badge.
+		DedupUnread: feedID > 0 || categoryID > 0,
 	}
 	articles, err := d.Store.ListArticles(ctx, u.ID, query)
 	if mapStoreError(w, err) {

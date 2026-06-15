@@ -42,6 +42,19 @@ func (d *Dependencies) handleListFeeds(w http.ResponseWriter, r *http.Request) {
 	if mapStoreError(w, err) {
 		return
 	}
+	// Cross-feed dedup the per-feed badges so a duplicate story is counted once
+	// (owned by its lowest-id feed) and the per-feed badges sum to All-Unread.
+	// ListFeedsForUser stays non-deduped for its other callers (Fever, OPML,
+	// ttrss, starter-pack); only this SPA endpoint overlays the deduped counts.
+	deduped, err := d.Store.CountUnreadByFeed(r.Context(), u.ID, store.ListArticlesQuery{
+		FreshAfter: cutoff, OnlySummarized: d.summariesOn(),
+	})
+	if mapStoreError(w, err) {
+		return
+	}
+	for i := range feeds {
+		feeds[i].Unread = deduped[feeds[i].ID]
+	}
 	writeData(w, http.StatusOK, feeds, nil)
 }
 
