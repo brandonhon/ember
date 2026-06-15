@@ -44,6 +44,9 @@ jobs:
       version_no_v: ${{ steps.parse.outputs.version_no_v }}
       is_prerelease: ${{ steps.parse.outputs.is_prerelease }}
     steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
       - id: parse
         run: |
           set -euo pipefail
@@ -59,6 +62,24 @@ jobs:
             echo "version_no_v=${TAG#v}"
             echo "is_prerelease=$IS_PRERELEASE"
           } >> "$GITHUB_OUTPUT"
+
+      # Stable releases must have a curated CHANGELOG entry AND its bottom link
+      # ref (the release body uses the section; the ref keeps the file's index
+      # consistent). `make changelog-release VERSION=vX.Y.Z` maintains the refs.
+      # Prereleases are exempt.
+      - name: Verify CHANGELOG is prepped for this version
+        if: steps.parse.outputs.is_prerelease == 'false'
+        run: |
+          ver="${{ steps.parse.outputs.version_no_v }}"
+          if ! grep -qE "^## \[${ver}\]" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no '## [${ver}]' section. Add the release notes before tagging."
+            exit 1
+          fi
+          if ! grep -qE "^\[${ver}\]: " CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no '[${ver}]:' link ref. Run 'make changelog-release VERSION=v${ver}'."
+            exit 1
+          fi
+          echo "CHANGELOG OK for ${ver}"
 
   build-binaries:
     name: Binary (${{ matrix.os }}/${{ matrix.arch }})

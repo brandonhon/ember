@@ -155,7 +155,8 @@ TT-RSS full migration (subscriptions, folders, starred/archived) and fail-fast
 admin bootstrap. See the
 [v0.8.7 release](https://github.com/brandonhon/ember/releases/tag/v0.8.7).
 
-[Unreleased]: https://github.com/brandonhon/ember/compare/v0.9.1...develop
+[Unreleased]: https://github.com/brandonhon/ember/compare/v0.9.2...develop
+[0.9.2]: https://github.com/brandonhon/ember/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/brandonhon/ember/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/brandonhon/ember/compare/v0.8.9...v0.9.0
 [0.8.7]: https://github.com/brandonhon/ember/releases/tag/v0.8.7
