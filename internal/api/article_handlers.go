@@ -96,6 +96,10 @@ func (d *Dependencies) handleListArticles(w http.ResponseWriter, r *http.Request
 		IDBefore:        atoi("cursor_id"),
 		OnlySummarized:  onlySummarized,
 		Tag:             q.Get("tag"),
+		// Feed/category columns show read+unread but their sidebar badges count
+		// only unread; dedup unread copies the same way the badge does so the
+		// unread cards shown always equal the badge.
+		DedupUnread: feedID > 0 || categoryID > 0,
 	}
 	articles, err := d.Store.ListArticles(ctx, u.ID, query)
 	if mapStoreError(w, err) {
@@ -145,6 +149,10 @@ func (d *Dependencies) handleGetArticleCluster(w http.ResponseWriter, r *http.Re
 type setReadReq struct {
 	IDs  []int64 `json:"ids"`
 	Read bool    `json:"read"`
+	// IncludeSiblings extends a read=true mark to the cross-feed dedup siblings
+	// of the given ids (used by "mark all read" so a duplicated story's hidden
+	// copy doesn't resurface). Ignored when Read is false.
+	IncludeSiblings bool `json:"include_siblings,omitempty"`
 }
 
 // maxBulkArticleIDs caps how many ids a single read/star/later request can
@@ -162,7 +170,13 @@ func (d *Dependencies) handleSetRead(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "bad_request", "too many ids")
 		return
 	}
-	if mapStoreError(w, d.Store.SetRead(r.Context(), u.ID, req.IDs, req.Read)) {
+	var err error
+	if req.Read && req.IncludeSiblings {
+		err = d.Store.MarkReadWithSiblings(r.Context(), u.ID, req.IDs)
+	} else {
+		err = d.Store.SetRead(r.Context(), u.ID, req.IDs, req.Read)
+	}
+	if mapStoreError(w, err) {
 		return
 	}
 	writeData(w, http.StatusOK, map[string]int{"count": len(req.IDs)}, nil)

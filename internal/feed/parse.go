@@ -40,7 +40,10 @@ func Parse(_ context.Context, feedID int64, body []byte, sourceURL string) (Pars
 
 	base, _ := url.Parse(sourceURL)
 	out := ParseResult{
-		Title:   strings.TrimSpace(parsed.Title),
+		// Titles can carry HTML entities/markup (Atom type="html", entity-encoded
+		// RSS) but render as plain text in the UI, not {@html} — decode here so
+		// "&#8217;" doesn't surface literally. htmlToText handles entities + tags.
+		Title:   htmlToText(parsed.Title),
 		SiteURL: strings.TrimSpace(parsed.Link),
 	}
 	if base != nil && out.SiteURL != "" {
@@ -62,7 +65,8 @@ func normalizeItem(it *gofeed.Item, feedID int64, base *url.URL) models.Article 
 	if a.GUID == "" {
 		a.GUID = strings.TrimSpace(it.Link)
 	}
-	a.Title = strings.TrimSpace(it.Title)
+	// Decode entities/markup so titles read as plain text (see Parse above).
+	a.Title = htmlToText(it.Title)
 	// Guard the article link: it is rendered as an href ("Original" button), so
 	// drop javascript:/data: and other non-web schemes. GUID fell back to the
 	// raw link above, so dedup is unaffected when this clears a bad URL.

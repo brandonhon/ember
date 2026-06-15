@@ -425,7 +425,11 @@ function scheduleCountReconcile(): void {
 }
 
 // Read/star toggles update the local list optimistically so the UI feels snappy.
-export async function setRead(ids: number[], read: boolean): Promise<void> {
+export async function setRead(
+  ids: number[],
+  read: boolean,
+  includeSiblings = false,
+): Promise<void> {
   // Capture which items were fresh+unread BEFORE the optimistic flip so we can
   // bump smartCounts.fresh by the right delta. Fresh-eligibility is computed
   // the same way ArticleList.isFresh() does it — client-side from
@@ -459,7 +463,7 @@ export async function setRead(ids: number[], read: boolean): Promise<void> {
     }));
   }
   try {
-    await api.setRead(ids, read);
+    await api.setRead(ids, read, includeSiblings);
   } catch (err) {
     // Roll back the fresh-count bump; the feed-unread update below never ran.
     if (freshDelta !== 0) {

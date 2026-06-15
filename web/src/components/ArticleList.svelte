@@ -203,7 +203,10 @@
   async function onMarkAllRead() {
     const ids = $articles.items.filter((a) => !a.is_read).map((a) => a.id);
     if (ids.length === 0) return;
-    await setRead(ids, true);
+    // includeSiblings: also mark each shown story's cross-feed dedup siblings
+    // read, so a duplicate's hidden copy doesn't resurface as unread once its
+    // visible winner is marked read (the suppressor only hides unread copies).
+    await setRead(ids, true, true);
     // Fresh and All Unread list ONLY unread articles, so the just-read cards no
     // longer belong — reload the view so they drop out and the next batch of
     // unread pages in from the top. The other views deliberately keep the
