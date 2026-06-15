@@ -9,6 +9,15 @@ full commit-level list; this file curates the highlights and behavior changes.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Article titles no longer show raw HTML entities** — feeds that encode their
+  titles (e.g. Atom `type="html"` with `&#8217;` curly quotes, or entity-escaped
+  ampersands) were stored verbatim and rendered as plain text, so titles like
+  "Roblox exec says it is &#8216;not enough anymore&#8217;" leaked the entity
+  codes. Titles are now decoded to display text on ingest, matching how article
+  bodies are already handled. Affects newly fetched articles.
+
 ## [0.9.1] - 2026-06-11
 
 ### Added
