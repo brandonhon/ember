@@ -74,7 +74,10 @@
         return;
       case "toggle-read": {
         const s = getSelected();
-        if (s) setRead([s.id], !s.is_read);
+        // Marking read sweeps cross-feed siblings (a story's copies are one
+        // unit); marking unread stays per-row. includeSiblings is ignored when
+        // read=false, so passing the new read state is safe.
+        if (s) setRead([s.id], !s.is_read, !s.is_read);
         return;
       }
       case "toggle-star": {

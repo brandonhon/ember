@@ -151,6 +151,14 @@ describe("setRead", () => {
     expect(get(articles).items.every((a) => a.is_read)).toBe(true);
     expect(get(feeds)[0].unread).toBe(3);
   });
+
+  it("forwards include_siblings so reading a story sweeps its dedup copies", async () => {
+    articles.set({ items: [article({ id: 10 })], loading: false, hasMore: false });
+    fetchMock.mockResolvedValueOnce(envelope({ count: 1 }));
+    await setRead([10], true, true);
+    const body = JSON.parse((fetchMock.mock.calls.at(-1)![1] as RequestInit).body as string);
+    expect(body).toMatchObject({ ids: [10], read: true, include_siblings: true });
+  });
 });
 
 describe("toggleStar", () => {
