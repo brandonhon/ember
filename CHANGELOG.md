@@ -7,6 +7,19 @@ All notable user-facing changes to Ember are documented here. The format follows
 Per-tag [GitHub Releases](https://github.com/brandonhon/ember/releases) hold the
 full commit-level list; this file curates the highlights and behavior changes.
 
+## [0.9.2] - 2026-06-15
+
+### Fixed
+
+- **Opening a syndicated story no longer leaves a duplicate in the list** — when
+  a story runs in two feeds you follow, the list shows one copy. Opening it
+  marked only that copy read, so a few seconds later the background refresh
+  surfaced the other feed's copy as a "new" unread duplicate of the article you
+  were already reading. Reading a story now marks its cross-feed copies read as a
+  unit (the same way "Mark all read" already does), so the duplicate no longer
+  pops up. Starring, saving for later, and tagging still apply to the single copy
+  you chose.
+
 ## [0.9.1] - 2026-06-15
 
 ### Added

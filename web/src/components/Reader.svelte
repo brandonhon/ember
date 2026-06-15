@@ -50,7 +50,11 @@
     if (selected.is_read) return;
     if (lastMarkedRead === selected.id) return;
     lastMarkedRead = selected.id;
-    void setRead([selected.id], true);
+    // includeSiblings: reading one copy of a syndicated story reads the story,
+    // so mark its cross-feed dedup siblings read too. Otherwise the suppressor
+    // (which only hides UNREAD copies) would surface the sibling as a "new"
+    // unread article on the next poll — a duplicate of the one you just opened.
+    void setRead([selected.id], true, true);
   });
 
   let showShare = $state(false);
