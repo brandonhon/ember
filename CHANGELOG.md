@@ -11,6 +11,16 @@ full commit-level list; this file curates the highlights and behavior changes.
 
 ### Fixed
 
+- **Unread badges no longer collapse to zero when a story has a read or
+  out-of-window duplicate** — cross-feed dedup was suppressing every visible
+  unread copy of a story whenever any lower-id duplicate existed anywhere in the
+  database, even if that duplicate was already read or outside the reading
+  window. Fresh, All Unread, and per-category badges could drop to 0 while the
+  per-feed badges still showed counts. Dedup now matches duplicates against the
+  same unread/window/summary filter as the view, so a row is only hidden behind
+  a copy you would actually see. Per-feed badges and columns now dedup too, so
+  each duplicated story is counted and shown once and the per-feed badges sum to
+  the All Unread total.
 - **Article titles no longer show raw HTML entities** — feeds that encode their
   titles (e.g. Atom `type="html"` with `&#8217;` curly quotes, or entity-escaped
   ampersands) were stored verbatim and rendered as plain text, so titles like
