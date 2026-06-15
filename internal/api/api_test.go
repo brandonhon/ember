@@ -442,6 +442,47 @@ func TestFeeds_AddRefreshDelete(t *testing.T) {
 	}
 }
 
+// GET /api/feeds overlays CountUnreadByFeed so per-feed unread badges are
+// cross-feed deduped: a story duplicated across two feeds is owned by its
+// lowest-id feed and counted once, and the per-feed badges sum to All Unread.
+// Guards the handler wiring (the store method is covered separately).
+func TestFeeds_ListUnreadIsDedupedPerFeed(t *testing.T) {
+	h := newHarness(t)
+	u := h.seedUser(t, "alice", "p", false)
+	cA := h.login(t, "alice", "p")
+	ctx := context.Background()
+	recent := time.Now().Unix() - 3600 // inside the reading window
+
+	f1, _ := h.store.UpsertFeed(ctx, models.Feed{URL: "https://f1.test/feed", Title: "F1"})
+	f2, _ := h.store.UpsertFeed(ctx, models.Feed{URL: "https://f2.test/feed", Title: "F2"})
+	_, _ = h.store.Subscribe(ctx, models.Subscription{UserID: u.ID, FeedID: f1.ID})
+	_, _ = h.store.Subscribe(ctx, models.Subscription{UserID: u.ID, FeedID: f2.ID})
+
+	const dupURL = "https://news.test/big-story"
+	// Same canonical URL across f1 (winner, lower id) and f2 (loser).
+	_, _, _ = h.store.UpsertArticle(ctx, models.Article{FeedID: f1.ID, GUID: "g1", Title: "Big Story", URL: dupURL, ContentHash: "h1", PublishedAt: recent})
+	_, _, _ = h.store.UpsertArticle(ctx, models.Article{FeedID: f2.ID, GUID: "g2", Title: "Big Story", URL: dupURL, ContentHash: "h2", PublishedAt: recent})
+	// A unique unread story only in f2.
+	_, _, _ = h.store.UpsertArticle(ctx, models.Article{FeedID: f2.ID, GUID: "g3", Title: "Only In F2", URL: "https://f2.test/uniq", ContentHash: "h3", PublishedAt: recent})
+
+	var list struct {
+		Data []models.FeedWithCounts `json:"data"`
+	}
+	if code := get(t, cA, h.srv.URL+"/api/feeds", &list); code != http.StatusOK {
+		t.Fatalf("list feeds = %d", code)
+	}
+	byID := map[int64]int{}
+	for _, f := range list.Data {
+		byID[f.ID] = f.Unread
+	}
+	if byID[f1.ID] != 1 {
+		t.Errorf("f1 unread = %d, want 1 (owns the deduped dup)", byID[f1.ID])
+	}
+	if byID[f2.ID] != 1 {
+		t.Errorf("f2 unread = %d, want 1 (unique story only; dup suppressed)", byID[f2.ID])
+	}
+}
+
 func TestArticles_StateAndCrossUser(t *testing.T) {
 	h := newHarness(t)
 	alice := h.seedUser(t, "alice", "p", false)

@@ -6,6 +6,8 @@ import {
   feeds,
   loadArticles,
   loadMore,
+  newArticleCount,
+  pollForNewArticles,
   refreshSmartCounts,
   setRead,
   smartCounts,
@@ -158,6 +160,48 @@ describe("setRead", () => {
     await setRead([10], true, true);
     const body = JSON.parse((fetchMock.mock.calls.at(-1)![1] as RequestInit).body as string);
     expect(body).toMatchObject({ ids: [10], read: true, include_siblings: true });
+  });
+});
+
+describe("pollForNewArticles", () => {
+  it("keeps an existing item the poll's top page dropped (open-article invariant)", async () => {
+    // The selected/open article can fall off the server's top page (read, or
+    // pushed out of a smart-view window), but must NOT vanish from the list.
+    articles.set({
+      items: [article({ id: 1, published_at: 200 }), article({ id: 2, published_at: 100 })],
+      loading: false,
+      hasMore: false,
+    });
+    fetchMock.mockResolvedValueOnce(envelope([article({ id: 1, published_at: 200 })]));
+    const n = await pollForNewArticles();
+    expect(n).toBe(0);
+    // id 2 is preserved at its natural sort position even though the poll omitted it.
+    expect(get(articles).items.map((a) => a.id)).toEqual([1, 2]);
+  });
+
+  it("treats the server's top page as authoritative for items it returns", async () => {
+    articles.set({
+      items: [article({ id: 1, is_read: false, published_at: 100 })],
+      loading: false,
+      hasMore: false,
+    });
+    fetchMock.mockResolvedValueOnce(envelope([article({ id: 1, is_read: true, published_at: 100 })]));
+    await pollForNewArticles();
+    expect(get(articles).items[0].is_read).toBe(true);
+  });
+
+  it("merges a newly-arrived article, counts it, and sorts by published_at desc", async () => {
+    newArticleCount.set(0);
+    articles.set({ items: [article({ id: 1, published_at: 100 })], loading: false, hasMore: false });
+    fetchMock.mockResolvedValueOnce(
+      envelope([article({ id: 2, published_at: 200 }), article({ id: 1, published_at: 100 })]),
+    );
+    // newCount>0 triggers a fire-and-forget refreshSidebar; benign default mock.
+    fetchMock.mockResolvedValue(envelope([]));
+    const n = await pollForNewArticles();
+    expect(n).toBe(1);
+    expect(get(articles).items.map((a) => a.id)).toEqual([2, 1]);
+    expect(get(newArticleCount)).toBe(1);
   });
 });
 
