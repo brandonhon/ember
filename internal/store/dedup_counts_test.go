@@ -41,6 +41,36 @@ func TestDedup_ReadLowerCopyDoesNotZeroUnread(t *testing.T) {
 	}
 }
 
+// The suppressor must also respect the view's reading WINDOW, not just the read
+// flag. A duplicate's lowest-id copy can sit outside the window (older than the
+// cutoff) — common with a 24h reading window and a story re-run days later. Pre-
+// fix that out-of-window copy still "won" dedup and suppressed the in-window
+// unread copy, zeroing the count. The suppressor now carries the same FreshAfter
+// clause as the list, so an out-of-window copy can't suppress an in-window one.
+func TestDedup_OutOfWindowLowerCopyDoesNotZeroUnread(t *testing.T) {
+	s := NewTest(t)
+	ctx := context.Background()
+	u, _ := s.CreateUser(ctx, models.User{Username: "u", PasswordHash: "h"})
+	f1, _ := s.UpsertFeed(ctx, models.Feed{URL: "https://f1.test/feed", Title: "F1"})
+	f2, _ := s.UpsertFeed(ctx, models.Feed{URL: "https://f2.test/feed", Title: "F2"})
+	_, _ = s.Subscribe(ctx, models.Subscription{UserID: u.ID, FeedID: f1.ID})
+	_, _ = s.Subscribe(ctx, models.Subscription{UserID: u.ID, FeedID: f2.ID})
+
+	const dupURL = "https://news.test/big-story"
+	// Lower id (f1) is OLD/out-of-window; higher id (f2) is recent/in-window.
+	_, _, _ = s.UpsertArticle(ctx, models.Article{FeedID: f1.ID, GUID: "g1", Title: "Big Story", URL: dupURL, ContentHash: "h1", PublishedAt: 1000})
+	_, _, _ = s.UpsertArticle(ctx, models.Article{FeedID: f2.ID, GUID: "g2", Title: "Big Story", URL: dupURL, ContentHash: "h2", PublishedAt: 5000})
+
+	// Window cutoff sits between the two copies: only the higher-id copy is in.
+	n, err := s.CountArticles(ctx, u.ID, ListArticlesQuery{View: "unread", FreshAfter: 4000})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Fatalf("All-Unread = %d, want 1 (out-of-window lower-id copy must not suppress the in-window unread copy)", n)
+	}
+}
+
 // Full per-feed dedup: a duplicated unread story is counted once, owned by the
 // lowest-id (first-ingested) feed. The per-feed deduped badges must sum to the
 // All-Unread count, and opening the "loser" feed must not show the duplicate.
