@@ -96,6 +96,34 @@ func TestParse_HashDiffersAcrossArticles(t *testing.T) {
 	}
 }
 
+func TestParse_DecodesTitleEntities(t *testing.T) {
+	// Atom title type="html": entities (curly quotes, ampersand) must be decoded
+	// to display text, since titles render as plain text in the UI, not {@html}.
+	body := []byte(`<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title type="html"><![CDATA[Tom &amp; Jerry &#8212; News]]></title>
+  <entry>
+    <title type="html"><![CDATA[Roblox exec says it is &#8216;not enough anymore&#8217;]]></title>
+    <link rel="alternate" type="text/html" href="https://example.com/a"/>
+    <id>tag:example.com,2026:a</id>
+    <summary type="html"><![CDATA[body]]></summary>
+  </entry>
+</feed>`)
+	res, err := Parse(context.Background(), 1, body, "https://example.com/feed.xml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "Tom & Jerry — News"; res.Title != want {
+		t.Errorf("feed title = %q, want %q", res.Title, want)
+	}
+	if len(res.Articles) != 1 {
+		t.Fatalf("articles = %d, want 1", len(res.Articles))
+	}
+	if want := "Roblox exec says it is ‘not enough anymore’"; res.Articles[0].Title != want {
+		t.Errorf("article title = %q, want %q", res.Articles[0].Title, want)
+	}
+}
+
 func TestContentHash_Deterministic(t *testing.T) {
 	a := ContentHash("https://x", "t", "body")
 	b := ContentHash("https://x", "t", "body")
