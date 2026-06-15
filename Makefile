@@ -130,6 +130,10 @@ sandbox-down: ## stop the sandbox stack and wipe its data + volumes
 docker: ## build the docker image
 	docker build -t ember:$(VERSION) -f Dockerfile .
 
+.PHONY: changelog-release
+changelog-release: ## update CHANGELOG link refs for a release: make changelog-release VERSION=vX.Y.Z
+	@scripts/changelog-release.sh $(VERSION)
+
 .PHONY: release-local
 release-local: embed ## cross-compile release binaries to dist/ (no upload, mirrors CI)
 	@rm -rf dist
