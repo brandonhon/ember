@@ -7,7 +7,24 @@ All notable user-facing changes to Ember are documented here. The format follows
 Per-tag [GitHub Releases](https://github.com/brandonhon/ember/releases) hold the
 full commit-level list; this file curates the highlights and behavior changes.
 
-## [Unreleased]
+## [0.9.1] - 2026-06-15
+
+### Added
+
+- **Lead image in the reader** — when a feed provides an article image (the same
+  one shown on the list card) but the article body has no inline image, the
+  reader now shows it as a lead image at the top, so the story no longer looks
+  image-less.
+
+### Changed
+
+- **"Mark all read" clears Fresh and All Unread as you go.** In the unread-only
+  views (Fresh, All Unread), marking read now drops the read cards and pages in
+  the next unread batch, so the column reflects what's left to read. Today,
+  Starred, Read Later, and Shared keep their cards, since those views show read
+  and unread together. Duplicated stories are cleared as a unit — marking the
+  shown copy read also marks its hidden cross-feed copies read, so a duplicate
+  doesn't pop back as unread.
 
 ### Fixed
 
@@ -27,26 +44,6 @@ full commit-level list; this file curates the highlights and behavior changes.
   "Roblox exec says it is &#8216;not enough anymore&#8217;" leaked the entity
   codes. Titles are now decoded to display text on ingest, matching how article
   bodies are already handled. Affects newly fetched articles.
-
-## [0.9.1] - 2026-06-11
-
-### Added
-
-- **Lead image in the reader** — when a feed provides an article image (the same
-  one shown on the list card) but the article body has no inline image, the
-  reader now shows it as a lead image at the top, so the story no longer looks
-  image-less.
-
-### Changed
-
-- **"Mark all read" clears Fresh and All Unread as you go.** In the unread-only
-  views (Fresh, All Unread), marking read now drops the read cards and pages in
-  the next unread batch, so the column reflects what's left to read. Today,
-  Starred, Read Later, and Shared keep their cards, since those views show read
-  and unread together.
-
-### Fixed
-
 - **Unread/fresh badges stay consistent with the lists they label** — several
   sidebar and header counts fell back to a non-deduped, non-windowed value when
   the server's authoritative deduped + windowed count was legitimately 0 (or a
