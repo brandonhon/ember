@@ -220,8 +220,12 @@ export const api = {
   getArticle: (id: number) => call<ArticleView>("GET", `/api/articles/${id}`),
   getArticleCluster: (id: number) =>
     call<{ siblings: ClusterSibling[] }>("GET", `/api/articles/${id}/cluster`),
-  setRead: (ids: number[], read: boolean) =>
-    call<{ count: number }>("POST", "/api/articles/read", { ids, read }),
+  setRead: (ids: number[], read: boolean, includeSiblings = false) =>
+    call<{ count: number }>("POST", "/api/articles/read", {
+      ids,
+      read,
+      include_siblings: includeSiblings,
+    }),
   setStar: (id: number, value: boolean) =>
     call<unknown>("POST", "/api/articles/star", { id, value }),
   setLater: (id: number, value: boolean) =>

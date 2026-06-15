@@ -41,6 +41,41 @@ func TestDedup_ReadLowerCopyDoesNotZeroUnread(t *testing.T) {
 	}
 }
 
+// "Mark all read" of the visible (deduped) cards must also clear their hidden
+// cross-feed siblings, otherwise the suppressor — which only hides UNREAD copies
+// — lets the sibling resurface the instant its winner is read. MarkReadWithSiblings
+// sweeps the whole cluster so the unread view truly empties; a non-duplicate
+// unread story in another feed is left alone.
+func TestMarkReadWithSiblings_ClearsResurfacingDuplicate(t *testing.T) {
+	s := NewTest(t)
+	ctx := context.Background()
+	u, _ := s.CreateUser(ctx, models.User{Username: "u", PasswordHash: "h"})
+	f1, _ := s.UpsertFeed(ctx, models.Feed{URL: "https://f1.test/feed", Title: "F1"})
+	f2, _ := s.UpsertFeed(ctx, models.Feed{URL: "https://f2.test/feed", Title: "F2"})
+	_, _ = s.Subscribe(ctx, models.Subscription{UserID: u.ID, FeedID: f1.ID})
+	_, _ = s.Subscribe(ctx, models.Subscription{UserID: u.ID, FeedID: f2.ID})
+
+	const dupURL = "https://news.test/big-story"
+	a1, _, _ := s.UpsertArticle(ctx, models.Article{FeedID: f1.ID, GUID: "g1", Title: "Big Story", URL: dupURL, ContentHash: "h1", PublishedAt: 1000})
+	_, _, _ = s.UpsertArticle(ctx, models.Article{FeedID: f2.ID, GUID: "g2", Title: "Big Story", URL: dupURL, ContentHash: "h2", PublishedAt: 1001})
+	// A non-duplicate unread story must survive the sweep.
+	_, _, _ = s.UpsertArticle(ctx, models.Article{FeedID: f2.ID, GUID: "g3", Title: "Only In F2", URL: "https://f2.test/uniq", ContentHash: "h3", PublishedAt: 1002})
+
+	// Mark the visible winner (a1) read with siblings — the f2 copy must go too.
+	if err := s.MarkReadWithSiblings(ctx, u.ID, []int64{a1.ID}); err != nil {
+		t.Fatal(err)
+	}
+
+	n, err := s.CountArticles(ctx, u.ID, ListArticlesQuery{View: "unread"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Only the unique story remains; the duplicate (both copies) is fully read.
+	if n != 1 {
+		t.Fatalf("All-Unread = %d, want 1 (duplicate cleared incl. sibling; unique story kept)", n)
+	}
+}
+
 // The suppressor must also respect the view's reading WINDOW, not just the read
 // flag. A duplicate's lowest-id copy can sit outside the window (older than the
 // cutoff) — common with a 24h reading window and a story re-run days later. Pre-
