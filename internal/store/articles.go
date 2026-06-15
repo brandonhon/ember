@@ -327,6 +327,13 @@ type ListArticlesQuery struct {
 	// Tag filters to articles the user has tagged with this label (joined
 	// against article_tags). Empty = no filter.
 	Tag string
+	// DedupUnread makes cross-feed dedup match suppressor siblings on is_read=0
+	// even when the outer list itself isn't unread-filtered. Feed/category list
+	// views show read+unread, but their sidebar badges count only unread; setting
+	// this makes the list dedup unread copies the same way the badge does, so the
+	// unread cards shown always equal the badge (no phantom count). The "unread"
+	// and "fresh" views set it implicitly via buildArticleFilter.
+	DedupUnread bool
 }
 
 // buildArticleFilter assembles the FROM + WHERE clauses (and their args, in
@@ -361,12 +368,14 @@ LEFT JOIN article_state st ON st.article_id = a.id AND st.user_id = ?`
 		q.Later = true
 	case "unread":
 		q.Unread = true
+		q.DedupUnread = true
 	case "fresh":
 		// Fresh = recent + unread, matching CountSmartViews.Fresh. Without
 		// this, the list shows every article in the time window (read +
 		// unread) while the sidebar badge counts only unread — users see
 		// "Fresh 4" but click in and find 50 items.
 		q.Unread = true
+		q.DedupUnread = true
 		// FreshAfter expected to be set by caller
 	case "today":
 		// caller can set FreshAfter to start-of-day
@@ -420,34 +429,69 @@ JOIN article_tags atg ON atg.article_id = a.id AND atg.user_id = ? AND atg.tag =
 	}
 
 	// Cross-feed dedup: when two feeds the user subscribes to publish the
-	// same article, only the lowest-id row wins. Two predicates OR'd:
+	// same story, only the lowest-id copy wins. Two predicates OR'd:
 	//   (a) same canonical cluster_id — exact URL after tracking-param
 	//       stripping. Tightest match.
 	//   (b) same title_fingerprint within a 48h window — catches wire
 	//       stories republished by multiple outlets under different URLs.
 	//       Window keeps headlines that happen to repeat across years
 	//       ("Apple Q3 earnings") from collapsing across time.
-	// Skipped for per-feed (user opened the feed and wants its contents
-	// verbatim), shared (explicit one-off share), and board views (explicit
-	// curation). Empty cluster_id AND empty title_fingerprint rows always
-	// pass (no signal in either dimension).
-	if q.View != "shared" && q.FeedID == 0 && q.BoardID == 0 {
+	// Applied to feed/category/smart views alike (a duplicate story isn't
+	// counted or shown anywhere twice); skipped only for shared (explicit
+	// one-off share) and board views (explicit curation). Empty cluster_id AND
+	// empty title_fingerprint rows always pass (no signal in either dimension).
+	//
+	// The suppressor sibling (a3) must satisfy the SAME predicate — window,
+	// summary gate, muted, and read/star/later — as the rows being listed.
+	// Otherwise a lower-id copy the user can't see (already-read, out of window,
+	// unsummarized) silently removes its visible copies, collapsing the count to
+	// 0. Matching the predicate means a row is only deduped against a copy that
+	// is actually present in the same view.
+	if q.View != "shared" && q.BoardID == 0 {
+		var sib strings.Builder
+		var sibArgs []any
+		sib.WriteString(`
+			SELECT 1 FROM articles a3
+			JOIN subscriptions s3 ON s3.feed_id = a3.feed_id AND s3.user_id = ?`)
+		sibArgs = append(sibArgs, userID)
+		matchRead := q.Unread || q.DedupUnread
+		if matchRead || q.Starred || q.Later {
+			sib.WriteString(`
+			LEFT JOIN article_state st3 ON st3.article_id = a3.id AND st3.user_id = ?`)
+			sibArgs = append(sibArgs, userID)
+		}
+		sib.WriteString(`
+			WHERE s3.muted = 0 AND a3.id < a.id`)
+		if matchRead {
+			sib.WriteString(" AND IFNULL(st3.is_read,0) = 0")
+		}
+		if q.Starred {
+			sib.WriteString(" AND IFNULL(st3.is_starred,0) = 1")
+		}
+		if q.Later {
+			sib.WriteString(" AND IFNULL(st3.is_later,0) = 1")
+		}
+		if q.FreshAfter > 0 {
+			sib.WriteString(" AND IFNULL(a3.published_at,0) >= ?")
+			sibArgs = append(sibArgs, q.FreshAfter)
+		}
+		if q.OnlySummarized {
+			sib.WriteString(" AND a3.summary_model IS NOT NULL AND a3.summary_model <> ''")
+		}
+		sib.WriteString(`
+			AND (
+				(a3.cluster_id = a.cluster_id AND a3.cluster_id <> '')
+				OR (
+					a3.title_fingerprint = a.title_fingerprint
+					AND a3.title_fingerprint <> ''
+					AND ABS(IFNULL(a3.published_at,0) - IFNULL(a.published_at,0)) < 172800
+				)
+			)`)
 		conds = append(conds, `(
 			(IFNULL(a.cluster_id,'') = '' AND IFNULL(a.title_fingerprint,'') = '')
-			OR NOT EXISTS (
-				SELECT 1 FROM articles a3
-				JOIN subscriptions s3 ON s3.feed_id = a3.feed_id AND s3.user_id = ?
-				WHERE s3.muted = 0 AND a3.id < a.id AND (
-					(a3.cluster_id = a.cluster_id AND a3.cluster_id <> '')
-					OR (
-						a3.title_fingerprint = a.title_fingerprint
-						AND a3.title_fingerprint <> ''
-						AND ABS(IFNULL(a3.published_at,0) - IFNULL(a.published_at,0)) < 172800
-					)
-				)
-			)
-		)`)
-		args = append(args, userID)
+			OR NOT EXISTS (`+sib.String()+`
+		))`)
+		args = append(args, sibArgs...)
 	}
 
 	where = ""
@@ -713,6 +757,35 @@ func (s *Store) CountUnreadByCategory(ctx context.Context, userID int64, q ListA
 			return nil, err
 		}
 		out[cid] = n
+	}
+	return out, rows.Err()
+}
+
+// CountUnreadByFeed returns deduped unread counts keyed by feed id in a SINGLE
+// grouped query. Like CountUnreadByCategory it reuses buildArticleFilter so the
+// cross-feed dedup (a duplicate story is owned by its lowest-id feed) and the
+// window/summary-gate/muted predicate are byte-for-byte the ones the SPA feed
+// list applies — a per-feed badge can never exceed its column, and the deduped
+// per-feed badges sum to the All-Unread badge. Only feeds with at least one
+// matching article appear in the map (the SPA treats a missing key as zero).
+// Pass FreshAfter / OnlySummarized to scope the window + summary gate.
+func (s *Store) CountUnreadByFeed(ctx context.Context, userID int64, q ListArticlesQuery) (map[int64]int, error) {
+	q.Unread = true
+	from, where, args := s.buildArticleFilter(userID, q, false)
+	rows, err := s.DB.QueryContext(ctx,
+		fmt.Sprintf("SELECT a.feed_id, COUNT(*)\n%s\n%s\nGROUP BY a.feed_id", from, where), args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[int64]int{}
+	for rows.Next() {
+		var fid int64
+		var n int
+		if err := rows.Scan(&fid, &n); err != nil {
+			return nil, err
+		}
+		out[fid] = n
 	}
 	return out, rows.Err()
 }

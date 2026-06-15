@@ -7,9 +7,7 @@ All notable user-facing changes to Ember are documented here. The format follows
 Per-tag [GitHub Releases](https://github.com/brandonhon/ember/releases) hold the
 full commit-level list; this file curates the highlights and behavior changes.
 
-## [Unreleased]
-
-## [0.9.1] - 2026-06-11
+## [0.9.1] - 2026-06-15
 
 ### Added
 
@@ -24,10 +22,28 @@ full commit-level list; this file curates the highlights and behavior changes.
   views (Fresh, All Unread), marking read now drops the read cards and pages in
   the next unread batch, so the column reflects what's left to read. Today,
   Starred, Read Later, and Shared keep their cards, since those views show read
-  and unread together.
+  and unread together. Duplicated stories are cleared as a unit — marking the
+  shown copy read also marks its hidden cross-feed copies read, so a duplicate
+  doesn't pop back as unread.
 
 ### Fixed
 
+- **Unread badges no longer collapse to zero when a story has a read or
+  out-of-window duplicate** — cross-feed dedup was suppressing every visible
+  unread copy of a story whenever any lower-id duplicate existed anywhere in the
+  database, even if that duplicate was already read or outside the reading
+  window. Fresh, All Unread, and per-category badges could drop to 0 while the
+  per-feed badges still showed counts. Dedup now matches duplicates against the
+  same unread/window/summary filter as the view, so a row is only hidden behind
+  a copy you would actually see. Per-feed badges and columns now dedup too, so
+  each duplicated story is counted and shown once and the per-feed badges sum to
+  the All Unread total.
+- **Article titles no longer show raw HTML entities** — feeds that encode their
+  titles (e.g. Atom `type="html"` with `&#8217;` curly quotes, or entity-escaped
+  ampersands) were stored verbatim and rendered as plain text, so titles like
+  "Roblox exec says it is &#8216;not enough anymore&#8217;" leaked the entity
+  codes. Titles are now decoded to display text on ingest, matching how article
+  bodies are already handled. Affects newly fetched articles.
 - **Unread/fresh badges stay consistent with the lists they label** — several
   sidebar and header counts fell back to a non-deduped, non-windowed value when
   the server's authoritative deduped + windowed count was legitimately 0 (or a

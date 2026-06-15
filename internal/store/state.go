@@ -13,6 +13,50 @@ func (s *Store) SetRead(ctx context.Context, userID int64, articleIDs []int64, r
 	return s.setStateFlag(ctx, userID, articleIDs, "is_read", "read_at", read)
 }
 
+// MarkReadWithSiblings marks the given articles read AND every still-unread
+// cross-feed dedup sibling of theirs (same cluster_id, or same title_fingerprint
+// within 48h). The list/badge views suppress all but the lowest-id copy of a
+// duplicated story, so a plain SetRead of the *visible* cards leaves the hidden
+// siblings unread — and since the suppressor now respects read state, those
+// siblings resurface the moment their winner is read. "Mark all read" means the
+// user is done with the story regardless of which feed's copy they saw, so we
+// sweep the whole cluster. Scoped to the user's subscriptions (authz), matching
+// SetRead/MarkAllRead. No-op for an empty id list.
+func (s *Store) MarkReadWithSiblings(ctx context.Context, userID int64, articleIDs []int64) error {
+	if len(articleIDs) == 0 {
+		return nil
+	}
+	ph := strings.TrimSuffix(strings.Repeat("?,", len(articleIDs)), ",")
+	q := fmt.Sprintf(`
+INSERT INTO article_state (user_id, article_id, is_read, read_at)
+SELECT ?, a.id, 1, ?
+FROM articles a
+JOIN subscriptions sub ON sub.feed_id = a.feed_id AND sub.user_id = ?
+LEFT JOIN article_state st ON st.article_id = a.id AND st.user_id = ?
+WHERE IFNULL(st.is_read,0) = 0 AND (
+	a.id IN (%s)
+	OR EXISTS (
+		SELECT 1 FROM articles src
+		WHERE src.id IN (%s) AND (
+			(src.cluster_id = a.cluster_id AND a.cluster_id <> '')
+			OR (src.title_fingerprint = a.title_fingerprint AND a.title_fingerprint <> ''
+				AND ABS(IFNULL(src.published_at,0) - IFNULL(a.published_at,0)) < 172800)
+		)
+	)
+)
+ON CONFLICT(user_id, article_id) DO UPDATE SET is_read = 1, read_at = excluded.read_at
+WHERE article_state.is_read = 0`, ph, ph)
+	args := []any{userID, s.nowUnix(), userID, userID}
+	for _, id := range articleIDs {
+		args = append(args, id)
+	}
+	for _, id := range articleIDs {
+		args = append(args, id)
+	}
+	_, err := s.DB.ExecContext(ctx, q, args...)
+	return err
+}
+
 // SetStarred toggles the star flag for a single article.
 func (s *Store) SetStarred(ctx context.Context, userID, articleID int64, starred bool) error {
 	return s.setStateFlag(ctx, userID, []int64{articleID}, "is_starred", "starred_at", starred)
