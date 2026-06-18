@@ -45,6 +45,7 @@ export default defineConfig({
       // so target=_blank avoids the SPA router fighting VitePress navigation.
       { text: 'Live Demo', link: '/demo/', target: '_blank', rel: 'noopener' },
       { text: 'GitHub', link: 'https://github.com/brandonhon/ember' },
+      { text: 'Tangled', link: 'https://tangled.org/nodnarb.tngl.sh/ember' },
     ],
     sidebar: [
       {
