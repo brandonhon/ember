@@ -1,0 +1,50 @@
+name: Mirror branches to Tangled
+
+# GitHub PR merges happen server-side and don't propagate to the Tangled
+# remote on their own, so main/develop drift out of sync. This mirrors the
+# pushed branch to Tangled on every push, keeping the two hosts aligned
+# without a manual `git push`. (gh-pages is mirrored separately by pages.yml;
+# tags are intentionally GitHub-only.)
+on:
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # Per-branch so a main push and a develop push don't block each other.
+  group: tangled-mirror-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    env:
+      # Private SSH deploy key registered to the Tangled repo-owner account.
+      # Empty until the secret is set — the steps below are skipped while
+      # empty, so the workflow stays green.
+      TANGLED_DEPLOY_KEY: ${{ secrets.TANGLED_DEPLOY_KEY }}
+    steps:
+      - name: Checkout
+        if: ${{ env.TANGLED_DEPLOY_KEY != '' }}
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          # Full history so Tangled receives every object it may be missing.
+          fetch-depth: 0
+
+      - name: Mirror ${{ github.ref_name }} to Tangled
+        if: ${{ env.TANGLED_DEPLOY_KEY != '' }}
+        env:
+          TANGLED_REMOTE: git@tangled.org:did:plc:uxktlja5en4yrm7rcyvhnm2t
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$TANGLED_DEPLOY_KEY" > ~/.ssh/tangled_deploy
+          chmod 600 ~/.ssh/tangled_deploy
+          ssh-keyscan -t ed25519 tangled.org >> ~/.ssh/known_hosts 2>/dev/null
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/tangled_deploy -o IdentitiesOnly=yes"
+          # Plain (fast-forward) push: GitHub is the source of truth. If the
+          # histories ever diverge this fails loudly rather than force-
+          # overwriting a branch on the mirror.
+          git push "$TANGLED_REMOTE" "${GITHUB_SHA}:refs/heads/${GITHUB_REF_NAME}"
