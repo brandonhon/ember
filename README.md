@@ -2,6 +2,8 @@
 
 Self-hosted RSS/Atom reader. A single Go binary serving an embedded Svelte SPA, a JSON API + Fever shim, and a background poller that ingests feeds into SQLite (FTS5). Everything runs in containers.
 
+_Primary repo on [GitHub](https://github.com/brandonhon/ember) (Releases + CI); mirrored to [Tangled](https://tangled.org/nodnarb.tngl.sh/ember)._
+
 > **AI is fully optional.** Ember can summarize articles with a small local LLM via Ollama, but it's an opt-out feature, not a dependency. Set `EMBER_DISABLE_SUMMARIES=1` (or run the stack without the `ollama` sidecar) and the reader works exactly the same — no summary card, no model download, no inference, no LLM-related code paths. Even when enabled, everything runs on your own box; no article content leaves the host. Pick the deployment that matches your stance.
 
 ## Install
