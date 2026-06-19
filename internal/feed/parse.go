@@ -102,14 +102,20 @@ func normalizeItem(it *gofeed.Item, feedID int64, base *url.URL) models.Article 
 		a.PublishedAt = t.Unix()
 	}
 
-	// Image: prefer enclosure, then itunes:image, then first <img> in HTML.
+	// Image: prefer itunes:image / RSS <image>, then an image enclosure, then
+	// Media RSS (media:content / media:thumbnail — how most news publishers,
+	// e.g. Fox/Reuters, ship the lead image), then the first <img> in the body.
 	switch {
 	case it.Image != nil && it.Image.URL != "":
 		a.ImageURL = it.Image.URL
 	case len(it.Enclosures) > 0 && strings.HasPrefix(strings.ToLower(it.Enclosures[0].Type), "image"):
 		a.ImageURL = it.Enclosures[0].URL
 	default:
-		a.ImageURL = firstImageInHTML(a.ContentHTML)
+		if u := mediaImageURL(it); u != "" {
+			a.ImageURL = u
+		} else {
+			a.ImageURL = firstImageInHTML(a.ContentHTML)
+		}
 	}
 	// Rendered as <img src>; allow only http(s)/data:image and drop script-y
 	// schemes. firstImageInHTML pulls from already-sanitized HTML, but the
@@ -205,6 +211,40 @@ var wsRe = regexp.MustCompile(`\s+`)
 
 func collapseWS(s string) string {
 	return strings.TrimSpace(wsRe.ReplaceAllString(s, " "))
+}
+
+// mediaImageURL pulls a lead image from Media RSS (media:content /
+// media:thumbnail). gofeed parses these into the generic extension map rather
+// than it.Image, so most news feeds (Fox, Reuters, …) that carry the article
+// image only via <media:content> would otherwise come through image-less.
+// media:content can also be video/audio, so non-image media is skipped.
+func mediaImageURL(it *gofeed.Item) string {
+	media := it.Extensions["media"]
+	if media == nil {
+		return ""
+	}
+	for _, c := range media["content"] {
+		u := c.Attrs["url"]
+		if u == "" {
+			continue
+		}
+		typ := strings.ToLower(c.Attrs["type"])
+		medium := strings.ToLower(c.Attrs["medium"])
+		if strings.HasPrefix(typ, "video") || strings.HasPrefix(typ, "audio") || medium == "video" || medium == "audio" {
+			continue
+		}
+		// Image-typed, medium=image, or unspecified (many feeds omit type).
+		if strings.HasPrefix(typ, "image") || medium == "image" || (typ == "" && medium == "") {
+			return u
+		}
+	}
+	// media:thumbnail is always an image.
+	for _, t := range media["thumbnail"] {
+		if u := t.Attrs["url"]; u != "" {
+			return u
+		}
+	}
+	return ""
 }
 
 func firstImageInHTML(s string) string {

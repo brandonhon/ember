@@ -28,6 +28,14 @@ full commit-level list; this file curates the highlights and behavior changes.
   scroll back to the top to find them. "Refresh feeds now" still surfaces them
   immediately.
 
+### Fixed
+
+- **News articles whose image is delivered via Media RSS now show a picture** —
+  many publishers (e.g. Fox News) attach the lead image as a `<media:content>`
+  or `<media:thumbnail>` element rather than an enclosure or an inline `<img>`.
+  The parser didn't read those, so those articles came through image-less. It
+  now extracts the image from Media RSS. Applies to newly-fetched articles.
+
 ## [0.9.2] - 2026-06-15
 
 ### Fixed
