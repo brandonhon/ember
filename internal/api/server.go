@@ -90,6 +90,13 @@ type Dependencies struct {
 	// empty, the email-inbox endpoints return enabled=false / 503 and
 	// the SMTP listener doesn't start.
 	EmailDomain string
+	// SessionKey is the EMBER_SESSION_KEY. Used to derive the image-proxy
+	// signing key so /api/img only fetches URLs ember itself signed.
+	SessionKey string
+
+	// img signs + serves the same-origin image proxy. Built in NewRouter
+	// from SessionKey; never set by callers.
+	img *imageProxy
 }
 
 // summariesOn reports whether AI summarization is wired up (an Ollama backend
@@ -113,6 +120,10 @@ func (d *Dependencies) backgroundCtx() context.Context {
 // RequireAdmin. Non-/api routes fall back to the SPA.
 func NewRouter(d Dependencies) http.Handler {
 	trusted := ParseTrustedProxies(d.TrustedProxies)
+
+	// Same-origin image proxy. Article responses rewrite image_url to a signed
+	// /api/img path so content blockers don't strip publisher-CDN lead images.
+	d.img = newImageProxy(d.SessionKey, d.AllowPrivateURLs)
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
@@ -236,6 +247,11 @@ func NewRouter(d Dependencies) http.Handler {
 		r.With(d.Auth.RequireAuth).Get("/starter-packs", d.handleListStarterPacks)
 		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/starter-packs/{slug}", d.handleImportStarterPack)
 		r.With(d.Auth.RequireAuth).Delete("/starter-packs/{slug}", d.handleRemoveStarterPack)
+
+		// Same-origin image proxy for article lead images. Signed URLs only
+		// (capability), so it's not an open relay; rate-limited like other
+		// outbound-fetch endpoints since each request opens an origin connection.
+		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Get("/img", d.img.handle)
 
 		// Articles
 		r.With(d.Auth.RequireAuth).Get("/articles", d.handleListArticles)

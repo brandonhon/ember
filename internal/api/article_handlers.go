@@ -114,6 +114,9 @@ func (d *Dependencies) handleListArticles(w http.ResponseWriter, r *http.Request
 		meta["next_cursor_pub"] = last.PublishedAt
 		meta["next_cursor_id"] = last.ID
 	}
+	for i := range articles {
+		articles[i].ImageURL = d.img.rewrite(articles[i].ImageURL)
+	}
 	writeData(w, http.StatusOK, articles, meta)
 }
 
@@ -127,6 +130,7 @@ func (d *Dependencies) handleGetArticle(w http.ResponseWriter, r *http.Request) 
 	if mapStoreError(w, err) {
 		return
 	}
+	a.ImageURL = d.img.rewrite(a.ImageURL)
 	writeData(w, http.StatusOK, a, nil)
 }
 

@@ -11,6 +11,14 @@ full commit-level list; this file curates the highlights and behavior changes.
 
 ### Added
 
+- **Article images load through Ember instead of the publisher's CDN** — the
+  card thumbnail and the reader's lead image are now served from Ember's own
+  origin (`/api/img`) rather than fetched directly from a publisher CDN. Content
+  blockers and tracker-blockers (uBlock Origin, Privacy Badger, …) match on
+  those CDN domains and were silently stripping lead images (e.g. Fox News'
+  `a57.foxnews.com`); routed same-origin they load normally. Source URLs are
+  signed by the server, so the endpoint only fetches images Ember itself
+  selected — it's not an open proxy.
 - **Links in articles open in a new tab** — every link inside an article's body
   now opens in a separate browser tab (with `rel="noopener noreferrer"`), so
   following a link no longer navigates you out of Ember.
