@@ -162,7 +162,8 @@ Only the `shared` view (explicit one-off share) and board views (explicit curati
 - Vite 5 build, output copied to `internal/web/dist`, served via `embed.FS`.
 - Typed fetch client in `web/src/lib/api.ts` (throws `ApiError`).
 - Stores in `web/src/lib/stores.ts` for user, feeds, categories, boards, articles, themes, branding, new-article counter, etc.
-- 15s auto-refresh poll while the tab is visible; SSE not used — REST polling is simpler and fits the cadence.
+- 15s auto-refresh poll while the tab is visible; SSE not used — REST polling is simpler and fits the cadence. In the **Fresh** and **All Unread** views the auto-poll is *non-disruptive*: newly-arrived articles are held in a backlog (`pendingNewIds` in `stores.ts`) and counted once rather than injected into the list under a scrolling reader. They page in on the next full load — `loadArticles` (which `clearNewArticleBacklog` resets) — e.g. the refill after "Mark all read". The explicit "Refresh feeds now" control calls `pollForNewArticles({ immediate: true })` to bypass the backlog; all other views merge new articles immediately.
+- **Mark all read** in Fresh / All Unread drops the read cards and pages in the next unread batch, with a one-shot **grace** for the article currently open: that card is kept (greyed via `.story.read`, still in `articles.items` so the reader pane keeps it) so you can finish reading; the next "Mark all read" hides it. Tracked by a `graceUsedId` ledger because opening an article auto-marks it read, so `is_read` can't distinguish the first click. Article-body links are rewritten to `target="_blank" rel="noopener noreferrer"` after render (`lib/links.forceNewTabLinks`) so they open in a new tab.
 - Service worker (`web/public/sw.js`) caches assets immutably and falls back to cached shell when offline.
 
 ## Admin endpoints (admin-only)
