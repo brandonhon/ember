@@ -64,6 +64,32 @@ test.describe("mark all read per view", () => {
     await expect(au.locator(".badge")).toHaveCount(0);
   });
 
+  test("Fresh: the article being read greys out on mark-all-read, then hides on the next click", async ({
+    page,
+  }) => {
+    await page.getByTestId("view-fresh").click();
+    await expect(stories(page).first()).toBeVisible();
+
+    // Open the first article — selects it for the reader pane and auto-marks it
+    // read. This is the card that should survive the first mark-all-read.
+    const first = stories(page).first();
+    const id = await first.getAttribute("data-article-id");
+    await first.locator(".story-link").click();
+    const opened = page.locator(`[data-testid="story-${id}"]`);
+    await expect(opened).toBeVisible();
+
+    // First mark-all-read: the open card is kept (greyed, data-is-read=1) so the
+    // user can keep reading it, instead of dropping out like the rest of Fresh.
+    await page.getByTestId("mark-all-read").click();
+    await expect(opened).toBeVisible();
+    await expect(opened).toHaveAttribute("data-is-read", "1");
+    await expect(opened).toHaveClass(/read/);
+
+    // Second mark-all-read: the one-shot grace is spent, so now it hides.
+    await page.getByTestId("mark-all-read").click();
+    await expect(opened).toHaveCount(0);
+  });
+
   test("Today: marking all read KEEPS the (now-read) cards", async ({ page }) => {
     await page.locator(".nav-item", { hasText: "Today" }).click();
     await expect(stories(page).first()).toBeVisible();

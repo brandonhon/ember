@@ -14,6 +14,7 @@
     toggleLater,
     setRead,
     newArticleCount,
+    isBacklogView,
     freshWindowSeconds,
   } from "../lib/stores";
   import { api } from "../lib/api";
@@ -69,8 +70,15 @@
   // "be taken to the top." Touching $activeView gets Svelte 5 to react to the
   // store change. We re-read containerEl each time because the effect may run
   // before bind:this resolves on first paint.
+  // One-shot "grace" for the article being read when Mark-all-read fires in a
+  // refill view (Fresh / All-Unread): the open card is kept (greyed) for one
+  // round so the user can keep reading it, then dropped on the next click.
+  // Holds the id currently grandfathered; reset when the view changes.
+  let graceUsedId: number | null = null;
+
   $effect(() => {
     void $activeView;
+    graceUsedId = null;
     if (containerEl) containerEl.scrollTop = 0;
   });
 
@@ -88,6 +96,11 @@
   // articles — clear the favicon-dot counter.
   function onScroll() {
     if (!containerEl) return;
+    // In Fresh / All-Unread the count reflects a backlog of held-back articles
+    // that scrolling up does NOT reveal (they load on mark-all-read), so keep
+    // the indicator until that refill clears it. Other views merge new
+    // articles at the top, so reaching the top means the user has seen them.
+    if (isBacklogView(get(activeView))) return;
     if (containerEl.scrollTop <= 12 && get(newArticleCount) > 0) {
       newArticleCount.set(0);
     }
@@ -201,21 +214,56 @@
   // behind "Load more" stays unread until it's loaded. Reuses the bulk
   // setRead, which already syncs the per-feed + All-Unread badges optimistically.
   async function onMarkAllRead() {
+    const v = $activeView;
+    const refillView = v.kind === "smart" && (v.view === "fresh" || v.view === "unread");
+    const sel = $selectedArticleId;
     const ids = $articles.items.filter((a) => !a.is_read).map((a) => a.id);
-    if (ids.length === 0) return;
+
+    // No-op only when there's nothing to mark AND no grandfathered card waiting
+    // to be retired on this (second) click.
+    if (ids.length === 0 && !(refillView && graceUsedId !== null)) return;
+
     // includeSiblings: also mark each shown story's cross-feed dedup siblings
     // read, so a duplicate's hidden copy doesn't resurface as unread once its
     // visible winner is marked read (the suppressor only hides unread copies).
-    await setRead(ids, true, true);
+    if (ids.length > 0) await setRead(ids, true, true);
+
     // Fresh and All Unread list ONLY unread articles, so the just-read cards no
     // longer belong — reload the view so they drop out and the next batch of
     // unread pages in from the top. The other views deliberately keep the
     // marked cards in place: Today shows the calendar day's read+unread;
     // Starred / Read Later / Shared (and an explicit feed/category) all mix
     // read and unread, so marking read shouldn't make cards vanish there.
-    const v = $activeView;
-    if (v.kind === "smart" && (v.view === "fresh" || v.view === "unread")) {
+    if (refillView) {
+      // Grant the open article a one-shot grace: keep it (greyed) so the user
+      // can finish reading. Skipped if it's already the grandfathered card —
+      // that's the "next click hides it" case. (Opening an article auto-marks
+      // it read, so we can't use is_read to detect "first time"; graceUsedId
+      // is the ledger.)
+      const grantId = sel !== null && sel !== graceUsedId ? sel : null;
+      const keepCard = grantId !== null ? ($articles.items.find((a) => a.id === grantId) ?? null) : null;
+
       await loadArticles(v);
+
+      if (keepCard) {
+        // Re-insert the granted (now-read) card so the reader pane keeps it
+        // (the pane resolves the open article from articles.items) and it
+        // renders greyed via .story.read. Sort into published position to match
+        // the server's ORDER BY IFNULL(published_at,0) DESC, id DESC.
+        articles.update((s) => {
+          if (s.items.some((a) => a.id === keepCard.id)) return s;
+          const items = [...s.items, { ...keepCard, is_read: true }].sort((a, b) => {
+            const aPub = a.published_at ?? 0;
+            const bPub = b.published_at ?? 0;
+            if (bPub !== aPub) return bPub - aPub;
+            return b.id - a.id;
+          });
+          return { ...s, items };
+        });
+        graceUsedId = keepCard.id;
+      } else {
+        graceUsedId = null;
+      }
       if (containerEl) containerEl.scrollTop = 0;
     }
     // Reconcile the per-category badges (setRead doesn't touch that map).

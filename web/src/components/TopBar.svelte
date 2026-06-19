@@ -189,11 +189,15 @@
       // merging newly-ingested articles into the current view as they arrive
       // (merge preserves scroll/selection). Slower feeds still surface on the
       // app's 15s background poll.
+      //
+      // immediate: true — this is an explicit "show me new stuff" action, so
+      // bypass the Fresh/All-Unread backlog and inject newly-ingested articles
+      // right away (the auto-poll holds them back; a manual refresh shouldn't).
       await api.refreshAllFeeds();
       await refreshSidebar();
       for (let i = 0; i < 6; i++) {
         await new Promise((r) => setTimeout(r, 1500));
-        await pollForNewArticles();
+        await pollForNewArticles({ immediate: true });
       }
     } catch {
       // Best-effort: even if the trigger fails, refresh what we have.

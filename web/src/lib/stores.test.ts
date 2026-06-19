@@ -3,6 +3,7 @@ import { get } from "svelte/store";
 import {
   activeView,
   articles,
+  clearNewArticleBacklog,
   feeds,
   loadArticles,
   loadMore,
@@ -26,6 +27,7 @@ beforeEach(() => {
   articles.set({ items: [], loading: false, hasMore: false });
   feeds.set([]);
   activeView.set({ kind: "smart", view: "fresh" });
+  clearNewArticleBacklog();
 });
 
 function envelope<T>(data: T, meta: Record<string, unknown> = {}) {
@@ -190,25 +192,68 @@ describe("pollForNewArticles", () => {
     expect(get(articles).items[0].is_read).toBe(true);
   });
 
-  it("merges a newly-arrived article, counts it, and sorts by published_at desc", async () => {
-    newArticleCount.set(0);
-    articles.set({ items: [article({ id: 1, published_at: 100 })], loading: false, hasMore: false });
-    // Call 0 = the poll's top page. newCount>0 then fires a fire-and-forget
-    // refreshSidebar (5 more fetches), so EACH call needs its own Response — a
-    // body can only be read once. mockImplementation returns a fresh envelope
-    // per call (a shared mockResolvedValue throws "Body already read").
+  // newCount>0 fires a fire-and-forget refreshSidebar (5 more fetches), so
+  // EACH fetch needs its own Response — a body can only be read once.
+  // mockImplementation returns a fresh envelope per call (a shared
+  // mockResolvedValue throws "Body already read"). Helper: first call returns
+  // `top`, the rest return [].
+  function mockTopPage(top: ArticleView[]) {
     let call = 0;
     fetchMock.mockImplementation(() =>
-      Promise.resolve(
-        call++ === 0
-          ? envelope([article({ id: 2, published_at: 200 }), article({ id: 1, published_at: 100 })])
-          : envelope([]),
-      ),
+      Promise.resolve(call++ === 0 ? envelope(top) : envelope([])),
     );
+  }
+
+  it("backlogs a newly-arrived article on Fresh (no inject) but counts it once", async () => {
+    activeView.set({ kind: "smart", view: "fresh" });
+    articles.set({ items: [article({ id: 1, published_at: 100 })], loading: false, hasMore: false });
+    mockTopPage([article({ id: 2, published_at: 200 }), article({ id: 1, published_at: 100 })]);
+    const n = await pollForNewArticles();
+    expect(n).toBe(1);
+    // id 2 is held back — the list the user is scrolling through is untouched.
+    expect(get(articles).items.map((a) => a.id)).toEqual([1]);
+    expect(get(newArticleCount)).toBe(1);
+
+    // A repeat poll surfacing the same new article must NOT double-count it.
+    mockTopPage([article({ id: 2, published_at: 200 }), article({ id: 1, published_at: 100 })]);
+    const n2 = await pollForNewArticles();
+    expect(n2).toBe(0);
+    expect(get(newArticleCount)).toBe(1);
+    expect(get(articles).items.map((a) => a.id)).toEqual([1]);
+  });
+
+  it("injects immediately when opts.immediate (explicit Refresh feeds now)", async () => {
+    activeView.set({ kind: "smart", view: "fresh" });
+    articles.set({ items: [article({ id: 1, published_at: 100 })], loading: false, hasMore: false });
+    mockTopPage([article({ id: 2, published_at: 200 }), article({ id: 1, published_at: 100 })]);
+    const n = await pollForNewArticles({ immediate: true });
+    expect(n).toBe(1);
+    expect(get(articles).items.map((a) => a.id)).toEqual([2, 1]);
+  });
+
+  it("merges immediately in non-backlog views (e.g. a feed)", async () => {
+    activeView.set({ kind: "feed", id: 1 });
+    articles.set({ items: [article({ id: 1, published_at: 100 })], loading: false, hasMore: false });
+    mockTopPage([article({ id: 2, published_at: 200 }), article({ id: 1, published_at: 100 })]);
     const n = await pollForNewArticles();
     expect(n).toBe(1);
     expect(get(articles).items.map((a) => a.id)).toEqual([2, 1]);
+  });
+
+  it("loadArticles flushes the backlog: held articles page in and the count resets", async () => {
+    activeView.set({ kind: "smart", view: "fresh" });
+    articles.set({ items: [article({ id: 1, published_at: 100 })], loading: false, hasMore: false });
+    mockTopPage([article({ id: 2, published_at: 200 }), article({ id: 1, published_at: 100 })]);
+    await pollForNewArticles();
     expect(get(newArticleCount)).toBe(1);
+    // A full reload (mark-all-read's refill) clears the indicator and brings
+    // the held article into the list from the server.
+    fetchMock.mockResolvedValueOnce(
+      envelope([article({ id: 2, published_at: 200 }), article({ id: 1, published_at: 100, is_read: true })]),
+    );
+    await loadArticles({ kind: "smart", view: "fresh" });
+    expect(get(newArticleCount)).toBe(0);
+    expect(get(articles).items.map((a) => a.id)).toEqual([2, 1]);
   });
 });
 
