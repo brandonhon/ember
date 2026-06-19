@@ -349,6 +349,8 @@ func (p *Poller) fetchAndStore(ctx context.Context, f models.Feed) {
 		// leave a standalone <p>Comments</p> trailing the article.
 		if before := a.ContentHTML; before != "" {
 			a.ContentHTML = stripCommentsResidue(before)
+			// Curated per-publisher in-body ad removal (no-op for unvetted hosts).
+			a.ContentHTML = feed.StripPublisherAds(a.ContentHTML, a.URL)
 		}
 		if p.Config.DisableImages {
 			a.ImageURL = ""
@@ -572,7 +574,7 @@ func (p *Poller) enrichWithReadability(ctx context.Context, a *models.Article) {
 		p.Logger.Debug("poller: readability failed", "url", target, "err", err)
 		return
 	}
-	cleanHTML := stripCommentsResidue(r.HTML)
+	cleanHTML := feed.StripPublisherAds(stripCommentsResidue(r.HTML), target)
 	cleanText := strings.TrimSpace(r.Text)
 	if len(cleanText) < len(strings.TrimSpace(a.ContentText)) {
 		// Worse than what we already had — keep the original.

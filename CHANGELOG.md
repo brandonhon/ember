@@ -35,6 +35,11 @@ full commit-level list; this file curates the highlights and behavior changes.
   or `<media:thumbnail>` element rather than an enclosure or an inline `<img>`.
   The parser didn't read those, so those articles came through image-less. It
   now extracts the image from Media RSS. Applies to newly-fetched articles.
+- **BleepingComputer articles no longer carry in-body ads** — BleepingComputer's
+  feed ships only a short excerpt, so Ember extracts the full story from the
+  page, which dragged in sponsored banners and an end-of-article promo block.
+  Those are now stripped via a curated per-publisher rule; feeds we haven't
+  vetted are left untouched. Applies to newly-fetched articles.
 
 ## [0.9.2] - 2026-06-15
 
