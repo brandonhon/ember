@@ -104,7 +104,12 @@ func (p *imageProxy) handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, src, nil)
+	// src is not attacker-controlled at this point: the HMAC signature check
+	// above only admits URLs the server itself signed during article rewrite,
+	// and urlcheck.Check + GuardedTransport guard the actual network reach.
+	// Static taint analyzers can't see through the HMAC equality, so we tell
+	// gosec/CodeQL explicitly.
+	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, src, nil) //nolint:gosec // SSRF guarded by HMAC verify + urlcheck.Check + GuardedTransport
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "bad image url")
 		return
@@ -112,7 +117,7 @@ func (p *imageProxy) handle(w http.ResponseWriter, r *http.Request) {
 	req.Header.Set("User-Agent", imageProxyUA)
 	req.Header.Set("Accept", "image/*")
 
-	resp, err := p.client.Do(req)
+	resp, err := p.client.Do(req) //nolint:gosec // SSRF guarded by HMAC verify + urlcheck.Check + GuardedTransport
 	if err != nil {
 		writeError(w, http.StatusBadGateway, "bad_gateway", "image fetch failed")
 		return
