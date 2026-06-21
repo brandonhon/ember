@@ -93,12 +93,21 @@ test.describe("mark all read per view", () => {
   test("Today: marking all read KEEPS the (now-read) cards", async ({ page }) => {
     await page.locator(".nav-item", { hasText: "Today" }).click();
     await expect(stories(page).first()).toBeVisible();
-    const before = await stories(page).count();
+    // Snapshot card IDs, not raw count: the 30s background poller (Today is
+    // not a backlog view) can inject newly-fetched articles between snapshot
+    // and assertion, growing the count. The intent is "the cards we saw
+    // before are still there" — survivor check, not equality.
+    const beforeIds = await stories(page).evaluateAll((els) =>
+      els.map((el) => (el as HTMLElement).getAttribute("data-article-id")).filter((s): s is string => s !== null),
+    );
+    expect(beforeIds.length).toBeGreaterThan(0);
 
     await page.getByTestId("mark-all-read").click();
 
     // Today shows the calendar day's read + unread, so the cards stay put
     // (just flipped to read) rather than dropping out like Fresh/All Unread.
-    await expect(stories(page)).toHaveCount(before);
+    for (const id of beforeIds) {
+      await expect(page.locator(`[data-testid="story-${id}"]`)).toBeVisible();
+    }
   });
 });
