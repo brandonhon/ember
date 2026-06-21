@@ -9,6 +9,8 @@ full commit-level list; this file curates the highlights and behavior changes.
 
 ## [Unreleased]
 
+## [0.9.3] - 2026-06-21
+
 ### Added
 
 - **Article images load through Ember instead of the publisher's CDN** — the
@@ -48,6 +50,16 @@ full commit-level list; this file curates the highlights and behavior changes.
   page, which dragged in sponsored banners and an end-of-article promo block.
   Those are now stripped via a curated per-publisher rule; feeds we haven't
   vetted are left untouched. Applies to newly-fetched articles.
+
+### Security
+
+- **Bumped `undici` 7.26.0 → 7.28.0** (transitive devDep via `jsdom`) to patch
+  [GHSA-vmh5-mc38-953g](https://github.com/advisories/GHSA-vmh5-mc38-953g)
+  (TLS certificate validation bypass via dropped `requestTls` in SOCKS5
+  `ProxyAgent`, high) and
+  [GHSA-pr7r-676h-xcf6](https://github.com/advisories/GHSA-pr7r-676h-xcf6)
+  (cross-user information disclosure via shared cache whitespace bypass,
+  medium). Dev-only — `undici` is not bundled into the Ember binary.
 
 ## [0.9.2] - 2026-06-15
 
@@ -197,7 +209,8 @@ TT-RSS full migration (subscriptions, folders, starred/archived) and fail-fast
 admin bootstrap. See the
 [v0.8.7 release](https://github.com/brandonhon/ember/releases/tag/v0.8.7).
 
-[Unreleased]: https://github.com/brandonhon/ember/compare/v0.9.2...develop
+[Unreleased]: https://github.com/brandonhon/ember/compare/v0.9.3...develop
+[0.9.3]: https://github.com/brandonhon/ember/compare/v0.9.2...v0.9.3
 [0.9.2]: https://github.com/brandonhon/ember/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/brandonhon/ember/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/brandonhon/ember/compare/v0.8.9...v0.9.0
