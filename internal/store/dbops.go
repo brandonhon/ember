@@ -27,6 +27,15 @@ func (s *Store) Backup(ctx context.Context, dir string) (BackupInfo, error) {
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return BackupInfo{}, fmt.Errorf("backup: mkdir %s: %w", dir, err)
 	}
+	// MkdirAll is a no-op on an existing dir and doesn't check writability, so a
+	// bind-mounted host path that isn't owned by the server's user passes here
+	// and only fails later as a cryptic SQLite "unable to open database file".
+	// Probe write access up front and fail with an actionable message instead.
+	probe := filepath.Join(dir, ".ember-backup-writetest")
+	if err := os.WriteFile(probe, []byte("ok"), 0o600); err != nil {
+		return BackupInfo{}, fmt.Errorf("backup: %s is not writable by the server (running as uid %d) — make the bind-mounted host path owned by or writable by that user: %w", dir, os.Getuid(), err)
+	}
+	_ = os.Remove(probe)
 	name := time.Unix(s.nowUnix(), 0).UTC().Format("ember-2006-01-02-150405.db")
 	out := filepath.Join(dir, name)
 	// VACUUM INTO refuses to overwrite, so make sure we have a fresh path.

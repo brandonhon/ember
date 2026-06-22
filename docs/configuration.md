@@ -80,6 +80,19 @@ you already back up off-box), change the path **and** bind-mount it:
          - /srv/ember/backups:/backups   # ← your host path : container path
    ```
 
+   The host directory must be **writable by the container's user**. Ember's
+   image runs as the distroless `nonroot` user (UID **65532**), and a bind mount
+   keeps the host's ownership — unlike the `/data` named volume, which is set up
+   for you. Create the directory and hand it to that user before starting:
+
+   ```sh
+   sudo mkdir -p /srv/ember/backups
+   sudo chown 65532:65532 /srv/ember/backups
+   ```
+
+   Otherwise "Back up now" fails with `… is not writable by the server (running
+   as uid 65532)`.
+
 2. **Point Ember at it.** In **Settings → Database → Backups → Directory**, enter
    the container-side path (`/backups` in the example), then **Save schedule**.
    It must be an absolute path the container can write to. Leave it empty to

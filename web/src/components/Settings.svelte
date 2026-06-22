@@ -1966,7 +1966,7 @@
               <label class="pref-row">
                 <div>
                   <div class="pref-label">Directory</div>
-                  <div class="pref-hint">Where snapshots are written (absolute path). <strong>Bind-mount this path in your compose file</strong> so backups live outside the container — otherwise they vanish if the container's volume is removed. Empty resets to <code>/data/backups</code>. Save with “Save schedule” below.</div>
+                  <div class="pref-hint">Where snapshots are written (absolute path). <strong>Bind-mount this path in your compose file, and make the host directory writable by the container user</strong> (Ember runs as UID 65532) — see the docs. Empty resets to <code>/data/backups</code>. Save with “Save schedule” below.</div>
                 </div>
                 <input class="row-input" type="text" bind:value={dbState.backup_dir} placeholder="/data/backups" data-testid="db-backup-dir" />
               </label>
