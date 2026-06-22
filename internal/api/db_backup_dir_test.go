@@ -114,3 +114,40 @@ func TestDB_OPMLExportConfigurable(t *testing.T) {
 		t.Fatalf("after reset = %q/%d, want /data/exports/12", dir, keep)
 	}
 }
+
+// "Export now" writes an OPML file to the configured export directory and the
+// status GET then lists it.
+func TestDB_OPMLExportNow(t *testing.T) {
+	h := newHarness(t)
+	h.seedUser(t, "root", "hunter2", true)
+	cl := h.login(t, "root", "hunter2")
+
+	tmp := t.TempDir() // absolute, writable
+	if code := post(t, cl, h.srv.URL+"/api/admin/db/schedule", map[string]any{
+		"backup_schedule":    "off",
+		"backup_keep_count":  7,
+		"cleanup_schedule":   "off",
+		"cleanup_older_days": 90,
+		"opml_schedule":      "off",
+		"opml_export_dir":    tmp,
+		"opml_keep":          12,
+	}, nil); code != http.StatusOK {
+		t.Fatalf("set export dir = %d, want 200", code)
+	}
+	if code := post(t, cl, h.srv.URL+"/api/admin/db/opml-export", map[string]any{}, nil); code != http.StatusOK {
+		t.Fatalf("export now = %d, want 200", code)
+	}
+	var st struct {
+		Data struct {
+			Exports []struct {
+				Path string `json:"path"`
+			} `json:"exports"`
+		} `json:"data"`
+	}
+	if code := get(t, cl, h.srv.URL+"/api/admin/db", &st); code != http.StatusOK {
+		t.Fatalf("GET db = %d, want 200", code)
+	}
+	if len(st.Data.Exports) == 0 {
+		t.Fatal("export list empty after Export now")
+	}
+}

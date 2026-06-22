@@ -17,17 +17,19 @@ full commit-level list; this file curates the highlights and behavior changes.
   disk you control (the UI reminds you, and the docs walk through the compose
   bind-mount setup). Empty resets to the default; the scheduled job and the
   manual "Back up now" both honor it.
-- **The scheduled OPML export gains the same controls** — a configurable
+- **The OPML export gains the same controls as DB backups** — a configurable
   **Directory** (`opml_export_dir`, default `/data/exports`) and **Keep**
-  retention (`opml_keep`) under Settings → Database → OPML export, set up the
-  same way (bind-mount + chown).
+  retention (`opml_keep`) under Settings → Database → OPML export (set up the
+  same way: bind-mount + chown), plus a manual **Export now** button and a list
+  of recent exports.
 
 ### Fixed
 
 - **Settings → Mobile clients**: the Fever URL and API-key boxes now line up —
   the key row's longer hint was squeezing its input narrower than the URL row's.
 - **Settings → Database**: the "Clean up now" button now uses the same filled
-  style as the other action buttons (it was an odd outline variant).
+  style as the other action buttons (it was an odd outline variant) and reuses
+  the scheduled cleanup window instead of a separate, redundant days field.
 - **Settings → Import & migrate**: importing an OPML file is now independent of
   the Tiny Tiny RSS section. It shows its own status in the OPML card — the
   button reads "Importing…" while it runs and reports the result right there —

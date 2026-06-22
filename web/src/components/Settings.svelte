@@ -289,13 +289,14 @@
   // not at the top of the section with the schedule/cleanup messages.
   let backupErr = $state("");
   let backupMsg = $state("");
-  let cleanupDays = $state(90);
+  // "Export now" status, shown by the OPML export button (below Save schedule).
+  let opmlExportErr = $state("");
+  let opmlExportMsg = $state("");
   async function loadDB() {
     dbErr = "";
     try {
       const res = await api.getDBStatus();
       dbState = res.data;
-      cleanupDays = res.data.cleanup_older_days || 90;
     } catch (e) {
       dbErr = e instanceof ApiError ? e.message : String(e);
     }
@@ -315,21 +316,37 @@
       setTimeout(() => (backupMsg = ""), 3000);
     }
   }
+  async function opmlExportNow() {
+    dbBusy = "opml-export";
+    opmlExportMsg = "";
+    opmlExportErr = "";
+    try {
+      await api.opmlExportNow();
+      await loadDB();
+      opmlExportMsg = "Export created";
+    } catch (e) {
+      opmlExportErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      dbBusy = "";
+      setTimeout(() => (opmlExportMsg = ""), 3000);
+    }
+  }
   function askCleanup() {
     confirmReq = {
       title: "Clean up old articles?",
-      message: `Permanently delete articles older than ${cleanupDays} days that aren't starred, in a board, or saved for later. The database file is compacted afterwards.`,
+      message: `Permanently delete articles older than ${dbState?.cleanup_older_days ?? 90} days that aren't starred, in a board, or saved for later. The database file is compacted afterwards.`,
       confirmLabel: "Clean up",
       destructive: true,
       run: () => runCleanup(),
     };
   }
   async function runCleanup() {
+    if (!dbState) return;
     dbBusy = "cleanup";
     dbMsg = "";
     dbErr = "";
     try {
-      const res = await api.dbCleanup(cleanupDays);
+      const res = await api.dbCleanup(dbState.cleanup_older_days);
       const { articles_deleted, bytes_reclaimed } = res.data;
       const mib = (bytes_reclaimed / (1024 * 1024)).toFixed(1);
       dbMsg = `Deleted ${articles_deleted} articles, reclaimed ${mib} MiB`;
@@ -2042,14 +2059,11 @@
               <div class="pref-row">
                 <div>
                   <div class="pref-label">Run cleanup now</div>
-                  <div class="pref-hint">Delete read articles older than the chosen days that aren't starred, in a board, or saved. Compacts afterwards.</div>
+                  <div class="pref-hint">Delete read articles older than the scheduled window above that aren't starred, in a board, or saved. Compacts afterwards.</div>
                 </div>
-                <div class="row-ctl">
-                  <input class="row-input num" type="number" min="7" max="3650" bind:value={cleanupDays} data-testid="db-cleanup-days" aria-label="Older than (days)" />
-                  <button class="pack-btn" on:click={askCleanup} disabled={dbBusy === "cleanup"} data-testid="db-cleanup">
-                    {dbBusy === "cleanup" ? "Cleaning…" : "Clean up now"}
-                  </button>
-                </div>
+                <button class="pack-btn" on:click={askCleanup} disabled={dbBusy === "cleanup"} data-testid="db-cleanup">
+                  {dbBusy === "cleanup" ? "Cleaning…" : "Clean up now"}
+                </button>
               </div>
             </div>
 
@@ -2084,7 +2098,24 @@
                 <button on:click={saveDBSchedule} disabled={dbBusy === "schedule"} data-testid="db-schedule-save">
                   {dbBusy === "schedule" ? "Saving…" : "Save schedule"}
                 </button>
+                <button class="ghost" on:click={opmlExportNow} disabled={dbBusy === "opml-export"} data-testid="opml-export-now">
+                  {dbBusy === "opml-export" ? "Exporting…" : "Export now"}
+                </button>
               </div>
+              {#if opmlExportErr}<p class="error" data-testid="opml-export-err">{opmlExportErr}</p>{/if}
+              {#if opmlExportMsg}<p class="ok" data-testid="opml-export-msg">{opmlExportMsg}</p>{/if}
+              {#if (dbState.exports?.length ?? 0) > 0}
+                <ul class="list">
+                  {#each (dbState.exports ?? []).slice(0, 8) as e (e.path)}
+                    <li class="list-row">
+                      <div>
+                        <div class="list-title"><code>{e.path.split("/").slice(-1)[0]}</code></div>
+                        <div class="list-sub">{gibBytes(e.size_bytes)} · {fmtTime(e.created_at)}</div>
+                      </div>
+                    </li>
+                  {/each}
+                </ul>
+              {/if}
             </div>
           {/if}
         {/if}

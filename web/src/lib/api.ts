@@ -332,6 +332,7 @@ export const api = {
   // DB admin --------------------------------------------------------
   getDBStatus: () => call<DBStatus>("GET", "/api/admin/db"),
   dbBackup: () => call<DBBackup>("POST", "/api/admin/db/backup"),
+  opmlExportNow: () => call<DBBackup>("POST", "/api/admin/db/opml-export"),
   dbCleanup: (older_days: number) =>
     call<DBCleanupStats>("POST", "/api/admin/db/cleanup", { older_days }),
   dbSchedule: (s: DBSchedule) =>
@@ -455,6 +456,7 @@ export interface DBStatus extends DBSchedule {
   size_bytes: number;
   page_count: number;
   backups: DBBackup[];
+  exports: DBBackup[];
 }
 
 // Admin server-wide session TTL. Source = 'admin' means an admin saved

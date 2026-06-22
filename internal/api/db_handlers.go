@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/brandonhon/ember/internal/auth"
 	"github.com/brandonhon/ember/internal/store"
 )
 
@@ -34,6 +35,7 @@ type dbStatus struct {
 	OPMLSchedule     string             `json:"opml_schedule"` // "off" | "weekly" | "monthly"
 	OPMLExportDir    string             `json:"opml_export_dir"`
 	OPMLKeepCount    int                `json:"opml_keep"`
+	Exports          []store.ExportInfo `json:"exports"`
 }
 
 const (
@@ -67,6 +69,8 @@ func (d *Dependencies) handleGetDB(w http.ResponseWriter, r *http.Request) {
 	}
 	dir := d.resolveBackupDir(r)
 	backups, _ := d.Store.ListBackups(dir)
+	exportDir := getSettingOr(r, d, keyOPMLExportDir, defaultExportDir)
+	exports, _ := d.Store.ListExports(exportDir)
 	resp := dbStatus{
 		SizeBytes:        size,
 		PageCount:        pages,
@@ -77,8 +81,9 @@ func (d *Dependencies) handleGetDB(w http.ResponseWriter, r *http.Request) {
 		CleanupSchedule:  getSettingOr(r, d, keyCleanupSchedule, "off"),
 		CleanupOlderDays: getIntSettingOr(r, d, keyCleanupOlderDays, 90),
 		OPMLSchedule:     getSettingOr(r, d, "opml_schedule", "off"),
-		OPMLExportDir:    getSettingOr(r, d, keyOPMLExportDir, defaultExportDir),
+		OPMLExportDir:    exportDir,
 		OPMLKeepCount:    getIntSettingOr(r, d, keyOPMLKeep, 12),
+		Exports:          exports,
 	}
 	writeData(w, http.StatusOK, resp, nil)
 }
@@ -97,6 +102,25 @@ func (d *Dependencies) handleDBBackup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeData(w, http.StatusOK, info, nil)
+}
+
+// handleOPMLExportNow writes the requesting admin's subscription list to the
+// configured export directory, mirroring the manual DB "Back up now".
+func (d *Dependencies) handleOPMLExportNow(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.FromContext(r.Context())
+	dir := getSettingOr(r, d, keyOPMLExportDir, defaultExportDir)
+	path, size, err := d.OPML.WriteExport(r.Context(), u.ID, dir)
+	if errors.Is(err, fs.ErrPermission) {
+		writeError(w, http.StatusConflict, "export_unwritable",
+			"Export failed: the export directory isn't writable by the server. If it's a bind-mounted host path, make it owned by or writable by the container user (UID 65532) — see the docs.")
+		return
+	}
+	if err != nil {
+		internalError(w, "opml_export", err)
+		return
+	}
+	_, _ = d.Store.PruneExports(dir, getIntSettingOr(r, d, keyOPMLKeep, 12))
+	writeData(w, http.StatusOK, store.ExportInfo{Path: path, SizeBytes: size, CreatedAt: time.Now().Unix()}, nil)
 }
 
 type cleanupReq struct {

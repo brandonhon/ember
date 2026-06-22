@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"log/slog"
-	"os"
-	"path/filepath"
 	"strconv"
 	"time"
 
@@ -99,31 +97,14 @@ func runOPMLExport(ctx context.Context, st *store.Store, op *opml.Service, lg *s
 		return
 	}
 	dir := readSetting(ctx, st, "opml_export_dir", defaultExportDir)
-	if err := os.MkdirAll(dir, 0o750); err != nil {
-		lg.Warn("opml export: mkdir failed", "err", err, "dir", dir)
-		return
-	}
-	name := time.Now().UTC().Format("ember-2006-01-02-150405.opml")
-	out := filepath.Join(dir, name)
-	f, err := os.OpenFile(out, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600) //nolint:gosec // G304: out is program-built from a fixed dir + timestamp, never user input.
+	out, size, err := op.WriteExport(ctx, adminID, dir)
 	if err != nil {
-		lg.Warn("opml export: create file", "err", err)
-		return
-	}
-	defer func() {
-		// Close error matters on a write file — a failed flush truncates
-		// the export. Warn so a silently-corrupt backup is visible.
-		if cerr := f.Close(); cerr != nil {
-			lg.Warn("opml export: close file", "err", cerr)
-		}
-	}()
-	if err := op.Export(ctx, adminID, f); err != nil {
-		lg.Warn("opml export: write failed", "err", err)
+		lg.Warn("opml export failed", "err", err, "dir", dir)
 		return
 	}
 	keep := readIntSetting(ctx, st, "opml_keep", 12)
 	pruned, _ := st.PruneExports(dir, keep)
-	lg.Info("scheduled OPML export complete", "path", out, "user_id", adminID, "pruned", pruned)
+	lg.Info("scheduled OPML export complete", "path", out, "size_bytes", size, "user_id", adminID, "pruned", pruned)
 	_ = st.PutAppSetting(ctx, "opml_last", strconv.FormatInt(time.Now().Unix(), 10))
 }
 
