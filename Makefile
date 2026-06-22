@@ -3,6 +3,14 @@
 
 GO            ?= go
 NPM           ?= npm
+
+# This is a Go-modules project requiring the toolchain in go.mod (newer than the
+# system go). Some environments persist GO111MODULE=off in ~/.config/go/env,
+# which drops every go target into GOPATH mode and breaks the build. Force module
+# mode + auto toolchain for all recipes so `make <target>` works regardless of
+# the developer's global go env.
+export GO111MODULE := on
+export GOTOOLCHAIN := auto
 BIN           ?= ./bin/ember
 PKG           := ./...
 COVER_OUT     ?= coverage.out
