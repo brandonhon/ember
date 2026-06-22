@@ -39,7 +39,21 @@ func (d *Dependencies) handleLogin(w http.ResponseWriter, r *http.Request) {
 		internalError(w, "internal", err)
 		return
 	}
-	writeData(w, http.StatusOK, u, nil)
+	// Return an explicit, minimal shape rather than the raw models.User — the
+	// SPA discards this body and re-pulls /api/me anyway, and enumerating the
+	// fields means a future sensitive field on User can't silently leak out of
+	// the login endpoint.
+	writeData(w, http.StatusOK, loginResponse{
+		ID: u.ID, Username: u.Username, IsAdmin: u.IsAdmin, CreatedAt: u.CreatedAt,
+	}, nil)
+}
+
+// loginResponse is the login endpoint's allowlisted view of the user.
+type loginResponse struct {
+	ID        int64  `json:"id"`
+	Username  string `json:"username"`
+	IsAdmin   bool   `json:"is_admin"`
+	CreatedAt int64  `json:"created_at"`
 }
 
 func (d *Dependencies) handleLogout(w http.ResponseWriter, r *http.Request) {

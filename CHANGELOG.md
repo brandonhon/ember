@@ -24,6 +24,14 @@ full commit-level list; this file curates the highlights and behavior changes.
   read state from an already-read cluster sibling, so a read story's late
   duplicates stay read instead of resurfacing in Fresh / All Unread.
 
+### Security
+
+- Defense-in-depth hardening from a full security audit (which found no
+  exploitable issues): the login endpoint now returns an explicit allowlisted
+  field set rather than the raw user record (so a future model field can't
+  silently leak), search queries are length-capped before reaching SQLite, and
+  filter-validation errors no longer surface the internal package prefix.
+
 ### Changed
 
 - Bumped Go runtime dependencies `golang.org/x/crypto` 0.52.0 → 0.53.0 and

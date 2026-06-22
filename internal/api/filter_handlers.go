@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/brandonhon/ember/internal/auth"
 	"github.com/brandonhon/ember/internal/filters"
@@ -12,6 +13,14 @@ import (
 // maxFiltersPerUser bounds how many filters one account can create; see
 // handleCreateFilter.
 const maxFiltersPerUser = 200
+
+// publicFilterErr surfaces a filter-validation error to the client without the
+// internal "filters:" package prefix. These messages only ever echo the user's
+// own rule (bad field/op/regex/action), so the detail is safe and useful — we
+// just don't leak the package name across the API boundary.
+func publicFilterErr(err error) string {
+	return strings.TrimPrefix(err.Error(), "filters: ")
+}
 
 type filterReq struct {
 	Name        string `json:"name"`
@@ -43,11 +52,11 @@ func (d *Dependencies) handleCreateFilter(w http.ResponseWriter, r *http.Request
 	}
 	// Validate match + action up front so bad data never lands in the DB.
 	if _, err := filters.ParseMatch(req.MatchJSON); err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
+		writeError(w, http.StatusBadRequest, "bad_request", publicFilterErr(err))
 		return
 	}
 	if err := filters.ValidateActionWithValue(req.Action, req.ActionValue); err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
+		writeError(w, http.StatusBadRequest, "bad_request", publicFilterErr(err))
 		return
 	}
 	// Cap filters per user: each filter's regex is compiled and cached for the
@@ -97,14 +106,14 @@ func (d *Dependencies) handleUpdateFilter(w http.ResponseWriter, r *http.Request
 	}
 	if req.MatchJSON != "" {
 		if _, err := filters.ParseMatch(req.MatchJSON); err != nil {
-			writeError(w, http.StatusBadRequest, "bad_request", err.Error())
+			writeError(w, http.StatusBadRequest, "bad_request", publicFilterErr(err))
 			return
 		}
 		patch.MatchJSON = &req.MatchJSON
 	}
 	if req.Action != "" {
 		if err := filters.ValidateActionWithValue(req.Action, req.ActionValue); err != nil {
-			writeError(w, http.StatusBadRequest, "bad_request", err.Error())
+			writeError(w, http.StatusBadRequest, "bad_request", publicFilterErr(err))
 			return
 		}
 		patch.Action = &req.Action
@@ -128,7 +137,7 @@ func (d *Dependencies) handleUpdateFilter(w http.ResponseWriter, r *http.Request
 				return
 			}
 			if err := filters.ValidateActionWithValue(existing.Action, req.ActionValue); err != nil {
-				writeError(w, http.StatusBadRequest, "bad_request", err.Error())
+				writeError(w, http.StatusBadRequest, "bad_request", publicFilterErr(err))
 				return
 			}
 		}
@@ -155,7 +164,7 @@ func (d *Dependencies) handlePreviewFilter(w http.ResponseWriter, r *http.Reques
 	}
 	m, err := filters.ParseMatch(req.MatchJSON)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
+		writeError(w, http.StatusBadRequest, "bad_request", publicFilterErr(err))
 		return
 	}
 	count, err := d.Store.PreviewFilter(r.Context(), u.ID, m, req.SinceDays)
