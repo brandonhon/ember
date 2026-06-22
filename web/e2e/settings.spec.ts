@@ -32,16 +32,11 @@ test.describe("admin settings", () => {
     await page.waitForSelector("[data-testid=settings]");
     await page.getByTestId("settings-import").click();
 
-    const opml =
-      '<?xml version="1.0"?><opml version="2.0"><body>' +
-      '<outline title="News"><outline type="rss" title="Imported Feed" xmlUrl="https://imported.example.com/feed"/></outline>' +
-      "</body></opml>";
-    // The input is hidden; setInputFiles drives the change handler directly.
-    await page.getByTestId("opml-file-input").setInputFiles({
-      name: "subs.opml",
-      mimeType: "text/x-opml",
-      buffer: Buffer.from(opml),
-    });
+    // The input is hidden; setInputFiles (relative to the web/ cwd) drives the
+    // change handler directly without opening the native dialog.
+    await page
+      .getByTestId("opml-file-input")
+      .setInputFiles("e2e/fixtures/sample-import.opml");
 
     // Feedback lands in the OPML card (its own status), not a frozen screen…
     await expect(

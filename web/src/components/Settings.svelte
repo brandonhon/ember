@@ -18,6 +18,7 @@
   import { enablePush, pushSupported } from "../lib/push";
   import { onMount } from "svelte";
   import { refreshSidebar, loadArticles, activeView } from "../lib/stores";
+  import { DEMO, notifyDemoBlocked } from "../demo/demo";
   import FilterManager from "./FilterManager.svelte";
   import ConfirmDialog from "./ConfirmDialog.svelte";
 
@@ -114,6 +115,7 @@
   let opmlFileInput: HTMLInputElement | undefined = $state();
 
   async function ttrssLivePull() {
+    if (DEMO) { notifyDemoBlocked(); return; }
     if (!ttUrl.trim() || !ttUser.trim()) {
       importErr = "URL and username are required";
       return;
@@ -194,6 +196,7 @@
   }
 
   async function exportOPML() {
+    if (DEMO) { notifyDemoBlocked(); return; }
     try {
       const res = await api.exportOPML();
       const blob = await res.blob();
@@ -1697,7 +1700,7 @@
             {:else}
               <p class="import-note">Export your Starred &amp; Archived articles from TT-RSS (the import/export plugin produces an <code>.xml</code> file), then upload it here. <strong>Subscriptions aren’t included in this file</strong> — to bring over your feed list, use “Migrate from running TT-RSS” above, or import an OPML export below.</p>
               <div class="actions">
-                <button on:click={() => ttrssFileInput?.click()} disabled={importBusy} data-testid="ttrss-file-pick">Choose .xml file…</button>
+                <button on:click={() => { if (DEMO) { notifyDemoBlocked(); return; } ttrssFileInput?.click(); }} disabled={importBusy} data-testid="ttrss-file-pick">Choose .xml file…</button>
               </div>
             {/if}
           </div>
@@ -1710,7 +1713,7 @@
             {#if opmlErr}<p class="error" data-testid="opml-error">{opmlErr}</p>{/if}
             {#if opmlMsg}<p class="ok" data-testid="opml-msg">{opmlMsg}</p>{/if}
             <div class="actions" style="justify-content:flex-start">
-              <button on:click={() => opmlFileInput?.click()} disabled={opmlBusy} data-testid="open-opml-import">{opmlBusy ? "Importing…" : "Import OPML…"}</button>
+              <button on:click={() => { if (DEMO) { notifyDemoBlocked(); return; } opmlFileInput?.click(); }} disabled={opmlBusy} data-testid="open-opml-import">{opmlBusy ? "Importing…" : "Import OPML…"}</button>
               <button class="ghost" on:click={exportOPML} disabled={opmlBusy} data-testid="export-opml">Export OPML</button>
             </div>
           </div>
