@@ -9,6 +9,12 @@ full commit-level list; this file curates the highlights and behavior changes.
 
 ## [Unreleased]
 
+### Changed
+
+- Bumped Go runtime dependencies `golang.org/x/crypto` 0.52.0 → 0.53.0 and
+  `golang.org/x/net` 0.55.0 → 0.56.0 (plus transitive `x/sync`, `x/sys`,
+  `x/text`).
+
 ## [0.9.3] - 2026-06-22
 
 ### Added
