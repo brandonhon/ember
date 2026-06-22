@@ -50,6 +50,11 @@ full commit-level list; this file curates the highlights and behavior changes.
   page, which dragged in sponsored banners and an end-of-article promo block.
   Those are now stripped via a curated per-publisher rule; feeds we haven't
   vetted are left untouched. Applies to newly-fetched articles.
+- **OPML import now keeps your folders** — feeds nested inside a folder were
+  imported uncategorized: the folder (category) was created but the feeds landed
+  outside it. They're now filed under their folder's category, so an imported
+  subscription list comes in organized the way it was exported. Nested
+  sub-folders flatten into their top-level folder (Ember categories are flat).
 
 ### Security
 
