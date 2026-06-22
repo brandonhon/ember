@@ -81,10 +81,14 @@ make web-check        # svelte-check
 make e2e-install      # one-time
 make embed build      # produces ./bin/ember
 make e2e              # playwright suite
-make vulncheck        # govulncheck
+make security         # go vet + golangci-lint + govulncheck + fuzz seed corpora
 ```
 
 If you bump a Go dependency, run `make tidy`.
+
+To deep-fuzz a parser (feed/OPML/email/filters/URL helpers), run e.g.
+`make fuzz FUZZPKG=./internal/feed FUZZ=FuzzParse FUZZTIME=60s`. A crash writes a
+reproducer under `testdata/fuzz/` — commit it with the fix.
 
 ## Cutting a release
 

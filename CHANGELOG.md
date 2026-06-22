@@ -11,6 +11,8 @@ full commit-level list; this file curates the highlights and behavior changes.
 
 ### Fixed
 
+- **Settings → Mobile clients**: the Fever URL and API-key boxes now line up —
+  the key row's longer hint was squeezing its input narrower than the URL row's.
 - **Settings → Import & migrate**: importing an OPML file is now independent of
   the Tiny Tiny RSS section. It shows its own status in the OPML card — the
   button reads "Importing…" while it runs and reports the result right there —
