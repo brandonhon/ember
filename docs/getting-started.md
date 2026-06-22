@@ -126,7 +126,7 @@ Migrations are embedded in the binary and apply automatically on startup; no man
 
 **Settings → Import & migrate** brings your existing library across — none of it touches feeds you've already added:
 
-- **OPML** — import your subscription list (or export Ember's at any time).
+- **OPML** — import your subscription list (or export Ember's at any time). Folders become categories and the feeds inside them are filed under that category; nested sub-folders flatten into their top-level folder (Ember's categories are flat). Feeds outside any folder import uncategorized. Re-importing the same file won't duplicate feeds or categories.
 - **Tiny Tiny RSS** — two ways:
   - **Migrate from a running instance** (live pull) — brings over your **subscriptions** (recreating your TT-RSS categories as folders) **and** your **starred & archived articles** in one shot. Tick which parts to include. Feeds you're already subscribed to are skipped, so it's safe to re-run. Enable *Settings → Preferences → Enable API access* in TT-RSS first; if it's served under a subpath (e.g. `https://example.com/tt-rss`), include that — Ember appends `/api/`. Credentials are used only for the import and are never stored.
   - **Upload an export file** — the TT-RSS import/export plugin produces an `.xml` of your **starred & archived articles only**. Export files don't contain your feed list, so to migrate subscriptions use the live pull above or import an OPML export.
