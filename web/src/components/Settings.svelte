@@ -3197,7 +3197,7 @@
   .pref-row > a { flex: 0 0 auto; color: var(--ember); font-weight: 600; text-decoration: none; font-size: 13.5px; }
   .pref-row > a:hover { text-decoration: underline; }
   /* Right-aligned control inputs (text/number/select live on the right edge). */
-  .row-input { width: 240px; max-width: 42vw; }
+  .row-input { width: 240px; max-width: 42vw; flex-shrink: 0; }
   .row-input.num { width: 92px; }
   .pref-row .switch { flex: 0 0 auto; }
 
