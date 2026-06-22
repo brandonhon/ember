@@ -24,4 +24,31 @@ test.describe("admin settings", () => {
     await openFeedsSection(page);
     await expect(page.getByTestId("poll-interval")).toHaveValue("3600");
   });
+
+  test("OPML import reports its own status, independent of the TT-RSS section", async ({ page }) => {
+    await signIn(page);
+    await page.locator("[data-user-chip]").click();
+    await page.getByTestId("open-settings").click();
+    await page.waitForSelector("[data-testid=settings]");
+    await page.getByTestId("settings-import").click();
+
+    const opml =
+      '<?xml version="1.0"?><opml version="2.0"><body>' +
+      '<outline title="News"><outline type="rss" title="Imported Feed" xmlUrl="https://imported.example.com/feed"/></outline>' +
+      "</body></opml>";
+    // The input is hidden; setInputFiles drives the change handler directly.
+    await page.getByTestId("opml-file-input").setInputFiles({
+      name: "subs.opml",
+      mimeType: "text/x-opml",
+      buffer: Buffer.from(opml),
+    });
+
+    // Feedback lands in the OPML card (its own status), not a frozen screen…
+    await expect(
+      page.locator("[data-testid=opml-msg], [data-testid=opml-error]"),
+    ).toBeVisible({ timeout: 15_000 });
+    // …and the TT-RSS card's status is never touched by an OPML import.
+    await expect(page.getByTestId("import-msg")).toHaveCount(0);
+    await expect(page.getByTestId("import-error")).toHaveCount(0);
+  });
 });

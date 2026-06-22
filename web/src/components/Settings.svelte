@@ -101,9 +101,15 @@
   let ttFeeds = $state(true);
   let ttStarred = $state(true);
   let ttArchived = $state(true);
+  // TT-RSS importer state (live pull + file upload).
   let importBusy = $state(false);
   let importMsg = $state("");
   let importErr = $state("");
+  // OPML importer state — kept separate so an OPML import has its own status and
+  // never touches the TT-RSS card (or disables its inputs).
+  let opmlBusy = $state(false);
+  let opmlMsg = $state("");
+  let opmlErr = $state("");
   let ttrssFileInput: HTMLInputElement | undefined = $state();
   let opmlFileInput: HTMLInputElement | undefined = $state();
 
@@ -170,19 +176,20 @@
     const input = e.currentTarget as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
-    importErr = "";
-    importMsg = "Importing…";
-    importBusy = true;
+    opmlErr = "";
+    opmlMsg = `Importing ${file.name}…`;
+    opmlBusy = true;
     try {
       const res = await api.importOPML(file);
-      importMsg = `Imported ${res.data.imported} subscriptions.`;
+      const n = res.data.imported;
+      opmlMsg = `Imported ${n} ${n === 1 ? "subscription" : "subscriptions"}.`;
       await refreshSidebar();
     } catch (err) {
-      importErr = err instanceof ApiError ? err.message : String(err);
-      importMsg = "";
+      opmlErr = err instanceof ApiError ? err.message : String(err);
+      opmlMsg = "";
     } finally {
       input.value = "";
-      importBusy = false;
+      opmlBusy = false;
     }
   }
 
@@ -197,7 +204,7 @@
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      importErr = err instanceof ApiError ? err.message : String(err);
+      opmlErr = err instanceof ApiError ? err.message : String(err);
     }
   }
 
@@ -1653,8 +1660,6 @@
           <div class="eyebrow">Import &amp; data</div>
           <h3>Import &amp; migrate</h3>
           <p class="hint">Bring your library and subscriptions into Ember. Nothing here touches your existing feeds.</p>
-          {#if importErr}<p class="error" data-testid="import-error">{importErr}</p>{/if}
-          {#if importMsg}<p class="ok" data-testid="import-msg">{importMsg}</p>{/if}
 
           <input type="file" accept=".xml,application/xml,text/xml" bind:this={ttrssFileInput} on:change={ttrssFilePick} style="display:none" data-testid="ttrss-file-input" />
           <input type="file" accept=".opml,.xml,application/xml,text/xml" bind:this={opmlFileInput} on:change={opmlFilePick} style="display:none" data-testid="opml-file-input" />
@@ -1664,6 +1669,8 @@
               <h4>Tiny Tiny RSS</h4>
               <p>Migrate subscriptions, folders, and starred &amp; archived articles from a running instance — or upload an export file.</p>
             </div>
+            {#if importErr}<p class="error" data-testid="import-error">{importErr}</p>{/if}
+            {#if importMsg}<p class="ok" data-testid="import-msg">{importMsg}</p>{/if}
             <div class="import-seg" role="tablist">
               <button role="tab" class:on={importTab === "live"} on:click={() => (importTab = "live")} data-testid="ttrss-tab-live">Migrate from running TT-RSS</button>
               <button role="tab" class:on={importTab === "file"} on:click={() => (importTab = "file")} data-testid="ttrss-tab-file">Upload export file</button>
@@ -1700,9 +1707,11 @@
               <h4>OPML subscriptions</h4>
               <p>Import or export your feed list in the universal OPML format.</p>
             </div>
+            {#if opmlErr}<p class="error" data-testid="opml-error">{opmlErr}</p>{/if}
+            {#if opmlMsg}<p class="ok" data-testid="opml-msg">{opmlMsg}</p>{/if}
             <div class="actions" style="justify-content:flex-start">
-              <button on:click={() => opmlFileInput?.click()} disabled={importBusy} data-testid="open-opml-import">Import OPML…</button>
-              <button class="ghost" on:click={exportOPML} data-testid="export-opml">Export OPML</button>
+              <button on:click={() => opmlFileInput?.click()} disabled={opmlBusy} data-testid="open-opml-import">{opmlBusy ? "Importing…" : "Import OPML…"}</button>
+              <button class="ghost" on:click={exportOPML} disabled={opmlBusy} data-testid="export-opml">Export OPML</button>
             </div>
           </div>
         {/if}
@@ -2872,6 +2881,7 @@
     border-radius: 6px;
     cursor: pointer;
   }
+  .import-seg button:not(.on):hover { color: var(--ink); background: var(--line-soft); }
   .import-seg button.on {
     background: var(--card);
     color: var(--ember);
