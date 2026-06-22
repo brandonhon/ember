@@ -9,7 +9,7 @@ full commit-level list; this file curates the highlights and behavior changes.
 
 ## [Unreleased]
 
-## [0.9.3] - 2026-06-21
+## [0.9.3] - 2026-06-22
 
 ### Added
 
