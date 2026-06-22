@@ -1694,7 +1694,6 @@
               <button on:click={ttrssLivePull} disabled={importBusy} data-testid="ttrss-start">{importBusy ? "Importing…" : "Start migration"}</button>
               <button class="ghost" on:click={() => { if (DEMO) { notifyDemoBlocked(); return; } ttrssFileInput?.click(); }} disabled={importBusy} data-testid="ttrss-file-pick">Upload export file…</button>
             </div>
-            <p class="import-note">No running instance? Use <strong>Upload export file</strong> to load a TT-RSS export <code>.xml</code> (from its import/export plugin) instead — note it carries only your <strong>Starred &amp; Archived articles</strong>, not your feed list. For subscriptions, use the migration above or an OPML import below.</p>
           </div>
 
           <div class="card">
