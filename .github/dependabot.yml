@@ -3,6 +3,7 @@ updates:
   # Go modules — weekly check, security patches always.
   - package-ecosystem: gomod
     directory: "/"
+    target-branch: develop
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
@@ -13,6 +14,7 @@ updates:
   # SPA npm packages.
   - package-ecosystem: npm
     directory: /web
+    target-branch: develop
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
@@ -26,6 +28,7 @@ updates:
   # a VitePress major-version upgrade.
   - package-ecosystem: npm
     directory: /docs
+    target-branch: develop
     schedule:
       interval: monthly
     open-pull-requests-limit: 3
@@ -38,5 +41,6 @@ updates:
   # GitHub Actions versions.
   - package-ecosystem: github-actions
     directory: "/"
+    target-branch: develop
     schedule:
       interval: monthly
