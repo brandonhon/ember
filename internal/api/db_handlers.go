@@ -3,13 +3,15 @@ package api
 import (
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/brandonhon/ember/internal/store"
 )
 
-// Default location for ad-hoc backups. Override via the EMBER_BACKUP_DIR env
-// var (read in main.go) if running outside Docker.
+// Default location for ad-hoc backups when the admin hasn't set a custom
+// directory (the `db_backup_dir` app setting). To persist outside the
+// container, point it at a bind-mounted host path — see docs/configuration.
 const defaultBackupDir = "/data/backups"
 
 // dbStatus is the response for GET /api/admin/db. Reports size, current
@@ -31,7 +33,14 @@ const (
 	keyBackupKeep       = "db_backup_keep"
 	keyCleanupSchedule  = "db_cleanup_schedule"
 	keyCleanupOlderDays = "db_cleanup_older_days"
+	keyBackupDir        = "db_backup_dir"
 )
+
+// resolveBackupDir returns the admin-configured backup directory, falling back
+// to defaultBackupDir when unset.
+func (d *Dependencies) resolveBackupDir(r *http.Request) string {
+	return getSettingOr(r, d, keyBackupDir, defaultBackupDir)
+}
 
 func (d *Dependencies) handleGetDB(w http.ResponseWriter, r *http.Request) {
 	size, pages, err := d.Store.DBSize(r.Context())
@@ -39,11 +48,12 @@ func (d *Dependencies) handleGetDB(w http.ResponseWriter, r *http.Request) {
 		internalError(w, "internal", err)
 		return
 	}
-	backups, _ := d.Store.ListBackups(defaultBackupDir)
+	dir := d.resolveBackupDir(r)
+	backups, _ := d.Store.ListBackups(dir)
 	resp := dbStatus{
 		SizeBytes:        size,
 		PageCount:        pages,
-		BackupDir:        defaultBackupDir,
+		BackupDir:        dir,
 		Backups:          backups,
 		BackupSchedule:   getSettingOr(r, d, keyBackupSchedule, "off"),
 		BackupKeepCount:  getIntSettingOr(r, d, keyBackupKeep, 7),
@@ -55,7 +65,7 @@ func (d *Dependencies) handleGetDB(w http.ResponseWriter, r *http.Request) {
 }
 
 func (d *Dependencies) handleDBBackup(w http.ResponseWriter, r *http.Request) {
-	info, err := d.Store.Backup(r.Context(), defaultBackupDir)
+	info, err := d.Store.Backup(r.Context(), d.resolveBackupDir(r))
 	if err != nil {
 		internalError(w, "backup", err)
 		return
@@ -86,6 +96,7 @@ func (d *Dependencies) handleDBCleanup(w http.ResponseWriter, r *http.Request) {
 type scheduleReq struct {
 	BackupSchedule   string `json:"backup_schedule"`
 	BackupKeepCount  int    `json:"backup_keep_count"`
+	BackupDir        string `json:"backup_dir"`
 	CleanupSchedule  string `json:"cleanup_schedule"`
 	CleanupOlderDays int    `json:"cleanup_older_days"`
 	OPMLSchedule     string `json:"opml_schedule"`
@@ -114,7 +125,19 @@ func (d *Dependencies) handleDBSchedule(w http.ResponseWriter, r *http.Request) 
 	if req.CleanupOlderDays < 7 {
 		req.CleanupOlderDays = 7
 	}
+	// Backup directory: empty resets to the default; otherwise require an
+	// absolute path with no single quote (the store's VACUUM INTO can't bind a
+	// placeholder). The admin must bind-mount this path for backups to persist.
+	backupDir := strings.TrimSpace(req.BackupDir)
+	if backupDir != "" && (!strings.HasPrefix(backupDir, "/") || strings.ContainsRune(backupDir, '\'')) {
+		writeError(w, http.StatusBadRequest, "bad_request", "backup_dir must be an absolute path with no quote characters")
+		return
+	}
 	ctx := r.Context()
+	if err := d.Store.PutAppSetting(ctx, keyBackupDir, backupDir); err != nil {
+		internalError(w, "internal", err)
+		return
+	}
 	if err := d.Store.PutAppSetting(ctx, keyBackupSchedule, req.BackupSchedule); err != nil {
 		internalError(w, "internal", err)
 		return

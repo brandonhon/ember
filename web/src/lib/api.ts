@@ -444,6 +444,7 @@ export interface DBCleanupStats {
 export interface DBSchedule {
   backup_schedule: "off" | "daily" | "weekly";
   backup_keep_count: number;
+  backup_dir: string;
   cleanup_schedule: "off" | "weekly" | "monthly";
   cleanup_older_days: number;
   opml_schedule?: "off" | "weekly" | "monthly";
@@ -451,7 +452,6 @@ export interface DBSchedule {
 export interface DBStatus extends DBSchedule {
   size_bytes: number;
   page_count: number;
-  backup_dir: string;
   backups: DBBackup[];
 }
 

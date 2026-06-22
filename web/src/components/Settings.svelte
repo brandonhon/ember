@@ -346,6 +346,7 @@
       await api.dbSchedule({
         backup_schedule: dbState.backup_schedule as "off" | "daily" | "weekly",
         backup_keep_count: dbState.backup_keep_count,
+        backup_dir: dbState.backup_dir,
         cleanup_schedule: dbState.cleanup_schedule as "off" | "weekly" | "monthly",
         cleanup_older_days: dbState.cleanup_older_days,
         opml_schedule: (dbState.opml_schedule || "off") as "off" | "weekly" | "monthly",
@@ -1962,6 +1963,13 @@
 
             <div class="card">
               <div class="card-head"><h4>Backups</h4></div>
+              <label class="pref-row">
+                <div>
+                  <div class="pref-label">Directory</div>
+                  <div class="pref-hint">Where snapshots are written (absolute path). <strong>Bind-mount this path in your compose file</strong> so backups live outside the container — otherwise they vanish if the container's volume is removed. Empty resets to <code>/data/backups</code>. Save with “Save schedule” below.</div>
+                </div>
+                <input class="row-input" type="text" bind:value={dbState.backup_dir} placeholder="/data/backups" data-testid="db-backup-dir" />
+              </label>
               <div class="pref-row">
                 <div>
                   <div class="pref-label">Schedule</div>

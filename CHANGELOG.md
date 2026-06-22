@@ -9,6 +9,15 @@ full commit-level list; this file curates the highlights and behavior changes.
 
 ## [Unreleased]
 
+### Added
+
+- **The database backup directory is now configurable.** Set a custom absolute
+  path in **Settings → Database → Backups → Directory** instead of the fixed
+  `/data/backups`. Point it at a bind-mounted host path so backups live on a
+  disk you control (the UI reminds you, and the docs walk through the compose
+  bind-mount setup). Empty resets to the default; the scheduled job and the
+  manual "Back up now" both honor it.
+
 ### Fixed
 
 - **Settings → Mobile clients**: the Fever URL and API-key boxes now line up —

@@ -53,12 +53,47 @@ Stored in the `app_settings` KV. Edit via the admin UI in **Settings → ...**.
 | Session cookie TTL (overrides `EMBER_SESSION_TTL`) | Sessions |
 | App name, page title, favicon URL | Branding |
 | Backup schedule + retention (`db_backup_keep`, default 7) | Database |
+| Backup directory (`db_backup_dir`, default `/data/backups`) | Database → Backups → Directory ([setup](#custom-backup-directory)) |
 | Cleanup schedule + window (`db_cleanup_older_days`, default 90) | Database |
 | OPML export schedule + retention (`opml_keep`, default 12) | Database |
 | SMTP host / port / username / password / from / STARTTLS | Email / SMTP |
 | Initial feed-backlog window (default **24 hours**; 0 = no gate) | Email / SMTP → Initial backlog window |
 | Reading window (default 24h; range 24–168h) | Feeds → Reading window |
 | Search window (default 48h; range 24–168h) | Feeds → Search window |
+
+### Custom backup directory
+
+Database backups — the manual **Back up now** button and the scheduled job — are
+written to `/data/backups` by default, inside the container's `/data` volume. To
+put them on a host path you control (a specific disk, a NAS mount, a directory
+you already back up off-box), change the path **and** bind-mount it:
+
+1. **Bind-mount a host directory** into the ember service in
+   `deploy/docker-compose.yml`. Alongside the existing `ember-data:/data`
+   volume, add a bind mount — `host path : container path`:
+
+   ```yaml
+   services:
+     ember:
+       volumes:
+         - ember-data:/data
+         - /srv/ember/backups:/backups   # ← your host path : container path
+   ```
+
+2. **Point Ember at it.** In **Settings → Database → Backups → Directory**, enter
+   the container-side path (`/backups` in the example), then **Save schedule**.
+   It must be an absolute path the container can write to. Leave it empty to
+   reset to `/data/backups`.
+
+::: warning Bind-mount it first
+The directory only persists on the host if you've bind-mounted it. Ember can't
+create the host mount for you — add it to the compose file and recreate the
+container **before** entering the container path in the UI. A path that isn't
+backed by a mount is lost when the container is recreated.
+:::
+
+The same directory is used by both the scheduled job and the manual button;
+**Keep** prunes the oldest snapshots beyond the count you set.
 
 ### Time windows, retention, and counts
 

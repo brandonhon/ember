@@ -127,13 +127,14 @@ func runOPMLExport(ctx context.Context, st *store.Store, op *opml.Service, lg *s
 }
 
 func runBackup(ctx context.Context, st *store.Store, lg *slog.Logger) {
-	info, err := st.Backup(ctx, defaultBackupDir)
+	dir := readSetting(ctx, st, "db_backup_dir", defaultBackupDir)
+	info, err := st.Backup(ctx, dir)
 	if err != nil {
-		lg.Warn("scheduled backup failed", "err", err)
+		lg.Warn("scheduled backup failed", "err", err, "dir", dir)
 		return
 	}
 	keep := readIntSetting(ctx, st, "db_backup_keep", 7)
-	pruned, _ := st.PruneBackups(defaultBackupDir, keep)
+	pruned, _ := st.PruneBackups(dir, keep)
 	lg.Info("scheduled backup complete", "path", info.Path, "size_bytes", info.SizeBytes, "pruned", pruned)
 	_ = st.PutAppSetting(ctx, "db_backup_last", strconv.FormatInt(time.Now().Unix(), 10))
 }
