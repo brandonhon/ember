@@ -9,6 +9,16 @@ full commit-level list; this file curates the highlights and behavior changes.
 
 ## [Unreleased]
 
+### Fixed
+
+- A story you'd already read could reappear as unread when a **duplicate**
+  arrived later — a second feed publishing the same story, or the same feed
+  re-publishing it under a new id. Cross-feed dedup previously only swept
+  duplicates that existed at the moment you read; copies ingested afterward came
+  in unread and the read original couldn't suppress them. Ingest now inherits the
+  read state from an already-read cluster sibling, so a read story's late
+  duplicates stay read instead of resurfacing in Fresh / All Unread.
+
 ### Changed
 
 - Bumped Go runtime dependencies `golang.org/x/crypto` 0.52.0 → 0.53.0 and
