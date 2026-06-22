@@ -1,6 +1,8 @@
 package api
 
 import (
+	"errors"
+	"io/fs"
 	"net/http"
 	"strconv"
 	"strings"
@@ -66,6 +68,13 @@ func (d *Dependencies) handleGetDB(w http.ResponseWriter, r *http.Request) {
 
 func (d *Dependencies) handleDBBackup(w http.ResponseWriter, r *http.Request) {
 	info, err := d.Store.Backup(r.Context(), d.resolveBackupDir(r))
+	if errors.Is(err, fs.ErrPermission) {
+		// A bind-mounted host path that isn't writable by the container user is
+		// the common failure — give the admin an actionable message, not a 500.
+		writeError(w, http.StatusConflict, "backup_unwritable",
+			"Backup failed: the backup directory isn't writable by the server. If it's a bind-mounted host path, make it owned by or writable by the container user (UID 65532) — see the docs.")
+		return
+	}
 	if err != nil {
 		internalError(w, "backup", err)
 		return

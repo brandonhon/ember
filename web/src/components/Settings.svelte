@@ -285,6 +285,10 @@
   let dbErr = $state("");
   let dbMsg = $state("");
   let dbBusy = $state("");
+  // "Back up now" status is shown next to the button (under the Run now row),
+  // not at the top of the section with the schedule/cleanup messages.
+  let backupErr = $state("");
+  let backupMsg = $state("");
   let cleanupDays = $state(90);
   async function loadDB() {
     dbErr = "";
@@ -298,17 +302,17 @@
   }
   async function runBackup() {
     dbBusy = "backup";
-    dbMsg = "";
-    dbErr = "";
+    backupMsg = "";
+    backupErr = "";
     try {
       await api.dbBackup();
       await loadDB();
-      dbMsg = "Backup created";
+      backupMsg = "Backup created";
     } catch (e) {
-      dbErr = e instanceof ApiError ? e.message : String(e);
+      backupErr = e instanceof ApiError ? e.message : String(e);
     } finally {
       dbBusy = "";
-      setTimeout(() => (dbMsg = ""), 3000);
+      setTimeout(() => (backupMsg = ""), 3000);
     }
   }
   function askCleanup() {
@@ -1997,6 +2001,8 @@
                   {dbBusy === "backup" ? "Backing up…" : "Back up now"}
                 </button>
               </div>
+              {#if backupErr}<p class="error" data-testid="db-backup-err">{backupErr}</p>{/if}
+              {#if backupMsg}<p class="ok" data-testid="db-backup-msg">{backupMsg}</p>{/if}
               {#if (dbState.backups?.length ?? 0) > 0}
                 <ul class="list">
                   {#each (dbState.backups ?? []).slice(0, 8) as b (b.path)}
