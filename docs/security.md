@@ -29,7 +29,7 @@ Every user-scoped store query carries `WHERE user_id = ?` so users can't read ea
 
 ## CSRF
 
-Double-submit pattern. A random `ember_csrf` cookie (8 random bytes hex-encoded, not HttpOnly) must be echoed in the `X-Ember-CSRF` header on every state-changing request (`POST`, `PATCH`, `DELETE`).
+Double-submit pattern. A random `ember_csrf` cookie (16 `crypto/rand` bytes hex-encoded, `SameSite=Strict`, not HttpOnly so the SPA can echo it) must be echoed in the `X-Ember-CSRF` header on every state-changing request (`POST`, `PATCH`, `DELETE`). The header/cookie compare is constant-time.
 
 Two safe exceptions:
 

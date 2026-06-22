@@ -327,6 +327,22 @@ Every feed route that fetches outbound carried `expensiveLimiter` except the new
 
 ---
 
+## Review #4 (2026-06-22) — full audit, no exploitable findings
+
+Full Go audit (login bypass, SQL injection, transport/HTTP-vs-HTTPS, RCE, SSRF) via parallel reviewers + `go vet`/`golangci-lint`/`govulncheck` (all clean). **No CRITICAL/HIGH/exploitable issues.** Confirmed clean: every dynamic SQL builder is parameter-safe; the only `os/exec` is a probe-only `LookPath("nvidia-smi")`; no `InsecureSkipVerify`; all outbound fetches `urlcheck`-guarded; email-inbox stored XSS (prior H) remains remediated. The seven items below are defense-in-depth hardening that was applied anyway.
+
+| ID | Status | File | Hardening |
+| --- | --- | --- | --- |
+| V4-1 | `fixed` | `internal/api/auth_handlers.go` | `handleLogin` returns an allowlisted `loginResponse{id,username,is_admin,created_at}` instead of the raw `models.User`, so a future model field can't silently leak from the auth endpoint. |
+| V4-2 | `fixed` | `internal/api/search_handlers.go` | FTS5 query length-capped (`maxSearchQueryLen = 500`) — already `?`-parameterized + rate-limited; this just bounds SQLite's work. |
+| V4-3 | `fixed` | `internal/api/filter_handlers.go` | Filter-validation errors surfaced via `publicFilterErr()`, stripping the internal `filters:` package prefix while keeping the user-facing detail. |
+| V4-4 | `fixed` | `internal/api/middleware.go` | CSRF cookie raised from `SameSite=Lax` to `Strict`, matching the session cookie. |
+| V4-5 | `fixed` | `internal/api/branding_handlers.go` | Admin `favicon_url` restricted to empty / same-origin `/path` / `https://` — rejects `javascript:`/`data:` schemes the SPA would set as a `<link rel="icon">` href. |
+| V4-6 | `fixed` | `internal/api/article_handlers.go` | `handleMarkAllRead` returns 404 for an unknown/foreign `board_id`/`category_id` (ownership lookup) instead of a silent `count:0`. |
+| V4-7 | `fixed` | `cmd/ember/main.go` | Image-proxy HMAC keyed on the resolved session key (test-mode fallback applied), never on an empty string. |
+
+---
+
 ## Static Analysis Baseline (2026-06-10)
 
 - `go vet ./...` — clean
