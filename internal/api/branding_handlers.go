@@ -53,6 +53,17 @@ func (d *Dependencies) handleSetBranding(w http.ResponseWriter, r *http.Request)
 	if !decodeJSON(w, r, &req) {
 		return
 	}
+	// The favicon URL is handed straight to the SPA as a <link rel="icon"> href.
+	// Only allow an empty value (clears the override), a same-origin absolute
+	// path, or an explicit https URL — never a javascript:/data: scheme that the
+	// DOM would treat as active content.
+	if req.FaviconURL != nil {
+		v := strings.TrimSpace(*req.FaviconURL)
+		if v != "" && !strings.HasPrefix(v, "/") && !strings.HasPrefix(v, "https://") {
+			writeError(w, http.StatusBadRequest, "bad_request", "favicon_url must be empty, a /path, or an https:// URL")
+			return
+		}
+	}
 	apply := func(key string, val *string) error {
 		if val == nil {
 			return nil

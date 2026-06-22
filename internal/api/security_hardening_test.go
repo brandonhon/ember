@@ -78,3 +78,46 @@ func TestFilter_ValidationErrorOmitsInternalPrefix(t *testing.T) {
 		t.Fatalf("error message dropped the useful validation detail: %q", resp.Error.Message)
 	}
 }
+
+// The branding favicon URL is rendered as a <link rel="icon"> href, so it must
+// reject active-content schemes (javascript:/data:) and accept only a
+// same-origin path or an https URL.
+func TestBranding_RejectsUnsafeFaviconScheme(t *testing.T) {
+	h := newHarness(t)
+	h.seedUser(t, "root", "hunter2", true)
+	cl := h.login(t, "root", "hunter2")
+
+	if code := post(t, cl, h.srv.URL+"/api/admin/branding",
+		map[string]any{"favicon_url": "javascript:alert(1)"}, nil); code != http.StatusBadRequest {
+		t.Fatalf("javascript: favicon = %d, want 400", code)
+	}
+	if code := post(t, cl, h.srv.URL+"/api/admin/branding",
+		map[string]any{"favicon_url": "/icon.svg"}, nil); code != http.StatusOK {
+		t.Fatalf("/path favicon = %d, want 200", code)
+	}
+	if code := post(t, cl, h.srv.URL+"/api/admin/branding",
+		map[string]any{"favicon_url": "https://example.com/i.png"}, nil); code != http.StatusOK {
+		t.Fatalf("https favicon = %d, want 200", code)
+	}
+}
+
+// mark-all-read scoped to an unknown/foreign board or category id is a 404, not
+// a silent count:0 — while an unscoped "mark everything" still succeeds.
+func TestMarkAllRead_UnknownScopeReturns404(t *testing.T) {
+	h := newHarness(t)
+	h.seedUser(t, "alice", "hunter2", false)
+	cl := h.login(t, "alice", "hunter2")
+
+	if code := post(t, cl, h.srv.URL+"/api/articles/mark-all-read",
+		map[string]any{"board_id": 999999}, nil); code != http.StatusNotFound {
+		t.Fatalf("unknown board_id = %d, want 404", code)
+	}
+	if code := post(t, cl, h.srv.URL+"/api/articles/mark-all-read",
+		map[string]any{"category_id": 999999}, nil); code != http.StatusNotFound {
+		t.Fatalf("unknown category_id = %d, want 404", code)
+	}
+	if code := post(t, cl, h.srv.URL+"/api/articles/mark-all-read",
+		map[string]any{}, nil); code != http.StatusOK {
+		t.Fatalf("unscoped mark-all-read = %d, want 200", code)
+	}
+}

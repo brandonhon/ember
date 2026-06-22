@@ -30,7 +30,11 @@ full commit-level list; this file curates the highlights and behavior changes.
   exploitable issues): the login endpoint now returns an explicit allowlisted
   field set rather than the raw user record (so a future model field can't
   silently leak), search queries are length-capped before reaching SQLite, and
-  filter-validation errors no longer surface the internal package prefix.
+  filter-validation errors no longer surface the internal package prefix. Also:
+  the CSRF cookie is now `SameSite=Strict` (matching the session cookie), the
+  admin favicon URL is restricted to a same-origin path or `https://` (no
+  `javascript:`/`data:`), and a "mark all read" scoped to an unknown board or
+  category id returns 404 instead of a silent no-op.
 
 ### Changed
 

@@ -240,7 +240,11 @@ func CSRFIssue(secure bool) func(http.Handler) http.Handler {
 					Path:     "/",
 					HttpOnly: false, // must be readable by JS to echo into header
 					Secure:   secure,
-					SameSite: http.SameSiteLaxMode,
+					// Strict, matching the session cookie. The SPA reads the token
+					// and echoes it on same-site XHRs, which always carry the cookie;
+					// there's no cross-site redirect login flow that needs it sent on
+					// a top-level cross-site navigation.
+					SameSite: http.SameSiteStrictMode,
 					MaxAge:   86400,
 				})
 			}
