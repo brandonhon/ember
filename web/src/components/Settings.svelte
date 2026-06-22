@@ -354,6 +354,8 @@
         cleanup_schedule: dbState.cleanup_schedule as "off" | "weekly" | "monthly",
         cleanup_older_days: dbState.cleanup_older_days,
         opml_schedule: (dbState.opml_schedule || "off") as "off" | "weekly" | "monthly",
+        opml_export_dir: dbState.opml_export_dir,
+        opml_keep: dbState.opml_keep,
       });
       dbMsg = "Schedule saved";
     } catch (e) {
@@ -2044,7 +2046,7 @@
                 </div>
                 <div class="row-ctl">
                   <input class="row-input num" type="number" min="7" max="3650" bind:value={cleanupDays} data-testid="db-cleanup-days" aria-label="Older than (days)" />
-                  <button class="ghost-btn" on:click={askCleanup} disabled={dbBusy === "cleanup"} data-testid="db-cleanup">
+                  <button class="pack-btn" on:click={askCleanup} disabled={dbBusy === "cleanup"} data-testid="db-cleanup">
                     {dbBusy === "cleanup" ? "Cleaning…" : "Clean up now"}
                   </button>
                 </div>
@@ -2053,10 +2055,17 @@
 
             <div class="card">
               <div class="card-head"><h4>OPML export</h4></div>
+              <label class="pref-row">
+                <div>
+                  <div class="pref-label">Directory</div>
+                  <div class="pref-hint">Where the admin's subscription list is written (absolute path). <strong>Bind-mount this path and make the host directory writable by the container user</strong> (UID 65532) to keep exports outside the container — see the docs. Empty resets to <code>/data/exports</code>.</div>
+                </div>
+                <input class="row-input" type="text" bind:value={dbState.opml_export_dir} placeholder="/data/exports" data-testid="opml-export-dir" />
+              </label>
               <div class="pref-row">
                 <div>
                   <div class="pref-label">Schedule</div>
-                  <div class="pref-hint">Writes the admin user's subscription list to /data/exports/ on the chosen cadence.</div>
+                  <div class="pref-hint">Writes the admin user's subscription list on the chosen cadence.</div>
                 </div>
                 <div class="seg">
                   <button class:on={(dbState.opml_schedule || "off") === "off"} on:click={() => (dbState!.opml_schedule = "off")}>Off</button>
@@ -2064,6 +2073,13 @@
                   <button class:on={dbState.opml_schedule === "monthly"} on:click={() => (dbState!.opml_schedule = "monthly")}>Monthly</button>
                 </div>
               </div>
+              <label class="pref-row">
+                <div>
+                  <div class="pref-label">Keep</div>
+                  <div class="pref-hint">How many exports to retain.</div>
+                </div>
+                <input class="row-input num" type="number" min="1" max="365" bind:value={dbState.opml_keep} data-testid="opml-keep" />
+              </label>
               <div class="actions">
                 <button on:click={saveDBSchedule} disabled={dbBusy === "schedule"} data-testid="db-schedule-save">
                   {dbBusy === "schedule" ? "Saving…" : "Save schedule"}

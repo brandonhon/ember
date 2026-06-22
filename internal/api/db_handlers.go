@@ -16,6 +16,10 @@ import (
 // container, point it at a bind-mounted host path — see docs/configuration.
 const defaultBackupDir = "/data/backups"
 
+// Default location for scheduled OPML exports (the `opml_export_dir` app
+// setting); bind-mount it to persist outside the container.
+const defaultExportDir = "/data/exports"
+
 // dbStatus is the response for GET /api/admin/db. Reports size, current
 // schedule settings, and on-disk backups.
 type dbStatus struct {
@@ -28,6 +32,8 @@ type dbStatus struct {
 	CleanupSchedule  string             `json:"cleanup_schedule"`  // "off" | "weekly" | "monthly"
 	CleanupOlderDays int                `json:"cleanup_older_days"`
 	OPMLSchedule     string             `json:"opml_schedule"` // "off" | "weekly" | "monthly"
+	OPMLExportDir    string             `json:"opml_export_dir"`
+	OPMLKeepCount    int                `json:"opml_keep"`
 }
 
 const (
@@ -36,7 +42,16 @@ const (
 	keyCleanupSchedule  = "db_cleanup_schedule"
 	keyCleanupOlderDays = "db_cleanup_older_days"
 	keyBackupDir        = "db_backup_dir"
+	keyOPMLExportDir    = "opml_export_dir"
+	keyOPMLKeep         = "opml_keep"
 )
+
+// validDirSetting reports whether p is acceptable as a backup/export directory:
+// empty (reset to default) or an absolute path with no single quote (the
+// store's VACUUM INTO path can't be parameterized).
+func validDirSetting(p string) bool {
+	return p == "" || (strings.HasPrefix(p, "/") && !strings.ContainsRune(p, '\''))
+}
 
 // resolveBackupDir returns the admin-configured backup directory, falling back
 // to defaultBackupDir when unset.
@@ -62,6 +77,8 @@ func (d *Dependencies) handleGetDB(w http.ResponseWriter, r *http.Request) {
 		CleanupSchedule:  getSettingOr(r, d, keyCleanupSchedule, "off"),
 		CleanupOlderDays: getIntSettingOr(r, d, keyCleanupOlderDays, 90),
 		OPMLSchedule:     getSettingOr(r, d, "opml_schedule", "off"),
+		OPMLExportDir:    getSettingOr(r, d, keyOPMLExportDir, defaultExportDir),
+		OPMLKeepCount:    getIntSettingOr(r, d, keyOPMLKeep, 12),
 	}
 	writeData(w, http.StatusOK, resp, nil)
 }
@@ -109,6 +126,8 @@ type scheduleReq struct {
 	CleanupSchedule  string `json:"cleanup_schedule"`
 	CleanupOlderDays int    `json:"cleanup_older_days"`
 	OPMLSchedule     string `json:"opml_schedule"`
+	OPMLExportDir    string `json:"opml_export_dir"`
+	OPMLKeepCount    int    `json:"opml_keep"`
 }
 
 func (d *Dependencies) handleDBSchedule(w http.ResponseWriter, r *http.Request) {
@@ -134,16 +153,32 @@ func (d *Dependencies) handleDBSchedule(w http.ResponseWriter, r *http.Request) 
 	if req.CleanupOlderDays < 7 {
 		req.CleanupOlderDays = 7
 	}
-	// Backup directory: empty resets to the default; otherwise require an
-	// absolute path with no single quote (the store's VACUUM INTO can't bind a
-	// placeholder). The admin must bind-mount this path for backups to persist.
+	if req.OPMLKeepCount < 1 {
+		req.OPMLKeepCount = 12
+	}
+	// Backup/export directories: empty resets to the default; otherwise require
+	// an absolute path with no single quote. The admin must bind-mount these
+	// paths for the files to persist outside the container.
 	backupDir := strings.TrimSpace(req.BackupDir)
-	if backupDir != "" && (!strings.HasPrefix(backupDir, "/") || strings.ContainsRune(backupDir, '\'')) {
+	exportDir := strings.TrimSpace(req.OPMLExportDir)
+	if !validDirSetting(backupDir) {
 		writeError(w, http.StatusBadRequest, "bad_request", "backup_dir must be an absolute path with no quote characters")
+		return
+	}
+	if !validDirSetting(exportDir) {
+		writeError(w, http.StatusBadRequest, "bad_request", "opml_export_dir must be an absolute path with no quote characters")
 		return
 	}
 	ctx := r.Context()
 	if err := d.Store.PutAppSetting(ctx, keyBackupDir, backupDir); err != nil {
+		internalError(w, "internal", err)
+		return
+	}
+	if err := d.Store.PutAppSetting(ctx, keyOPMLExportDir, exportDir); err != nil {
+		internalError(w, "internal", err)
+		return
+	}
+	if err := d.Store.PutAppSetting(ctx, keyOPMLKeep, strconv.Itoa(req.OPMLKeepCount)); err != nil {
 		internalError(w, "internal", err)
 		return
 	}

@@ -448,6 +448,8 @@ export interface DBSchedule {
   cleanup_schedule: "off" | "weekly" | "monthly";
   cleanup_older_days: number;
   opml_schedule?: "off" | "weekly" | "monthly";
+  opml_export_dir: string;
+  opml_keep: number;
 }
 export interface DBStatus extends DBSchedule {
   size_bytes: number;
