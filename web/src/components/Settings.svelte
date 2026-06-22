@@ -95,7 +95,6 @@
   };
 
   // --- Import & Data section -------------------------------------------
-  let importTab = $state<"live" | "file">("live");
   let ttUrl = $state("");
   let ttUser = $state("");
   let ttPass = $state("");
@@ -1676,35 +1675,26 @@
             </div>
             {#if importErr}<p class="error" data-testid="import-error">{importErr}</p>{/if}
             {#if importMsg}<p class="ok" data-testid="import-msg">{importMsg}</p>{/if}
-            <div class="import-seg" role="tablist">
-              <button role="tab" class:on={importTab === "live"} on:click={() => (importTab = "live")} data-testid="ttrss-tab-live">Migrate from running TT-RSS</button>
-              <button role="tab" class:on={importTab === "file"} on:click={() => (importTab = "file")} data-testid="ttrss-tab-file">Upload export file</button>
+            <label><span>TT-RSS URL</span>
+              <input type="text" bind:value={ttUrl} placeholder="rss.example.com/tt-rss" disabled={importBusy} data-testid="ttrss-url" />
+            </label>
+            <label><span>Username</span>
+              <input type="text" bind:value={ttUser} disabled={importBusy} data-testid="ttrss-user" />
+            </label>
+            <label><span>Password</span>
+              <input type="password" bind:value={ttPass} disabled={importBusy} data-testid="ttrss-pass" />
+            </label>
+            <div class="import-checks">
+              <label class="inline"><input type="checkbox" bind:checked={ttFeeds} disabled={importBusy} data-testid="ttrss-feeds" /> Subscriptions &amp; folders</label>
+              <label class="inline"><input type="checkbox" bind:checked={ttStarred} disabled={importBusy} /> Starred</label>
+              <label class="inline"><input type="checkbox" bind:checked={ttArchived} disabled={importBusy} /> Archived</label>
             </div>
-            {#if importTab === "live"}
-              <label><span>TT-RSS URL</span>
-                <input type="text" bind:value={ttUrl} placeholder="rss.example.com/tt-rss" disabled={importBusy} data-testid="ttrss-url" />
-              </label>
-              <label><span>Username</span>
-                <input type="text" bind:value={ttUser} disabled={importBusy} data-testid="ttrss-user" />
-              </label>
-              <label><span>Password</span>
-                <input type="password" bind:value={ttPass} disabled={importBusy} data-testid="ttrss-pass" />
-              </label>
-              <div class="import-checks">
-                <label class="inline"><input type="checkbox" bind:checked={ttFeeds} disabled={importBusy} data-testid="ttrss-feeds" /> Subscriptions &amp; folders</label>
-                <label class="inline"><input type="checkbox" bind:checked={ttStarred} disabled={importBusy} /> Starred</label>
-                <label class="inline"><input type="checkbox" bind:checked={ttArchived} disabled={importBusy} /> Archived</label>
-              </div>
-              <p class="import-note">Feeds you’re already subscribed to are skipped, so it’s safe to run more than once. Enable “API access” in your TT-RSS Preferences first. If TT-RSS lives under a subpath (e.g. <code>/tt-rss</code>), include it — we append <code>/api/</code>. Credentials are used only for this import and never stored.</p>
-              <div class="actions">
-                <button on:click={ttrssLivePull} disabled={importBusy} data-testid="ttrss-start">{importBusy ? "Importing…" : "Start migration"}</button>
-              </div>
-            {:else}
-              <p class="import-note">Export your Starred &amp; Archived articles from TT-RSS (the import/export plugin produces an <code>.xml</code> file), then upload it here. <strong>Subscriptions aren’t included in this file</strong> — to bring over your feed list, use “Migrate from running TT-RSS” above, or import an OPML export below.</p>
-              <div class="actions">
-                <button on:click={() => { if (DEMO) { notifyDemoBlocked(); return; } ttrssFileInput?.click(); }} disabled={importBusy} data-testid="ttrss-file-pick">Choose .xml file…</button>
-              </div>
-            {/if}
+            <p class="import-note">Feeds you’re already subscribed to are skipped, so it’s safe to run more than once. Enable “API access” in your TT-RSS Preferences first. If TT-RSS lives under a subpath (e.g. <code>/tt-rss</code>), include it — we append <code>/api/</code>. Credentials are used only for this import and never stored.</p>
+            <div class="actions">
+              <button on:click={ttrssLivePull} disabled={importBusy} data-testid="ttrss-start">{importBusy ? "Importing…" : "Start migration"}</button>
+              <button class="ghost" on:click={() => { if (DEMO) { notifyDemoBlocked(); return; } ttrssFileInput?.click(); }} disabled={importBusy} data-testid="ttrss-file-pick">Upload export file…</button>
+            </div>
+            <p class="import-note">No running instance? Use <strong>Upload export file</strong> to load a TT-RSS export <code>.xml</code> (from its import/export plugin) instead — note it carries only your <strong>Starred &amp; Archived articles</strong>, not your feed list. For subscriptions, use the migration above or an OPML import below.</p>
           </div>
 
           <div class="card">
@@ -2867,31 +2857,6 @@
   }
   .btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
   /* Import & Data section */
-  .import-seg {
-    display: inline-flex;
-    background: var(--paper-2);
-    border-radius: 9px;
-    padding: 3px;
-    gap: 3px;
-    margin-bottom: 14px;
-  }
-  .import-seg button {
-    border: 0;
-    background: transparent;
-    font-family: var(--font-ui);
-    font-size: 12.5px;
-    font-weight: 600;
-    color: var(--ink-faint);
-    padding: 6px 13px;
-    border-radius: 6px;
-    cursor: pointer;
-  }
-  .import-seg button:not(.on):hover { color: var(--ink); background: var(--line-soft); }
-  .import-seg button.on {
-    background: var(--card);
-    color: var(--ember);
-    box-shadow: 0 1px 2px rgba(33, 29, 24, 0.08);
-  }
   .import-checks { display: flex; gap: 18px; margin: 4px 0 12px; }
   .import-checks label.inline {
     display: flex;

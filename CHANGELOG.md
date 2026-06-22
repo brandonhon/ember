@@ -15,7 +15,10 @@ full commit-level list; this file curates the highlights and behavior changes.
   the Tiny Tiny RSS section. It shows its own status in the OPML card — the
   button reads "Importing…" while it runs and reports the result right there —
   instead of surfacing under TT-RSS and disabling that form with no nearby
-  feedback. The TT-RSS tab buttons also gained their missing hover state.
+  feedback. The Tiny Tiny RSS card was also flattened — the live-migration form
+  shows directly with **Start migration** and **Upload export file** side by
+  side, replacing the segmented tabs whose inactive tab looked like a dead
+  button.
 - A story you'd already read could reappear as unread when a **duplicate**
   arrived later — a second feed publishing the same story, or the same feed
   re-publishing it under a new id. Cross-feed dedup previously only swept
