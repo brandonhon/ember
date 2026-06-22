@@ -651,6 +651,7 @@
     }
   }
   async function onEnablePush() {
+    if (DEMO) { notifyDemoBlocked(); return; }
     pushErr = "";
     pushMsg = "";
     pushBusy = true;
@@ -707,6 +708,7 @@
     }
   }
   async function addPasskey() {
+    if (DEMO) { notifyDemoBlocked(); return; }
     passkeyBusy = "register";
     passkeyErr = "";
     passkeyMsg = "";
