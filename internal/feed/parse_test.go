@@ -7,6 +7,52 @@ import (
 	"testing"
 )
 
+func TestParse_MediaRSSImage(t *testing.T) {
+	// News publishers (Fox, Reuters, …) ship the lead image only via Media RSS,
+	// which gofeed exposes through it.Extensions rather than it.Image. Cover
+	// media:content (image), media:thumbnail fallback, and skipping video.
+	body := []byte(`<?xml version="1.0"?>
+<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
+  <channel>
+    <title>News</title>
+    <item>
+      <title>Has media:content image</title>
+      <link>https://news.example/a</link>
+      <description>Plain summary, no inline image.</description>
+      <media:content url="https://img.example/lead.jpg" type="image/jpeg" width="931" height="523" />
+    </item>
+    <item>
+      <title>Only a media:thumbnail</title>
+      <link>https://news.example/b</link>
+      <description>No content image.</description>
+      <media:thumbnail url="https://img.example/thumb.jpg" />
+    </item>
+    <item>
+      <title>media:content is a video</title>
+      <link>https://news.example/c</link>
+      <description>No usable image.</description>
+      <media:content url="https://vid.example/clip.mp4" type="video/mp4" />
+    </item>
+  </channel>
+</rss>`)
+	res, err := Parse(context.Background(), 1, body, "https://news.example/feed.xml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Articles) != 3 {
+		t.Fatalf("articles = %d, want 3", len(res.Articles))
+	}
+	if got := res.Articles[0].ImageURL; !strings.Contains(got, "lead.jpg") {
+		t.Errorf("media:content image not extracted: %q", got)
+	}
+	if got := res.Articles[1].ImageURL; !strings.Contains(got, "thumb.jpg") {
+		t.Errorf("media:thumbnail not used as fallback: %q", got)
+	}
+	if got := res.Articles[2].ImageURL; got != "" {
+		t.Errorf("video media:content should not be used as an image: %q", got)
+	}
+}
+
 func TestParse_RSS(t *testing.T) {
 	body, _ := os.ReadFile("testdata/sample.rss")
 	res, err := Parse(context.Background(), 1, body, "https://example.com/blog.rss")

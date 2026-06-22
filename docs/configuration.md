@@ -6,7 +6,7 @@ Ember reads configuration from environment variables at startup. A handful of se
 
 | Var | Description |
 | --- | --- |
-| `EMBER_SESSION_KEY` | securecookie key, 32+ random bytes. Generate via `openssl rand -base64 48`. |
+| `EMBER_SESSION_KEY` | securecookie key, 32+ random bytes. Generate via `openssl rand -base64 48`. Also seeds (domain-separated) the HMAC key that signs image-proxy URLs. |
 | `EMBER_ADMIN_PASSWORD` | First-run admin password. Used only when the `users` table is empty; change via Settings → Profile after first login. **Must be at least 8 characters** — a shorter or empty value makes the container **exit on startup** with `bootstrap admin: …must be at least 8 characters` rather than starting with no usable account. |
 
 ## Optional env vars

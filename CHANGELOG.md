@@ -7,6 +7,65 @@ All notable user-facing changes to Ember are documented here. The format follows
 Per-tag [GitHub Releases](https://github.com/brandonhon/ember/releases) hold the
 full commit-level list; this file curates the highlights and behavior changes.
 
+## [Unreleased]
+
+## [0.9.3] - 2026-06-21
+
+### Added
+
+- **Article images load through Ember instead of the publisher's CDN** — the
+  card thumbnail and the reader's lead image are now served from Ember's own
+  origin (`/api/img`) rather than fetched directly from a publisher CDN. Content
+  blockers and tracker-blockers (uBlock Origin, Privacy Badger, …) match on
+  those CDN domains and were silently stripping lead images (e.g. Fox News'
+  `a57.foxnews.com`); routed same-origin they load normally. Source URLs are
+  signed by the server, so the endpoint only fetches images Ember itself
+  selected — it's not an open proxy.
+- **Links in articles open in a new tab** — every link inside an article's body
+  now opens in a separate browser tab (with `rel="noopener noreferrer"`), so
+  following a link no longer navigates you out of Ember.
+
+### Changed
+
+- **"Mark all read" lets you finish the article you're reading** — marking
+  everything read while an article is open now greys that card out but keeps it
+  in the list (and in the reader pane) so you can keep reading. The next "Mark
+  all read" hides it.
+- **New articles no longer interrupt your scroll** — while you're browsing Fresh
+  or All Unread, articles that arrive in the background are held back instead of
+  being inserted into the list under your cursor. They load with the next batch
+  of cards — for example when you hit "Mark all read" — so you never have to
+  scroll back to the top to find them. "Refresh feeds now" still surfaces them
+  immediately.
+
+### Fixed
+
+- **News articles whose image is delivered via Media RSS now show a picture** —
+  many publishers (e.g. Fox News) attach the lead image as a `<media:content>`
+  or `<media:thumbnail>` element rather than an enclosure or an inline `<img>`.
+  The parser didn't read those, so those articles came through image-less. It
+  now extracts the image from Media RSS. Applies to newly-fetched articles.
+- **BleepingComputer articles no longer carry in-body ads** — BleepingComputer's
+  feed ships only a short excerpt, so Ember extracts the full story from the
+  page, which dragged in sponsored banners and an end-of-article promo block.
+  Those are now stripped via a curated per-publisher rule; feeds we haven't
+  vetted are left untouched. Applies to newly-fetched articles.
+- **OPML import now keeps your folders** — feeds nested inside a folder were
+  imported uncategorized: the folder (category) was created but the feeds landed
+  outside it. They're now filed under their folder's category, so an imported
+  subscription list comes in organized the way it was exported. Nested
+  sub-folders flatten into their top-level folder (Ember categories are flat).
+
+### Security
+
+- **Bumped `undici` 7.26.0 → 7.28.0** (transitive devDep via `jsdom`) to patch
+  [GHSA-vmh5-mc38-953g](https://github.com/advisories/GHSA-vmh5-mc38-953g)
+  (TLS certificate validation bypass via dropped `requestTls` in SOCKS5
+  `ProxyAgent`, high) and
+  [GHSA-pr7r-676h-xcf6](https://github.com/advisories/GHSA-pr7r-676h-xcf6)
+  (cross-user information disclosure via shared cache whitespace bypass,
+  medium). Dev-only — `undici` is not bundled into the Ember binary.
+
 ## [0.9.2] - 2026-06-15
 
 ### Fixed
@@ -155,7 +214,8 @@ TT-RSS full migration (subscriptions, folders, starred/archived) and fail-fast
 admin bootstrap. See the
 [v0.8.7 release](https://github.com/brandonhon/ember/releases/tag/v0.8.7).
 
-[Unreleased]: https://github.com/brandonhon/ember/compare/v0.9.2...develop
+[Unreleased]: https://github.com/brandonhon/ember/compare/v0.9.3...develop
+[0.9.3]: https://github.com/brandonhon/ember/compare/v0.9.2...v0.9.3
 [0.9.2]: https://github.com/brandonhon/ember/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/brandonhon/ember/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/brandonhon/ember/compare/v0.8.9...v0.9.0

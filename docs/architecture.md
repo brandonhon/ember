@@ -102,7 +102,7 @@ Each feed has `next_fetch` (unix seconds) and an `error_count`. The poller:
 2. Due feeds fan out across `EMBER_POLL_CONCURRENCY` worker goroutines.
 3. Each worker calls `Fetcher.Fetch(url, etag, last_modified)`:
    - 304 → bookkeep last_fetched/next_fetch, error_count = 0.
-   - 2xx → parse with gofeed, optionally enrich short bodies via go-readability, upsert articles (the upsert stamps `canonical_url`, `cluster_id`, and `title_fingerprint` so cross-feed dedup keys are populated at ingest, not only by backfill).
+   - 2xx → parse with gofeed, optionally enrich short bodies via go-readability, upsert articles (the upsert stamps `canonical_url`, `cluster_id`, and `title_fingerprint` so cross-feed dedup keys are populated at ingest, not only by backfill). The lead image is taken from itunes/RSS `<image>`, then an image `<enclosure>`, then **Media RSS** (`<media:content>` / `<media:thumbnail>` — how most news feeds, e.g. Fox, ship the article image), then the first inline `<img>`. At serve time the API rewrites the stored lead-image URL to a signed same-origin `/api/img` path (see the image proxy under the API surface, and Security › Image proxy) so client-side content/tracker blockers — which match on publisher CDN domains — don't strip it. Body HTML is then de-cluttered: `stripCommentsResidue` removes aggregator "Comments"/"Read more" residue, and `feed.StripPublisherAds` removes curated per-publisher in-body sponsored blocks (matched by ad asset/CTA URL since CSS classes are gone after sanitization; a no-op for hosts we haven't vetted). The same cleaning runs in the `/extract` re-extract path, so existing articles can be re-cleaned on demand.
    - Error → increment error_count, schedule next try with exponential backoff (capped at `MaxInterval`).
 4. `next_fetch` is set by `AdaptiveInterval`, clamped to `[floor, MaxInterval]`. The **floor** is runtime-configurable — `EMBER_POLL_MIN_INTERVAL` (default 30m) overlaid by the `poll_min_interval_seconds` `app_settings` row (admin UI), resolved live per fetch and clamped to the hard bounds `store.PollMinInterval{Floor,Ceil}` (5m–24h).
 5. Newly-inserted articles enqueue on `summaryCh` (best-effort, drops on full).
@@ -162,7 +162,8 @@ Only the `shared` view (explicit one-off share) and board views (explicit curati
 - Vite 5 build, output copied to `internal/web/dist`, served via `embed.FS`.
 - Typed fetch client in `web/src/lib/api.ts` (throws `ApiError`).
 - Stores in `web/src/lib/stores.ts` for user, feeds, categories, boards, articles, themes, branding, new-article counter, etc.
-- 15s auto-refresh poll while the tab is visible; SSE not used — REST polling is simpler and fits the cadence.
+- 15s auto-refresh poll while the tab is visible; SSE not used — REST polling is simpler and fits the cadence. In the **Fresh** and **All Unread** views the auto-poll is *non-disruptive*: newly-arrived articles are held in a backlog (`pendingNewIds` in `stores.ts`) and counted once rather than injected into the list under a scrolling reader. They page in on the next full load — `loadArticles` (which `clearNewArticleBacklog` resets) — e.g. the refill after "Mark all read". The explicit "Refresh feeds now" control calls `pollForNewArticles({ immediate: true })` to bypass the backlog; all other views merge new articles immediately.
+- **Mark all read** in Fresh / All Unread drops the read cards and pages in the next unread batch, with a one-shot **grace** for the article currently open: that card is kept (greyed via `.story.read`, still in `articles.items` so the reader pane keeps it) so you can finish reading; the next "Mark all read" hides it. Tracked by a `graceUsedId` ledger because opening an article auto-marks it read, so `is_read` can't distinguish the first click. Article-body links are rewritten to `target="_blank" rel="noopener noreferrer"` after render (`lib/links.forceNewTabLinks`) so they open in a new tab.
 - Service worker (`web/public/sw.js`) caches assets immutably and falls back to cached shell when offline.
 
 ## Admin endpoints (admin-only)
@@ -180,6 +181,7 @@ Only the `shared` view (explicit one-off share) and board views (explicit curati
 Auth-required (not admin-only):
 
 - `POST /api/articles/{id}/extract` — on-demand readability re-run for the reader pane's "Re-extract" button. Subject to the same SSRF check as the poller's automatic enrichment.
+- `GET /api/img?u=…&s=…` — same-origin image proxy for article lead images. The API signs the source URL (HMAC keyed off `EMBER_SESSION_KEY`, domain-separated) when it rewrites `image_url` in list/detail/search responses, so the endpoint is a capability — it only fetches images Ember itself selected, never arbitrary client input. The outbound fetch runs through `urlcheck.Check`, accepts only `image/*`, and is size- (10 MiB) and time- (15 s) bounded. Streams through with a 1-day `Cache-Control`; no server-side cache.
 
 ## E2E
 

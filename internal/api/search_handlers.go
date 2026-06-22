@@ -53,5 +53,8 @@ func (d *Dependencies) handleSearch(w http.ResponseWriter, r *http.Request) {
 	if len(hits) == limit {
 		meta["next_offset"] = offset + limit
 	}
+	for i := range hits {
+		hits[i].ImageURL = d.img.rewrite(hits[i].ImageURL)
+	}
 	writeData(w, http.StatusOK, hits, meta)
 }

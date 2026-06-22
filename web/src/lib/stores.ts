@@ -298,10 +298,25 @@ function queryForView(view: ActiveView): ListArticlesQuery {
 // tab is visible (App.svelte handles that).
 export const newArticleCount = writable<number>(0);
 
+// Backlog ledger for the Fresh / All-Unread views: ids of new articles that
+// auto-poll has discovered but deliberately NOT injected into the list, so a
+// user mid-scroll isn't yanked. It doubles as a dedup guard so each new
+// article bumps the favicon count exactly once across repeated polls. Cleared
+// (with the count) whenever the list is fully (re)loaded — e.g. mark-all-read's
+// refill — at which point the held articles page in from the server naturally.
+const pendingNewIds = new Set<number>();
+export function clearNewArticleBacklog(): void {
+  pendingNewIds.clear();
+  newArticleCount.set(0);
+}
+export function isBacklogView(view: ActiveView): boolean {
+  return view.kind === "smart" && (view.view === "fresh" || view.view === "unread");
+}
+
 // pollForNewArticles fetches the current view's top page and merges any
 // articles whose id is higher than the current top into the store. Runs
 // every 30s while the tab is visible; the user never has to refresh.
-export async function pollForNewArticles(): Promise<number> {
+export async function pollForNewArticles(opts: { immediate?: boolean } = {}): Promise<number> {
   const view = get(activeView);
   // Search is a one-shot FTS lookup, not a stream — auto-refresh is
   // meaningless here and would clobber the user's results.
@@ -314,6 +329,32 @@ export async function pollForNewArticles(): Promise<number> {
     const fresh = res.data ?? [];
     if (fresh.length === 0 && current.items.length === 0) return 0;
 
+    const have = new Set(current.items.map((a) => a.id));
+
+    // Backlog mode (Fresh / All-Unread, auto-poll only): refresh the state of
+    // articles already on screen, but hold genuinely-new ones back instead of
+    // injecting them — the user scrolling through cards isn't bumped to the
+    // top. The new ids are remembered (dedup) and counted once; they surface
+    // on the next full load (mark-all-read's refill re-queries the server).
+    // `opts.immediate` (explicit "Refresh feeds now") opts out and merges now.
+    if (!opts.immediate && isBacklogView(view)) {
+      const freshById = new Map(fresh.map((a) => [a.id, a]));
+      const items = current.items.map((a) => freshById.get(a.id) ?? a);
+      articles.update((s) => ({ ...s, items, loading: false, err: undefined }));
+      let added = 0;
+      for (const a of fresh) {
+        if (!have.has(a.id) && !pendingNewIds.has(a.id)) {
+          pendingNewIds.add(a.id);
+          added++;
+        }
+      }
+      if (added > 0) {
+        newArticleCount.update((n) => n + added);
+        void refreshSidebar();
+      }
+      return added;
+    }
+
     // Merge semantics: the server-returned top page (`fresh`) is authoritative
     // for any article whose id it contains (so read/star/dedup state flows
     // through). Existing items not in `fresh` are preserved at their natural
@@ -321,7 +362,6 @@ export async function pollForNewArticles(): Promise<number> {
     // a currently-selected reader-pane article from disappearing when the
     // poll drops it from the top page (or the smart-view filter excludes it).
     // Sort matches the server's ORDER BY IFNULL(published_at,0) DESC, id DESC.
-    const have = new Set(current.items.map((a) => a.id));
     const newCount = fresh.reduce((n, a) => (have.has(a.id) ? n : n + 1), 0);
     const freshIds = new Set(fresh.map((a) => a.id));
     const kept = current.items.filter((a) => !freshIds.has(a.id));
@@ -358,7 +398,7 @@ export async function loadArticles(view: ActiveView, append = false): Promise<vo
         searchOffset: offset + page.length,
         hasMore: page.length === SEARCH_PAGE_SIZE,
       }));
-      if (!append) newArticleCount.set(0);
+      if (!append) clearNewArticleBacklog();
     } catch (err) {
       articles.update((s) => ({ ...s, loading: false, err: String(err) }));
     }
@@ -388,9 +428,10 @@ export async function loadArticles(view: ActiveView, append = false): Promise<vo
       hasMore: !!next,
     }));
     if (!append) {
-      // Switching views resets the "new" indicator — the user is looking at
-      // the fresh top of the new view.
-      newArticleCount.set(0);
+      // Switching views (or refilling after mark-all-read) resets the "new"
+      // indicator and flushes the backlog ledger — the held-back articles
+      // just paged in from the server, so they're no longer pending.
+      clearNewArticleBacklog();
     }
   } catch (err) {
     articles.update((s) => ({ ...s, loading: false, err: String(err) }));

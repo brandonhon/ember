@@ -409,6 +409,53 @@ func TestPoller_EnrichmentFiresOnMidSizeExcerpt(t *testing.T) {
 		len(excerpt), len(contentText), len(contentText)-len(excerpt))
 }
 
+// TestPoller_StripsBleepingComputerAds locks in the wiring + host gate: a
+// BleepingComputer-hosted item with a full body (skips enrichment, so no
+// network) carries a sponsored block (ad image under bleepstatic.com/c/ + a
+// hubs.li CTA). The ingest cleaning step must strip it end-to-end while keeping
+// the editorial text. Guards the feed.StripPublisherAds call sites in ingest.
+func TestPoller_StripsBleepingComputerAds(t *testing.T) {
+	pub := time.Now().Add(-1 * time.Hour).UTC().Format(time.RFC1123)
+	// >600 chars of editorial text so shouldEnrich is false (no readability fetch).
+	ed := "The Texas Parks and Wildlife Department disclosed a data breach affecting more than three million license holders, exposing names and addresses abusable in phishing. "
+	body := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/"><channel>
+<title>BleepingComputer</title>
+<link>https://www.bleepingcomputer.com/</link>
+<description>x</description>
+<item>
+  <title>Texas govt data breach</title>
+  <link>https://www.bleepingcomputer.com/news/security/texas-govt-data-breach/</link>
+  <guid isPermaLink="false">bc-ad-test</guid>
+  <pubDate>` + pub + `</pubDate>
+  <content:encoded><![CDATA[<p>` + ed + ed + ed + ed + `</p>
+<div><p><a href="https://hubs.li/Q04jQ9z40"><img src="https://www.bleepstatic.com/c/p/bas-report.jpg"/></a></p>
+<div><h2><a href="https://hubs.li/Q04jQ9z40">Test every layer before attackers do</a></h2><p>Security teams log 54% of attacks.</p></div></div>]]></content:encoded>
+</item>
+</channel></rss>`)
+
+	ff := &fakeFetcher{body: body, etag: `"v1"`}
+	p := mkPoller(t, ff)
+	f := seedFeed(t, p.Store)
+	if err := p.RefreshFeed(context.Background(), f.ID); err != nil {
+		t.Fatal(err)
+	}
+	var contentHTML string
+	if err := p.Store.DB.QueryRowContext(context.Background(),
+		`SELECT IFNULL(content_html,'') FROM articles WHERE feed_id = ? AND guid = ?`,
+		f.ID, "bc-ad-test").Scan(&contentHTML); err != nil {
+		t.Fatalf("look up ingested article: %v", err)
+	}
+	for _, gone := range []string{"bleepstatic.com/c/", "hubs.li", "Test every layer"} {
+		if strings.Contains(contentHTML, gone) {
+			t.Errorf("ad not stripped through ingest: %q present\n%s", gone, contentHTML)
+		}
+	}
+	if !strings.Contains(contentHTML, "Texas Parks and Wildlife") {
+		t.Errorf("editorial content lost through ingest:\n%s", contentHTML)
+	}
+}
+
 func TestStripCommentsResidue(t *testing.T) {
 	cases := []struct {
 		in, want string

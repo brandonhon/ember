@@ -458,6 +458,9 @@ func run() error {
 		// inbox endpoints. The SMTP listener for this domain is started
 		// above when configured.
 		EmailDomain: cfg.EmailDomain,
+		// Signing key for the same-origin image proxy (/api/img); derived,
+		// never used as the raw session key.
+		SessionKey: cfg.SessionKey,
 	})
 
 	srv := &http.Server{

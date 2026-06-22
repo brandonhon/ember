@@ -108,12 +108,11 @@ func (s *Service) Import(ctx context.Context, userID int64, body io.Reader) (int
 			// equals our store clock; close enough for the count.
 			created++
 		}
+		// Children inherit the current category: feeds in a folder join that
+		// folder's category, and nested sub-folders flatten into it (ember
+		// categories are flat — only top-level folders create one).
 		for _, child := range ol.Outlines {
-			var nestedCat *int64
-			if child.Type == "" && len(child.Outlines) > 0 && ol.Title != "" {
-				nestedCat = categoryID
-			}
-			if err := addFeed(child, nestedCat); err != nil {
+			if err := addFeed(child, categoryID); err != nil {
 				return err
 			}
 		}

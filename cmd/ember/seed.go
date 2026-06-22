@@ -156,7 +156,14 @@ func seedTestData(ctx context.Context, st *store.Store, a *auth.Auth, logger *sl
 		return err
 	}
 
-	img := func(seed string) string { return "https://picsum.photos/seed/" + seed + "/640/420" }
+	// A 1x1 transparent PNG as an inline data: URI. Real http(s) image URLs get
+	// rewritten to the same-origin /api/img proxy, whose 15s outbound fetch hangs
+	// in CI and saturates the browser's 6-connections-per-origin pool, starving
+	// the SPA's own API calls and timing out the whole e2e suite. data: URIs pass
+	// through imageProxy.rewrite unchanged, so the thumb still renders, no fetch.
+	img := func(seed string) string {
+		return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+	}
 	type story struct {
 		feed                                int64
 		title, author, image, summary, body string

@@ -15,6 +15,7 @@
   } from "../lib/stores";
   import type { FeedWithCounts } from "../lib/types";
   import { api, ApiError } from "../lib/api";
+  import { forceNewTabLinks } from "../lib/links";
   import ShareModal from "./ShareModal.svelte";
 
   const selected = $derived(
@@ -87,6 +88,20 @@
     // selectedArticleId becomes null. Cheap and predictable.
     if (readerEl) readerEl.scrollTop = 0;
     showScrollTop = false;
+  });
+
+  // Force every link inside the rendered article body to open in a new tab.
+  // The server sanitizer already adds rel="noopener noreferrer" (anti tab-
+  // napping); we re-assert it here so the target="_blank" we add is always
+  // paired with noopener. Runs after the {@html} block commits and re-runs
+  // whenever the rendered article changes.
+  let bodyEl: HTMLElement | undefined = $state();
+  $effect(() => {
+    void selected?.id;
+    void selected?.content_html;
+    void selected?.cleaned_html;
+    if (!bodyEl) return;
+    forceNewTabLinks(bodyEl);
   });
   // Per-article user tags. Loaded lazily when an article is selected.
   let articleTags = $state<string[]>([]);
@@ -486,7 +501,7 @@
         </aside>
       {/if}
 
-      <div class="article-body">
+      <div class="article-body" bind:this={bodyEl}>
         {#if heroImage}
           <img
             class="reader-hero"
