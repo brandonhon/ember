@@ -236,7 +236,9 @@ func NewRouter(d Dependencies) http.Handler {
 		// DB admin
 		r.With(d.Auth.RequireAdmin).Get("/admin/db", d.handleGetDB)
 		r.With(d.Auth.RequireAdmin).Post("/admin/db/backup", d.handleDBBackup)
+		r.With(d.Auth.RequireAdmin).Delete("/admin/db/backups/{name}", d.handleDeleteBackup)
 		r.With(d.Auth.RequireAdmin).Post("/admin/db/opml-export", d.handleOPMLExportNow)
+		r.With(d.Auth.RequireAdmin).Delete("/admin/db/exports/{name}", d.handleDeleteExport)
 		r.With(d.Auth.RequireAdmin).Post("/admin/db/cleanup", d.handleDBCleanup)
 		r.With(d.Auth.RequireAdmin).Post("/admin/db/schedule", d.handleDBSchedule)
 		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/feeds/import", d.handleOPMLImport)

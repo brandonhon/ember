@@ -236,3 +236,35 @@ func (s *Store) DBSize(ctx context.Context) (int64, int64, error) {
 	}
 	return pageCount * pageSize, pageCount, nil
 }
+
+// DeleteBackup removes a single backup file from dir, addressed by basename.
+// The name is restricted to a basename ending in .db so it can neither traverse
+// out of dir nor touch the live database. Returns ErrNotFound for a bad name or
+// a missing file.
+func (s *Store) DeleteBackup(dir, name string) error {
+	return deleteFileInDir(dir, name, ".db")
+}
+
+// DeleteExport removes a single OPML export file from dir, addressed by basename.
+func (s *Store) DeleteExport(dir, name string) error {
+	return deleteFileInDir(dir, name, ".opml")
+}
+
+func deleteFileInDir(dir, name, ext string) error {
+	// name must be a bare filename with the expected extension — never a path,
+	// "..", or a different file type.
+	if name == "" || name != filepath.Base(name) || !strings.HasSuffix(name, ext) {
+		return ErrNotFound
+	}
+	target := filepath.Join(dir, name)
+	if filepath.Dir(target) != filepath.Clean(dir) {
+		return ErrNotFound
+	}
+	if err := os.Remove(target); err != nil {
+		if os.IsNotExist(err) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("delete %s: %w", target, err)
+	}
+	return nil
+}

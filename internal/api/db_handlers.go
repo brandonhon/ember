@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/brandonhon/ember/internal/auth"
 	"github.com/brandonhon/ember/internal/store"
 )
@@ -121,6 +123,23 @@ func (d *Dependencies) handleOPMLExportNow(w http.ResponseWriter, r *http.Reques
 	}
 	_, _ = d.Store.PruneExports(dir, getIntSettingOr(r, d, keyOPMLKeep, 12))
 	writeData(w, http.StatusOK, store.ExportInfo{Path: path, SizeBytes: size, CreatedAt: time.Now().Unix()}, nil)
+}
+
+// handleDeleteBackup removes a single backup file by name from the backup dir.
+func (d *Dependencies) handleDeleteBackup(w http.ResponseWriter, r *http.Request) {
+	if mapStoreError(w, d.Store.DeleteBackup(d.resolveBackupDir(r), chi.URLParam(r, "name"))) {
+		return
+	}
+	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
+}
+
+// handleDeleteExport removes a single OPML export file by name from the export dir.
+func (d *Dependencies) handleDeleteExport(w http.ResponseWriter, r *http.Request) {
+	dir := getSettingOr(r, d, keyOPMLExportDir, defaultExportDir)
+	if mapStoreError(w, d.Store.DeleteExport(dir, chi.URLParam(r, "name"))) {
+		return
+	}
+	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
 }
 
 type cleanupReq struct {

@@ -331,6 +331,48 @@
       setTimeout(() => (opmlExportMsg = ""), 3000);
     }
   }
+  function askDeleteBackup(name: string) {
+    confirmReq = {
+      title: "Delete backup?",
+      message: `Permanently delete the backup file "${name}". This can't be undone.`,
+      confirmLabel: "Delete",
+      destructive: true,
+      run: () => deleteBackupFile(name),
+    };
+  }
+  async function deleteBackupFile(name: string) {
+    backupErr = "";
+    backupMsg = "";
+    try {
+      await api.deleteBackup(name);
+      await loadDB();
+      backupMsg = "Backup deleted";
+      setTimeout(() => (backupMsg = ""), 3000);
+    } catch (e) {
+      backupErr = e instanceof ApiError ? e.message : String(e);
+    }
+  }
+  function askDeleteExport(name: string) {
+    confirmReq = {
+      title: "Delete export?",
+      message: `Permanently delete the OPML export "${name}". This can't be undone.`,
+      confirmLabel: "Delete",
+      destructive: true,
+      run: () => deleteExportFile(name),
+    };
+  }
+  async function deleteExportFile(name: string) {
+    opmlExportErr = "";
+    opmlExportMsg = "";
+    try {
+      await api.deleteExport(name);
+      await loadDB();
+      opmlExportMsg = "Export deleted";
+      setTimeout(() => (opmlExportMsg = ""), 3000);
+    } catch (e) {
+      opmlExportErr = e instanceof ApiError ? e.message : String(e);
+    }
+  }
   function askCleanup() {
     confirmReq = {
       title: "Clean up old articles?",
@@ -2025,11 +2067,13 @@
               {#if (dbState.backups?.length ?? 0) > 0}
                 <ul class="list">
                   {#each (dbState.backups ?? []).slice(0, 8) as b (b.path)}
+                    {@const bname = b.path.split("/").slice(-1)[0]}
                     <li class="list-row">
                       <div>
-                        <div class="list-title"><code>{b.path.split("/").slice(-1)[0]}</code></div>
+                        <div class="list-title"><code>{bname}</code></div>
                         <div class="list-sub">{gibBytes(b.size_bytes)} · {fmtTime(b.created_at)}</div>
                       </div>
+                      <button class="btn-danger" on:click={() => askDeleteBackup(bname)} aria-label="Delete backup" data-testid="db-backup-delete">Delete</button>
                     </li>
                   {/each}
                 </ul>
@@ -2107,11 +2151,13 @@
               {#if (dbState.exports?.length ?? 0) > 0}
                 <ul class="list">
                   {#each (dbState.exports ?? []).slice(0, 8) as e (e.path)}
+                    {@const ename = e.path.split("/").slice(-1)[0]}
                     <li class="list-row">
                       <div>
-                        <div class="list-title"><code>{e.path.split("/").slice(-1)[0]}</code></div>
+                        <div class="list-title"><code>{ename}</code></div>
                         <div class="list-sub">{gibBytes(e.size_bytes)} · {fmtTime(e.created_at)}</div>
                       </div>
+                      <button class="btn-danger" on:click={() => askDeleteExport(ename)} aria-label="Delete export" data-testid="opml-export-delete">Delete</button>
                     </li>
                   {/each}
                 </ul>

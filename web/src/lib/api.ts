@@ -332,7 +332,11 @@ export const api = {
   // DB admin --------------------------------------------------------
   getDBStatus: () => call<DBStatus>("GET", "/api/admin/db"),
   dbBackup: () => call<DBBackup>("POST", "/api/admin/db/backup"),
+  deleteBackup: (name: string) =>
+    call<{ ok: boolean }>("DELETE", `/api/admin/db/backups/${encodeURIComponent(name)}`),
   opmlExportNow: () => call<DBBackup>("POST", "/api/admin/db/opml-export"),
+  deleteExport: (name: string) =>
+    call<{ ok: boolean }>("DELETE", `/api/admin/db/exports/${encodeURIComponent(name)}`),
   dbCleanup: (older_days: number) =>
     call<DBCleanupStats>("POST", "/api/admin/db/cleanup", { older_days }),
   dbSchedule: (s: DBSchedule) =>

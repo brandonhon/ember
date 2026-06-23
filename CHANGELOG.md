@@ -22,6 +22,9 @@ full commit-level list; this file curates the highlights and behavior changes.
   retention (`opml_keep`) under Settings → Database → OPML export (set up the
   same way: bind-mount + chown), plus a manual **Export now** button and a list
   of recent exports.
+- **Delete individual backups and OPML exports** from Settings → Database — each
+  file in the list now has a Delete button (name-validated server-side, so it
+  can't reach anything outside the configured directory).
 
 ### Fixed
 

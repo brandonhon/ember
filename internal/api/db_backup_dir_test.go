@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 )
 
@@ -149,5 +150,70 @@ func TestDB_OPMLExportNow(t *testing.T) {
 	}
 	if len(st.Data.Exports) == 0 {
 		t.Fatal("export list empty after Export now")
+	}
+}
+
+// A backup and an OPML export can be deleted by name; a name that isn't a bare
+// file of the right type is a 404 (no traversal, no touching other files).
+func TestDB_DeleteBackupAndExport(t *testing.T) {
+	h := newHarness(t)
+	h.seedUser(t, "root", "hunter2", true)
+	cl := h.login(t, "root", "hunter2")
+
+	tmp := t.TempDir()
+	if code := post(t, cl, h.srv.URL+"/api/admin/db/schedule", map[string]any{
+		"backup_schedule":    "off",
+		"backup_keep_count":  7,
+		"backup_dir":         tmp,
+		"cleanup_schedule":   "off",
+		"cleanup_older_days": 90,
+		"opml_schedule":      "off",
+		"opml_export_dir":    tmp,
+		"opml_keep":          12,
+	}, nil); code != http.StatusOK {
+		t.Fatalf("set dirs = %d, want 200", code)
+	}
+	if code := post(t, cl, h.srv.URL+"/api/admin/db/backup", nil, nil); code != http.StatusOK {
+		t.Fatalf("backup = %d, want 200", code)
+	}
+	if code := post(t, cl, h.srv.URL+"/api/admin/db/opml-export", map[string]any{}, nil); code != http.StatusOK {
+		t.Fatalf("export = %d, want 200", code)
+	}
+
+	base := func(p string) string { parts := strings.Split(p, "/"); return parts[len(parts)-1] }
+	var st struct {
+		Data struct {
+			Backups []struct {
+				Path string `json:"path"`
+			} `json:"backups"`
+			Exports []struct {
+				Path string `json:"path"`
+			} `json:"exports"`
+		} `json:"data"`
+	}
+	if code := get(t, cl, h.srv.URL+"/api/admin/db", &st); code != http.StatusOK || len(st.Data.Backups) == 0 || len(st.Data.Exports) == 0 {
+		t.Fatalf("GET db = %d, backups=%d exports=%d", code, len(st.Data.Backups), len(st.Data.Exports))
+	}
+
+	// A non-.db / non-bare name is rejected as 404 (defense against traversal).
+	if code := del(t, cl, h.srv.URL+"/api/admin/db/backups/evil.txt"); code != http.StatusNotFound {
+		t.Fatalf("delete bad backup name = %d, want 404", code)
+	}
+	// Delete the real files.
+	if code := del(t, cl, h.srv.URL+"/api/admin/db/backups/"+base(st.Data.Backups[0].Path)); code != http.StatusOK {
+		t.Fatalf("delete backup = %d, want 200", code)
+	}
+	if code := del(t, cl, h.srv.URL+"/api/admin/db/exports/"+base(st.Data.Exports[0].Path)); code != http.StatusOK {
+		t.Fatalf("delete export = %d, want 200", code)
+	}
+	var after struct {
+		Data struct {
+			Backups []any `json:"backups"`
+			Exports []any `json:"exports"`
+		} `json:"data"`
+	}
+	get(t, cl, h.srv.URL+"/api/admin/db", &after)
+	if len(after.Data.Backups) != 0 || len(after.Data.Exports) != 0 {
+		t.Fatalf("after delete: backups=%d exports=%d, want 0/0", len(after.Data.Backups), len(after.Data.Exports))
 	}
 }
