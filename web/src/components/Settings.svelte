@@ -2794,30 +2794,6 @@
   .pref-row:last-child { border-bottom: 0; }
   .pref-label { font-size: 13.5px; color: var(--ink); font-weight: 600; }
   .pref-hint { color: var(--ink-faint); font-size: 12px; margin-top: 2px; }
-  .seg {
-    display: inline-flex;
-    border: 1px solid var(--line);
-    border-radius: 20px;
-    overflow: hidden;
-    background: var(--card);
-  }
-  .seg button {
-    /* Equal width across all buttons in a group so the segmented control
-       looks balanced regardless of label length (Off / Daily / Weekly /
-       Monthly vary by 2-3 characters). flex: 1 distributes available space;
-       min-width keeps single-char labels from collapsing. */
-    flex: 1 1 0;
-    min-width: 64px;
-    padding: 5px 12px;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--ink-faint);
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    text-align: center;
-  }
-  .seg button.on { background: var(--ink); color: var(--paper); }
 
   /* Theme grid: tiles with three-stripe color preview each. The .swatches
      inner spans render per-theme via [data-theme-preview="..."] selectors so
@@ -3308,10 +3284,14 @@
   .row-input.num { width: 92px; }
   .pref-row .switch { flex: 0 0 auto; }
 
-  /* Segmented pill (mockup). */
+  /* Segmented pill (mockup). flex:1 + min-width keep every segment equal-width
+     so the control stays balanced regardless of label length (Off / Daily /
+     Weekly / Monthly vary by 2-3 chars) without single-char labels collapsing. */
   .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 11px; background: var(--paper-2); padding: 3px; gap: 2px; overflow: visible; }
   .seg button { flex: 1 1 0; min-width: 56px; padding: 6px 13px; font-size: 12px; font-weight: 600; color: var(--ink-faint); background: transparent; border: 0; border-radius: 8px; cursor: pointer; text-align: center; }
   .seg button.on { background: var(--card); color: var(--ember); box-shadow: 0 1px 2px rgba(33,29,24,.1); }
+  /* Hover affordance for the not-yet-selected segments. */
+  .seg button:not(.on):hover { color: var(--ink); background: var(--line-soft); }
 
   /* Profile identity header. */
   .identity { display: flex; align-items: center; gap: 16px; margin-bottom: 22px; }

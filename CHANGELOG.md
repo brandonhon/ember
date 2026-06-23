@@ -38,6 +38,11 @@ full commit-level list; this file curates the highlights and behavior changes.
 - **Settings → Database**: the "Clean up now" button now uses the same filled
   style as the other action buttons (it was an odd outline variant) and reuses
   the scheduled cleanup window instead of a separate, redundant days field.
+- **The filter editor's buttons now match the rest of Settings.** The filter
+  editor used an older button style; its buttons now use the standard Settings
+  look with the same hover states, and **Export**/**Import** are the primary
+  orange like **Add filter**. The Settings segmented toggles (e.g. Cards /
+  Compact, On / Off) also gained a hover state.
 - **Settings → Import & migrate**: importing an OPML file is now independent of
   the Tiny Tiny RSS section. It shows its own status in the OPML card — the
   button reads "Importing…" while it runs and reports the result right there —

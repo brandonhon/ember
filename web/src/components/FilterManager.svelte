@@ -227,8 +227,8 @@
     <header>
       <h2 id="filter-manager-title">Filters</h2>
       <div class="head-tools">
-        <button type="button" class="ghost" on:click={doExport} data-testid="filters-export">Export</button>
-        <button type="button" class="ghost" on:click={() => { if (DEMO) { notifyDemoBlocked(); return; } importInput?.click(); }} data-testid="filters-import">Import</button>
+        <button type="button" on:click={doExport} data-testid="filters-export">Export</button>
+        <button type="button" on:click={() => { if (DEMO) { notifyDemoBlocked(); return; } importInput?.click(); }} data-testid="filters-import">Import</button>
         <button class="close" on:click={onClose} aria-label="Close">×</button>
       </div>
       <input type="file" accept=".json,application/json" bind:this={importInput} on:change={onImportPick} style="display:none" data-testid="filters-import-input" />
@@ -438,6 +438,7 @@
     cursor: pointer;
     color: var(--muted);
   }
+  .close:hover { color: var(--ink); }
   .error {
     background: #fef2f2;
     color: #991b1b;
@@ -480,21 +481,37 @@
     justify-content: flex-end;
     gap: 0.5rem;
   }
+  /* Primary actions (Export / Import / Add filter / Save / Preview) —
+     matches Settings `.actions button` / `.pack-btn`. */
   button {
-    background: var(--accent);
-    color: white;
-    border: 0;
-    padding: 0.4rem 0.85rem;
-    border-radius: 4px;
+    background: var(--ember);
+    color: #fff;
+    border: none;
+    padding: 7px 14px;
+    border-radius: 8px;
     cursor: pointer;
-    font: inherit;
+    font-family: var(--font-ui);
+    font-size: 12.5px;
+    font-weight: 600;
   }
+  button:hover:not(:disabled) { background: var(--ember-soft); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  /* Secondary actions (Disable / Edit / Cancel) — matches Settings `.ghost`. */
   button.ghost {
     background: transparent;
-    color: inherit;
-    border: 1px solid var(--border);
+    color: var(--ink);
+    border: 1px solid var(--line);
   }
-  button.ghost.danger { color: #b91c1c; border-color: #fecaca; }
+  button.ghost:hover:not(:disabled) { background: var(--line-soft); }
+  /* Destructive (Delete) — matches Settings `.btn-danger`. */
+  button.ghost.danger {
+    color: #b91c1c;
+    border-color: #b91c1c;
+  }
+  button.ghost.danger:hover:not(:disabled) {
+    background: #b91c1c;
+    color: #fff;
+  }
   hr { margin: 1rem 0; border: 0; border-top: 1px solid var(--border); }
   .list ul { list-style: none; padding: 0; margin: 0; }
   .list li {
