@@ -171,8 +171,10 @@ Only the `shared` view (explicit one-off share) and board views (explicit curati
 - `GET /api/admin/llm` — detected hardware, recommendation, installed models, current model + options.
 - `POST /api/admin/llm/model` / `…/pull` / `…/delete` / `…/options` — switch / pull / delete / tune.
 - `GET /api/branding` (public) / `POST /api/admin/branding` (admin).
-- `GET /api/admin/db` — size, page count, recent backups, schedules.
+- `GET /api/admin/db` — size, page count, recent backups + OPML exports, schedules.
 - `POST /api/admin/db/backup` / `…/cleanup` / `…/schedule` — manual + scheduled maintenance.
+- `POST /api/admin/db/opml-export` — write an OPML export now (the "Export now" button), honoring the configured export directory + retention.
+- `DELETE /api/admin/db/backups/{name}` / `…/exports/{name}` — delete one backup or OPML export. `{name}` is validated to a bare basename with the expected extension, so it can only target a file inside the configured directory (no path traversal).
 - `POST /api/feeds/resummarize-all` — re-process every article after a prompt change.
 - `GET /api/admin/session` / `POST /api/admin/session/ttl` — server-wide session cookie lifetime.
 - `GET /api/admin/settings` / `PATCH /api/admin/settings` — SMTP relay config + initial-backlog window. Overlays env-derived defaults at runtime; digest sender re-resolves every tick.
@@ -182,6 +184,7 @@ Auth-required (not admin-only):
 
 - `POST /api/articles/{id}/extract` — on-demand readability re-run for the reader pane's "Re-extract" button. Subject to the same SSRF check as the poller's automatic enrichment.
 - `GET /api/img?u=…&s=…` — same-origin image proxy for article lead images. The API signs the source URL (HMAC keyed off `EMBER_SESSION_KEY`, domain-separated) when it rewrites `image_url` in list/detail/search responses, so the endpoint is a capability — it only fetches images Ember itself selected, never arbitrary client input. The outbound fetch runs through `urlcheck.Check`, accepts only `image/*`, and is size- (10 MiB) and time- (15 s) bounded. Streams through with a 1-day `Cache-Control`; no server-side cache.
+- `GET /api/filters/export` / `POST /api/filters/import` — per-user filter backup. Export downloads the caller's rules as a JSON bundle (ids/timestamps stripped); import validates each rule like a manual create, skips anything invalid or beyond the per-user cap, and is scoped to the calling user (so it's safe to restore on another instance).
 
 ## E2E
 
