@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "filters": [
+    {
+      "name": "imported rule",
+      "match_json": "{\"field\":\"title\",\"op\":\"contains\",\"value\":\"import-test\"}",
+      "action": "mark_read",
+      "enabled": true,
+      "priority": 100
+    }
+  ]
+}

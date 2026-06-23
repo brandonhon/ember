@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -184,4 +185,85 @@ func (d *Dependencies) handleDeleteFilter(w http.ResponseWriter, r *http.Request
 		return
 	}
 	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
+}
+
+// filterExport is the portable shape of a filter — no instance-specific id,
+// owner, or timestamp — used for backup/restore across instances.
+type filterExport struct {
+	Name        string `json:"name"`
+	MatchJSON   string `json:"match_json"`
+	Action      string `json:"action"`
+	ActionValue string `json:"action_value,omitempty"`
+	Enabled     bool   `json:"enabled"`
+	Priority    int    `json:"priority"`
+}
+
+type filtersBundle struct {
+	Version int            `json:"version"`
+	Filters []filterExport `json:"filters"`
+}
+
+// handleExportFilters returns the user's filters as a downloadable JSON backup.
+func (d *Dependencies) handleExportFilters(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.FromContext(r.Context())
+	fs, err := d.Store.ListFilters(r.Context(), u.ID)
+	if mapStoreError(w, err) {
+		return
+	}
+	bundle := filtersBundle{Version: 1, Filters: make([]filterExport, 0, len(fs))}
+	for _, f := range fs {
+		bundle.Filters = append(bundle.Filters, filterExport{
+			Name: f.Name, MatchJSON: f.MatchJSON, Action: f.Action,
+			ActionValue: f.ActionValue, Enabled: f.Enabled, Priority: f.Priority,
+		})
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Disposition", `attachment; filename="ember-filters.json"`)
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	_ = enc.Encode(bundle)
+}
+
+// handleImportFilters creates filters from an uploaded backup. Each entry is
+// validated like a manual create; invalid entries and any beyond the per-user
+// cap are skipped (reported in the response) rather than failing the import.
+func (d *Dependencies) handleImportFilters(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.FromContext(r.Context())
+	var bundle filtersBundle
+	if !decodeJSON(w, r, &bundle) {
+		return
+	}
+	existing, err := d.Store.ListFilters(r.Context(), u.ID)
+	if mapStoreError(w, err) {
+		return
+	}
+	room := maxFiltersPerUser - len(existing)
+	imported, skipped := 0, 0
+	for _, fe := range bundle.Filters {
+		if imported >= room || fe.Name == "" {
+			skipped++
+			continue
+		}
+		if _, perr := filters.ParseMatch(fe.MatchJSON); perr != nil {
+			skipped++
+			continue
+		}
+		if verr := filters.ValidateActionWithValue(fe.Action, fe.ActionValue); verr != nil {
+			skipped++
+			continue
+		}
+		priority := fe.Priority
+		if priority <= 0 {
+			priority = 100
+		}
+		if _, cerr := d.Store.CreateFilter(r.Context(), models.Filter{
+			UserID: u.ID, Name: fe.Name, MatchJSON: fe.MatchJSON, Action: fe.Action,
+			Enabled: fe.Enabled, Priority: priority, ActionValue: fe.ActionValue,
+		}); cerr != nil {
+			skipped++
+			continue
+		}
+		imported++
+	}
+	writeData(w, http.StatusOK, map[string]int{"imported": imported, "skipped": skipped}, nil)
 }

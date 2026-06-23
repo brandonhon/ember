@@ -314,6 +314,8 @@ func NewRouter(d Dependencies) http.Handler {
 		// Filters
 		r.With(d.Auth.RequireAuth).Get("/filters", d.handleListFilters)
 		r.With(d.Auth.RequireAuth).Post("/filters", d.handleCreateFilter)
+		r.With(d.Auth.RequireAuth).Get("/filters/export", d.handleExportFilters)
+		r.With(d.Auth.RequireAuth).Post("/filters/import", d.handleImportFilters)
 		r.With(d.Auth.RequireAuth).Post("/filters/preview", d.handlePreviewFilter)
 		r.With(d.Auth.RequireAuth).Patch("/filters/{id}", d.handleUpdateFilter)
 		r.With(d.Auth.RequireAuth).Delete("/filters/{id}", d.handleDeleteFilter)

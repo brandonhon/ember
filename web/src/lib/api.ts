@@ -235,6 +235,9 @@ export const api = {
 
   // Filters -----------------------------------------------------------
   listFilters: () => call<Filter[]>("GET", "/api/filters"),
+  exportFilters: () => fetch("/api/filters/export", { credentials: "include" }),
+  importFilters: (bundle: unknown) =>
+    call<{ imported: number; skipped: number }>("POST", "/api/filters/import", bundle),
   createFilter: (req: {
     name: string;
     match_json: string;

@@ -11,6 +11,11 @@ full commit-level list; this file curates the highlights and behavior changes.
 
 ### Added
 
+- **Back up and restore your filters.** Settings → Filters → the filter editor
+  now has **Export** (downloads your rules as a JSON file) and **Import** (loads
+  them back, e.g. on another instance). Imported rules are validated like a
+  manual add; anything invalid or beyond the per-user cap is skipped and
+  reported.
 - **The database backup directory is now configurable.** Set a custom absolute
   path in **Settings → Database → Backups → Directory** instead of the fixed
   `/data/backups`. Point it at a bind-mounted host path so backups live on a

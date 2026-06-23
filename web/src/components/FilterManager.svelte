@@ -10,6 +10,8 @@
   let filters = $state<Filter[]>([]);
   let loading = $state(false);
   let error = $state("");
+  let notice = $state("");
+  let importInput: HTMLInputElement | undefined = $state();
 
   // Draft (used for both create and edit).
   type Draft = {
@@ -75,6 +77,46 @@
       previewErr = e instanceof ApiError ? e.message : String(e);
     } finally {
       previewBusy = false;
+    }
+  }
+
+  async function doExport() {
+    if (DEMO) {
+      notifyDemoBlocked();
+      return;
+    }
+    error = "";
+    try {
+      const res = await api.exportFilters();
+      if (!res.ok) throw new Error("export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "ember-filters.json";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      error = e instanceof ApiError ? e.message : String(e);
+    }
+  }
+  async function onImportPick(e: Event) {
+    const input = e.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    error = "";
+    notice = "";
+    try {
+      const bundle = JSON.parse(await file.text());
+      const res = await api.importFilters(bundle);
+      await refresh();
+      const { imported, skipped } = res.data;
+      notice = `Imported ${imported} filter${imported === 1 ? "" : "s"}${skipped ? `, skipped ${skipped}` : ""}.`;
+      setTimeout(() => (notice = ""), 4000);
+    } catch (err) {
+      error = err instanceof ApiError ? err.message : "Couldn't read that file — is it a valid filters backup?";
+    } finally {
+      input.value = "";
     }
   }
 
@@ -184,11 +226,19 @@
   <div class="modal" on:click|stopPropagation>
     <header>
       <h2 id="filter-manager-title">Filters</h2>
-      <button class="close" on:click={onClose} aria-label="Close">×</button>
+      <div class="head-tools">
+        <button type="button" class="ghost" on:click={doExport} data-testid="filters-export">Export</button>
+        <button type="button" class="ghost" on:click={() => { if (DEMO) { notifyDemoBlocked(); return; } importInput?.click(); }} data-testid="filters-import">Import</button>
+        <button class="close" on:click={onClose} aria-label="Close">×</button>
+      </div>
+      <input type="file" accept=".json,application/json" bind:this={importInput} on:change={onImportPick} style="display:none" data-testid="filters-import-input" />
     </header>
 
     {#if error}
       <p class="error" data-testid="filter-error">{error}</p>
+    {/if}
+    {#if notice}
+      <p class="ok" data-testid="filters-notice">{notice}</p>
     {/if}
 
     <section class="form" aria-label="New or edit filter">
@@ -395,6 +445,14 @@
     padding: 0.5rem 0.75rem;
     font-size: 0.85rem;
   }
+  .ok {
+    background: color-mix(in srgb, var(--ember) 10%, transparent);
+    color: var(--ember);
+    border-radius: 4px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+  }
+  .head-tools { display: flex; align-items: center; gap: 8px; }
   .form { display: flex; flex-direction: column; gap: 0.5rem; }
   label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.85rem; }
   label.checkbox {

@@ -35,6 +35,22 @@ test.describe("filters", () => {
     await expect(row).toHaveCount(0);
   });
 
+  test("import filters from a backup file", async ({ page }) => {
+    await signIn(page);
+    await openFilterManager(page);
+
+    await page
+      .getByTestId("filters-import-input")
+      .setInputFiles("e2e/fixtures/filters.json");
+
+    await expect(page.getByTestId("filters-notice")).toBeVisible();
+    await expect(
+      page
+        .locator('[data-testid^="filter-row-"]', { hasText: "imported rule" })
+        .first(),
+    ).toBeVisible();
+  });
+
   test("invalid filter shows an error and keeps the modal open", async ({ page }) => {
     await signIn(page);
     await openFilterManager(page);
