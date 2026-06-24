@@ -33,6 +33,12 @@ full commit-level list; this file curates the highlights and behavior changes.
 
 ### Fixed
 
+- **Deleting a backup or OPML export now explains a permissions failure.** When
+  the backup/export directory isn't writable by the server (the common case for
+  a bind-mounted host path that hasn't been made owned by the container user,
+  UID 65532), the Delete button now reports an actionable message instead of a
+  generic "internal error" — matching the existing "Back up now" / "Export now"
+  behavior.
 - **Settings → Mobile clients**: the Fever URL and API-key boxes now line up —
   the key row's longer hint was squeezing its input narrower than the URL row's.
 - **Settings → Database**: the "Clean up now" button now uses the same filled

@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 )
@@ -215,5 +216,51 @@ func TestDB_DeleteBackupAndExport(t *testing.T) {
 	get(t, cl, h.srv.URL+"/api/admin/db", &after)
 	if len(after.Data.Backups) != 0 || len(after.Data.Exports) != 0 {
 		t.Fatalf("after delete: backups=%d exports=%d, want 0/0", len(after.Data.Backups), len(after.Data.Exports))
+	}
+}
+
+// A delete that fails because the directory isn't writable by the server (the
+// common bind-mount-not-chowned case) must return an actionable 409, not a
+// generic 500 — mirroring the backup/export "unwritable" responses.
+func TestDB_DeleteBackupUnwritableDirReturns409(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("running as root bypasses directory write permission bits")
+	}
+	h := newHarness(t)
+	h.seedUser(t, "root", "hunter2", true)
+	cl := h.login(t, "root", "hunter2")
+
+	tmp := t.TempDir()
+	if code := post(t, cl, h.srv.URL+"/api/admin/db/schedule", map[string]any{
+		"backup_schedule": "off", "backup_keep_count": 7, "backup_dir": tmp,
+		"cleanup_schedule": "off", "cleanup_older_days": 90,
+		"opml_schedule": "off", "opml_export_dir": tmp, "opml_keep": 12,
+	}, nil); code != http.StatusOK {
+		t.Fatalf("set dirs = %d, want 200", code)
+	}
+	if code := post(t, cl, h.srv.URL+"/api/admin/db/backup", nil, nil); code != http.StatusOK {
+		t.Fatalf("backup = %d, want 200", code)
+	}
+	base := func(p string) string { parts := strings.Split(p, "/"); return parts[len(parts)-1] }
+	var st struct {
+		Data struct {
+			Backups []struct {
+				Path string `json:"path"`
+			} `json:"backups"`
+		} `json:"data"`
+	}
+	if code := get(t, cl, h.srv.URL+"/api/admin/db", &st); code != http.StatusOK || len(st.Data.Backups) == 0 {
+		t.Fatalf("GET db = %d backups=%d", code, len(st.Data.Backups))
+	}
+
+	// Revoke write on the directory so the unlink fails with EACCES. Restore it
+	// afterwards so t.TempDir cleanup can remove the tree.
+	if err := os.Chmod(tmp, 0o555); err != nil {
+		t.Fatalf("chmod: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(tmp, 0o755) })
+
+	if code := del(t, cl, h.srv.URL+"/api/admin/db/backups/"+base(st.Data.Backups[0].Path)); code != http.StatusConflict {
+		t.Fatalf("delete from unwritable dir = %d, want 409", code)
 	}
 }

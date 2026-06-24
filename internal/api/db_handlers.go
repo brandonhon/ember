@@ -127,7 +127,17 @@ func (d *Dependencies) handleOPMLExportNow(w http.ResponseWriter, r *http.Reques
 
 // handleDeleteBackup removes a single backup file by name from the backup dir.
 func (d *Dependencies) handleDeleteBackup(w http.ResponseWriter, r *http.Request) {
-	if mapStoreError(w, d.Store.DeleteBackup(d.resolveBackupDir(r), chi.URLParam(r, "name"))) {
+	err := d.Store.DeleteBackup(d.resolveBackupDir(r), chi.URLParam(r, "name"))
+	if errors.Is(err, fs.ErrPermission) {
+		// Deleting a file needs write permission on its directory. A bind-mounted
+		// host path that isn't writable by the container user is the common
+		// failure (a backup can have been created earlier when it was writable) —
+		// give the admin an actionable message instead of a generic 500.
+		writeError(w, http.StatusConflict, "backup_undeletable",
+			"Delete failed: the backup directory isn't writable by the server. If it's a bind-mounted host path, make it owned by or writable by the container user (UID 65532) — see the docs.")
+		return
+	}
+	if mapStoreError(w, err) {
 		return
 	}
 	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
@@ -136,7 +146,13 @@ func (d *Dependencies) handleDeleteBackup(w http.ResponseWriter, r *http.Request
 // handleDeleteExport removes a single OPML export file by name from the export dir.
 func (d *Dependencies) handleDeleteExport(w http.ResponseWriter, r *http.Request) {
 	dir := getSettingOr(r, d, keyOPMLExportDir, defaultExportDir)
-	if mapStoreError(w, d.Store.DeleteExport(dir, chi.URLParam(r, "name"))) {
+	err := d.Store.DeleteExport(dir, chi.URLParam(r, "name"))
+	if errors.Is(err, fs.ErrPermission) {
+		writeError(w, http.StatusConflict, "export_undeletable",
+			"Delete failed: the export directory isn't writable by the server. If it's a bind-mounted host path, make it owned by or writable by the container user (UID 65532) — see the docs.")
+		return
+	}
+	if mapStoreError(w, err) {
 		return
 	}
 	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
