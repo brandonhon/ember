@@ -87,11 +87,24 @@ you already back up off-box), change the path **and** bind-mount it:
 
    ```sh
    sudo mkdir -p /srv/ember/backups
-   sudo chown 65532:65532 /srv/ember/backups
+   sudo chown -R 65532:65532 /srv/ember/backups
    ```
 
-   Otherwise "Back up now" fails with `… is not writable by the server (running
-   as uid 65532)`.
+   Use `-R` so any snapshots already in the directory (e.g. created by an
+   earlier run under a different user) are re-owned too. This matters for
+   **deleting** as well as creating: removing a file needs the *directory*
+   writable by UID 65532. Without the right ownership, "Back up now" fails with
+   `… is not writable by the server (running as uid 65532)`, and the per-file
+   **Delete** button reports *"the backup directory isn't writable by the
+   server …"*.
+
+   ::: warning Docker Desktop / WSL2
+   A bind mount pointing at a **Windows** path (`/mnt/c/…`, `C:\…`) ignores
+   `chown` — ownership is synthesized by the filesystem driver, so the container
+   user can never be made the owner. Use a directory on the Linux filesystem, or
+   keep backups on the `/data` named volume, if you want to manage them from the
+   UI.
+   :::
 
 2. **Point Ember at it.** In **Settings → Database → Backups → Directory**, enter
    the container-side path (`/backups` in the example), then **Save schedule**.
@@ -110,8 +123,9 @@ The same directory is used by both the scheduled job and the manual button;
 
 The **OPML export directory** (**Settings → Database → OPML export → Directory**,
 default `/data/exports`) works exactly the same way — bind-mount the host path,
-`chown` it to UID 65532, then enter the container path. Its **Keep** prunes old
-exports the same way.
+`chown -R` it to UID 65532 (same ownership caveat for creating *and* deleting
+exports, and the same Windows-path limitation), then enter the container path.
+Its **Keep** prunes old exports the same way.
 
 ### Time windows, retention, and counts
 
