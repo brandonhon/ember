@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"embed"
+	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -10,6 +12,12 @@ import (
 	"github.com/brandonhon/ember/internal/models"
 	"github.com/brandonhon/ember/internal/store"
 )
+
+// seedImages holds the per-topic thumbnail photos embedded at build time. They
+// are emitted as base64 data: URIs by img() below — see the rationale there.
+//
+//go:embed seedimg/*.jpg
+var seedImages embed.FS
 
 // Test-mode constants. The e2e harness assumes these exact values.
 const (
@@ -156,13 +164,19 @@ func seedTestData(ctx context.Context, st *store.Store, a *auth.Auth, logger *sl
 		return err
 	}
 
-	// A 1x1 transparent PNG as an inline data: URI. Real http(s) image URLs get
-	// rewritten to the same-origin /api/img proxy, whose 15s outbound fetch hangs
-	// in CI and saturates the browser's 6-connections-per-origin pool, starving
-	// the SPA's own API calls and timing out the whole e2e suite. data: URIs pass
-	// through imageProxy.rewrite unchanged, so the thumb still renders, no fetch.
+	// Each thumbnail is a real photo embedded at build time (seedimg/<seed>.jpg)
+	// and emitted as a base64 data: URI. Real http(s) image URLs would be
+	// rewritten to the same-origin /api/img proxy, whose outbound fetch hangs in
+	// CI and saturates the browser's 6-connections-per-origin pool, starving the
+	// SPA's own API calls and timing out the whole e2e suite. data: URIs pass
+	// through imageProxy.rewrite unchanged — a real picture renders, no fetch.
 	img := func(seed string) string {
-		return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+		b, err := seedImages.ReadFile("seedimg/" + seed + ".jpg")
+		if err != nil {
+			// Fallback keeps the layout if an asset is ever missing: 1x1 transparent PNG.
+			return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+		}
+		return "data:image/jpeg;base64," + base64.StdEncoding.EncodeToString(b)
 	}
 	type story struct {
 		feed                                int64
