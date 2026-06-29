@@ -256,15 +256,28 @@ func deleteFileInDir(dir, name, ext string) error {
 	if name == "" || name != filepath.Base(name) || !strings.HasSuffix(name, ext) {
 		return ErrNotFound
 	}
-	target := filepath.Join(dir, name)
-	if filepath.Dir(target) != filepath.Clean(dir) {
-		return ErrNotFound
-	}
-	if err := os.Remove(target); err != nil {
+	// Resolve the file by enumerating dir and matching the basename, so the path
+	// handed to os.Remove is built from the trusted directory listing rather than
+	// the request string — traversal is impossible by construction.
+	entries, err := os.ReadDir(dir)
+	if err != nil {
 		if os.IsNotExist(err) {
 			return ErrNotFound
 		}
-		return fmt.Errorf("delete %s: %w", target, err)
+		return fmt.Errorf("read dir %s: %w", dir, err)
 	}
-	return nil
+	for _, e := range entries {
+		if e.IsDir() || e.Name() != name {
+			continue
+		}
+		target := filepath.Join(dir, e.Name())
+		if err := os.Remove(target); err != nil {
+			if os.IsNotExist(err) {
+				return ErrNotFound
+			}
+			return fmt.Errorf("delete %s: %w", target, err)
+		}
+		return nil
+	}
+	return ErrNotFound
 }

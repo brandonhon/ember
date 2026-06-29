@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -94,6 +95,55 @@ func TestPruneExports_NonPositiveKeep(t *testing.T) {
 	n, err := s.PruneExports(dir, 0)
 	if err != nil || n != 0 {
 		t.Errorf("keep=0: n=%d err=%v, want n=0 err=nil", n, err)
+	}
+}
+
+func TestDeleteBackup_RejectsTraversalAndBadNames(t *testing.T) {
+	s := NewTest(t)
+	dir := t.TempDir()
+
+	// Happy path: a real backup is deleted.
+	good := filepath.Join(dir, "good.db")
+	if err := os.WriteFile(good, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.DeleteBackup(dir, "good.db"); err != nil {
+		t.Fatalf("delete good.db: %v", err)
+	}
+	if _, err := os.Stat(good); !os.IsNotExist(err) {
+		t.Errorf("good.db still present, stat err = %v", err)
+	}
+
+	// A file the deleter must never reach: a .db sibling outside dir.
+	outside := filepath.Join(t.TempDir(), "secret.db")
+	if err := os.WriteFile(outside, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// A wrong-extension file inside dir, which must also be untouchable.
+	keep := filepath.Join(dir, "keep.txt")
+	if err := os.WriteFile(keep, []byte("y"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, name := range []string{
+		"../secret.db",                   // parent traversal
+		"sub/x.db",                       // separator
+		filepath.Join("..", "secret.db"), // os-native traversal
+		"keep.txt",                       // wrong extension
+		"missing.db",                     // absent
+		"",                               // empty
+	} {
+		if err := s.DeleteBackup(dir, name); !errors.Is(err, ErrNotFound) {
+			t.Errorf("DeleteBackup(%q) = %v, want ErrNotFound", name, err)
+		}
+	}
+
+	// The off-limits files are untouched.
+	if _, err := os.Stat(outside); err != nil {
+		t.Errorf("outside secret.db was disturbed: %v", err)
+	}
+	if _, err := os.Stat(keep); err != nil {
+		t.Errorf("keep.txt was disturbed: %v", err)
 	}
 }
 
