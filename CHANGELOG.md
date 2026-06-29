@@ -78,6 +78,11 @@ full commit-level list; this file curates the highlights and behavior changes.
   admin favicon URL is restricted to a same-origin path or `https://` (no
   `javascript:`/`data:`), and a "mark all read" scoped to an unknown board or
   category id returns 404 instead of a silent no-op.
+- **The new per-file Delete (backups / OPML exports) is hardened against path
+  traversal.** The server resolves the file by matching the requested name
+  against the directory's own listing before removing it, so the request value
+  never reaches the filesystem call and a crafted name can't escape the
+  configured directory. Defense-in-depth — valid deletes are unaffected.
 
 ### Changed
 
