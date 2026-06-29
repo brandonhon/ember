@@ -230,12 +230,23 @@ func (d *Dependencies) handleMarkAllRead(w http.ResponseWriter, r *http.Request)
 	}
 	// Boards take a different path — board_articles join, not subscription scope.
 	if req.BoardID > 0 {
+		// Confirm the board belongs to the caller — an unknown/foreign id is a
+		// 404, not a silent count:0.
+		if _, err := d.Store.GetBoard(r.Context(), u.ID, req.BoardID); mapStoreError(w, err) {
+			return
+		}
 		n, err := d.Store.MarkBoardRead(r.Context(), u.ID, req.BoardID)
 		if mapStoreError(w, err) {
 			return
 		}
 		writeData(w, http.StatusOK, map[string]int64{"count": n}, nil)
 		return
+	}
+	// Same for a category scope: reject an unknown/foreign category id.
+	if req.CategoryID > 0 {
+		if _, err := d.Store.GetCategory(r.Context(), u.ID, req.CategoryID); mapStoreError(w, err) {
+			return
+		}
 	}
 	var freshAfter int64
 	switch req.View {

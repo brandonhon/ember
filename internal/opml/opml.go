@@ -7,6 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
+	"time"
 
 	"github.com/brandonhon/ember/internal/models"
 	"github.com/brandonhon/ember/internal/store"
@@ -152,6 +155,42 @@ func (s *Service) Import(ctx context.Context, userID int64, body io.Reader) (int
 		}
 	}
 	return created, nil
+}
+
+// WriteExport writes the user's OPML to a timestamped file under dir and returns
+// the path + size. It probes write access up front so a bind-mounted host path
+// that isn't writable by the server's user fails with a clear message instead of
+// a later filesystem surprise. Shared by the admin "Export now" action and the
+// scheduled export job.
+func (s *Service) WriteExport(ctx context.Context, userID int64, dir string) (string, int64, error) {
+	if dir == "" {
+		return "", 0, errors.New("opml export: empty directory")
+	}
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		return "", 0, fmt.Errorf("opml export: mkdir %s: %w", dir, err)
+	}
+	probe := filepath.Join(dir, ".ember-export-writetest")
+	if err := os.WriteFile(probe, []byte("ok"), 0o600); err != nil {
+		return "", 0, fmt.Errorf("opml export: %s is not writable by the server (running as uid %d) — make the bind-mounted host path owned by or writable by that user: %w", dir, os.Getuid(), err)
+	}
+	_ = os.Remove(probe)
+	out := filepath.Join(dir, time.Now().UTC().Format("ember-2006-01-02-150405.opml"))
+	f, err := os.OpenFile(out, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600) //nolint:gosec // dir is an admin-only, validated (absolute, quote-free) setting; the filename is server-generated.
+	if err != nil {
+		return "", 0, fmt.Errorf("opml export: create %s: %w", out, err)
+	}
+	if err := s.Export(ctx, userID, f); err != nil {
+		_ = f.Close()
+		return "", 0, fmt.Errorf("opml export: write: %w", err)
+	}
+	if err := f.Close(); err != nil {
+		return "", 0, fmt.Errorf("opml export: close: %w", err)
+	}
+	var size int64
+	if fi, serr := os.Stat(out); serr == nil {
+		size = fi.Size()
+	}
+	return out, size, nil
 }
 
 // Export writes the user's OPML to w.

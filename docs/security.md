@@ -27,9 +27,11 @@ For vulnerability reporting, see [SECURITY.md](https://github.com/brandonhon/emb
 
 Every user-scoped store query carries `WHERE user_id = ?` so users can't read each other's feeds, shares, tags, or saved searches. Article tag endpoints additionally call `requireArticleAccess`, which confirms the user is subscribed to the article's feed before allowing tag mutations.
 
+The admin file-management endpoints that take a filename — `DELETE /api/admin/db/backups/{name}` and `…/exports/{name}` — reject any `{name}` that isn't a bare basename with the expected extension (`.db` / `.opml`), so a crafted value can't traverse out of the configured backup/export directory. Per-user filter import (`POST /api/filters/import`) validates each rule through the same `ParseMatch` / `ValidateActionWithValue` path as a manual create and silently skips anything invalid or beyond the per-user cap, so a hand-edited bundle can't inject malformed rules.
+
 ## CSRF
 
-Double-submit pattern. A random `ember_csrf` cookie (8 random bytes hex-encoded, not HttpOnly) must be echoed in the `X-Ember-CSRF` header on every state-changing request (`POST`, `PATCH`, `DELETE`).
+Double-submit pattern. A random `ember_csrf` cookie (16 `crypto/rand` bytes hex-encoded, `SameSite=Strict`, not HttpOnly so the SPA can echo it) must be echoed in the `X-Ember-CSRF` header on every state-changing request (`POST`, `PATCH`, `DELETE`). The header/cookie compare is constant-time.
 
 Two safe exceptions:
 

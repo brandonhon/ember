@@ -17,7 +17,7 @@
 //   node web/scripts/screenshots-dual-theme.mjs
 //   kill %1
 
-import { chromium } from "/Users/bhoneycutt/Projects/ember/web/node_modules/@playwright/test/index.mjs";
+import { chromium } from "../node_modules/@playwright/test/index.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

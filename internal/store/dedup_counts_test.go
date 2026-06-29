@@ -106,6 +106,87 @@ func TestDedup_OutOfWindowLowerCopyDoesNotZeroUnread(t *testing.T) {
 	}
 }
 
+// A duplicate ingested AFTER the cluster was read must inherit the read state at
+// ingest, not resurface as a fresh unread card. The list suppressor only hides a
+// copy when a lower-id sibling is itself unread, so an already-read winner can't
+// hide a late arrival — UpsertArticle marks the new row read if any sibling was
+// already read (the ingest-side mirror of MarkReadWithSiblings). Covers both a
+// late cross-feed copy and a same-feed re-publish under a new guid+content_hash.
+func TestUpsert_LateDuplicateInheritsClusterRead(t *testing.T) {
+	s := NewTest(t)
+	ctx := context.Background()
+	u, _ := s.CreateUser(ctx, models.User{Username: "u", PasswordHash: "h"})
+	f1, _ := s.UpsertFeed(ctx, models.Feed{URL: "https://f1.test/feed", Title: "F1"})
+	f2, _ := s.UpsertFeed(ctx, models.Feed{URL: "https://f2.test/feed", Title: "F2"})
+	_, _ = s.Subscribe(ctx, models.Subscription{UserID: u.ID, FeedID: f1.ID})
+	_, _ = s.Subscribe(ctx, models.Subscription{UserID: u.ID, FeedID: f2.ID})
+
+	const dupURL = "https://news.test/big-story"
+	// Read the story in f1.
+	a1, _, _ := s.UpsertArticle(ctx, models.Article{FeedID: f1.ID, GUID: "g1", Title: "Big Story", URL: dupURL, ContentHash: "h1", PublishedAt: 1000})
+	if err := s.SetRead(ctx, u.ID, []int64{a1.ID}, true); err != nil {
+		t.Fatal(err)
+	}
+
+	// LATER: f2 publishes the same story (same URL → same cluster_id).
+	a2, ins, err := s.UpsertArticle(ctx, models.Article{FeedID: f2.ID, GUID: "g2", Title: "Big Story", URL: dupURL, ContentHash: "h2", PublishedAt: 1001})
+	if err != nil || !ins {
+		t.Fatalf("insert f2 copy: ins=%v err=%v", ins, err)
+	}
+	av, err := s.GetArticleForUser(ctx, u.ID, a2.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !av.IsRead {
+		t.Fatalf("late cross-feed duplicate came in unread; want inherited read")
+	}
+
+	// Same-feed re-publish (fresh guid + content_hash, same URL) must also inherit.
+	a3, ins, err := s.UpsertArticle(ctx, models.Article{FeedID: f1.ID, GUID: "g1-v2", Title: "Big Story", URL: dupURL, ContentHash: "h3", PublishedAt: 1002})
+	if err != nil || !ins {
+		t.Fatalf("insert republish: ins=%v err=%v", ins, err)
+	}
+	av3, _ := s.GetArticleForUser(ctx, u.ID, a3.ID)
+	if !av3.IsRead {
+		t.Fatalf("same-feed re-publish came in unread; want inherited read")
+	}
+
+	// Net effect: the read story's duplicates never resurface in Unread.
+	n, err := s.CountArticles(ctx, u.ID, ListArticlesQuery{View: "unread"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Fatalf("All-Unread = %d, want 0 (a read story's late duplicates must stay read)", n)
+	}
+}
+
+// An UNREAD cluster must NOT be affected by ingest inheritance: a new copy of a
+// story the user hasn't read yet stays unread (and dedups normally), so this
+// can't silently swallow genuinely-new stories.
+func TestUpsert_LateDuplicateOfUnreadClusterStaysUnread(t *testing.T) {
+	s := NewTest(t)
+	ctx := context.Background()
+	u, _ := s.CreateUser(ctx, models.User{Username: "u", PasswordHash: "h"})
+	f1, _ := s.UpsertFeed(ctx, models.Feed{URL: "https://f1.test/feed", Title: "F1"})
+	f2, _ := s.UpsertFeed(ctx, models.Feed{URL: "https://f2.test/feed", Title: "F2"})
+	_, _ = s.Subscribe(ctx, models.Subscription{UserID: u.ID, FeedID: f1.ID})
+	_, _ = s.Subscribe(ctx, models.Subscription{UserID: u.ID, FeedID: f2.ID})
+
+	const dupURL = "https://news.test/unread-story"
+	_, _, _ = s.UpsertArticle(ctx, models.Article{FeedID: f1.ID, GUID: "g1", Title: "Unread Story", URL: dupURL, ContentHash: "h1", PublishedAt: 1000})
+	a2, _, _ := s.UpsertArticle(ctx, models.Article{FeedID: f2.ID, GUID: "g2", Title: "Unread Story", URL: dupURL, ContentHash: "h2", PublishedAt: 1001})
+
+	av, _ := s.GetArticleForUser(ctx, u.ID, a2.ID)
+	if av.IsRead {
+		t.Fatalf("duplicate of an UNREAD cluster was marked read; inheritance must require a read sibling")
+	}
+	n, _ := s.CountArticles(ctx, u.ID, ListArticlesQuery{View: "unread"})
+	if n != 1 {
+		t.Fatalf("All-Unread = %d, want 1 (unread story counted once)", n)
+	}
+}
+
 // Full per-feed dedup: a duplicated unread story is counted once, owned by the
 // lowest-id (first-ingested) feed. The per-feed deduped badges must sum to the
 // All-Unread count, and opening the "loser" feed must not show the duplicate.

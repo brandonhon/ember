@@ -105,6 +105,36 @@ func (s *Store) UpsertArticle(ctx context.Context, a models.Article) (models.Art
 		return models.Article{}, false, err
 	}
 	a.ID = id
+
+	// Cluster read inheritance: if this new row joins a cluster a user has
+	// already read — via a sibling in another feed, or an earlier copy in this
+	// feed re-published under a fresh guid+content_hash — mark it read for that
+	// user too. Without this, a duplicate ingested AFTER the cluster was read
+	// surfaces as a new unread card: the list suppressor only hides a copy when a
+	// lower-id sibling is itself unread, so an already-read winner can't hide a
+	// late arrival. Mirrors MarkReadWithSiblings, which sweeps the other way.
+	if a.ClusterID != "" || a.TitleFingerprint != "" {
+		if _, err := tx.ExecContext(ctx, `
+INSERT INTO article_state (user_id, article_id, is_read, read_at)
+SELECT sub.user_id, ?, 1, ?
+FROM subscriptions sub
+WHERE sub.feed_id = ?
+  AND EXISTS (
+    SELECT 1 FROM articles sib
+    JOIN subscriptions s2 ON s2.feed_id = sib.feed_id AND s2.user_id = sub.user_id
+    JOIN article_state st ON st.article_id = sib.id AND st.user_id = sub.user_id AND st.is_read = 1
+    WHERE sib.id <> ? AND (
+      (sib.cluster_id = ? AND sib.cluster_id <> '')
+      OR (sib.title_fingerprint = ? AND sib.title_fingerprint <> ''
+          AND ABS(IFNULL(sib.published_at,0) - ?) < 172800)
+    )
+  )
+ON CONFLICT(user_id, article_id) DO NOTHING`,
+			id, s.nowUnix(), a.FeedID, id, a.ClusterID, a.TitleFingerprint, a.PublishedAt); err != nil {
+			return models.Article{}, false, fmt.Errorf("UpsertArticle: cluster read inheritance: %w", err)
+		}
+	}
+
 	if err := tx.Commit(); err != nil {
 		return models.Article{}, false, err
 	}

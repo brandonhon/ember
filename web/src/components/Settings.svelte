@@ -18,6 +18,7 @@
   import { enablePush, pushSupported } from "../lib/push";
   import { onMount } from "svelte";
   import { refreshSidebar, loadArticles, activeView } from "../lib/stores";
+  import { DEMO, notifyDemoBlocked } from "../demo/demo";
   import FilterManager from "./FilterManager.svelte";
   import ConfirmDialog from "./ConfirmDialog.svelte";
 
@@ -94,20 +95,26 @@
   };
 
   // --- Import & Data section -------------------------------------------
-  let importTab = $state<"live" | "file">("live");
   let ttUrl = $state("");
   let ttUser = $state("");
   let ttPass = $state("");
   let ttFeeds = $state(true);
   let ttStarred = $state(true);
   let ttArchived = $state(true);
+  // TT-RSS importer state (live pull + file upload).
   let importBusy = $state(false);
   let importMsg = $state("");
   let importErr = $state("");
+  // OPML importer state — kept separate so an OPML import has its own status and
+  // never touches the TT-RSS card (or disables its inputs).
+  let opmlBusy = $state(false);
+  let opmlMsg = $state("");
+  let opmlErr = $state("");
   let ttrssFileInput: HTMLInputElement | undefined = $state();
   let opmlFileInput: HTMLInputElement | undefined = $state();
 
   async function ttrssLivePull() {
+    if (DEMO) { notifyDemoBlocked(); return; }
     if (!ttUrl.trim() || !ttUser.trim()) {
       importErr = "URL and username are required";
       return;
@@ -170,23 +177,25 @@
     const input = e.currentTarget as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
-    importErr = "";
-    importMsg = "Importing…";
-    importBusy = true;
+    opmlErr = "";
+    opmlMsg = `Importing ${file.name}…`;
+    opmlBusy = true;
     try {
       const res = await api.importOPML(file);
-      importMsg = `Imported ${res.data.imported} subscriptions.`;
+      const n = res.data.imported;
+      opmlMsg = `Imported ${n} ${n === 1 ? "subscription" : "subscriptions"}.`;
       await refreshSidebar();
     } catch (err) {
-      importErr = err instanceof ApiError ? err.message : String(err);
-      importMsg = "";
+      opmlErr = err instanceof ApiError ? err.message : String(err);
+      opmlMsg = "";
     } finally {
       input.value = "";
-      importBusy = false;
+      opmlBusy = false;
     }
   }
 
   async function exportOPML() {
+    if (DEMO) { notifyDemoBlocked(); return; }
     try {
       const res = await api.exportOPML();
       const blob = await res.blob();
@@ -197,7 +206,7 @@
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      importErr = err instanceof ApiError ? err.message : String(err);
+      opmlErr = err instanceof ApiError ? err.message : String(err);
     }
   }
 
@@ -276,47 +285,110 @@
   let dbErr = $state("");
   let dbMsg = $state("");
   let dbBusy = $state("");
-  let cleanupDays = $state(90);
+  // "Back up now" status is shown next to the button (under the Run now row),
+  // not at the top of the section with the schedule/cleanup messages.
+  let backupErr = $state("");
+  let backupMsg = $state("");
+  // "Export now" status, shown by the OPML export button (below Save schedule).
+  let opmlExportErr = $state("");
+  let opmlExportMsg = $state("");
   async function loadDB() {
     dbErr = "";
     try {
       const res = await api.getDBStatus();
       dbState = res.data;
-      cleanupDays = res.data.cleanup_older_days || 90;
     } catch (e) {
       dbErr = e instanceof ApiError ? e.message : String(e);
     }
   }
   async function runBackup() {
     dbBusy = "backup";
-    dbMsg = "";
-    dbErr = "";
+    backupMsg = "";
+    backupErr = "";
     try {
       await api.dbBackup();
       await loadDB();
-      dbMsg = "Backup created";
+      backupMsg = "Backup created";
     } catch (e) {
-      dbErr = e instanceof ApiError ? e.message : String(e);
+      backupErr = e instanceof ApiError ? e.message : String(e);
     } finally {
       dbBusy = "";
-      setTimeout(() => (dbMsg = ""), 3000);
+      setTimeout(() => (backupMsg = ""), 3000);
+    }
+  }
+  async function opmlExportNow() {
+    dbBusy = "opml-export";
+    opmlExportMsg = "";
+    opmlExportErr = "";
+    try {
+      await api.opmlExportNow();
+      await loadDB();
+      opmlExportMsg = "Export created";
+    } catch (e) {
+      opmlExportErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      dbBusy = "";
+      setTimeout(() => (opmlExportMsg = ""), 3000);
+    }
+  }
+  function askDeleteBackup(name: string) {
+    confirmReq = {
+      title: "Delete backup?",
+      message: `Permanently delete the backup file "${name}". This can't be undone.`,
+      confirmLabel: "Delete",
+      destructive: true,
+      run: () => deleteBackupFile(name),
+    };
+  }
+  async function deleteBackupFile(name: string) {
+    backupErr = "";
+    backupMsg = "";
+    try {
+      await api.deleteBackup(name);
+      await loadDB();
+      backupMsg = "Backup deleted";
+      setTimeout(() => (backupMsg = ""), 3000);
+    } catch (e) {
+      backupErr = e instanceof ApiError ? e.message : String(e);
+    }
+  }
+  function askDeleteExport(name: string) {
+    confirmReq = {
+      title: "Delete export?",
+      message: `Permanently delete the OPML export "${name}". This can't be undone.`,
+      confirmLabel: "Delete",
+      destructive: true,
+      run: () => deleteExportFile(name),
+    };
+  }
+  async function deleteExportFile(name: string) {
+    opmlExportErr = "";
+    opmlExportMsg = "";
+    try {
+      await api.deleteExport(name);
+      await loadDB();
+      opmlExportMsg = "Export deleted";
+      setTimeout(() => (opmlExportMsg = ""), 3000);
+    } catch (e) {
+      opmlExportErr = e instanceof ApiError ? e.message : String(e);
     }
   }
   function askCleanup() {
     confirmReq = {
       title: "Clean up old articles?",
-      message: `Permanently delete articles older than ${cleanupDays} days that aren't starred, in a board, or saved for later. The database file is compacted afterwards.`,
+      message: `Permanently delete articles older than ${dbState?.cleanup_older_days ?? 90} days that aren't starred, in a board, or saved for later. The database file is compacted afterwards.`,
       confirmLabel: "Clean up",
       destructive: true,
       run: () => runCleanup(),
     };
   }
   async function runCleanup() {
+    if (!dbState) return;
     dbBusy = "cleanup";
     dbMsg = "";
     dbErr = "";
     try {
-      const res = await api.dbCleanup(cleanupDays);
+      const res = await api.dbCleanup(dbState.cleanup_older_days);
       const { articles_deleted, bytes_reclaimed } = res.data;
       const mib = (bytes_reclaimed / (1024 * 1024)).toFixed(1);
       dbMsg = `Deleted ${articles_deleted} articles, reclaimed ${mib} MiB`;
@@ -337,9 +409,12 @@
       await api.dbSchedule({
         backup_schedule: dbState.backup_schedule as "off" | "daily" | "weekly",
         backup_keep_count: dbState.backup_keep_count,
+        backup_dir: dbState.backup_dir,
         cleanup_schedule: dbState.cleanup_schedule as "off" | "weekly" | "monthly",
         cleanup_older_days: dbState.cleanup_older_days,
         opml_schedule: (dbState.opml_schedule || "off") as "off" | "weekly" | "monthly",
+        opml_export_dir: dbState.opml_export_dir,
+        opml_keep: dbState.opml_keep,
       });
       dbMsg = "Schedule saved";
     } catch (e) {
@@ -641,6 +716,7 @@
     }
   }
   async function onEnablePush() {
+    if (DEMO) { notifyDemoBlocked(); return; }
     pushErr = "";
     pushMsg = "";
     pushBusy = true;
@@ -697,6 +773,7 @@
     }
   }
   async function addPasskey() {
+    if (DEMO) { notifyDemoBlocked(); return; }
     passkeyBusy = "register";
     passkeyErr = "";
     passkeyMsg = "";
@@ -1653,8 +1730,6 @@
           <div class="eyebrow">Import &amp; data</div>
           <h3>Import &amp; migrate</h3>
           <p class="hint">Bring your library and subscriptions into Ember. Nothing here touches your existing feeds.</p>
-          {#if importErr}<p class="error" data-testid="import-error">{importErr}</p>{/if}
-          {#if importMsg}<p class="ok" data-testid="import-msg">{importMsg}</p>{/if}
 
           <input type="file" accept=".xml,application/xml,text/xml" bind:this={ttrssFileInput} on:change={ttrssFilePick} style="display:none" data-testid="ttrss-file-input" />
           <input type="file" accept=".opml,.xml,application/xml,text/xml" bind:this={opmlFileInput} on:change={opmlFilePick} style="display:none" data-testid="opml-file-input" />
@@ -1664,35 +1739,27 @@
               <h4>Tiny Tiny RSS</h4>
               <p>Migrate subscriptions, folders, and starred &amp; archived articles from a running instance — or upload an export file.</p>
             </div>
-            <div class="import-seg" role="tablist">
-              <button role="tab" class:on={importTab === "live"} on:click={() => (importTab = "live")} data-testid="ttrss-tab-live">Migrate from running TT-RSS</button>
-              <button role="tab" class:on={importTab === "file"} on:click={() => (importTab = "file")} data-testid="ttrss-tab-file">Upload export file</button>
+            {#if importErr}<p class="error" data-testid="import-error">{importErr}</p>{/if}
+            {#if importMsg}<p class="ok" data-testid="import-msg">{importMsg}</p>{/if}
+            <label><span>TT-RSS URL</span>
+              <input type="text" bind:value={ttUrl} placeholder="rss.example.com/tt-rss" disabled={importBusy} data-testid="ttrss-url" />
+            </label>
+            <label><span>Username</span>
+              <input type="text" bind:value={ttUser} disabled={importBusy} data-testid="ttrss-user" />
+            </label>
+            <label><span>Password</span>
+              <input type="password" bind:value={ttPass} disabled={importBusy} data-testid="ttrss-pass" />
+            </label>
+            <div class="import-checks">
+              <label class="inline"><input type="checkbox" bind:checked={ttFeeds} disabled={importBusy} data-testid="ttrss-feeds" /> Subscriptions &amp; folders</label>
+              <label class="inline"><input type="checkbox" bind:checked={ttStarred} disabled={importBusy} /> Starred</label>
+              <label class="inline"><input type="checkbox" bind:checked={ttArchived} disabled={importBusy} /> Archived</label>
             </div>
-            {#if importTab === "live"}
-              <label><span>TT-RSS URL</span>
-                <input type="text" bind:value={ttUrl} placeholder="rss.example.com/tt-rss" disabled={importBusy} data-testid="ttrss-url" />
-              </label>
-              <label><span>Username</span>
-                <input type="text" bind:value={ttUser} disabled={importBusy} data-testid="ttrss-user" />
-              </label>
-              <label><span>Password</span>
-                <input type="password" bind:value={ttPass} disabled={importBusy} data-testid="ttrss-pass" />
-              </label>
-              <div class="import-checks">
-                <label class="inline"><input type="checkbox" bind:checked={ttFeeds} disabled={importBusy} data-testid="ttrss-feeds" /> Subscriptions &amp; folders</label>
-                <label class="inline"><input type="checkbox" bind:checked={ttStarred} disabled={importBusy} /> Starred</label>
-                <label class="inline"><input type="checkbox" bind:checked={ttArchived} disabled={importBusy} /> Archived</label>
-              </div>
-              <p class="import-note">Feeds you’re already subscribed to are skipped, so it’s safe to run more than once. Enable “API access” in your TT-RSS Preferences first. If TT-RSS lives under a subpath (e.g. <code>/tt-rss</code>), include it — we append <code>/api/</code>. Credentials are used only for this import and never stored.</p>
-              <div class="actions">
-                <button on:click={ttrssLivePull} disabled={importBusy} data-testid="ttrss-start">{importBusy ? "Importing…" : "Start migration"}</button>
-              </div>
-            {:else}
-              <p class="import-note">Export your Starred &amp; Archived articles from TT-RSS (the import/export plugin produces an <code>.xml</code> file), then upload it here. <strong>Subscriptions aren’t included in this file</strong> — to bring over your feed list, use “Migrate from running TT-RSS” above, or import an OPML export below.</p>
-              <div class="actions">
-                <button on:click={() => ttrssFileInput?.click()} disabled={importBusy} data-testid="ttrss-file-pick">Choose .xml file…</button>
-              </div>
-            {/if}
+            <p class="import-note">Feeds you’re already subscribed to are skipped, so it’s safe to run more than once. Enable “API access” in your TT-RSS Preferences first. If TT-RSS lives under a subpath (e.g. <code>/tt-rss</code>), include it — we append <code>/api/</code>. Credentials are used only for this import and never stored.</p>
+            <div class="actions">
+              <button on:click={ttrssLivePull} disabled={importBusy} data-testid="ttrss-start">{importBusy ? "Importing…" : "Start migration"}</button>
+              <button class="ghost" on:click={() => { if (DEMO) { notifyDemoBlocked(); return; } ttrssFileInput?.click(); }} disabled={importBusy} data-testid="ttrss-file-pick">Upload export file…</button>
+            </div>
           </div>
 
           <div class="card">
@@ -1700,9 +1767,11 @@
               <h4>OPML subscriptions</h4>
               <p>Import or export your feed list in the universal OPML format.</p>
             </div>
+            {#if opmlErr}<p class="error" data-testid="opml-error">{opmlErr}</p>{/if}
+            {#if opmlMsg}<p class="ok" data-testid="opml-msg">{opmlMsg}</p>{/if}
             <div class="actions" style="justify-content:flex-start">
-              <button on:click={() => opmlFileInput?.click()} disabled={importBusy} data-testid="open-opml-import">Import OPML…</button>
-              <button class="ghost" on:click={exportOPML} data-testid="export-opml">Export OPML</button>
+              <button on:click={() => { if (DEMO) { notifyDemoBlocked(); return; } opmlFileInput?.click(); }} disabled={opmlBusy} data-testid="open-opml-import">{opmlBusy ? "Importing…" : "Import OPML…"}</button>
+              <button class="ghost" on:click={exportOPML} disabled={opmlBusy} data-testid="export-opml">Export OPML</button>
             </div>
           </div>
         {/if}
@@ -1959,6 +2028,13 @@
 
             <div class="card">
               <div class="card-head"><h4>Backups</h4></div>
+              <label class="pref-row">
+                <div>
+                  <div class="pref-label">Directory</div>
+                  <div class="pref-hint">Where snapshots are written (absolute path). <strong>Bind-mount this path in your compose file, and make the host directory writable by the container user</strong> (Ember runs as UID 65532) — see the docs. Empty resets to <code>/data/backups</code>. Save with “Save schedule” below.</div>
+                </div>
+                <input class="row-input" type="text" bind:value={dbState.backup_dir} placeholder="/data/backups" data-testid="db-backup-dir" />
+              </label>
               <div class="pref-row">
                 <div>
                   <div class="pref-label">Schedule</div>
@@ -1986,14 +2062,18 @@
                   {dbBusy === "backup" ? "Backing up…" : "Back up now"}
                 </button>
               </div>
+              {#if backupErr}<p class="error" data-testid="db-backup-err">{backupErr}</p>{/if}
+              {#if backupMsg}<p class="ok" data-testid="db-backup-msg">{backupMsg}</p>{/if}
               {#if (dbState.backups?.length ?? 0) > 0}
                 <ul class="list">
                   {#each (dbState.backups ?? []).slice(0, 8) as b (b.path)}
+                    {@const bname = b.path.split("/").slice(-1)[0]}
                     <li class="list-row">
                       <div>
-                        <div class="list-title"><code>{b.path.split("/").slice(-1)[0]}</code></div>
+                        <div class="list-title"><code>{bname}</code></div>
                         <div class="list-sub">{gibBytes(b.size_bytes)} · {fmtTime(b.created_at)}</div>
                       </div>
+                      <button class="btn-danger" on:click={() => askDeleteBackup(bname)} aria-label="Delete backup" data-testid="db-backup-delete">Delete</button>
                     </li>
                   {/each}
                 </ul>
@@ -2023,23 +2103,27 @@
               <div class="pref-row">
                 <div>
                   <div class="pref-label">Run cleanup now</div>
-                  <div class="pref-hint">Delete read articles older than the chosen days that aren't starred, in a board, or saved. Compacts afterwards.</div>
+                  <div class="pref-hint">Delete read articles older than the scheduled window above that aren't starred, in a board, or saved. Compacts afterwards.</div>
                 </div>
-                <div class="row-ctl">
-                  <input class="row-input num" type="number" min="7" max="3650" bind:value={cleanupDays} data-testid="db-cleanup-days" aria-label="Older than (days)" />
-                  <button class="ghost-btn" on:click={askCleanup} disabled={dbBusy === "cleanup"} data-testid="db-cleanup">
-                    {dbBusy === "cleanup" ? "Cleaning…" : "Clean up now"}
-                  </button>
-                </div>
+                <button class="pack-btn" on:click={askCleanup} disabled={dbBusy === "cleanup"} data-testid="db-cleanup">
+                  {dbBusy === "cleanup" ? "Cleaning…" : "Clean up now"}
+                </button>
               </div>
             </div>
 
             <div class="card">
               <div class="card-head"><h4>OPML export</h4></div>
+              <label class="pref-row">
+                <div>
+                  <div class="pref-label">Directory</div>
+                  <div class="pref-hint">Where the admin's subscription list is written (absolute path). <strong>Bind-mount this path and make the host directory writable by the container user</strong> (UID 65532) to keep exports outside the container — see the docs. Empty resets to <code>/data/exports</code>.</div>
+                </div>
+                <input class="row-input" type="text" bind:value={dbState.opml_export_dir} placeholder="/data/exports" data-testid="opml-export-dir" />
+              </label>
               <div class="pref-row">
                 <div>
                   <div class="pref-label">Schedule</div>
-                  <div class="pref-hint">Writes the admin user's subscription list to /data/exports/ on the chosen cadence.</div>
+                  <div class="pref-hint">Writes the admin user's subscription list on the chosen cadence.</div>
                 </div>
                 <div class="seg">
                   <button class:on={(dbState.opml_schedule || "off") === "off"} on:click={() => (dbState!.opml_schedule = "off")}>Off</button>
@@ -2047,11 +2131,37 @@
                   <button class:on={dbState.opml_schedule === "monthly"} on:click={() => (dbState!.opml_schedule = "monthly")}>Monthly</button>
                 </div>
               </div>
+              <label class="pref-row">
+                <div>
+                  <div class="pref-label">Keep</div>
+                  <div class="pref-hint">How many exports to retain.</div>
+                </div>
+                <input class="row-input num" type="number" min="1" max="365" bind:value={dbState.opml_keep} data-testid="opml-keep" />
+              </label>
               <div class="actions">
                 <button on:click={saveDBSchedule} disabled={dbBusy === "schedule"} data-testid="db-schedule-save">
                   {dbBusy === "schedule" ? "Saving…" : "Save schedule"}
                 </button>
+                <button class="ghost" on:click={opmlExportNow} disabled={dbBusy === "opml-export"} data-testid="opml-export-now">
+                  {dbBusy === "opml-export" ? "Exporting…" : "Export now"}
+                </button>
               </div>
+              {#if opmlExportErr}<p class="error" data-testid="opml-export-err">{opmlExportErr}</p>{/if}
+              {#if opmlExportMsg}<p class="ok" data-testid="opml-export-msg">{opmlExportMsg}</p>{/if}
+              {#if (dbState.exports?.length ?? 0) > 0}
+                <ul class="list">
+                  {#each (dbState.exports ?? []).slice(0, 8) as e (e.path)}
+                    {@const ename = e.path.split("/").slice(-1)[0]}
+                    <li class="list-row">
+                      <div>
+                        <div class="list-title"><code>{ename}</code></div>
+                        <div class="list-sub">{gibBytes(e.size_bytes)} · {fmtTime(e.created_at)}</div>
+                      </div>
+                      <button class="btn-danger" on:click={() => askDeleteExport(ename)} aria-label="Delete export" data-testid="opml-export-delete">Delete</button>
+                    </li>
+                  {/each}
+                </ul>
+              {/if}
             </div>
           {/if}
         {/if}
@@ -2684,30 +2794,6 @@
   .pref-row:last-child { border-bottom: 0; }
   .pref-label { font-size: 13.5px; color: var(--ink); font-weight: 600; }
   .pref-hint { color: var(--ink-faint); font-size: 12px; margin-top: 2px; }
-  .seg {
-    display: inline-flex;
-    border: 1px solid var(--line);
-    border-radius: 20px;
-    overflow: hidden;
-    background: var(--card);
-  }
-  .seg button {
-    /* Equal width across all buttons in a group so the segmented control
-       looks balanced regardless of label length (Off / Daily / Weekly /
-       Monthly vary by 2-3 characters). flex: 1 distributes available space;
-       min-width keeps single-char labels from collapsing. */
-    flex: 1 1 0;
-    min-width: 64px;
-    padding: 5px 12px;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--ink-faint);
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    text-align: center;
-  }
-  .seg button.on { background: var(--ink); color: var(--paper); }
 
   /* Theme grid: tiles with three-stripe color preview each. The .swatches
      inner spans render per-theme via [data-theme-preview="..."] selectors so
@@ -2853,30 +2939,6 @@
   }
   .btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
   /* Import & Data section */
-  .import-seg {
-    display: inline-flex;
-    background: var(--paper-2);
-    border-radius: 9px;
-    padding: 3px;
-    gap: 3px;
-    margin-bottom: 14px;
-  }
-  .import-seg button {
-    border: 0;
-    background: transparent;
-    font-family: var(--font-ui);
-    font-size: 12.5px;
-    font-weight: 600;
-    color: var(--ink-faint);
-    padding: 6px 13px;
-    border-radius: 6px;
-    cursor: pointer;
-  }
-  .import-seg button.on {
-    background: var(--card);
-    color: var(--ember);
-    box-shadow: 0 1px 2px rgba(33, 29, 24, 0.08);
-  }
   .import-checks { display: flex; gap: 18px; margin: 4px 0 12px; }
   .import-checks label.inline {
     display: flex;
@@ -3218,14 +3280,18 @@
   .pref-row > a { flex: 0 0 auto; color: var(--ember); font-weight: 600; text-decoration: none; font-size: 13.5px; }
   .pref-row > a:hover { text-decoration: underline; }
   /* Right-aligned control inputs (text/number/select live on the right edge). */
-  .row-input { width: 240px; max-width: 42vw; }
+  .row-input { width: 240px; max-width: 42vw; flex-shrink: 0; }
   .row-input.num { width: 92px; }
   .pref-row .switch { flex: 0 0 auto; }
 
-  /* Segmented pill (mockup). */
+  /* Segmented pill (mockup). flex:1 + min-width keep every segment equal-width
+     so the control stays balanced regardless of label length (Off / Daily /
+     Weekly / Monthly vary by 2-3 chars) without single-char labels collapsing. */
   .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 11px; background: var(--paper-2); padding: 3px; gap: 2px; overflow: visible; }
   .seg button { flex: 1 1 0; min-width: 56px; padding: 6px 13px; font-size: 12px; font-weight: 600; color: var(--ink-faint); background: transparent; border: 0; border-radius: 8px; cursor: pointer; text-align: center; }
   .seg button.on { background: var(--card); color: var(--ember); box-shadow: 0 1px 2px rgba(33,29,24,.1); }
+  /* Hover affordance for the not-yet-selected segments. */
+  .seg button:not(.on):hover { color: var(--ink); background: var(--line-soft); }
 
   /* Profile identity header. */
   .identity { display: flex; align-items: center; gap: 16px; margin-bottom: 22px; }

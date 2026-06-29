@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"log/slog"
-	"os"
-	"path/filepath"
 	"strconv"
 	"time"
 
@@ -98,42 +96,27 @@ func runOPMLExport(ctx context.Context, st *store.Store, op *opml.Service, lg *s
 		lg.Warn("opml export: no admin user to export for", "err", err)
 		return
 	}
-	if err := os.MkdirAll(defaultExportDir, 0o750); err != nil {
-		lg.Warn("opml export: mkdir failed", "err", err)
-		return
-	}
-	name := time.Now().UTC().Format("ember-2006-01-02-150405.opml")
-	out := filepath.Join(defaultExportDir, name)
-	f, err := os.OpenFile(out, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600) //nolint:gosec // G304: out is program-built from a fixed dir + timestamp, never user input.
+	dir := readSetting(ctx, st, "opml_export_dir", defaultExportDir)
+	out, size, err := op.WriteExport(ctx, adminID, dir)
 	if err != nil {
-		lg.Warn("opml export: create file", "err", err)
-		return
-	}
-	defer func() {
-		// Close error matters on a write file — a failed flush truncates
-		// the export. Warn so a silently-corrupt backup is visible.
-		if cerr := f.Close(); cerr != nil {
-			lg.Warn("opml export: close file", "err", cerr)
-		}
-	}()
-	if err := op.Export(ctx, adminID, f); err != nil {
-		lg.Warn("opml export: write failed", "err", err)
+		lg.Warn("opml export failed", "err", err, "dir", dir)
 		return
 	}
 	keep := readIntSetting(ctx, st, "opml_keep", 12)
-	pruned, _ := st.PruneExports(defaultExportDir, keep)
-	lg.Info("scheduled OPML export complete", "path", out, "user_id", adminID, "pruned", pruned)
+	pruned, _ := st.PruneExports(dir, keep)
+	lg.Info("scheduled OPML export complete", "path", out, "size_bytes", size, "user_id", adminID, "pruned", pruned)
 	_ = st.PutAppSetting(ctx, "opml_last", strconv.FormatInt(time.Now().Unix(), 10))
 }
 
 func runBackup(ctx context.Context, st *store.Store, lg *slog.Logger) {
-	info, err := st.Backup(ctx, defaultBackupDir)
+	dir := readSetting(ctx, st, "db_backup_dir", defaultBackupDir)
+	info, err := st.Backup(ctx, dir)
 	if err != nil {
-		lg.Warn("scheduled backup failed", "err", err)
+		lg.Warn("scheduled backup failed", "err", err, "dir", dir)
 		return
 	}
 	keep := readIntSetting(ctx, st, "db_backup_keep", 7)
-	pruned, _ := st.PruneBackups(defaultBackupDir, keep)
+	pruned, _ := st.PruneBackups(dir, keep)
 	lg.Info("scheduled backup complete", "path", info.Path, "size_bytes", info.SizeBytes, "pruned", pruned)
 	_ = st.PutAppSetting(ctx, "db_backup_last", strconv.FormatInt(time.Now().Unix(), 10))
 }

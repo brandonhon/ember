@@ -235,6 +235,9 @@ export const api = {
 
   // Filters -----------------------------------------------------------
   listFilters: () => call<Filter[]>("GET", "/api/filters"),
+  exportFilters: () => fetch("/api/filters/export", { credentials: "include" }),
+  importFilters: (bundle: unknown) =>
+    call<{ imported: number; skipped: number }>("POST", "/api/filters/import", bundle),
   createFilter: (req: {
     name: string;
     match_json: string;
@@ -332,6 +335,11 @@ export const api = {
   // DB admin --------------------------------------------------------
   getDBStatus: () => call<DBStatus>("GET", "/api/admin/db"),
   dbBackup: () => call<DBBackup>("POST", "/api/admin/db/backup"),
+  deleteBackup: (name: string) =>
+    call<{ ok: boolean }>("DELETE", `/api/admin/db/backups/${encodeURIComponent(name)}`),
+  opmlExportNow: () => call<DBBackup>("POST", "/api/admin/db/opml-export"),
+  deleteExport: (name: string) =>
+    call<{ ok: boolean }>("DELETE", `/api/admin/db/exports/${encodeURIComponent(name)}`),
   dbCleanup: (older_days: number) =>
     call<DBCleanupStats>("POST", "/api/admin/db/cleanup", { older_days }),
   dbSchedule: (s: DBSchedule) =>
@@ -444,15 +452,18 @@ export interface DBCleanupStats {
 export interface DBSchedule {
   backup_schedule: "off" | "daily" | "weekly";
   backup_keep_count: number;
+  backup_dir: string;
   cleanup_schedule: "off" | "weekly" | "monthly";
   cleanup_older_days: number;
   opml_schedule?: "off" | "weekly" | "monthly";
+  opml_export_dir: string;
+  opml_keep: number;
 }
 export interface DBStatus extends DBSchedule {
   size_bytes: number;
   page_count: number;
-  backup_dir: string;
   backups: DBBackup[];
+  exports: DBBackup[];
 }
 
 // Admin server-wide session TTL. Source = 'admin' means an admin saved

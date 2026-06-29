@@ -459,8 +459,10 @@ func run() error {
 		// above when configured.
 		EmailDomain: cfg.EmailDomain,
 		// Signing key for the same-origin image proxy (/api/img); derived,
-		// never used as the raw session key.
-		SessionKey: cfg.SessionKey,
+		// never used as the raw session key. Use the resolved sessionKey (with
+		// the test-mode fallback applied), not cfg.SessionKey — otherwise the
+		// proxy would key its HMAC on an empty string in test mode.
+		SessionKey: sessionKey,
 	})
 
 	srv := &http.Server{

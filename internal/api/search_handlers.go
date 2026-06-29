@@ -15,6 +15,10 @@ import (
 const (
 	maxSearchLimit  = 100
 	maxSearchOffset = 10000
+	// maxSearchQueryLen bounds the FTS5 MATCH input. It's parameterized (so not
+	// an injection vector) and the route is rate-limited, but an unbounded query
+	// still hands SQLite arbitrary work — cap it well above any real search.
+	maxSearchQueryLen = 500
 )
 
 func (d *Dependencies) handleSearch(w http.ResponseWriter, r *http.Request) {
@@ -23,6 +27,10 @@ func (d *Dependencies) handleSearch(w http.ResponseWriter, r *http.Request) {
 	query := q.Get("q")
 	if query == "" {
 		writeError(w, http.StatusBadRequest, "bad_request", "q required")
+		return
+	}
+	if len(query) > maxSearchQueryLen {
+		writeError(w, http.StatusBadRequest, "bad_request", "q too long")
 		return
 	}
 	limit := 25

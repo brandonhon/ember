@@ -27,6 +27,15 @@ func (s *Store) Backup(ctx context.Context, dir string) (BackupInfo, error) {
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return BackupInfo{}, fmt.Errorf("backup: mkdir %s: %w", dir, err)
 	}
+	// MkdirAll is a no-op on an existing dir and doesn't check writability, so a
+	// bind-mounted host path that isn't owned by the server's user passes here
+	// and only fails later as a cryptic SQLite "unable to open database file".
+	// Probe write access up front and fail with an actionable message instead.
+	probe := filepath.Join(dir, ".ember-backup-writetest")
+	if err := os.WriteFile(probe, []byte("ok"), 0o600); err != nil {
+		return BackupInfo{}, fmt.Errorf("backup: %s is not writable by the server (running as uid %d) — make the bind-mounted host path owned by or writable by that user: %w", dir, os.Getuid(), err)
+	}
+	_ = os.Remove(probe)
 	name := time.Unix(s.nowUnix(), 0).UTC().Format("ember-2006-01-02-150405.db")
 	out := filepath.Join(dir, name)
 	// VACUUM INTO refuses to overwrite, so make sure we have a fresh path.
@@ -226,4 +235,49 @@ func (s *Store) DBSize(ctx context.Context) (int64, int64, error) {
 		return 0, 0, err
 	}
 	return pageCount * pageSize, pageCount, nil
+}
+
+// DeleteBackup removes a single backup file from dir, addressed by basename.
+// The name is restricted to a basename ending in .db so it can neither traverse
+// out of dir nor touch the live database. Returns ErrNotFound for a bad name or
+// a missing file.
+func (s *Store) DeleteBackup(dir, name string) error {
+	return deleteFileInDir(dir, name, ".db")
+}
+
+// DeleteExport removes a single OPML export file from dir, addressed by basename.
+func (s *Store) DeleteExport(dir, name string) error {
+	return deleteFileInDir(dir, name, ".opml")
+}
+
+func deleteFileInDir(dir, name, ext string) error {
+	// name must be a bare filename with the expected extension — never a path,
+	// "..", or a different file type.
+	if name == "" || name != filepath.Base(name) || !strings.HasSuffix(name, ext) {
+		return ErrNotFound
+	}
+	// Resolve the file by enumerating dir and matching the basename, so the path
+	// handed to os.Remove is built from the trusted directory listing rather than
+	// the request string — traversal is impossible by construction.
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("read dir %s: %w", dir, err)
+	}
+	for _, e := range entries {
+		if e.IsDir() || e.Name() != name {
+			continue
+		}
+		target := filepath.Join(dir, e.Name())
+		if err := os.Remove(target); err != nil {
+			if os.IsNotExist(err) {
+				return ErrNotFound
+			}
+			return fmt.Errorf("delete %s: %w", target, err)
+		}
+		return nil
+	}
+	return ErrNotFound
 }

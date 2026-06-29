@@ -55,3 +55,60 @@ func FuzzSafeHTTPURL(f *testing.F) {
 		}
 	})
 }
+
+// FuzzSafeImageURL asserts the image-URL guard only ever returns empty, an
+// http(s) URL, or a data:image/ URI — never javascript: or data:text/ (which
+// the value is later rendered into an <img src>).
+func FuzzSafeImageURL(f *testing.F) {
+	f.Add("https://cdn.test/a.jpg")
+	f.Add("data:image/png;base64,iVBORw0KGgo=")
+	f.Add("data:text/html,<script>alert(1)</script>")
+	f.Add("javascript:alert(1)")
+	f.Add("  DATA:IMAGE/PNG;base64,x  ")
+	f.Add("")
+	f.Fuzz(func(t *testing.T, s string) {
+		out := strings.ToLower(SafeImageURL(s))
+		if out == "" {
+			return
+		}
+		ok := strings.HasPrefix(out, "http://") ||
+			strings.HasPrefix(out, "https://") ||
+			strings.HasPrefix(out, "data:image/")
+		if !ok {
+			t.Errorf("SafeImageURL returned a disallowed scheme: %q -> %q", s, out)
+		}
+	})
+}
+
+// FuzzCanonicalURL exercises the dedup canonicalization + cluster hashing over
+// arbitrary URL-ish input. Must be panic-free and deterministic (the cluster
+// key is a content hash; nondeterminism would scatter duplicates).
+func FuzzCanonicalURL(f *testing.F) {
+	f.Add("https://Example.com/a/?utm_source=x&id=1#frag")
+	f.Add("HTTP://EXAMPLE.COM")
+	f.Add("https://x.test//a//b/")
+	f.Add("not a url at all")
+	f.Add("")
+	f.Fuzz(func(t *testing.T, raw string) {
+		c1 := CanonicalURL(raw)
+		if c2 := CanonicalURL(raw); c1 != c2 {
+			t.Errorf("CanonicalURL not deterministic: %q -> %q vs %q", raw, c1, c2)
+		}
+		if id := ClusterID(c1); ClusterID(c1) != id {
+			t.Errorf("ClusterID not deterministic for %q", c1)
+		}
+	})
+}
+
+// FuzzTitleFingerprint exercises the title dedup key over arbitrary titles.
+func FuzzTitleFingerprint(f *testing.F) {
+	f.Add("Apple Q3 Earnings Beat Estimates")
+	f.Add("RE: re: Fwd: breaking news")
+	f.Add(strings.Repeat("a ", 4000))
+	f.Add("")
+	f.Fuzz(func(t *testing.T, s string) {
+		if a, b := TitleFingerprint(s), TitleFingerprint(s); a != b {
+			t.Errorf("TitleFingerprint not deterministic: %q -> %q vs %q", s, a, b)
+		}
+	})
+}

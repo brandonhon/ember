@@ -3,6 +3,14 @@
 
 GO            ?= go
 NPM           ?= npm
+
+# This is a Go-modules project requiring the toolchain in go.mod (newer than the
+# system go). Some environments persist GO111MODULE=off in ~/.config/go/env,
+# which drops every go target into GOPATH mode and breaks the build. Force module
+# mode + auto toolchain for all recipes so `make <target>` works regardless of
+# the developer's global go env.
+export GO111MODULE := on
+export GOTOOLCHAIN := auto
 BIN           ?= ./bin/ember
 PKG           := ./...
 COVER_OUT     ?= coverage.out
@@ -35,6 +43,23 @@ lint: ## golangci-lint run (requires golangci-lint)
 .PHONY: vulncheck
 vulncheck: ## scan for known Go CVEs (requires govulncheck)
 	govulncheck $(PKG)
+
+.PHONY: security
+security: vet lint vulncheck ## security scan: vet + golangci-lint(gosec) + govulncheck + fuzz seed corpora
+	$(GO) test -run '^Fuzz' -count=1 $(PKG)
+
+# Deep fuzzing of one target at a time (Go fuzzing is single-target). Override
+# FUZZPKG/FUZZ/FUZZTIME, e.g.:
+#   make fuzz FUZZPKG=./internal/opml FUZZ=FuzzOPMLDecode FUZZTIME=120s
+# Targets: feed (FuzzParse, FuzzSanitizeHTML, FuzzSafeHTTPURL, FuzzSafeImageURL,
+# FuzzCanonicalURL, FuzzTitleFingerprint), opml (FuzzOPMLDecode), emailinbox
+# (FuzzParseMessage), filters (FuzzParseMatch).
+FUZZPKG  ?= ./internal/feed
+FUZZ     ?= FuzzParse
+FUZZTIME ?= 30s
+.PHONY: fuzz
+fuzz: ## deep-fuzz one target: make fuzz FUZZPKG=./internal/opml FUZZ=FuzzOPMLDecode [FUZZTIME=60s]
+	$(GO) test $(FUZZPKG) -run='^$$' -fuzz='^$(FUZZ)$$' -fuzztime=$(FUZZTIME)
 
 .PHONY: test
 test: ## go test (race detector, no cache)

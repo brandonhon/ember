@@ -9,7 +9,83 @@ full commit-level list; this file curates the highlights and behavior changes.
 
 ## [Unreleased]
 
-## [0.9.3] - 2026-06-21
+## [0.9.4] - 2026-06-29
+
+### Added
+
+- **Back up and restore your filters.** Settings → Filters → the filter editor
+  now has **Export** (downloads your rules as a JSON file) and **Import** (loads
+  them back, e.g. on another instance). Imported rules are validated like a
+  manual add; anything invalid or beyond the per-user cap is skipped and
+  reported.
+- **The database backup directory is now configurable.** Set a custom absolute
+  path in **Settings → Database → Backups → Directory** instead of the fixed
+  `/data/backups`. Point it at a bind-mounted host path so backups live on a
+  disk you control (the UI reminds you, and the docs walk through the compose
+  bind-mount setup). Empty resets to the default; the scheduled job and the
+  manual "Back up now" both honor it.
+- **The OPML export gains the same controls as DB backups** — a configurable
+  **Directory** (`opml_export_dir`, default `/data/exports`) and **Keep**
+  retention (`opml_keep`) under Settings → Database → OPML export (set up the
+  same way: bind-mount + chown), plus a manual **Export now** button and a list
+  of recent exports.
+- **Delete individual backups and OPML exports** from Settings → Database — each
+  file in the list now has a Delete button (name-validated server-side, so it
+  can't reach anything outside the configured directory).
+
+### Fixed
+
+- **Deleting a backup or OPML export now explains a permissions failure.** When
+  the backup/export directory isn't writable by the server (the common case for
+  a bind-mounted host path that hasn't been made owned by the container user,
+  UID 65532), the Delete button now reports an actionable message instead of a
+  generic "internal error" — matching the existing "Back up now" / "Export now"
+  behavior.
+- **Settings → Mobile clients**: the Fever URL and API-key boxes now line up —
+  the key row's longer hint was squeezing its input narrower than the URL row's.
+- **Settings → Database**: the "Clean up now" button now uses the same filled
+  style as the other action buttons (it was an odd outline variant) and reuses
+  the scheduled cleanup window instead of a separate, redundant days field.
+- **The filter editor's buttons now match the rest of Settings.** The filter
+  editor used an older button style; its buttons now use the standard Settings
+  look with the same hover states, and **Export**/**Import** are the primary
+  orange like **Add filter**. The Settings segmented toggles (e.g. Cards /
+  Compact, On / Off) also gained a hover state.
+- **Settings → Import & migrate**: importing an OPML file is now independent of
+  the Tiny Tiny RSS section. It shows its own status in the OPML card — the
+  button reads "Importing…" while it runs and reports the result right there —
+  instead of surfacing under TT-RSS and disabling that form with no nearby
+  feedback. The Tiny Tiny RSS card was also flattened — the live-migration form
+  shows directly with **Start migration** and **Upload export file** side by
+  side, replacing the segmented tabs whose inactive tab looked like a dead
+  button.
+- A story you'd already read could reappear as unread when a **duplicate**
+  arrived later — a second feed publishing the same story, or the same feed
+  re-publishing it under a new id. Cross-feed dedup previously only swept
+  duplicates that existed at the moment you read; copies ingested afterward came
+  in unread and the read original couldn't suppress them. Ingest now inherits the
+  read state from an already-read cluster sibling, so a read story's late
+  duplicates stay read instead of resurfacing in Fresh / All Unread.
+
+### Security
+
+- Defense-in-depth hardening from a full security audit (which found no
+  exploitable issues): the login endpoint now returns an explicit allowlisted
+  field set rather than the raw user record (so a future model field can't
+  silently leak), search queries are length-capped before reaching SQLite, and
+  filter-validation errors no longer surface the internal package prefix. Also:
+  the CSRF cookie is now `SameSite=Strict` (matching the session cookie), the
+  admin favicon URL is restricted to a same-origin path or `https://` (no
+  `javascript:`/`data:`), and a "mark all read" scoped to an unknown board or
+  category id returns 404 instead of a silent no-op.
+
+### Changed
+
+- Bumped Go runtime dependencies `golang.org/x/crypto` 0.52.0 → 0.53.0,
+  `golang.org/x/net` 0.55.0 → 0.56.0, and `modernc.org/sqlite` 1.52.0 → 1.53.0
+  (plus transitive `x/sync`, `x/sys`, `x/text`, `modernc.org/libc`).
+
+## [0.9.3] - 2026-06-22
 
 ### Added
 
@@ -214,7 +290,8 @@ TT-RSS full migration (subscriptions, folders, starred/archived) and fail-fast
 admin bootstrap. See the
 [v0.8.7 release](https://github.com/brandonhon/ember/releases/tag/v0.8.7).
 
-[Unreleased]: https://github.com/brandonhon/ember/compare/v0.9.3...develop
+[Unreleased]: https://github.com/brandonhon/ember/compare/v0.9.4...develop
+[0.9.4]: https://github.com/brandonhon/ember/compare/v0.9.3...v0.9.4
 [0.9.3]: https://github.com/brandonhon/ember/compare/v0.9.2...v0.9.3
 [0.9.2]: https://github.com/brandonhon/ember/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/brandonhon/ember/compare/v0.9.0...v0.9.1

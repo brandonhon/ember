@@ -1,16 +1,27 @@
 package api
 
 import (
+	"errors"
+	"io/fs"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+
+	"github.com/brandonhon/ember/internal/auth"
 	"github.com/brandonhon/ember/internal/store"
 )
 
-// Default location for ad-hoc backups. Override via the EMBER_BACKUP_DIR env
-// var (read in main.go) if running outside Docker.
+// Default location for ad-hoc backups when the admin hasn't set a custom
+// directory (the `db_backup_dir` app setting). To persist outside the
+// container, point it at a bind-mounted host path — see docs/configuration.
 const defaultBackupDir = "/data/backups"
+
+// Default location for scheduled OPML exports (the `opml_export_dir` app
+// setting); bind-mount it to persist outside the container.
+const defaultExportDir = "/data/exports"
 
 // dbStatus is the response for GET /api/admin/db. Reports size, current
 // schedule settings, and on-disk backups.
@@ -24,6 +35,9 @@ type dbStatus struct {
 	CleanupSchedule  string             `json:"cleanup_schedule"`  // "off" | "weekly" | "monthly"
 	CleanupOlderDays int                `json:"cleanup_older_days"`
 	OPMLSchedule     string             `json:"opml_schedule"` // "off" | "weekly" | "monthly"
+	OPMLExportDir    string             `json:"opml_export_dir"`
+	OPMLKeepCount    int                `json:"opml_keep"`
+	Exports          []store.ExportInfo `json:"exports"`
 }
 
 const (
@@ -31,7 +45,23 @@ const (
 	keyBackupKeep       = "db_backup_keep"
 	keyCleanupSchedule  = "db_cleanup_schedule"
 	keyCleanupOlderDays = "db_cleanup_older_days"
+	keyBackupDir        = "db_backup_dir"
+	keyOPMLExportDir    = "opml_export_dir"
+	keyOPMLKeep         = "opml_keep"
 )
+
+// validDirSetting reports whether p is acceptable as a backup/export directory:
+// empty (reset to default) or an absolute path with no single quote (the
+// store's VACUUM INTO path can't be parameterized).
+func validDirSetting(p string) bool {
+	return p == "" || (strings.HasPrefix(p, "/") && !strings.ContainsRune(p, '\''))
+}
+
+// resolveBackupDir returns the admin-configured backup directory, falling back
+// to defaultBackupDir when unset.
+func (d *Dependencies) resolveBackupDir(r *http.Request) string {
+	return getSettingOr(r, d, keyBackupDir, defaultBackupDir)
+}
 
 func (d *Dependencies) handleGetDB(w http.ResponseWriter, r *http.Request) {
 	size, pages, err := d.Store.DBSize(r.Context())
@@ -39,28 +69,93 @@ func (d *Dependencies) handleGetDB(w http.ResponseWriter, r *http.Request) {
 		internalError(w, "internal", err)
 		return
 	}
-	backups, _ := d.Store.ListBackups(defaultBackupDir)
+	dir := d.resolveBackupDir(r)
+	backups, _ := d.Store.ListBackups(dir)
+	exportDir := getSettingOr(r, d, keyOPMLExportDir, defaultExportDir)
+	exports, _ := d.Store.ListExports(exportDir)
 	resp := dbStatus{
 		SizeBytes:        size,
 		PageCount:        pages,
-		BackupDir:        defaultBackupDir,
+		BackupDir:        dir,
 		Backups:          backups,
 		BackupSchedule:   getSettingOr(r, d, keyBackupSchedule, "off"),
 		BackupKeepCount:  getIntSettingOr(r, d, keyBackupKeep, 7),
 		CleanupSchedule:  getSettingOr(r, d, keyCleanupSchedule, "off"),
 		CleanupOlderDays: getIntSettingOr(r, d, keyCleanupOlderDays, 90),
 		OPMLSchedule:     getSettingOr(r, d, "opml_schedule", "off"),
+		OPMLExportDir:    exportDir,
+		OPMLKeepCount:    getIntSettingOr(r, d, keyOPMLKeep, 12),
+		Exports:          exports,
 	}
 	writeData(w, http.StatusOK, resp, nil)
 }
 
 func (d *Dependencies) handleDBBackup(w http.ResponseWriter, r *http.Request) {
-	info, err := d.Store.Backup(r.Context(), defaultBackupDir)
+	info, err := d.Store.Backup(r.Context(), d.resolveBackupDir(r))
+	if errors.Is(err, fs.ErrPermission) {
+		// A bind-mounted host path that isn't writable by the container user is
+		// the common failure — give the admin an actionable message, not a 500.
+		writeError(w, http.StatusConflict, "backup_unwritable",
+			"Backup failed: the backup directory isn't writable by the server. If it's a bind-mounted host path, make it owned by or writable by the container user (UID 65532) — see the docs.")
+		return
+	}
 	if err != nil {
 		internalError(w, "backup", err)
 		return
 	}
 	writeData(w, http.StatusOK, info, nil)
+}
+
+// handleOPMLExportNow writes the requesting admin's subscription list to the
+// configured export directory, mirroring the manual DB "Back up now".
+func (d *Dependencies) handleOPMLExportNow(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.FromContext(r.Context())
+	dir := getSettingOr(r, d, keyOPMLExportDir, defaultExportDir)
+	path, size, err := d.OPML.WriteExport(r.Context(), u.ID, dir)
+	if errors.Is(err, fs.ErrPermission) {
+		writeError(w, http.StatusConflict, "export_unwritable",
+			"Export failed: the export directory isn't writable by the server. If it's a bind-mounted host path, make it owned by or writable by the container user (UID 65532) — see the docs.")
+		return
+	}
+	if err != nil {
+		internalError(w, "opml_export", err)
+		return
+	}
+	_, _ = d.Store.PruneExports(dir, getIntSettingOr(r, d, keyOPMLKeep, 12))
+	writeData(w, http.StatusOK, store.ExportInfo{Path: path, SizeBytes: size, CreatedAt: time.Now().Unix()}, nil)
+}
+
+// handleDeleteBackup removes a single backup file by name from the backup dir.
+func (d *Dependencies) handleDeleteBackup(w http.ResponseWriter, r *http.Request) {
+	err := d.Store.DeleteBackup(d.resolveBackupDir(r), chi.URLParam(r, "name"))
+	if errors.Is(err, fs.ErrPermission) {
+		// Deleting a file needs write permission on its directory. A bind-mounted
+		// host path that isn't writable by the container user is the common
+		// failure (a backup can have been created earlier when it was writable) —
+		// give the admin an actionable message instead of a generic 500.
+		writeError(w, http.StatusConflict, "backup_undeletable",
+			"Delete failed: the backup directory isn't writable by the server. If it's a bind-mounted host path, make it owned by or writable by the container user (UID 65532) — see the docs.")
+		return
+	}
+	if mapStoreError(w, err) {
+		return
+	}
+	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
+}
+
+// handleDeleteExport removes a single OPML export file by name from the export dir.
+func (d *Dependencies) handleDeleteExport(w http.ResponseWriter, r *http.Request) {
+	dir := getSettingOr(r, d, keyOPMLExportDir, defaultExportDir)
+	err := d.Store.DeleteExport(dir, chi.URLParam(r, "name"))
+	if errors.Is(err, fs.ErrPermission) {
+		writeError(w, http.StatusConflict, "export_undeletable",
+			"Delete failed: the export directory isn't writable by the server. If it's a bind-mounted host path, make it owned by or writable by the container user (UID 65532) — see the docs.")
+		return
+	}
+	if mapStoreError(w, err) {
+		return
+	}
+	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
 }
 
 type cleanupReq struct {
@@ -86,9 +181,12 @@ func (d *Dependencies) handleDBCleanup(w http.ResponseWriter, r *http.Request) {
 type scheduleReq struct {
 	BackupSchedule   string `json:"backup_schedule"`
 	BackupKeepCount  int    `json:"backup_keep_count"`
+	BackupDir        string `json:"backup_dir"`
 	CleanupSchedule  string `json:"cleanup_schedule"`
 	CleanupOlderDays int    `json:"cleanup_older_days"`
 	OPMLSchedule     string `json:"opml_schedule"`
+	OPMLExportDir    string `json:"opml_export_dir"`
+	OPMLKeepCount    int    `json:"opml_keep"`
 }
 
 func (d *Dependencies) handleDBSchedule(w http.ResponseWriter, r *http.Request) {
@@ -114,7 +212,35 @@ func (d *Dependencies) handleDBSchedule(w http.ResponseWriter, r *http.Request) 
 	if req.CleanupOlderDays < 7 {
 		req.CleanupOlderDays = 7
 	}
+	if req.OPMLKeepCount < 1 {
+		req.OPMLKeepCount = 12
+	}
+	// Backup/export directories: empty resets to the default; otherwise require
+	// an absolute path with no single quote. The admin must bind-mount these
+	// paths for the files to persist outside the container.
+	backupDir := strings.TrimSpace(req.BackupDir)
+	exportDir := strings.TrimSpace(req.OPMLExportDir)
+	if !validDirSetting(backupDir) {
+		writeError(w, http.StatusBadRequest, "bad_request", "backup_dir must be an absolute path with no quote characters")
+		return
+	}
+	if !validDirSetting(exportDir) {
+		writeError(w, http.StatusBadRequest, "bad_request", "opml_export_dir must be an absolute path with no quote characters")
+		return
+	}
 	ctx := r.Context()
+	if err := d.Store.PutAppSetting(ctx, keyBackupDir, backupDir); err != nil {
+		internalError(w, "internal", err)
+		return
+	}
+	if err := d.Store.PutAppSetting(ctx, keyOPMLExportDir, exportDir); err != nil {
+		internalError(w, "internal", err)
+		return
+	}
+	if err := d.Store.PutAppSetting(ctx, keyOPMLKeep, strconv.Itoa(req.OPMLKeepCount)); err != nil {
+		internalError(w, "internal", err)
+		return
+	}
 	if err := d.Store.PutAppSetting(ctx, keyBackupSchedule, req.BackupSchedule); err != nil {
 		internalError(w, "internal", err)
 		return

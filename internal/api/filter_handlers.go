@@ -1,7 +1,9 @@
 package api
 
 import (
+	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/brandonhon/ember/internal/auth"
 	"github.com/brandonhon/ember/internal/filters"
@@ -12,6 +14,14 @@ import (
 // maxFiltersPerUser bounds how many filters one account can create; see
 // handleCreateFilter.
 const maxFiltersPerUser = 200
+
+// publicFilterErr surfaces a filter-validation error to the client without the
+// internal "filters:" package prefix. These messages only ever echo the user's
+// own rule (bad field/op/regex/action), so the detail is safe and useful — we
+// just don't leak the package name across the API boundary.
+func publicFilterErr(err error) string {
+	return strings.TrimPrefix(err.Error(), "filters: ")
+}
 
 type filterReq struct {
 	Name        string `json:"name"`
@@ -43,11 +53,11 @@ func (d *Dependencies) handleCreateFilter(w http.ResponseWriter, r *http.Request
 	}
 	// Validate match + action up front so bad data never lands in the DB.
 	if _, err := filters.ParseMatch(req.MatchJSON); err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
+		writeError(w, http.StatusBadRequest, "bad_request", publicFilterErr(err))
 		return
 	}
 	if err := filters.ValidateActionWithValue(req.Action, req.ActionValue); err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
+		writeError(w, http.StatusBadRequest, "bad_request", publicFilterErr(err))
 		return
 	}
 	// Cap filters per user: each filter's regex is compiled and cached for the
@@ -97,14 +107,14 @@ func (d *Dependencies) handleUpdateFilter(w http.ResponseWriter, r *http.Request
 	}
 	if req.MatchJSON != "" {
 		if _, err := filters.ParseMatch(req.MatchJSON); err != nil {
-			writeError(w, http.StatusBadRequest, "bad_request", err.Error())
+			writeError(w, http.StatusBadRequest, "bad_request", publicFilterErr(err))
 			return
 		}
 		patch.MatchJSON = &req.MatchJSON
 	}
 	if req.Action != "" {
 		if err := filters.ValidateActionWithValue(req.Action, req.ActionValue); err != nil {
-			writeError(w, http.StatusBadRequest, "bad_request", err.Error())
+			writeError(w, http.StatusBadRequest, "bad_request", publicFilterErr(err))
 			return
 		}
 		patch.Action = &req.Action
@@ -128,7 +138,7 @@ func (d *Dependencies) handleUpdateFilter(w http.ResponseWriter, r *http.Request
 				return
 			}
 			if err := filters.ValidateActionWithValue(existing.Action, req.ActionValue); err != nil {
-				writeError(w, http.StatusBadRequest, "bad_request", err.Error())
+				writeError(w, http.StatusBadRequest, "bad_request", publicFilterErr(err))
 				return
 			}
 		}
@@ -155,7 +165,7 @@ func (d *Dependencies) handlePreviewFilter(w http.ResponseWriter, r *http.Reques
 	}
 	m, err := filters.ParseMatch(req.MatchJSON)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
+		writeError(w, http.StatusBadRequest, "bad_request", publicFilterErr(err))
 		return
 	}
 	count, err := d.Store.PreviewFilter(r.Context(), u.ID, m, req.SinceDays)
@@ -175,4 +185,85 @@ func (d *Dependencies) handleDeleteFilter(w http.ResponseWriter, r *http.Request
 		return
 	}
 	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
+}
+
+// filterExport is the portable shape of a filter — no instance-specific id,
+// owner, or timestamp — used for backup/restore across instances.
+type filterExport struct {
+	Name        string `json:"name"`
+	MatchJSON   string `json:"match_json"`
+	Action      string `json:"action"`
+	ActionValue string `json:"action_value,omitempty"`
+	Enabled     bool   `json:"enabled"`
+	Priority    int    `json:"priority"`
+}
+
+type filtersBundle struct {
+	Version int            `json:"version"`
+	Filters []filterExport `json:"filters"`
+}
+
+// handleExportFilters returns the user's filters as a downloadable JSON backup.
+func (d *Dependencies) handleExportFilters(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.FromContext(r.Context())
+	fs, err := d.Store.ListFilters(r.Context(), u.ID)
+	if mapStoreError(w, err) {
+		return
+	}
+	bundle := filtersBundle{Version: 1, Filters: make([]filterExport, 0, len(fs))}
+	for _, f := range fs {
+		bundle.Filters = append(bundle.Filters, filterExport{
+			Name: f.Name, MatchJSON: f.MatchJSON, Action: f.Action,
+			ActionValue: f.ActionValue, Enabled: f.Enabled, Priority: f.Priority,
+		})
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Disposition", `attachment; filename="ember-filters.json"`)
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	_ = enc.Encode(bundle)
+}
+
+// handleImportFilters creates filters from an uploaded backup. Each entry is
+// validated like a manual create; invalid entries and any beyond the per-user
+// cap are skipped (reported in the response) rather than failing the import.
+func (d *Dependencies) handleImportFilters(w http.ResponseWriter, r *http.Request) {
+	u, _ := auth.FromContext(r.Context())
+	var bundle filtersBundle
+	if !decodeJSON(w, r, &bundle) {
+		return
+	}
+	existing, err := d.Store.ListFilters(r.Context(), u.ID)
+	if mapStoreError(w, err) {
+		return
+	}
+	room := maxFiltersPerUser - len(existing)
+	imported, skipped := 0, 0
+	for _, fe := range bundle.Filters {
+		if imported >= room || fe.Name == "" {
+			skipped++
+			continue
+		}
+		if _, perr := filters.ParseMatch(fe.MatchJSON); perr != nil {
+			skipped++
+			continue
+		}
+		if verr := filters.ValidateActionWithValue(fe.Action, fe.ActionValue); verr != nil {
+			skipped++
+			continue
+		}
+		priority := fe.Priority
+		if priority <= 0 {
+			priority = 100
+		}
+		if _, cerr := d.Store.CreateFilter(r.Context(), models.Filter{
+			UserID: u.ID, Name: fe.Name, MatchJSON: fe.MatchJSON, Action: fe.Action,
+			Enabled: fe.Enabled, Priority: priority, ActionValue: fe.ActionValue,
+		}); cerr != nil {
+			skipped++
+			continue
+		}
+		imported++
+	}
+	writeData(w, http.StatusOK, map[string]int{"imported": imported, "skipped": skipped}, nil)
 }

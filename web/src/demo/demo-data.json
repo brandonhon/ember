@@ -9,7 +9,7 @@
       "created_at": 1780348558
     },
     "fever_api_key": "demo-fever-key",
-    "version": "docker",
+    "version": "demo",
     "fresh_window_seconds": 21600
   },
   "branding": {

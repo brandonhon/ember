@@ -10,6 +10,8 @@
   let filters = $state<Filter[]>([]);
   let loading = $state(false);
   let error = $state("");
+  let notice = $state("");
+  let importInput: HTMLInputElement | undefined = $state();
 
   // Draft (used for both create and edit).
   type Draft = {
@@ -75,6 +77,46 @@
       previewErr = e instanceof ApiError ? e.message : String(e);
     } finally {
       previewBusy = false;
+    }
+  }
+
+  async function doExport() {
+    if (DEMO) {
+      notifyDemoBlocked();
+      return;
+    }
+    error = "";
+    try {
+      const res = await api.exportFilters();
+      if (!res.ok) throw new Error("export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "ember-filters.json";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      error = e instanceof ApiError ? e.message : String(e);
+    }
+  }
+  async function onImportPick(e: Event) {
+    const input = e.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    error = "";
+    notice = "";
+    try {
+      const bundle = JSON.parse(await file.text());
+      const res = await api.importFilters(bundle);
+      await refresh();
+      const { imported, skipped } = res.data;
+      notice = `Imported ${imported} filter${imported === 1 ? "" : "s"}${skipped ? `, skipped ${skipped}` : ""}.`;
+      setTimeout(() => (notice = ""), 4000);
+    } catch (err) {
+      error = err instanceof ApiError ? err.message : "Couldn't read that file — is it a valid filters backup?";
+    } finally {
+      input.value = "";
     }
   }
 
@@ -184,11 +226,19 @@
   <div class="modal" on:click|stopPropagation>
     <header>
       <h2 id="filter-manager-title">Filters</h2>
-      <button class="close" on:click={onClose} aria-label="Close">×</button>
+      <div class="head-tools">
+        <button type="button" on:click={doExport} data-testid="filters-export">Export</button>
+        <button type="button" on:click={() => { if (DEMO) { notifyDemoBlocked(); return; } importInput?.click(); }} data-testid="filters-import">Import</button>
+        <button class="close" on:click={onClose} aria-label="Close">×</button>
+      </div>
+      <input type="file" accept=".json,application/json" bind:this={importInput} on:change={onImportPick} style="display:none" data-testid="filters-import-input" />
     </header>
 
     {#if error}
       <p class="error" data-testid="filter-error">{error}</p>
+    {/if}
+    {#if notice}
+      <p class="ok" data-testid="filters-notice">{notice}</p>
     {/if}
 
     <section class="form" aria-label="New or edit filter">
@@ -388,6 +438,7 @@
     cursor: pointer;
     color: var(--muted);
   }
+  .close:hover { color: var(--ink); }
   .error {
     background: #fef2f2;
     color: #991b1b;
@@ -395,6 +446,14 @@
     padding: 0.5rem 0.75rem;
     font-size: 0.85rem;
   }
+  .ok {
+    background: color-mix(in srgb, var(--ember) 10%, transparent);
+    color: var(--ember);
+    border-radius: 4px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+  }
+  .head-tools { display: flex; align-items: center; gap: 8px; }
   .form { display: flex; flex-direction: column; gap: 0.5rem; }
   label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.85rem; }
   label.checkbox {
@@ -422,21 +481,37 @@
     justify-content: flex-end;
     gap: 0.5rem;
   }
+  /* Primary actions (Export / Import / Add filter / Save / Preview) —
+     matches Settings `.actions button` / `.pack-btn`. */
   button {
-    background: var(--accent);
-    color: white;
-    border: 0;
-    padding: 0.4rem 0.85rem;
-    border-radius: 4px;
+    background: var(--ember);
+    color: #fff;
+    border: none;
+    padding: 7px 14px;
+    border-radius: 8px;
     cursor: pointer;
-    font: inherit;
+    font-family: var(--font-ui);
+    font-size: 12.5px;
+    font-weight: 600;
   }
+  button:hover:not(:disabled) { background: var(--ember-soft); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  /* Secondary actions (Disable / Edit / Cancel) — matches Settings `.ghost`. */
   button.ghost {
     background: transparent;
-    color: inherit;
-    border: 1px solid var(--border);
+    color: var(--ink);
+    border: 1px solid var(--line);
   }
-  button.ghost.danger { color: #b91c1c; border-color: #fecaca; }
+  button.ghost:hover:not(:disabled) { background: var(--line-soft); }
+  /* Destructive (Delete) — matches Settings `.btn-danger`. */
+  button.ghost.danger {
+    color: #b91c1c;
+    border-color: #b91c1c;
+  }
+  button.ghost.danger:hover:not(:disabled) {
+    background: #b91c1c;
+    color: #fff;
+  }
   hr { margin: 1rem 0; border: 0; border-top: 1px solid var(--border); }
   .list ul { list-style: none; padding: 0; margin: 0; }
   .list li {

@@ -19,6 +19,11 @@ import type { ArticleView, FeedWithCounts } from "../lib/types";
 
 export const DEMO: boolean = import.meta.env.VITE_DEMO_MODE === "1";
 
+// Version reported by the demo's /api/me (drives Settings → About). Injected at
+// build time via VITE_DEMO_VERSION — pages.yml sets it to the latest release tag
+// so the demo tracks releases; falls back to the captured value for local builds.
+const DEMO_VERSION: string = import.meta.env.VITE_DEMO_VERSION || demoData.me.version;
+
 // Drives the "this is a demo site" modal (DemoNotice.svelte). Fired by the
 // shim when a write that can't persist is attempted, and directly by
 // components for actions that bypass fetch (e.g. the OPML export navigation).
@@ -110,7 +115,7 @@ function route(method: string, path: string, p: URLSearchParams, body: Json | un
   const noContent = (): RouteResult => ({ status: 204 });
 
   // ---- Auth: show the real login screen, then accept any creds ----
-  if (path === "/api/me" && method === "GET") return loggedIn ? ok(demoData.me) : { status: 401 };
+  if (path === "/api/me" && method === "GET") return loggedIn ? ok({ ...demoData.me, version: DEMO_VERSION }) : { status: 401 };
   if (path === "/api/auth/login" && method === "POST") { loggedIn = true; return ok((demoData.me as Json).user); }
   if (path === "/api/auth/logout") { loggedIn = false; return noContent(); }
   if (path === "/api/auth/passkey/exists") return ok({ any_registered: false });
