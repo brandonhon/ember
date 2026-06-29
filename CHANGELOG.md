@@ -9,6 +9,8 @@ full commit-level list; this file curates the highlights and behavior changes.
 
 ## [Unreleased]
 
+## [0.9.4] - 2026-06-29
+
 ### Added
 
 - **Back up and restore your filters.** Settings → Filters → the filter editor
@@ -288,7 +290,8 @@ TT-RSS full migration (subscriptions, folders, starred/archived) and fail-fast
 admin bootstrap. See the
 [v0.8.7 release](https://github.com/brandonhon/ember/releases/tag/v0.8.7).
 
-[Unreleased]: https://github.com/brandonhon/ember/compare/v0.9.3...develop
+[Unreleased]: https://github.com/brandonhon/ember/compare/v0.9.4...develop
+[0.9.4]: https://github.com/brandonhon/ember/compare/v0.9.3...v0.9.4
 [0.9.3]: https://github.com/brandonhon/ember/compare/v0.9.2...v0.9.3
 [0.9.2]: https://github.com/brandonhon/ember/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/brandonhon/ember/compare/v0.9.0...v0.9.1
