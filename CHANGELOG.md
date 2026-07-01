@@ -9,6 +9,17 @@ full commit-level list; this file curates the highlights and behavior changes.
 
 ## [Unreleased]
 
+### Changed
+
+- **Staying logged in no longer kicks you out mid-session.** Sign-ins used to
+  expire a fixed 24 hours after login even if you were actively reading. The
+  24-hour window is now an *idle timeout* that slides forward every time you use
+  Ember, so an active session keeps itself alive — up to 30 days from the
+  original sign-in, after which you'll re-authenticate. Admins can still tune the
+  idle window (env `EMBER_SESSION_TTL` or Settings → Sessions); the 30-day
+  ceiling is fixed. Session cookies remain persistent — they survive a browser
+  restart, while a private/incognito window still discards them when it closes.
+
 ## [0.9.4] - 2026-06-29
 
 ### Added
