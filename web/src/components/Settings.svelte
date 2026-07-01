@@ -2263,9 +2263,9 @@
           <div class="eyebrow">Administration</div>
           <h3>Sessions</h3>
           <p class="hint">
-            How long a sign-in stays valid before re-authentication is required. Applies to
-            newly-issued cookies only; existing sessions keep their stored expiry. Range: 5
-            minutes to 90 days.
+            Idle timeout for a sign-in: sessions stay valid this long between visits and slide
+            forward while you're active, up to 30 days from sign-in before re-authentication is
+            required. Applies to newly-issued and renewed sessions. Range: 5 minutes to 90 days.
           </p>
           {#if sessionErr}<p class="error" data-testid="session-error">{sessionErr}</p>{/if}
           {#if sessionMsg}<p class="ok" data-testid="session-msg">{sessionMsg}</p>{/if}

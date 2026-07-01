@@ -30,7 +30,9 @@ type Config struct {
 	// admins can also change it at runtime in Settings (app_settings overrides
 	// this). Validated to [5m, 24h].
 	PollMinInterval time.Duration
-	// SessionTTL is the lifetime of a freshly-issued session cookie. Defaults
+	// SessionTTL is the session idle timeout: the maximum gap between requests
+	// before a session expires. Active sessions slide forward on each request,
+	// capped at 30 days from login (auth.DefaultMaxSessionLifetime). Defaults
 	// to 24h. Override via EMBER_SESSION_TTL (Go duration: e.g. 30m, 12h, 7d
 	// not supported — use 168h for a week).
 	SessionTTL time.Duration

@@ -28,12 +28,20 @@ import (
 // CookieName is the session cookie name. Lowercase, no underscores.
 const CookieName = "ember_session"
 
-// DefaultSessionTTL is the default lifetime of a fresh session. Operators
-// override via EMBER_SESSION_TTL in cfg. 24h matches "log in once per day"
-// expectations and is short enough that stolen cookies have a small window
-// while staying long enough that the average reader doesn't bounce to login
-// every visit.
+// DefaultSessionTTL is the idle timeout of a session: the maximum gap between
+// requests before it expires. Each authenticated request slides the deadline
+// forward (see VerifySession), so an active reader stays logged in; only
+// inactivity for a full TTL logs them out. Operators override via
+// EMBER_SESSION_TTL. 24h matches "log in once per day" expectations and keeps
+// the stolen-cookie idle window small.
 const DefaultSessionTTL = 24 * time.Hour
+
+// DefaultMaxSessionLifetime caps how long a session may be renewed. Even a
+// continuously-active user must re-authenticate once a session reaches this
+// age (measured from its original login), bounding the blast radius of a
+// stolen persistent cookie. 30 days is a normal "remember me" horizon and
+// stays well under MaxSessionTTL. Not operator-configurable by design.
+const DefaultMaxSessionLifetime = 30 * 24 * time.Hour
 
 // Params holds argon2id parameters. Defaults are interactive-friendly. Tests
 // override these for speed.
@@ -89,13 +97,11 @@ type Auth struct {
 	// the access pattern is a formal data race under Go's memory model
 	// (the race detector catches it during -race tests).
 	mu sync.RWMutex
-	// SessionTTL is how long a freshly-issued session remains valid. Defaults
-	// to DefaultSessionTTL; main.go can override from EMBER_SESSION_TTL.
-	// Access through the lock (see EffectiveSessionTTL).
+	// SessionTTL is the idle timeout for a session — how long it survives
+	// between requests before expiring. Defaults to DefaultSessionTTL;
+	// main.go can override from EMBER_SESSION_TTL. Access through the lock
+	// (see EffectiveSessionTTL).
 	SessionTTL time.Duration
-	// sc keeps a reference so SessionTTL changes after New() take effect on
-	// the securecookie MaxAge guard.
-	sc *securecookie.SecureCookie
 }
 
 // EffectiveSessionTTL reads SessionTTL under the read lock. All callers
@@ -107,9 +113,13 @@ func (a *Auth) EffectiveSessionTTL() time.Duration {
 	return a.SessionTTL
 }
 
-// SetSessionTTL adjusts the active session lifetime. Affects newly-issued
-// cookies; existing sessions in the DB keep their original expires_at until
-// they expire on their own or are swept.
+// SetSessionTTL adjusts the active idle timeout. Affects the deadline written
+// to newly-issued and renewed sessions; existing DB rows keep their current
+// expires_at until their next renewal, natural expiry, or sweep.
+//
+// The securecookie MaxAge guard is intentionally NOT tied to this value — it
+// stays fixed at MaxSessionTTL so a renewed cookie keeps decoding across a
+// long idle window (see New). The DB expires_at is the real validity gate.
 //
 // Returns ErrSessionTTLOutOfRange if d falls outside
 // [MinSessionTTL, MaxSessionTTL]; the existing TTL is left untouched in
@@ -121,9 +131,6 @@ func (a *Auth) SetSessionTTL(d time.Duration) error {
 	a.mu.Lock()
 	a.SessionTTL = d
 	a.mu.Unlock()
-	if a.sc != nil {
-		a.sc.MaxAge(int(d.Seconds()))
-	}
 	return nil
 }
 
@@ -136,7 +143,11 @@ func New(st *store.Store, sessionKey string) (*Auth, error) {
 	// Use the same key for both the hash and the (block) cipher. We do not
 	// encrypt the value (just sign), so the second key argument is nil.
 	sc := securecookie.New([]byte(sessionKey), nil)
-	sc.MaxAge(int(DefaultSessionTTL.Seconds()))
+	// Fix the signature-age ceiling at the absolute maximum, not the idle
+	// TTL: sessions slide via re-encoded cookies, and a long admin-set idle
+	// window must not outlive the securecookie age check. The sessions-table
+	// expires_at remains the authoritative validity gate.
+	sc.MaxAge(int(MaxSessionTTL.Seconds()))
 	return &Auth{
 		Store:         st,
 		Cookie:        sc,
@@ -144,7 +155,6 @@ func New(st *store.Store, sessionKey string) (*Auth, error) {
 		Now:           time.Now,
 		SecureCookies: true,
 		SessionTTL:    DefaultSessionTTL,
-		sc:            sc,
 	}, nil
 }
 
@@ -262,8 +272,12 @@ func (a *Auth) CreateSession(ctx context.Context, w http.ResponseWriter, r *http
 }
 
 // VerifySession reads the cookie, validates the signature, and looks up the
-// session row. Returns the user on success.
-func (a *Auth) VerifySession(ctx context.Context, r *http.Request) (models.User, error) {
+// session row. On success it slides the session's idle deadline forward (see
+// maybeRenew), writing a refreshed cookie to w, and returns the user.
+//
+// w may be nil for read-only checks that don't want to issue a renewed cookie
+// (renewal is simply skipped in that case).
+func (a *Auth) VerifySession(ctx context.Context, w http.ResponseWriter, r *http.Request) (models.User, error) {
 	cookie, err := r.Cookie(CookieName)
 	if err != nil {
 		return models.User{}, ErrSession
@@ -272,21 +286,82 @@ func (a *Auth) VerifySession(ctx context.Context, r *http.Request) (models.User,
 	if err := a.Cookie.Decode(CookieName, cookie.Value, &sessionID); err != nil {
 		return models.User{}, ErrSession
 	}
-	var userID, expiresAt int64
+	var userID, createdAt, expiresAt int64
 	err = a.Store.DB.QueryRowContext(ctx, `
-		SELECT user_id, expires_at FROM sessions WHERE id = ?`, sessionID).Scan(&userID, &expiresAt)
+		SELECT user_id, created_at, expires_at FROM sessions WHERE id = ?`, sessionID).Scan(&userID, &createdAt, &expiresAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return models.User{}, ErrSession
 	}
 	if err != nil {
 		return models.User{}, err
 	}
-	if a.Now().Unix() >= expiresAt {
+	now := a.Now()
+	if now.Unix() >= expiresAt {
 		// Best-effort cleanup; ignore errors.
 		_, _ = a.Store.DB.ExecContext(ctx, `DELETE FROM sessions WHERE id = ?`, sessionID)
 		return models.User{}, ErrSession
 	}
+	if w != nil {
+		a.maybeRenew(ctx, w, sessionID, createdAt, expiresAt, now)
+	}
 	return a.Store.GetUser(ctx, userID)
+}
+
+// maybeRenew slides an active session's idle deadline forward, capped at the
+// absolute lifetime measured from original login. It is best-effort: any
+// failure leaves the still-valid session untouched and is logged, never
+// surfaced to the caller.
+//
+// Writes are throttled to the second half of each idle window so a busy
+// session costs at most ~2 UPDATE + Set-Cookie per day rather than one per
+// request, while still refreshing the browser's persistent cookie long before
+// it lapses.
+func (a *Auth) maybeRenew(ctx context.Context, w http.ResponseWriter, sessionID string, createdAt, expiresAt int64, now time.Time) {
+	idle := a.EffectiveSessionTTL()
+	// Absolute ceiling from original login. Never cap below the configured
+	// idle window (guards the odd case of an admin idle TTL exceeding 30d).
+	maxLife := DefaultMaxSessionLifetime
+	if idle > maxLife {
+		maxLife = idle
+	}
+	absoluteDeadline := createdAt + int64(maxLife.Seconds())
+
+	// Only renew once past the idle window's halfway mark.
+	if expiresAt-now.Unix() >= int64(idle.Seconds())/2 {
+		return
+	}
+	newExpiry := now.Add(idle).Unix()
+	if newExpiry > absoluteDeadline {
+		newExpiry = absoluteDeadline
+	}
+	if newExpiry <= expiresAt {
+		// Already pinned to the absolute ceiling; nothing to extend.
+		return
+	}
+	if _, err := a.Store.DB.ExecContext(ctx,
+		`UPDATE sessions SET expires_at = ? WHERE id = ?`, newExpiry, sessionID); err != nil {
+		slog.Default().Warn("session renewal failed", "session", sessionID, "err", err)
+		return
+	}
+	// Refresh the cookie so the browser's persistent-cookie expiry tracks the
+	// renewed server deadline; re-encoding also resets the securecookie
+	// timestamp so the signed value keeps decoding.
+	encoded, err := a.Cookie.Encode(CookieName, sessionID)
+	if err != nil {
+		slog.Default().Warn("session cookie re-encode failed", "session", sessionID, "err", err)
+		return
+	}
+	exp := time.Unix(newExpiry, 0)
+	http.SetCookie(w, &http.Cookie{
+		Name:     CookieName,
+		Value:    encoded,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   a.SecureCookies,
+		SameSite: http.SameSiteStrictMode,
+		Expires:  exp,
+		MaxAge:   int(exp.Sub(now).Seconds()),
+	})
 }
 
 // DestroySession deletes the current session row and clears the cookie.
@@ -343,7 +418,7 @@ func withUser(ctx context.Context, u models.User) context.Context {
 // RequireAuth returns chi middleware that requires a valid session.
 func (a *Auth) RequireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		u, err := a.VerifySession(r.Context(), r)
+		u, err := a.VerifySession(r.Context(), w, r)
 		if err != nil {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
@@ -355,7 +430,7 @@ func (a *Auth) RequireAuth(next http.Handler) http.Handler {
 // RequireAdmin returns chi middleware that requires an authenticated admin.
 func (a *Auth) RequireAdmin(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		u, err := a.VerifySession(r.Context(), r)
+		u, err := a.VerifySession(r.Context(), w, r)
 		if err != nil {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
