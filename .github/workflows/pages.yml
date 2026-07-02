@@ -25,11 +25,6 @@ concurrency:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    env:
-      # Private SSH deploy key for the Tangled mirror, registered to the
-      # account that owns the Tangled repo. Empty until the secret is set —
-      # the mirror step below is skipped while empty, so Pages stays green.
-      TANGLED_DEPLOY_KEY: ${{ secrets.TANGLED_DEPLOY_KEY }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
@@ -84,30 +79,10 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: docs/.vitepress/dist
           publish_branch: gh-pages
+          # Custom domain. peaceiris force-pushes gh-pages every run, so the
+          # CNAME must be written here — a CNAME added only via the Pages UI
+          # would be wiped on the next deploy.
+          cname: ember-rss.com
           commit_message: "deploy: docs from ${{ github.sha }}"
           user_name: github-actions[bot]
           user_email: 41898282+github-actions[bot]@users.noreply.github.com
-
-      # Mirror the same built site to Tangled, which has no build step of its
-      # own — it just serves a branch. The /ember/ base path matches the
-      # Tangled sub-path site (nodnarb.tngl.sh/ember/), so the GitHub Pages
-      # artifacts work unchanged. Skipped until TANGLED_DEPLOY_KEY is set.
-      # peaceiris is GitHub-only, hence the plain force-push.
-      - name: Mirror built site to Tangled
-        if: ${{ env.TANGLED_DEPLOY_KEY != '' }}
-        env:
-          TANGLED_REMOTE: git@tangled.org:did:plc:uxktlja5en4yrm7rcyvhnm2t
-        run: |
-          mkdir -p ~/.ssh
-          printf '%s\n' "$TANGLED_DEPLOY_KEY" > ~/.ssh/tangled_deploy
-          chmod 600 ~/.ssh/tangled_deploy
-          ssh-keyscan -t ed25519 tangled.org >> ~/.ssh/known_hosts 2>/dev/null
-          export GIT_SSH_COMMAND="ssh -i ~/.ssh/tangled_deploy -o IdentitiesOnly=yes"
-          cd docs/.vitepress/dist
-          git init -q
-          git checkout -q -b gh-pages
-          git add -A
-          git -c user.name='github-actions[bot]' \
-              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
-              commit -qm "deploy: docs from ${{ github.sha }}"
-          git push -f "$TANGLED_REMOTE" HEAD:gh-pages

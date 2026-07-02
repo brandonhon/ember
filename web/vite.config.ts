@@ -5,7 +5,7 @@ const isTest = !!process.env.VITEST;
 
 // Demo build knobs (set by the `build:demo` script / pages.yml):
 //   VITE_DEMO_MODE=1          → ship the frozen, mocked-API demo
-//   VITE_DEMO_BASE=/ember/demo/ → subpath for GitHub Pages
+//   VITE_DEMO_BASE=/demo/     → subpath under the docs site (ember-rss.com/demo/)
 // Injected via `define` so they survive a plain `vite build` from the shell
 // (Vite only auto-loads VITE_* from .env files, not the process env).
 export default defineConfig({

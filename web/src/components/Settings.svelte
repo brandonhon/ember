@@ -1399,7 +1399,7 @@
               <p class="pref-hint" style="padding: 14px 0;">
                 The administrator hasn't configured an email domain
                 (<code>EMBER_EMAIL_DOMAIN</code>). See
-                <a href="https://brandonhon.github.io/ember/email-inbox" target="_blank" rel="noopener noreferrer">the setup docs</a>.
+                <a href="https://ember-rss.com/email-inbox" target="_blank" rel="noopener noreferrer">the setup docs</a>.
               </p>
             </div>
           {:else if inbox && inbox.address}
@@ -2511,7 +2511,7 @@
             </div>
             <div class="pref-row">
               <div><div class="pref-label">Documentation</div></div>
-              <a href="https://brandonhon.github.io/ember" target="_blank" rel="noopener noreferrer">brandonhon.github.io/ember</a>
+              <a href="https://ember-rss.com" target="_blank" rel="noopener noreferrer">ember-rss.com</a>
             </div>
             <div class="pref-row">
               <div><div class="pref-label">License</div></div>
