@@ -1,10 +1,10 @@
 import { defineConfig } from 'vitepress';
 
-// Base path: GitHub Pages serves under /ember/. Configured here so all
-// links + asset URLs resolve correctly when the site lands on
-// brandonhon.github.io/ember/.
+// Base path: the site is served from the apex custom domain ember-rss.com,
+// so assets resolve from the root. (When it was on brandonhon.github.io/ember/
+// this had to be '/ember/'; the CNAME moves it to root.)
 export default defineConfig({
-  base: '/ember/',
+  base: '/',
   lang: 'en-US',
   title: 'Ember',
   description: 'Self-hosted RSS reader with on-device AI summaries.',
@@ -13,21 +13,21 @@ export default defineConfig({
     // prefers-color-scheme <style> rules so a single <link> tag works in
     // both OS modes. Firefox historically ignored media-scoped favicon
     // <link>s; the in-SVG CSS sidesteps that entirely.
-    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/ember/icon.svg' }],
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/icon.svg' }],
     ['meta', { name: 'theme-color', content: '#a93b16' }],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:title', content: 'Ember' }],
     ['meta', { property: 'og:description', content: 'Self-hosted RSS reader with on-device AI summaries.' }],
     // og:image/twitter:image must be ABSOLUTE URLs — social scrapers don't
-    // resolve relative paths or the /ember/ base. social-preview.png lives in
-    // docs/public/ and is copied to the site root on build.
-    ['meta', { property: 'og:image', content: 'https://brandonhon.github.io/ember/social-preview.png' }],
-    ['meta', { property: 'og:url', content: 'https://brandonhon.github.io/ember/' }],
+    // resolve relative paths. social-preview.png lives in docs/public/ and is
+    // copied to the site root on build.
+    ['meta', { property: 'og:image', content: 'https://ember-rss.com/social-preview.png' }],
+    ['meta', { property: 'og:url', content: 'https://ember-rss.com/' }],
     ['meta', { property: 'og:site_name', content: 'Ember' }],
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
     ['meta', { name: 'twitter:title', content: 'Ember' }],
     ['meta', { name: 'twitter:description', content: 'Self-hosted RSS reader with on-device AI summaries.' }],
-    ['meta', { name: 'twitter:image', content: 'https://brandonhon.github.io/ember/social-preview.png' }],
+    ['meta', { name: 'twitter:image', content: 'https://ember-rss.com/social-preview.png' }],
   ],
   cleanUrls: true,
   lastUpdated: true,

@@ -7,7 +7,7 @@
     "dev": "vite",
     "dev:demo": "VITE_DEMO_MODE=1 vite",
     "build": "vite build",
-    "build:demo": "VITE_DEMO_MODE=1 VITE_DEMO_BASE=/ember/demo/ vite build",
+    "build:demo": "VITE_DEMO_MODE=1 VITE_DEMO_BASE=/demo/ vite build",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest",

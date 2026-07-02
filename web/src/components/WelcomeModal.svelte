@@ -44,7 +44,7 @@
       </button>
       <a
         class="docs-link"
-        href="https://brandonhon.github.io/ember/getting-started"
+        href="https://ember-rss.com/getting-started"
         target="_blank"
         rel="noopener"
         data-testid="welcome-docs"
