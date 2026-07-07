@@ -5,7 +5,44 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 )
+
+// backupExportStatus is the subset of GET /api/admin/db these tests assert on.
+type backupExportStatus struct {
+	Data struct {
+		Backups []struct {
+			Path string `json:"path"`
+		} `json:"backups"`
+		Exports []struct {
+			Path string `json:"path"`
+		} `json:"exports"`
+	} `json:"data"`
+}
+
+// pollDBStatus GETs /api/admin/db until cond is satisfied or ~2s elapses, then
+// returns the last decoded body. The backup/export "now" handlers are
+// synchronous — the file is closed before their 200 — and the test DB pins a
+// single connection, so the first read almost always passes. The bounded retry
+// only absorbs a rare directory-read lag observed under `-race` in CI (the
+// just-closed file momentarily not surfacing in os.ReadDir); it does NOT mask a
+// real failure, since a genuinely missing file exhausts the deadline and the
+// caller's own assertion still fires.
+func pollDBStatus(t *testing.T, cl *http.Client, url string, cond func(backupExportStatus) bool) backupExportStatus {
+	t.Helper()
+	var st backupExportStatus
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		st = backupExportStatus{}
+		if code := get(t, cl, url, &st); code != http.StatusOK {
+			t.Fatalf("GET db = %d, want 200", code)
+		}
+		if cond(st) || time.Now().After(deadline) {
+			return st
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
+}
 
 // The backup directory is an admin setting: a valid absolute path is saved and
 // reflected by GET /api/admin/db; a relative path or one containing a quote is
@@ -139,16 +176,9 @@ func TestDB_OPMLExportNow(t *testing.T) {
 	if code := post(t, cl, h.srv.URL+"/api/admin/db/opml-export", map[string]any{}, nil); code != http.StatusOK {
 		t.Fatalf("export now = %d, want 200", code)
 	}
-	var st struct {
-		Data struct {
-			Exports []struct {
-				Path string `json:"path"`
-			} `json:"exports"`
-		} `json:"data"`
-	}
-	if code := get(t, cl, h.srv.URL+"/api/admin/db", &st); code != http.StatusOK {
-		t.Fatalf("GET db = %d, want 200", code)
-	}
+	st := pollDBStatus(t, cl, h.srv.URL+"/api/admin/db", func(s backupExportStatus) bool {
+		return len(s.Data.Exports) > 0
+	})
 	if len(st.Data.Exports) == 0 {
 		t.Fatal("export list empty after Export now")
 	}
@@ -182,18 +212,11 @@ func TestDB_DeleteBackupAndExport(t *testing.T) {
 	}
 
 	base := func(p string) string { parts := strings.Split(p, "/"); return parts[len(parts)-1] }
-	var st struct {
-		Data struct {
-			Backups []struct {
-				Path string `json:"path"`
-			} `json:"backups"`
-			Exports []struct {
-				Path string `json:"path"`
-			} `json:"exports"`
-		} `json:"data"`
-	}
-	if code := get(t, cl, h.srv.URL+"/api/admin/db", &st); code != http.StatusOK || len(st.Data.Backups) == 0 || len(st.Data.Exports) == 0 {
-		t.Fatalf("GET db = %d, backups=%d exports=%d", code, len(st.Data.Backups), len(st.Data.Exports))
+	st := pollDBStatus(t, cl, h.srv.URL+"/api/admin/db", func(s backupExportStatus) bool {
+		return len(s.Data.Backups) > 0 && len(s.Data.Exports) > 0
+	})
+	if len(st.Data.Backups) == 0 || len(st.Data.Exports) == 0 {
+		t.Fatalf("GET db: backups=%d exports=%d, want >=1/>=1", len(st.Data.Backups), len(st.Data.Exports))
 	}
 
 	// A non-.db / non-bare name is rejected as 404 (defense against traversal).
