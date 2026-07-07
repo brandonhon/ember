@@ -265,15 +265,11 @@ func TestDB_DeleteBackupUnwritableDirReturns409(t *testing.T) {
 		t.Fatalf("backup = %d, want 200", code)
 	}
 	base := func(p string) string { parts := strings.Split(p, "/"); return parts[len(parts)-1] }
-	var st struct {
-		Data struct {
-			Backups []struct {
-				Path string `json:"path"`
-			} `json:"backups"`
-		} `json:"data"`
-	}
-	if code := get(t, cl, h.srv.URL+"/api/admin/db", &st); code != http.StatusOK || len(st.Data.Backups) == 0 {
-		t.Fatalf("GET db = %d backups=%d", code, len(st.Data.Backups))
+	st := pollDBStatus(t, cl, h.srv.URL+"/api/admin/db", func(s backupExportStatus) bool {
+		return len(s.Data.Backups) > 0
+	})
+	if len(st.Data.Backups) == 0 {
+		t.Fatalf("GET db: backups=%d, want >=1", len(st.Data.Backups))
 	}
 
 	// Revoke write on the directory so the unlink fails with EACCES. Restore it
