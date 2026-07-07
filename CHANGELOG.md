@@ -27,6 +27,11 @@ full commit-level list; this file curates the highlights and behavior changes.
   idle window (env `EMBER_SESSION_TTL` or Settings → Sessions); the 30-day
   ceiling is fixed. Session cookies remain persistent — they survive a browser
   restart, while a private/incognito window still discards them when it closes.
+- Bumped runtime dependencies `github.com/go-chi/chi/v5` 5.3.0 → 5.3.1 and
+  `github.com/pressly/goose/v3` 3.27.1 → 3.27.2. Dev tooling was also updated
+  (Vite 8.1.0 → 8.1.3, Vitest 4.1.9 → 4.1.10, `@sveltejs/vite-plugin-svelte`
+  7.1.2 → 7.1.4, `@types/node` 26.0.1 → 26.1.0) — dev-only, not bundled into the
+  Ember binary.
 
 ## [0.9.4] - 2026-06-29
 
