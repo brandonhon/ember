@@ -172,6 +172,17 @@
     }
   }
 
+  // Mark every unread article read — the server bounds this to the All-Unread
+  // window (UnreadCutoff), so it clears exactly what the All Unread view shows.
+  async function markAllUnreadRead() {
+    try {
+      await api.markAllRead({ view: "unread" });
+      await Promise.all([loadArticles($activeView), refreshSidebar()]);
+    } catch (err) {
+      console.error("markAllUnreadRead", err);
+    }
+  }
+
   const grouped = $derived.by(() => {
     const byCat = new Map<number, FeedWithCounts[]>();
     const uncat: FeedWithCounts[] = [];
@@ -761,13 +772,26 @@
       <span class="ni-label">Fresh</span>
       {#if $smartCounts.fresh > 0}<span class="badge" data-testid="badge-fresh">{$smartCounts.fresh}</span>{/if}
     </button>
-    <button class="nav-item" class:active={isActiveSmart("unread")} on:click={() => pickSmart("unread")}>
-      <span class="ni-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9" /></svg>
-      </span>
-      <span class="ni-label">All Unread</span>
-      {#if $totalUnread > 0}<span class="badge">{$totalUnread}</span>{/if}
-    </button>
+    <div class="nav-row">
+      <button class="nav-item" class:active={isActiveSmart("unread")} on:click={() => pickSmart("unread")}>
+        <span class="ni-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9" /></svg>
+        </span>
+        <span class="ni-label">All Unread</span>
+        {#if $totalUnread > 0}<span class="badge">{$totalUnread}</span>{/if}
+      </button>
+      {#if $totalUnread > 0}
+        <button
+          class="nav-action-trigger"
+          on:click={(e) => { e.stopPropagation(); markAllUnreadRead(); }}
+          aria-label="Mark all as read"
+          title="Mark all as read"
+          data-testid="mark-all-unread-read"
+        >
+          <svg viewBox="0 0 24 24" width="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" /></svg>
+        </button>
+      {/if}
+    </div>
     <button class="nav-item" class:active={isActiveSmart("starred")} on:click={() => pickSmart("starred")}>
       <span class="ni-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.9 21l1.2-6.8-5-4.9 6.9-1z" /></svg>
@@ -1202,6 +1226,31 @@
     text-align: center;
   }
   .nav-item.active .badge { background: var(--ember); color: #fff; }
+
+  /* Hover-revealed action on a smart-view row (e.g. All Unread → mark all
+     read). Mirrors .feed-actions-trigger: an opaque button that masks the
+     badge beneath it while the row is hovered. */
+  .nav-row { position: relative; }
+  .nav-row:hover .nav-action-trigger { opacity: 1; }
+  .nav-action-trigger {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    display: grid;
+    place-items: center;
+    color: var(--ink-faint);
+    opacity: 0;
+    transition: opacity 0.12s, background 0.12s;
+    background: var(--paper-2);
+    border: none;
+    cursor: pointer;
+  }
+  .nav-action-trigger:hover { background: var(--line); color: var(--ink); }
+  .nav-action-trigger:focus-visible { opacity: 1; outline: none; }
 
   .folder { margin-bottom: 2px; }
   .folder.drop-target > .folder-head {

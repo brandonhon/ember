@@ -9,6 +9,14 @@ full commit-level list; this file curates the highlights and behavior changes.
 
 ## [Unreleased]
 
+### Added
+
+- **Clear every unread article in one click.** The **All Unread** row in the
+  sidebar gains a hover **"Mark all as read"** button that marks your whole
+  unread set read — not just the articles currently loaded on screen. (The
+  article-list "Mark all read" pill still marks only what you've paged in, so
+  both affordances remain available.)
+
 ### Changed
 
 - **Staying logged in no longer kicks you out mid-session.** Sign-ins used to
