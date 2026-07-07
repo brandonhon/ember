@@ -5,13 +5,13 @@ go 1.26.4
 require (
 	github.com/SherClockHolmes/webpush-go v1.4.0
 	github.com/emersion/go-smtp v0.24.0
-	github.com/go-chi/chi/v5 v5.3.0
+	github.com/go-chi/chi/v5 v5.3.1
 	github.com/go-shiori/go-readability v0.0.0-20251205110129-5db1dc9836f0
 	github.com/go-webauthn/webauthn v0.17.4
 	github.com/gorilla/securecookie v1.1.2
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/mmcdole/gofeed v1.3.0
-	github.com/pressly/goose/v3 v3.27.1
+	github.com/pressly/goose/v3 v3.27.2
 	golang.org/x/crypto v0.53.0
 	golang.org/x/net v0.56.0
 	modernc.org/sqlite v1.53.0
