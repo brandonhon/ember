@@ -5,6 +5,7 @@ import type {
   Category,
   FeedWithCounts,
   ListArticlesQuery,
+  UpdateInfo,
   User,
 } from "./types";
 import { api, ApiError } from "./api";
@@ -22,6 +23,10 @@ export const freshWindowSeconds = writable<number>(6 * 3600);
 // or no Ollama backend). Default true so existing deployments don't
 // regress the action's visibility while /api/me is in flight.
 export const summariesEnabled = writable<boolean>(true);
+// Latest-release update check result. Populated only for admins (the server
+// gates it) once the daily check has run. Null when unavailable or disabled;
+// the About panel + update banner read from this.
+export const updateInfo = writable<UpdateInfo | null>(null);
 
 export async function refreshMe(): Promise<User | null> {
   try {
@@ -33,6 +38,7 @@ export async function refreshMe(): Promise<User | null> {
       freshWindowSeconds.set(res.data.fresh_window_seconds);
     }
     summariesEnabled.set(res.data.summaries_enabled !== false);
+    updateInfo.set(res.data.update ?? null);
     return res.data.user;
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) {

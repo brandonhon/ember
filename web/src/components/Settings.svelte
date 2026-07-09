@@ -3,6 +3,7 @@
     user,
     feverAPIKey,
     appVersion,
+    updateInfo,
     theme,
     density,
     refreshMe,
@@ -918,6 +919,7 @@
     search_window_hours: 48,
     window_hours_floor: 24,
     window_hours_ceil: 168,
+    update_check_enabled: true,
   });
   let feedBusy = $state(false);
   let feedMsg = $state("");
@@ -931,6 +933,7 @@
       feedSettings.search_window_hours = res.data.search_window_hours;
       feedSettings.window_hours_floor = res.data.window_hours_floor;
       feedSettings.window_hours_ceil = res.data.window_hours_ceil;
+      feedSettings.update_check_enabled = res.data.update_check_enabled;
     } catch (e) {
       feedErr = e instanceof ApiError ? e.message : String(e);
     }
@@ -944,10 +947,12 @@
         poll_min_interval_seconds: Number(feedSettings.poll_min_interval_seconds) || 1800,
         reading_window_hours: Number(feedSettings.reading_window_hours) || 24,
         search_window_hours: Number(feedSettings.search_window_hours) || 48,
+        update_check_enabled: feedSettings.update_check_enabled,
       });
       feedSettings.poll_min_interval_seconds = res.data.poll_min_interval_seconds;
       feedSettings.reading_window_hours = res.data.reading_window_hours;
       feedSettings.search_window_hours = res.data.search_window_hours;
+      feedSettings.update_check_enabled = res.data.update_check_enabled;
       feedMsg = "Saved";
     } catch (e) {
       feedErr = e instanceof ApiError ? e.message : String(e);
@@ -2470,6 +2475,16 @@
                 <span class="pref-hint">hours</span>
               </div>
             </label>
+            <label class="pref-row">
+              <div>
+                <div class="pref-label">Check for updates</div>
+                <div class="pref-hint">Once a day, ask GitHub whether a newer Ember release exists and show admins a hint. No data about your instance is sent. Turn off to stop the outbound call.</div>
+              </div>
+              <span class="switch">
+                <input type="checkbox" bind:checked={feedSettings.update_check_enabled} data-testid="update-check-enabled" />
+                <span class="track" aria-hidden="true"></span>
+              </span>
+            </label>
             {#if feedMsg}<p class="ok" data-testid="feed-settings-msg">{feedMsg}</p>{/if}
             {#if feedErr}<p class="error" data-testid="feed-settings-err">{feedErr}</p>{/if}
             <div class="actions">
@@ -2505,6 +2520,25 @@
                 </div>
               </div>
             </div>
+            {#if $updateInfo?.available}
+              <div class="pref-row">
+                <div>
+                  <div class="pref-label">Update available</div>
+                  <div class="pref-hint">Version {$updateInfo.latest} has been released.</div>
+                </div>
+                <a
+                  href={$updateInfo.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-testid="about-update-link"
+                >Release notes</a>
+              </div>
+            {:else if $updateInfo}
+              <div class="pref-row">
+                <div><div class="pref-label">Updates</div></div>
+                <span class="hint" data-testid="about-uptodate">Up to date</span>
+              </div>
+            {/if}
             <div class="pref-row">
               <div><div class="pref-label">Project</div></div>
               <a href="https://github.com/brandonhon/ember" target="_blank" rel="noopener noreferrer">github.com/brandonhon/ember</a>

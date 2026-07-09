@@ -16,6 +16,13 @@ full commit-level list; this file curates the highlights and behavior changes.
   unread set read — not just the articles currently loaded on screen. (The
   article-list "Mark all read" pill still marks only what you've paged in, so
   both affordances remain available.)
+- **Update notifications.** Ember now checks once a day whether a newer release
+  is out and shows admins an **"update available"** hint in Settings → About
+  plus a dismissible banner (dismissal is remembered per version). The check is
+  a plain, unauthenticated read of the public GitHub releases API — no data
+  about your instance is ever sent, and only admins see the hint. Turn it off
+  with `EMBER_DISABLE_UPDATE_CHECK=1` or the **Check for updates** toggle in
+  Settings.
 
 ### Changed
 

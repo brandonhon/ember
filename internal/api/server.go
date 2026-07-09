@@ -14,6 +14,7 @@ import (
 	"github.com/brandonhon/ember/internal/store"
 	"github.com/brandonhon/ember/internal/summarize"
 	"github.com/brandonhon/ember/internal/ttrss"
+	"github.com/brandonhon/ember/internal/updatecheck"
 )
 
 // PollerRefresher is the subset of *poller.Poller the API uses (lets us avoid
@@ -31,6 +32,13 @@ type PollerRefresher interface {
 // counters without depending on the poller package directly.
 type MetricsSnapshotter interface {
 	MetricsSnapshot() map[string]int64
+}
+
+// UpdateStatus is the subset of *updatecheck.Checker the API reads — the cached
+// latest-release result. ok is false until the first check completes or when
+// the check is disabled. Injecting it as an interface lets tests stub it.
+type UpdateStatus interface {
+	Latest() (updatecheck.Result, bool)
 }
 
 // Dependencies wires the API.
@@ -93,6 +101,13 @@ type Dependencies struct {
 	// SessionKey is the EMBER_SESSION_KEY. Used to derive the image-proxy
 	// signing key so /api/img only fetches URLs ember itself signed.
 	SessionKey string
+	// UpdateChecker holds the cached latest-release result from GitHub. Nil
+	// disables the update hint; /api/me then omits the "update" object. Only
+	// admins see the result (see handleMe).
+	UpdateChecker UpdateStatus
+	// UpdateCheckEnabledFallback is the env-derived default (the negation of
+	// EMBER_DISABLE_UPDATE_CHECK) for the update_check_enabled admin setting.
+	UpdateCheckEnabledFallback bool
 
 	// img signs + serves the same-origin image proxy. Built in NewRouter
 	// from SessionKey; never set by callers.

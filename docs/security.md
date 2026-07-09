@@ -71,6 +71,16 @@ Outbound mail (digests + the test message) never sends credentials or message bo
 - `EMBER_SMTP_STARTTLS=1` (default) **requires** STARTTLS — if the server doesn't advertise it (or a MitM strips it from the EHLO response), the send fails rather than downgrading to plaintext. The TLS handshake pins `MinVersion: TLS 1.2` and verifies the server certificate.
 - `EMBER_SMTP_STARTTLS=0` (plain SMTP) is permitted **only** to a loopback host (`localhost` / `127.0.0.1` / `::1`) — a local relay or sidecar. Plain SMTP to any remote host is refused before the connection opens.
 
+## Update check
+
+Ember can tell admins when a newer release exists. The mechanism is deliberately minimal and privacy-preserving:
+
+- **No telemetry.** The only outbound call is an unauthenticated `GET https://api.github.com/repos/brandonhon/ember/releases/latest`. Nothing about your instance — no version ping, no user data, no identifier — is sent. The request carries a static `User-Agent` and reads only the latest tag, release URL, and publish date.
+- **Fixed host.** The target is a hardcoded GitHub API URL, so the SSRF surface is nil; there is no user-controlled address to validate.
+- **Admin-only.** The cached result is surfaced through `/api/me` **only** to `is_admin` users (updating the container is an operator action). Non-admin readers never receive it.
+- **Release builds only, once a day.** The check runs only on a clean tagged build (dev/dirty builds skip it entirely) and polls at most once every 24 h, far under GitHub's 60 req/hr/IP unauthenticated limit. A failed check logs and keeps the previous result — it never blocks the app.
+- **Opt-out.** Set `EMBER_DISABLE_UPDATE_CHECK=1`, or toggle **Settings → Check for updates** off at runtime, to stop the outbound call.
+
 ## Body limits
 
 - `decodeJSON` wraps the body in `http.MaxBytesReader` capped at **1 MiB**.

@@ -10,6 +10,7 @@ caddy ─┬─> ember (Go binary)
        │     ├─ Background poller (per-feed adaptive ticker)
        │     ├─ Summary worker pool (Ollama HTTP client)
        │     ├─ DB maintenance goroutine (retention prune / backup / cleanup / OPML / hourly)
+       │     ├─ Update-check goroutine (daily GitHub-releases poll; release builds only)
        │     └─ Cluster backfill goroutine (one-time at startup; idempotent)
        │
        └─> SPA (embedded static files served by ember)
@@ -37,6 +38,7 @@ internal/poller/              adaptive scheduler, fetch dispatch, summary queue
 internal/store/               SQLite CRUD, FTS5 search, app_settings KV, dbops, passkeys, digests, cluster backfill + sibling lookup
 internal/summarize/           Summarizer interface + Ollama implementation + noop for tests
 internal/sysinfo/             host-detection (RAM/CPU/GPU) + model recommendation
+internal/updatecheck/         daily GitHub-releases poll + semver compare; caches the latest tag for the admin-only /api/me hint
 internal/urlcheck/            SSRF block (scheme allowlist + private-IP + service-port refusal)
 internal/web/                 embed.FS handler for the SPA
 web/                          Svelte 5 (runes) source; built via Vite, copied to internal/web/dist
@@ -177,7 +179,7 @@ Only the `shared` view (explicit one-off share) and board views (explicit curati
 - `DELETE /api/admin/db/backups/{name}` / `…/exports/{name}` — delete one backup or OPML export. `{name}` is validated to a bare basename with the expected extension, so it can only target a file inside the configured directory (no path traversal).
 - `POST /api/feeds/resummarize-all` — re-process every article after a prompt change.
 - `GET /api/admin/session` / `POST /api/admin/session/ttl` — server-wide session cookie lifetime.
-- `GET /api/admin/settings` / `PATCH /api/admin/settings` — SMTP relay config + initial-backlog window. Overlays env-derived defaults at runtime; digest sender re-resolves every tick.
+- `GET /api/admin/settings` / `PATCH /api/admin/settings` — SMTP relay config + initial-backlog window + `update_check_enabled` toggle. Overlays env-derived defaults at runtime; digest sender re-resolves every tick.
 - `POST /api/admin/settings/email-test` — send a one-off diagnostic message through the live SMTP config.
 
 Auth-required (not admin-only):

@@ -38,6 +38,9 @@ type adminSettings struct {
 	SearchWindowHours  int `json:"search_window_hours"`
 	WindowHoursFloor   int `json:"window_hours_floor"`
 	WindowHoursCeil    int `json:"window_hours_ceil"`
+	// UpdateCheckEnabled reflects whether the background GitHub-releases update
+	// check runs. Defaults to the negation of EMBER_DISABLE_UPDATE_CHECK.
+	UpdateCheckEnabled bool `json:"update_check_enabled"`
 }
 
 func (d *Dependencies) handleGetAdminSettings(w http.ResponseWriter, r *http.Request) {
@@ -60,6 +63,7 @@ func (d *Dependencies) handleGetAdminSettings(w http.ResponseWriter, r *http.Req
 	out.SearchWindowHours = d.Store.ResolveSearchWindowHours(ctx, store.DefaultSearchWindowHours)
 	out.WindowHoursFloor = store.WindowHoursFloor
 	out.WindowHoursCeil = store.WindowHoursCeil
+	out.UpdateCheckEnabled = d.Store.ResolveUpdateCheckEnabled(ctx, d.UpdateCheckEnabledFallback)
 	writeData(w, http.StatusOK, out, nil)
 }
 
@@ -75,10 +79,11 @@ type setAdminSettingsReq struct {
 		From          *string `json:"from,omitempty"`
 		StartTLS      *bool   `json:"starttls,omitempty"`
 	} `json:"smtp,omitempty"`
-	InitialBacklogHours    *int `json:"initial_backlog_hours,omitempty"`
-	PollMinIntervalSeconds *int `json:"poll_min_interval_seconds,omitempty"`
-	ReadingWindowHours     *int `json:"reading_window_hours,omitempty"`
-	SearchWindowHours      *int `json:"search_window_hours,omitempty"`
+	InitialBacklogHours    *int  `json:"initial_backlog_hours,omitempty"`
+	PollMinIntervalSeconds *int  `json:"poll_min_interval_seconds,omitempty"`
+	ReadingWindowHours     *int  `json:"reading_window_hours,omitempty"`
+	SearchWindowHours      *int  `json:"search_window_hours,omitempty"`
+	UpdateCheckEnabled     *bool `json:"update_check_enabled,omitempty"`
 }
 
 func (d *Dependencies) handleSetAdminSettings(w http.ResponseWriter, r *http.Request) {
@@ -147,6 +152,12 @@ func (d *Dependencies) handleSetAdminSettings(w http.ResponseWriter, r *http.Req
 			return
 		}
 		if err := d.Store.PutSearchWindowHours(ctx, n); err != nil {
+			internalError(w, "internal", err)
+			return
+		}
+	}
+	if req.UpdateCheckEnabled != nil {
+		if err := d.Store.PutUpdateCheckEnabled(ctx, *req.UpdateCheckEnabled); err != nil {
 			internalError(w, "internal", err)
 			return
 		}

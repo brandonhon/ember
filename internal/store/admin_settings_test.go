@@ -126,3 +126,32 @@ func TestResolveBacklogHours_DefaultsAndOverride(t *testing.T) {
 		t.Errorf("negative gets coerced to zero; got %d want 0", got)
 	}
 }
+
+func TestResolveUpdateCheckEnabled(t *testing.T) {
+	s := NewTest(t)
+	ctx := context.Background()
+
+	// Unset → fallback (either direction).
+	if got := s.ResolveUpdateCheckEnabled(ctx, true); !got {
+		t.Error("unset with fallback=true should be true")
+	}
+	if got := s.ResolveUpdateCheckEnabled(ctx, false); got {
+		t.Error("unset with fallback=false should be false")
+	}
+
+	// Explicit off overrides a true fallback.
+	if err := s.PutUpdateCheckEnabled(ctx, false); err != nil {
+		t.Fatal(err)
+	}
+	if got := s.ResolveUpdateCheckEnabled(ctx, true); got {
+		t.Error("explicit off should win over fallback=true")
+	}
+
+	// Explicit on overrides a false fallback.
+	if err := s.PutUpdateCheckEnabled(ctx, true); err != nil {
+		t.Fatal(err)
+	}
+	if got := s.ResolveUpdateCheckEnabled(ctx, false); !got {
+		t.Error("explicit on should win over fallback=false")
+	}
+}
