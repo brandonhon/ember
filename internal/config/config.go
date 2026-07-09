@@ -30,7 +30,9 @@ type Config struct {
 	// admins can also change it at runtime in Settings (app_settings overrides
 	// this). Validated to [5m, 24h].
 	PollMinInterval time.Duration
-	// SessionTTL is the lifetime of a freshly-issued session cookie. Defaults
+	// SessionTTL is the session idle timeout: the maximum gap between requests
+	// before a session expires. Active sessions slide forward on each request,
+	// capped at 30 days from login (auth.DefaultMaxSessionLifetime). Defaults
 	// to 24h. Override via EMBER_SESSION_TTL (Go duration: e.g. 30m, 12h, 7d
 	// not supported — use 168h for a week).
 	SessionTTL time.Duration
@@ -42,6 +44,10 @@ type Config struct {
 	// DisableImages drops image_url at ingest, so no main image gets stored or
 	// shown. Per-user UI prefs further hide images at display time.
 	DisableImages bool
+	// DisableUpdateCheck turns off the background GitHub-releases update check.
+	// It sets the boot-time default for the update_check_enabled admin setting,
+	// which an admin can still toggle at runtime via Settings.
+	DisableUpdateCheck bool
 	// AllowPrivateURLs disables the SSRF block on outbound HTTP fetches so a
 	// homelab can subscribe to feeds on its LAN. Default false (production).
 	AllowPrivateURLs bool
@@ -236,6 +242,14 @@ func loadFrom(get func(string) string) (Config, error) {
 			errs = append(errs, fmt.Sprintf("EMBER_DISABLE_IMAGES %v", err))
 		} else {
 			cfg.DisableImages = on
+		}
+	}
+	if v := get("EMBER_DISABLE_UPDATE_CHECK"); v != "" {
+		on, err := parseBool(v)
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("EMBER_DISABLE_UPDATE_CHECK %v", err))
+		} else {
+			cfg.DisableUpdateCheck = on
 		}
 	}
 	if v := get("EMBER_PUBLIC_URL"); v != "" {

@@ -498,6 +498,9 @@ export interface AdminSettings {
   search_window_hours: number;
   window_hours_floor: number;
   window_hours_ceil: number;
+  // Whether the daily GitHub-releases update check runs. Admins see an "update
+  // available" hint in About + a banner when a newer release exists.
+  update_check_enabled: boolean;
 }
 
 // AdminSettingsPatch mirrors the backend's pointer-bag: only fields included
@@ -516,6 +519,7 @@ export interface AdminSettingsPatch {
   poll_min_interval_seconds?: number;
   reading_window_hours?: number;
   search_window_hours?: number;
+  update_check_enabled?: boolean;
 }
 
 export interface TopFeed {

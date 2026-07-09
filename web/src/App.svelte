@@ -32,6 +32,7 @@
   import ShortcutHelp from "./components/ShortcutHelp.svelte";
   import Settings from "./components/Settings.svelte";
   import WelcomeModal from "./components/WelcomeModal.svelte";
+  import UpdateBanner from "./components/UpdateBanner.svelte";
   import DemoBanner from "./components/DemoBanner.svelte";
   import DemoNotice from "./components/DemoNotice.svelte";
   import { DEMO } from "./demo/demo";
@@ -350,6 +351,7 @@
       showBack={isMobile && mobilePane === "reader"}
       onBack={mobileBack}
     />
+    <UpdateBanner />
     <div
       class="panes"
       class:sidebar-collapsed={$sidebarCollapsed}

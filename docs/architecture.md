@@ -10,6 +10,7 @@ caddy ─┬─> ember (Go binary)
        │     ├─ Background poller (per-feed adaptive ticker)
        │     ├─ Summary worker pool (Ollama HTTP client)
        │     ├─ DB maintenance goroutine (retention prune / backup / cleanup / OPML / hourly)
+       │     ├─ Update-check goroutine (daily GitHub-releases poll; release builds only)
        │     └─ Cluster backfill goroutine (one-time at startup; idempotent)
        │
        └─> SPA (embedded static files served by ember)
@@ -37,6 +38,7 @@ internal/poller/              adaptive scheduler, fetch dispatch, summary queue
 internal/store/               SQLite CRUD, FTS5 search, app_settings KV, dbops, passkeys, digests, cluster backfill + sibling lookup
 internal/summarize/           Summarizer interface + Ollama implementation + noop for tests
 internal/sysinfo/             host-detection (RAM/CPU/GPU) + model recommendation
+internal/updatecheck/         daily GitHub-releases poll + semver compare; caches the latest tag for the admin-only /api/me hint
 internal/urlcheck/            SSRF block (scheme allowlist + private-IP + service-port refusal)
 internal/web/                 embed.FS handler for the SPA
 web/                          Svelte 5 (runes) source; built via Vite, copied to internal/web/dist
@@ -163,7 +165,7 @@ Only the `shared` view (explicit one-off share) and board views (explicit curati
 - Typed fetch client in `web/src/lib/api.ts` (throws `ApiError`).
 - Stores in `web/src/lib/stores.ts` for user, feeds, categories, boards, articles, themes, branding, new-article counter, etc.
 - 15s auto-refresh poll while the tab is visible; SSE not used — REST polling is simpler and fits the cadence. In the **Fresh** and **All Unread** views the auto-poll is *non-disruptive*: newly-arrived articles are held in a backlog (`pendingNewIds` in `stores.ts`) and counted once rather than injected into the list under a scrolling reader. They page in on the next full load — `loadArticles` (which `clearNewArticleBacklog` resets) — e.g. the refill after "Mark all read". The explicit "Refresh feeds now" control calls `pollForNewArticles({ immediate: true })` to bypass the backlog; all other views merge new articles immediately.
-- **Mark all read** in Fresh / All Unread drops the read cards and pages in the next unread batch, with a one-shot **grace** for the article currently open: that card is kept (greyed via `.story.read`, still in `articles.items` so the reader pane keeps it) so you can finish reading; the next "Mark all read" hides it. Tracked by a `graceUsedId` ledger because opening an article auto-marks it read, so `is_read` can't distinguish the first click. Article-body links are rewritten to `target="_blank" rel="noopener noreferrer"` after render (`lib/links.forceNewTabLinks`) so they open in a new tab.
+- **Mark all read** in Fresh / All Unread drops the read cards and pages in the next unread batch, with a one-shot **grace** for the article currently open: that card is kept (greyed via `.story.read`, still in `articles.items` so the reader pane keeps it) so you can finish reading; the next "Mark all read" hides it. Tracked by a `graceUsedId` ledger because opening an article auto-marks it read, so `is_read` can't distinguish the first click. This top-bar pill marks only the *loaded* cards. The sidebar's **All Unread** row also has a hover **"Mark all as read"** action (`markAllUnreadRead` in `Sidebar.svelte`) that instead POSTs `{ view: "unread" }` to `mark-all-read`, clearing the *entire* unread set server-side (bounded by `UnreadCutoff`) regardless of what's paged in. Article-body links are rewritten to `target="_blank" rel="noopener noreferrer"` after render (`lib/links.forceNewTabLinks`) so they open in a new tab.
 - Service worker (`web/public/sw.js`) caches assets immutably and falls back to cached shell when offline.
 
 ## Admin endpoints (admin-only)
@@ -177,7 +179,7 @@ Only the `shared` view (explicit one-off share) and board views (explicit curati
 - `DELETE /api/admin/db/backups/{name}` / `…/exports/{name}` — delete one backup or OPML export. `{name}` is validated to a bare basename with the expected extension, so it can only target a file inside the configured directory (no path traversal).
 - `POST /api/feeds/resummarize-all` — re-process every article after a prompt change.
 - `GET /api/admin/session` / `POST /api/admin/session/ttl` — server-wide session cookie lifetime.
-- `GET /api/admin/settings` / `PATCH /api/admin/settings` — SMTP relay config + initial-backlog window. Overlays env-derived defaults at runtime; digest sender re-resolves every tick.
+- `GET /api/admin/settings` / `PATCH /api/admin/settings` — SMTP relay config + initial-backlog window + `update_check_enabled` toggle. Overlays env-derived defaults at runtime; digest sender re-resolves every tick.
 - `POST /api/admin/settings/email-test` — send a one-off diagnostic message through the live SMTP config.
 
 Auth-required (not admin-only):

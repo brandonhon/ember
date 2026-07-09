@@ -12,6 +12,7 @@ import (
 
 	"github.com/brandonhon/ember/internal/auth"
 	"github.com/brandonhon/ember/internal/store"
+	"github.com/brandonhon/ember/internal/updatecheck"
 )
 
 const maxSettingsJSON = 64 << 10 // 64 KiB
@@ -80,6 +81,10 @@ type meResponse struct {
 	// hide the per-feed "Resummarize" action that would otherwise enqueue
 	// work for a worker pool that isn't running.
 	SummariesEnabled bool `json:"summaries_enabled"`
+	// Update carries the latest-release check result, populated only for admin
+	// users (updating the image is an operator action). Nil/omitted when the
+	// check is disabled, hasn't completed, or the user isn't an admin.
+	Update *updatecheck.Result `json:"update,omitempty"`
 }
 
 // Version is populated by main.go at startup so /api/me can surface it.
@@ -116,6 +121,12 @@ func (d *Dependencies) handleMe(w http.ResponseWriter, r *http.Request) {
 		Version:            Version,
 		FreshWindowSeconds: int64(fw.Seconds()),
 		SummariesEnabled:   d.Ollama != nil,
+	}
+	// Surface the update hint to admins only; readers can't act on it.
+	if u.IsAdmin && d.UpdateChecker != nil {
+		if res, ok := d.UpdateChecker.Latest(); ok {
+			resp.Update = &res
+		}
 	}
 	writeData(w, http.StatusOK, resp, nil)
 }

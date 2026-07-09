@@ -100,7 +100,7 @@ func TestSession_CreateVerifyDestroy(t *testing.T) {
 	// Verify on a new request carrying that cookie.
 	r2 := httptest.NewRequest(http.MethodGet, "/", nil)
 	r2.AddCookie(cookie)
-	got, err := a.VerifySession(ctx, r2)
+	got, err := a.VerifySession(ctx, nil, r2)
 	if err != nil {
 		t.Fatalf("VerifySession: %v", err)
 	}
@@ -114,7 +114,7 @@ func TestSession_CreateVerifyDestroy(t *testing.T) {
 		t.Fatal(err)
 	}
 	// After destroy, verify must fail.
-	if _, err := a.VerifySession(ctx, r2); err == nil {
+	if _, err := a.VerifySession(ctx, nil, r2); err == nil {
 		t.Error("session still valid after destroy")
 	}
 }
@@ -141,7 +141,7 @@ func TestSession_TamperedCookieRejected(t *testing.T) {
 
 	r2 := httptest.NewRequest(http.MethodGet, "/", nil)
 	r2.AddCookie(&tampered)
-	if _, err := a.VerifySession(ctx, r2); err == nil {
+	if _, err := a.VerifySession(ctx, nil, r2); err == nil {
 		t.Error("tampered cookie was accepted")
 	}
 }
@@ -166,8 +166,137 @@ func TestSession_ExpiredRejected(t *testing.T) {
 	a.Now = func() time.Time { return time.Now().Add(a.EffectiveSessionTTL() + time.Hour) }
 	r2 := httptest.NewRequest(http.MethodGet, "/", nil)
 	r2.AddCookie(cookie)
-	if _, err := a.VerifySession(ctx, r2); err == nil {
+	if _, err := a.VerifySession(ctx, nil, r2); err == nil {
 		t.Error("expired session accepted")
+	}
+}
+
+// sessionExpiry reads the stored expires_at for a session id.
+func sessionExpiry(t *testing.T, a *Auth, id string) int64 {
+	t.Helper()
+	var got int64
+	if err := a.Store.DB.QueryRowContext(context.Background(),
+		`SELECT expires_at FROM sessions WHERE id = ?`, id).Scan(&got); err != nil {
+		t.Fatalf("read expiry: %v", err)
+	}
+	return got
+}
+
+// TestSession_SlidesWhenActive verifies an active request past the idle
+// window's halfway mark extends expires_at and re-issues the cookie.
+func TestSession_SlidesWhenActive(t *testing.T) {
+	a := newAuth(t)
+	ctx := context.Background()
+	u, _ := a.Store.CreateUser(ctx, models.User{Username: "alice", PasswordHash: "x"})
+
+	base := time.Now()
+	a.Now = func() time.Time { return base }
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	sess, err := a.CreateSession(ctx, w, r, u.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cookie := extractCookie(t, w)
+	origExpiry := sess.ExpiresAt
+
+	// 20h in — past the 12h halfway mark of the 24h idle window.
+	a.Now = func() time.Time { return base.Add(20 * time.Hour) }
+	w2 := httptest.NewRecorder()
+	r2 := httptest.NewRequest(http.MethodGet, "/", nil)
+	r2.AddCookie(cookie)
+	if _, err := a.VerifySession(ctx, w2, r2); err != nil {
+		t.Fatalf("verify: %v", err)
+	}
+
+	got := sessionExpiry(t, a, sess.ID)
+	want := base.Add(20 * time.Hour).Add(24 * time.Hour).Unix()
+	if got != want {
+		t.Errorf("expires_at = %d, want %d (orig %d)", got, want, origExpiry)
+	}
+	if got <= origExpiry {
+		t.Errorf("expiry not extended: %d <= %d", got, origExpiry)
+	}
+	if extractCookie(t, w2) == nil {
+		t.Error("renewal did not re-issue cookie")
+	}
+}
+
+// TestSession_NoRenewBeforeHalfway verifies the write-throttle: a request in
+// the first half of the idle window neither touches the DB nor re-issues a
+// cookie.
+func TestSession_NoRenewBeforeHalfway(t *testing.T) {
+	a := newAuth(t)
+	ctx := context.Background()
+	u, _ := a.Store.CreateUser(ctx, models.User{Username: "alice", PasswordHash: "x"})
+
+	base := time.Now()
+	a.Now = func() time.Time { return base }
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	sess, err := a.CreateSession(ctx, w, r, u.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cookie := extractCookie(t, w)
+	origExpiry := sess.ExpiresAt
+
+	// 6h in — before the 12h halfway mark.
+	a.Now = func() time.Time { return base.Add(6 * time.Hour) }
+	w2 := httptest.NewRecorder()
+	r2 := httptest.NewRequest(http.MethodGet, "/", nil)
+	r2.AddCookie(cookie)
+	if _, err := a.VerifySession(ctx, w2, r2); err != nil {
+		t.Fatalf("verify: %v", err)
+	}
+
+	if got := sessionExpiry(t, a, sess.ID); got != origExpiry {
+		t.Errorf("expiry changed before halfway: %d != %d", got, origExpiry)
+	}
+	if extractCookie(t, w2) != nil {
+		t.Error("cookie re-issued before halfway")
+	}
+}
+
+// TestSession_RenewalCappedAtAbsoluteLifetime verifies renewal never pushes
+// expires_at past created_at + DefaultMaxSessionLifetime, even for an active
+// session, forcing re-login after 30 days.
+func TestSession_RenewalCappedAtAbsoluteLifetime(t *testing.T) {
+	a := newAuth(t)
+	ctx := context.Background()
+	u, _ := a.Store.CreateUser(ctx, models.User{Username: "alice", PasswordHash: "x"})
+
+	base := time.Now()
+	a.Now = func() time.Time { return base }
+
+	// A session created 29d20h ago whose idle deadline is 1h out (past the
+	// halfway mark → eligible). Absolute cap = created + 30d = base + 4h.
+	created := base.Add(-(DefaultMaxSessionLifetime - 4*time.Hour)).Unix()
+	expires := base.Add(1 * time.Hour).Unix()
+	const sessionID = "capme"
+	if _, err := a.Store.DB.ExecContext(ctx,
+		`INSERT INTO sessions (id, user_id, created_at, expires_at, user_agent) VALUES (?,?,?,?,'')`,
+		sessionID, u.ID, created, expires); err != nil {
+		t.Fatal(err)
+	}
+	enc, err := a.Cookie.Encode(CookieName, sessionID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	r.AddCookie(&http.Cookie{Name: CookieName, Value: enc})
+	if _, err := a.VerifySession(ctx, httptest.NewRecorder(), r); err != nil {
+		t.Fatalf("verify: %v", err)
+	}
+
+	got := sessionExpiry(t, a, sessionID)
+	wantCap := created + int64(DefaultMaxSessionLifetime.Seconds())
+	if got != wantCap {
+		t.Errorf("expires_at = %d, want absolute cap %d", got, wantCap)
+	}
+	// A naive now+idle renewal would land at base+24h; the cap must win.
+	if got >= base.Add(24*time.Hour).Unix() {
+		t.Errorf("renewal exceeded absolute cap: %d", got)
 	}
 }
 

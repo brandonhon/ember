@@ -9,6 +9,47 @@ full commit-level list; this file curates the highlights and behavior changes.
 
 ## [Unreleased]
 
+## [0.9.5] - 2026-07-09
+
+### Added
+
+- **Clear every unread article in one click.** The **All Unread** row in the
+  sidebar gains a hover **"Mark all as read"** button that marks your whole
+  unread set read — not just the articles currently loaded on screen. (The
+  article-list "Mark all read" pill still marks only what you've paged in, so
+  both affordances remain available.)
+- **Update notifications.** Ember now checks once a day whether a newer release
+  is out and shows admins an **"update available"** hint in Settings → About
+  plus a dismissible banner (dismissal is remembered per version). The check is
+  a plain, unauthenticated read of the public GitHub releases API — no data
+  about your instance is ever sent, and only admins see the hint. Turn it off
+  with `EMBER_DISABLE_UPDATE_CHECK=1` or the **Check for updates** toggle in
+  Settings.
+
+### Changed
+
+- **Staying logged in no longer kicks you out mid-session.** Sign-ins used to
+  expire a fixed 24 hours after login even if you were actively reading. The
+  24-hour window is now an *idle timeout* that slides forward every time you use
+  Ember, so an active session keeps itself alive — up to 30 days from the
+  original sign-in, after which you'll re-authenticate. Admins can still tune the
+  idle window (env `EMBER_SESSION_TTL` or Settings → Sessions); the 30-day
+  ceiling is fixed. Session cookies remain persistent — they survive a browser
+  restart, while a private/incognito window still discards them when it closes.
+- Bumped runtime dependencies: `github.com/go-chi/chi/v5` 5.3.0 → 5.3.1,
+  `github.com/pressly/goose/v3` 3.27.1 → 3.27.2, and the Svelte SPA runtime
+  5.56.3 → 5.56.4. Build/dev tooling was also updated (Vite 8.0.16 → 8.1.3,
+  Vitest 4.1.9 → 4.1.10, `@sveltejs/vite-plugin-svelte` 7.1.2 → 7.1.4,
+  svelte-check 4.6.0 → 4.7.1, `@types/node` 26.0.0 → 26.1.0, Playwright) — these
+  are dev-only, not bundled into the Ember binary.
+
+### Security
+
+- Bumped the Go toolchain to 1.26.5 to pick up the standard-library fix for
+  `GO-2026-5856` (an Encrypted Client Hello privacy leak in `crypto/tls`). Ember
+  doesn't use ECH, but the bump keeps the bundled runtime current with the Go
+  security release.
+
 ## [0.9.4] - 2026-06-29
 
 ### Added
@@ -295,7 +336,8 @@ TT-RSS full migration (subscriptions, folders, starred/archived) and fail-fast
 admin bootstrap. See the
 [v0.8.7 release](https://github.com/brandonhon/ember/releases/tag/v0.8.7).
 
-[Unreleased]: https://github.com/brandonhon/ember/compare/v0.9.4...develop
+[Unreleased]: https://github.com/brandonhon/ember/compare/v0.9.5...develop
+[0.9.5]: https://github.com/brandonhon/ember/compare/v0.9.4...v0.9.5
 [0.9.4]: https://github.com/brandonhon/ember/compare/v0.9.3...v0.9.4
 [0.9.3]: https://github.com/brandonhon/ember/compare/v0.9.2...v0.9.3
 [0.9.2]: https://github.com/brandonhon/ember/compare/v0.9.1...v0.9.2
