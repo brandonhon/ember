@@ -3,8 +3,9 @@ name: Mirror branches to Tangled
 # GitHub PR merges happen server-side and don't propagate to the Tangled
 # remote on their own, so main/develop drift out of sync. This mirrors the
 # pushed branch to Tangled on every push, keeping the two hosts aligned
-# without a manual `git push`. (gh-pages is mirrored separately by pages.yml;
-# tags are intentionally GitHub-only.)
+# without a manual `git push`. (gh-pages is GitHub-only — it carries the
+# built docs site, which the retired Tangled site no longer serves; tags
+# are also intentionally GitHub-only.)
 on:
   push:
     branches: [main, develop]

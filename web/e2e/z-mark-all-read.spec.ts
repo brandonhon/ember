@@ -73,6 +73,21 @@ test.describe("mark all read per view", () => {
     }
   });
 
+  test("All Unread: the sidebar row action clears the whole unread set", async ({ page }) => {
+    const row = page.locator(".nav-row", { hasText: "All Unread" });
+    await row.locator(".nav-item").click();
+    await expect(stories(page).first()).toBeVisible();
+
+    // Unlike the top-bar pill (loaded cards only), the sidebar action POSTs
+    // { view: "unread" } which marks the entire unread set read server-side, so
+    // All Unread — which lists only unread — empties and its badge disappears.
+    await row.hover();
+    await row.getByTestId("mark-all-unread-read").click();
+
+    await expect(stories(page)).toHaveCount(0);
+    await expect(row.getByTestId("mark-all-unread-read")).toHaveCount(0);
+  });
+
   test("Fresh: the article being read greys out on mark-all-read, then hides on the next click", async ({
     page,
   }) => {

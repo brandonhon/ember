@@ -32,6 +32,7 @@ import (
 	"github.com/brandonhon/ember/internal/summarize"
 	"github.com/brandonhon/ember/internal/sysinfo"
 	"github.com/brandonhon/ember/internal/ttrss"
+	"github.com/brandonhon/ember/internal/updatecheck"
 	"github.com/brandonhon/ember/internal/urlcheck"
 	"github.com/brandonhon/ember/internal/web"
 )
@@ -362,6 +363,14 @@ func run() error {
 		}()
 	}
 
+	// The GitHub-releases update checker is only created for a clean tagged
+	// build; nil otherwise, which makes /api/me omit the update hint. Started
+	// below alongside the other background workers.
+	var updChecker *updatecheck.Checker
+	if updatecheck.IsReleaseVersion(version) {
+		updChecker = updatecheck.New(version, "brandonhon/ember", logger.With("component", "update-check"))
+	}
+
 	// Background poller. Skipped in test mode — articles are pre-seeded and
 	// the fake feed URL doesn't resolve.
 	if !cfg.TestMode {
@@ -413,6 +422,17 @@ func run() error {
 				}
 			}
 		})
+		// Background update check. Only meaningful for a clean tagged build —
+		// dev/dirty builds have nothing to compare against. The enabled callback
+		// resolves the live setting each cycle so an admin can toggle it at
+		// runtime; EMBER_DISABLE_UPDATE_CHECK sets the boot-time default.
+		if updChecker != nil {
+			runBG(func() {
+				updChecker.Run(ctx, updatecheck.DefaultInterval, func() bool {
+					return st.ResolveUpdateCheckEnabled(ctx, !cfg.DisableUpdateCheck)
+				})
+			})
+		}
 	}
 
 	// Embedded static SPA.
@@ -421,7 +441,7 @@ func run() error {
 		logger.Warn("embedded SPA unavailable; serving without it", "err", err)
 	}
 
-	router := api.NewRouter(api.Dependencies{
+	deps := api.Dependencies{
 		Store: st, Auth: a, Poller: p, Metrics: p, OPML: op, TTRSS: tt,
 		StaticH: staticH, TestMode: cfg.TestMode, Ollama: ollamaSum,
 		WebAuthn: webAuthn,
@@ -463,7 +483,17 @@ func run() error {
 		// the test-mode fallback applied), not cfg.SessionKey — otherwise the
 		// proxy would key its HMAC on an empty string in test mode.
 		SessionKey: sessionKey,
-	})
+		// The fallback mirrors the env opt-out so the settings echo reads
+		// correctly before any admin override.
+		UpdateCheckEnabledFallback: !cfg.DisableUpdateCheck,
+	}
+	// Set the update checker only when one exists (dev/dirty builds have none).
+	// Assigning a typed-nil *Checker to the interface field would make it
+	// non-nil and panic on the nil-pointer Latest() call.
+	if updChecker != nil {
+		deps.UpdateChecker = updChecker
+	}
+	router := api.NewRouter(deps)
 
 	srv := &http.Server{
 		Addr:              cfg.Addr,

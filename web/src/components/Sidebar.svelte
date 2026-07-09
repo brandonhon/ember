@@ -172,6 +172,17 @@
     }
   }
 
+  // Mark every unread article read — the server bounds this to the All-Unread
+  // window (UnreadCutoff), so it clears exactly what the All Unread view shows.
+  async function markAllUnreadRead() {
+    try {
+      await api.markAllRead({ view: "unread" });
+      await Promise.all([loadArticles($activeView), refreshSidebar()]);
+    } catch (err) {
+      console.error("markAllUnreadRead", err);
+    }
+  }
+
   const grouped = $derived.by(() => {
     const byCat = new Map<number, FeedWithCounts[]>();
     const uncat: FeedWithCounts[] = [];
@@ -761,13 +772,26 @@
       <span class="ni-label">Fresh</span>
       {#if $smartCounts.fresh > 0}<span class="badge" data-testid="badge-fresh">{$smartCounts.fresh}</span>{/if}
     </button>
-    <button class="nav-item" class:active={isActiveSmart("unread")} on:click={() => pickSmart("unread")}>
-      <span class="ni-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9" /></svg>
-      </span>
-      <span class="ni-label">All Unread</span>
-      {#if $totalUnread > 0}<span class="badge">{$totalUnread}</span>{/if}
-    </button>
+    <div class="nav-row" class:active={isActiveSmart("unread")}>
+      <button class="nav-item" class:active={isActiveSmart("unread")} on:click={() => pickSmart("unread")}>
+        <span class="ni-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9" /></svg>
+        </span>
+        <span class="ni-label">All Unread</span>
+      </button>
+      {#if $totalUnread > 0}
+        <button
+          class="nav-action-trigger"
+          on:click={(e) => { e.stopPropagation(); markAllUnreadRead(); }}
+          aria-label="Mark all as read"
+          title="Mark all as read"
+          data-testid="mark-all-unread-read"
+        >
+          <svg viewBox="0 0 24 24" width="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" /></svg>
+        </button>
+        <span class="badge">{$totalUnread}</span>
+      {/if}
+    </div>
     <button class="nav-item" class:active={isActiveSmart("starred")} on:click={() => pickSmart("starred")}>
       <span class="ni-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.9 21l1.2-6.8-5-4.9 6.9-1z" /></svg>
@@ -1202,6 +1226,46 @@
     text-align: center;
   }
   .nav-item.active .badge { background: var(--ember); color: #fff; }
+
+  /* All Unread row: the count badge and the hover "mark all read" action sit
+     beside the nav-item (in the flex flow), so the action lands to the LEFT of
+     the count rather than overlapping it. The row owns the hover/active fill
+     and the inner button is transparent, so the fill spans the whole row
+     seamlessly. The button reserves its width even when hidden (opacity, not
+     display) so the count doesn't shift on hover. */
+  .nav-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    border-radius: 9px;
+    padding-right: 8px;
+  }
+  .nav-row .nav-item { flex: 1 1 auto; min-width: 0; padding-right: 4px; }
+  .nav-row .nav-item,
+  .nav-row .nav-item:hover,
+  .nav-row .nav-item.active { background: transparent; }
+  .nav-row:hover { background: var(--line-soft); }
+  .nav-row.active { background: var(--ember-wash); }
+  .nav-row .badge { flex: none; }
+  .nav-row.active .badge { background: var(--ember); color: #fff; }
+  .nav-action-trigger {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    margin-right: 2px;
+    border-radius: 6px;
+    display: grid;
+    place-items: center;
+    color: var(--ink-faint);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.12s, background 0.12s;
+  }
+  .nav-row:hover .nav-action-trigger { opacity: 1; }
+  .nav-action-trigger:hover { background: var(--line); color: var(--ink); }
+  .nav-action-trigger:focus-visible { opacity: 1; outline: none; }
 
   .folder { margin-bottom: 2px; }
   .folder.drop-target > .folder-head {

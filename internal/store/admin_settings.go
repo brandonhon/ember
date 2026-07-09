@@ -43,6 +43,11 @@ const (
 	// to [PollMinIntervalFloor, PollMinIntervalCeil]. The default (30m) gives
 	// readers time to work through Fresh without new items piling in.
 	keyPollMinIntervalSeconds = "poll_min_interval_seconds"
+
+	// Whether the background GitHub-releases update check runs. The env var
+	// EMBER_DISABLE_UPDATE_CHECK sets the boot-time default; an admin can
+	// override it at runtime via Settings.
+	keyUpdateCheckEnabled = "update_check_enabled"
 )
 
 // Bounds + default for the admin-configurable adaptive-fetch floor. Canonical
@@ -269,4 +274,28 @@ func (s *Store) PutBacklogHours(ctx context.Context, n int) error {
 		n = 0
 	}
 	return s.PutAppSetting(ctx, keyInitialBacklogHours, strconv.Itoa(n))
+}
+
+// ResolveUpdateCheckEnabled reports whether the update check should run. The
+// fallback (derived from EMBER_DISABLE_UPDATE_CHECK) applies until an admin
+// sets an explicit value via Settings.
+func (s *Store) ResolveUpdateCheckEnabled(ctx context.Context, fallback bool) bool {
+	if v, _ := s.GetAppSetting(ctx, keyUpdateCheckEnabled); v != "" {
+		switch strings.ToLower(v) {
+		case "1", "true", "yes", "on":
+			return true
+		case "0", "false", "no", "off":
+			return false
+		}
+	}
+	return fallback
+}
+
+// PutUpdateCheckEnabled persists the admin's explicit on/off choice.
+func (s *Store) PutUpdateCheckEnabled(ctx context.Context, on bool) error {
+	v := "0"
+	if on {
+		v = "1"
+	}
+	return s.PutAppSetting(ctx, keyUpdateCheckEnabled, v)
 }

@@ -26,6 +26,20 @@ export interface MeResponse {
   // hides the per-feed Resummarize action when this is false so the
   // action doesn't enqueue work for a worker pool that isn't running.
   summaries_enabled: boolean;
+  // Latest-release check result. Present only for admins, and only once the
+  // background check has run against a clean tagged build. Omitted otherwise.
+  update?: UpdateInfo;
+}
+
+// UpdateInfo mirrors the server's updatecheck.Result. `available` is true when
+// `latest` is a newer release than the running `current` build.
+export interface UpdateInfo {
+  current: string;
+  latest: string;
+  available: boolean;
+  url: string;
+  published: string;
+  checked_at: string;
 }
 
 export interface Category {
