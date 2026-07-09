@@ -51,6 +51,14 @@ jobs:
           # or run in CI/prod, so app-grade security rules produce only noise.
           # e.g. web/scripts/capture-demo-data.mjs talks to a localhost
           # self-signed instance and writes its API responses to demo-data.json.
+          #
+          # NOTE on go/log-injection: this rule flags any user-controlled value
+          # reaching a log call, but our production logger is a slog JSON handler
+          # (slog.NewJSONHandler, cmd/ember/main.go) and every such call passes the
+          # value as a *structured attribute* with a constant message — the handler
+          # JSON-escapes attribute values, so newlines/quotes can't forge log lines.
+          # Those alerts are dismissed as false positives in the Security tab, NOT
+          # excluded here, so a genuine fmt.Sprintf-into-message injection still trips.
           config: |
             paths-ignore:
               - web/scripts/**
