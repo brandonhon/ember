@@ -9,6 +9,24 @@ full commit-level list; this file curates the highlights and behavior changes.
 
 ## [Unreleased]
 
+### Security
+
+- Bumped `golang.org/x/text` to 0.40.0, picking up the fix for `GO-2026-5970`
+  (an infinite loop on invalid input). Ember reached the affected code when
+  draining an Ollama model-pull response.
+
+### Changed
+
+- Bumped Go runtime dependencies: `github.com/mmcdole/gofeed` 1.3.0 → 1.4.0
+  (which moves to `goxpp/v2` and drops five transitive dependencies),
+  `golang.org/x/crypto` 0.53.0 → 0.54.0, `golang.org/x/net` 0.56.0 → 0.57.0,
+  and `modernc.org/sqlite` 1.53.0 → 1.54.0.
+- Bumped SPA build/dev tooling: Svelte 5.56.4 → 5.56.7, Vite 8.1.3 → 8.1.5,
+  `@sveltejs/vite-plugin-svelte` 7.1.4 → 7.2.0, svelte-check 4.7.1 → 4.7.3,
+  `@testing-library/jest-dom` 6 → 7, `@types/node` 26.1.0 → 26.1.1. These are
+  dev-only and are not bundled into the Ember binary. TypeScript is
+  deliberately held at 6.x — see below.
+
 ## [0.9.5] - 2026-07-09
 
 ### Added

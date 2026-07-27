@@ -12,12 +12,26 @@ updates:
         patterns: ["*"]
 
   # SPA npm packages.
+  #
+  # TypeScript is pinned to 6.x on purpose. svelte-check 4.7.x crashes on
+  # startup under TypeScript 7 —
+  #   TypeError: Cannot read properties of undefined
+  #              (reading 'useCaseSensitiveFileNames')
+  # — because it reads a typescript API that 7 removed, which takes down
+  # `npm run check` and with it the Web CI job. Since every web dep is in one
+  # group, an ungated bump drags TypeScript 7 in alongside harmless updates and
+  # the whole group goes red (this is exactly what happened to PR #165).
+  # Ignoring the major keeps the rest of the group mergeable. Drop this ignore
+  # and bump both together once svelte-check supports TypeScript 7.
   - package-ecosystem: npm
     directory: /web
     target-branch: develop
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
     groups:
       web-deps:
         patterns: ["*"]
