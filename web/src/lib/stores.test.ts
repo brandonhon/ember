@@ -14,6 +14,7 @@ import {
   smartCounts,
   toggleStar,
   totalUnread,
+  unreadWindowSeconds,
   user,
 } from "./stores";
 import type { ArticleView, FeedWithCounts } from "./types";
@@ -154,6 +155,47 @@ describe("setRead", () => {
     await setRead([10, 11], true);
     expect(get(articles).items.every((a) => a.is_read)).toBe(true);
     expect(get(feeds)[0].unread).toBe(3);
+  });
+
+  // The All-Unread badge is computed server-side over a window. Starred, Read
+  // Later, Shared and board lists are NOT windowed, so they routinely show
+  // older articles. Decrementing the badge when one of those is read subtracts
+  // something the badge never counted, leaving it below the true number — and
+  // the reconcile that would fix it is debounced and keeps getting reset while
+  // the reader scrolls.
+  it("does not decrement All Unread for an article older than the unread window", async () => {
+    const nowSec = Math.floor(Date.now() / 1000);
+    unreadWindowSeconds.set(24 * 3600);
+    smartCounts.set({
+      fresh: 0, starred: 1, later: 0, shared: 0, pending_summary: 0,
+      unread: 4, unread_by_category: {},
+    });
+    // A starred article from three days ago: unread, but outside the window.
+    articles.set({
+      items: [article({ id: 10, feed_id: 1, is_starred: true, published_at: nowSec - 3 * 24 * 3600 })],
+      loading: false,
+      hasMore: false,
+    });
+    fetchMock.mockResolvedValue(envelope({ count: 1 }));
+    await setRead([10], true);
+    expect(get(smartCounts).unread).toBe(4);
+  });
+
+  it("decrements All Unread for an article inside the unread window", async () => {
+    const nowSec = Math.floor(Date.now() / 1000);
+    unreadWindowSeconds.set(24 * 3600);
+    smartCounts.set({
+      fresh: 0, starred: 0, later: 0, shared: 0, pending_summary: 0,
+      unread: 4, unread_by_category: {},
+    });
+    articles.set({
+      items: [article({ id: 10, feed_id: 1, published_at: nowSec - 3600 })],
+      loading: false,
+      hasMore: false,
+    });
+    fetchMock.mockResolvedValue(envelope({ count: 1 }));
+    await setRead([10], true);
+    expect(get(smartCounts).unread).toBe(3);
   });
 
   it("forwards include_siblings so reading a story sweeps its dedup copies", async () => {

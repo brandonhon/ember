@@ -75,6 +75,15 @@ type meResponse struct {
 	// server uses for the Fresh badge + Fresh list. Zero/missing on the
 	// client falls back to 6h to match the server's own fallback.
 	FreshWindowSeconds int64 `json:"fresh_window_seconds"`
+	// UnreadWindowSeconds is the width of the All-Unread window (the reading
+	// window, widened to reach back to the previous login, clamped to
+	// retention). The SPA needs it for the same reason it needs
+	// FreshWindowSeconds: when it optimistically adjusts the All-Unread badge
+	// after a read, it must only count articles the badge actually included.
+	// Views without a window — Starred, Read Later, Shared, boards — can show
+	// articles far older than this, and decrementing for those drives the
+	// badge below the server's true count.
+	UnreadWindowSeconds int64 `json:"unread_window_seconds"`
 	// SummariesEnabled tells the SPA whether AI summarization is wired up
 	// on this server. False when EMBER_DISABLE_SUMMARIES=1 or no Ollama
 	// summarizer is configured (e.g. test mode). The Sidebar uses this to
@@ -115,12 +124,17 @@ func (d *Dependencies) handleMe(w http.ResponseWriter, r *http.Request) {
 	if fw <= 0 {
 		fw = 6 * time.Hour
 	}
+	// Report the window as a width rather than an absolute cutoff: the server
+	// recomputes `now - width` on every request, so a width stays correct in
+	// the client as time passes while a timestamp would go stale.
+	unreadWindow := d.Store.Now().Unix() - d.Store.UnreadCutoff(r.Context(), u.ID)
 	resp := meResponse{
-		User:               u,
-		FeverAPIKey:        u.FeverToken,
-		Version:            Version,
-		FreshWindowSeconds: int64(fw.Seconds()),
-		SummariesEnabled:   d.Ollama != nil,
+		User:                u,
+		FeverAPIKey:         u.FeverToken,
+		Version:             Version,
+		FreshWindowSeconds:  int64(fw.Seconds()),
+		UnreadWindowSeconds: unreadWindow,
+		SummariesEnabled:    d.Ollama != nil,
 	}
 	// Surface the update hint to admins only; readers can't act on it.
 	if u.IsAdmin && d.UpdateChecker != nil {
