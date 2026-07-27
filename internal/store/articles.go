@@ -586,7 +586,7 @@ LIMIT ?`, from, where)
 	args = append([]any{userID}, args...)
 	args = append(args, q.Limit)
 
-	rows, err := s.DB.QueryContext(ctx, query, args...)
+	rows, err := s.reader().QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -618,7 +618,7 @@ LIMIT ?`, from, where)
 func (s *Store) CountArticles(ctx context.Context, userID int64, q ListArticlesQuery) (int, error) {
 	from, where, args := s.buildArticleFilter(userID, q, false)
 	var n int
-	err := s.DB.QueryRowContext(ctx,
+	err := s.reader().QueryRowContext(ctx,
 		fmt.Sprintf("SELECT COUNT(*)\n%s\n%s", from, where), args...).Scan(&n)
 	return n, err
 }
@@ -751,7 +751,7 @@ func (s *Store) CountSmartViews(ctx context.Context, userID int64, freshWindow t
 	}); err != nil {
 		return c, fmt.Errorf("count later: %w", err)
 	}
-	if err := s.DB.QueryRowContext(ctx, `
+	if err := s.reader().QueryRowContext(ctx, `
 SELECT COUNT(*) FROM shares WHERE to_user = ? AND seen = 0`,
 		userID).Scan(&c.Shared); err != nil {
 		return c, fmt.Errorf("count shared: %w", err)
@@ -759,7 +759,7 @@ SELECT COUNT(*) FROM shares WHERE to_user = ? AND seen = 0`,
 	// PendingSummary: scoped to the user's (non-muted) feeds. Muted feeds
 	// are excluded because the user has signalled they don't care; their
 	// pending count would just inflate the indicator with no signal.
-	if err := s.DB.QueryRowContext(ctx, `
+	if err := s.reader().QueryRowContext(ctx, `
 SELECT COUNT(*)
 FROM articles a
 JOIN subscriptions sub ON sub.feed_id = a.feed_id AND sub.user_id = ?
@@ -786,7 +786,7 @@ func (s *Store) CountUnreadByCategory(ctx context.Context, userID int64, q ListA
 	} else {
 		where += " AND s.category_id IS NOT NULL"
 	}
-	rows, err := s.DB.QueryContext(ctx,
+	rows, err := s.reader().QueryContext(ctx,
 		fmt.Sprintf("SELECT s.category_id, COUNT(*)\n%s\n%s\nGROUP BY s.category_id", from, where), args...)
 	if err != nil {
 		return nil, err
@@ -815,7 +815,7 @@ func (s *Store) CountUnreadByCategory(ctx context.Context, userID int64, q ListA
 func (s *Store) CountUnreadByFeed(ctx context.Context, userID int64, q ListArticlesQuery) (map[int64]int, error) {
 	q.Unread = true
 	from, where, args := s.buildArticleFilter(userID, q, false)
-	rows, err := s.DB.QueryContext(ctx,
+	rows, err := s.reader().QueryContext(ctx,
 		fmt.Sprintf("SELECT a.feed_id, COUNT(*)\n%s\n%s\nGROUP BY a.feed_id", from, where), args...)
 	if err != nil {
 		return nil, err
@@ -871,7 +871,7 @@ func (s *Store) ListClusterSiblings(ctx context.Context, userID, articleID int64
 	// the three inputs the sibling query needs.
 	var cid, fp string
 	var pubAt int64
-	err := s.DB.QueryRowContext(ctx, `
+	err := s.reader().QueryRowContext(ctx, `
 		SELECT IFNULL(a.cluster_id,''), IFNULL(a.title_fingerprint,''), IFNULL(a.published_at,0)
 		FROM articles a
 		JOIN subscriptions sub ON sub.feed_id = a.feed_id AND sub.user_id = ? AND sub.muted = 0
@@ -886,7 +886,7 @@ func (s *Store) ListClusterSiblings(ctx context.Context, userID, articleID int64
 		return []ClusterSibling{}, nil
 	}
 
-	rows, err := s.DB.QueryContext(ctx, `
+	rows, err := s.reader().QueryContext(ctx, `
 		SELECT a.id, a.feed_id, IFNULL(f.title,''), IFNULL(a.url,''),
 		       IFNULL(st.is_read,0), IFNULL(st.is_starred,0)
 		FROM articles a

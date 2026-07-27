@@ -45,16 +45,32 @@ var tuning = []struct{ name, value string }{
 }
 
 // dsn builds the driver DSN for path with every tuning pragma attached.
-func dsn(path string) string {
+// Entries in override replace the shared value for that pragma, and any extra
+// keys are appended. Overriding in place matters: the driver applies the FIRST
+// occurrence of a pragma, so simply appending a second cache_size does nothing
+// (verified — TestReadPool_UsesSmallerPageCache caught exactly that).
+func dsn(path string, override ...struct{ name, value string }) string {
+	vals := make(map[string]string, len(override))
+	order := make([]string, 0, len(tuning)+len(override))
+	for _, p := range tuning {
+		vals[p.name] = p.value
+		order = append(order, p.name)
+	}
+	for _, o := range override {
+		if _, exists := vals[o.name]; !exists {
+			order = append(order, o.name)
+		}
+		vals[o.name] = o.value
+	}
 	var b strings.Builder
 	b.WriteString(path)
-	for i, p := range tuning {
+	for i, name := range order {
 		if i == 0 {
 			b.WriteString("?")
 		} else {
 			b.WriteString("&")
 		}
-		b.WriteString("_pragma=" + p.name + "(" + p.value + ")")
+		b.WriteString("_pragma=" + name + "(" + vals[name] + ")")
 	}
 	return b.String()
 }
@@ -85,6 +101,58 @@ func Open(ctx context.Context, path string) (*sql.DB, error) {
 	// on a long-running DB that's drifted from its initial ANALYZE.
 	if _, err := dbh.ExecContext(ctx, "PRAGMA optimize;"); err != nil {
 		slog.Default().Warn("db: PRAGMA optimize failed", "err", err)
+	}
+	return dbh, nil
+}
+
+// readPoolConns is how many concurrent read connections OpenRead allows.
+// SQLite in WAL mode serves many readers alongside the single writer, so the
+// only real cost is file descriptors. Four covers the SPA's parallel
+// sidebar/list/count fetches for several users without being extravagant on a
+// self-hosted box.
+const readPoolConns = 4
+
+// readPoolCacheSize is the per-read-connection page cache, in negative KiB
+// (SQLite's convention). 16 MiB x readPoolConns keeps the pool's total near
+// the single write connection's 64 MiB rather than multiplying it.
+const readPoolCacheSize = "-16384"
+
+// OpenRead opens a SECOND handle to an already-migrated database, for
+// read-only queries.
+//
+// Why this exists: Open caps the pool at one connection because SQLite has a
+// single writer, and multiple writing connections hit SQLITE_BUSY that
+// busy_timeout does not cover (BUSY_SNAPSHOT). That cap also serialises every
+// READ behind whatever the poller happens to be writing — measured at 166ms
+// worst-case reads under ingest, versus 23ms across a separate pool.
+//
+// Memory: the shared tuning sets cache_size to 64 MiB PER CONNECTION, so four
+// read connections at that size would take the page-cache ceiling from 64 MiB
+// to 320 MiB — unacceptable on the small self-hosted boxes ember targets. The
+// read pool therefore overrides cache_size to 16 MiB, keeping the total budget
+// roughly where it was (1x64 write + 4x16 read). Readers share the OS page
+// cache and the 256 MiB mmap window anyway, so the smaller per-connection
+// cache costs very little; measured throughput was unchanged.
+//
+// The connections are opened with query_only, so SQLite itself rejects any
+// write attempted here. A store method routed to the read pool by mistake
+// fails immediately and loudly instead of silently reintroducing the write
+// contention this design exists to avoid.
+//
+// Callers must run Open (which migrates) first; OpenRead deliberately does not
+// migrate, so it can never race the writer's schema work.
+func OpenRead(ctx context.Context, path string) (*sql.DB, error) {
+	dbh, err := sql.Open("sqlite", dsn(path,
+		struct{ name, value string }{"query_only", "true"},
+		struct{ name, value string }{"cache_size", readPoolCacheSize},
+	))
+	if err != nil {
+		return nil, fmt.Errorf("open sqlite (read) %q: %w", path, err)
+	}
+	dbh.SetMaxOpenConns(readPoolConns)
+	if err := dbh.PingContext(ctx); err != nil {
+		dbh.Close()
+		return nil, fmt.Errorf("ping sqlite (read) %q: %w", path, err)
 	}
 	return dbh, nil
 }

@@ -162,6 +162,20 @@ func run() error {
 
 	st := store.New(dbh)
 
+	// Second, read-only pool over the same file. The write handle is capped at
+	// one connection (SQLite has a single writer), which also serialises every
+	// read behind whatever the poller is currently writing. WAL serves readers
+	// concurrently with the writer, so the heavy list/count/search queries get
+	// their own pool. Opened with query_only, so a write routed here fails
+	// loudly rather than silently contending. Non-fatal: on failure we simply
+	// keep using the write handle for reads, exactly as before.
+	if readDB, rerr := db.OpenRead(ctx, cfg.DBPath); rerr != nil {
+		logger.Warn("read pool unavailable; serving reads from the write handle", "err", rerr)
+	} else {
+		defer readDB.Close()
+		st.ReadDB = readDB
+	}
+
 	// One-shot backfill for articles inserted before the 0013 migration:
 	// populates canonical_url + cluster_id so cross-feed dedup catches
 	// historical rows too. Runs in a goroutine so server start isn't gated

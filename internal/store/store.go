@@ -36,13 +36,33 @@ var ErrNoNewContent = errors.New("store: re-extract produced no new content")
 // Store wraps a sql.DB with all the data-access methods ember needs. Construct
 // once and share — sql.DB is concurrency-safe.
 type Store struct {
-	DB  *sql.DB
-	Now func() time.Time // injectable clock for tests
+	// DB is the single-connection write handle. Every mutation and every
+	// transaction goes here — SQLite has one writer.
+	DB *sql.DB
+	// ReadDB is an OPTIONAL second pool for the heavy read-only queries (see
+	// reader). Nil means "use DB", which is what tests and any caller that
+	// hasn't opened a read pool get, so behaviour is identical either way.
+	//
+	// Only methods that are provably read-only may use it: db.OpenRead sets
+	// query_only, so a write routed here fails loudly rather than silently
+	// contending for the write lock.
+	ReadDB *sql.DB
+	Now    func() time.Time // injectable clock for tests
 }
 
 // New returns a Store backed by the given handle. Uses time.Now by default.
 func New(dbh *sql.DB) *Store {
 	return &Store{DB: dbh, Now: time.Now}
+}
+
+// reader returns the handle for read-only queries: the dedicated read pool
+// when one is configured, otherwise the write handle. Callers MUST be certain
+// the query performs no writes.
+func (s *Store) reader() *sql.DB {
+	if s.ReadDB != nil {
+		return s.ReadDB
+	}
+	return s.DB
 }
 
 // nowUnix returns the current store time in Unix seconds.

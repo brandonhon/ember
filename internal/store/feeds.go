@@ -397,7 +397,7 @@ func (s *Store) ListFeedsForUser(ctx context.Context, userID, unreadCutoff int64
 	if onlySummarized {
 		gate = " AND a.summary_model IS NOT NULL AND a.summary_model <> ''"
 	}
-	rows, err := s.DB.QueryContext(ctx, `
+	rows, err := s.reader().QueryContext(ctx, `
 		SELECT f.id, f.url, IFNULL(f.site_url,''), f.title, IFNULL(f.favicon_url,''),
 		       IFNULL(f.etag,''), IFNULL(f.last_modified,''),
 		       IFNULL(f.last_fetched,0), IFNULL(f.next_fetch,0),
