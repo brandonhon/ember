@@ -25,7 +25,6 @@
     "jsdom": "^29.1.1",
     "svelte": "^5.56.7",
     "svelte-check": "^4.7.3",
-    "_comment_typescript": "HELD AT 6.x DELIBERATELY. svelte-check 4.7.x crashes on TypeScript 7 (TypeError: Cannot read properties of undefined reading useCaseSensitiveFileNames) because the TS 7 API drops what it reads at startup. Dependabot groups TS with the other web-deps, so a grouped bump will keep proposing 7.x - hold it back until svelte-check supports TS 7, then bump both together.",
     "typescript": "^6.0.3",
     "vite": "^8.1.5",
     "vitest": "^4.1.10"
