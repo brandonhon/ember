@@ -99,6 +99,9 @@ type RateLimiter struct {
 	mu      sync.Mutex
 	buckets map[string]*bucket
 	last    time.Time
+	// lastCapSweep throttles the at-capacity sweep so a flood of unseen keys
+	// can't force an O(n) scan per request.
+	lastCapSweep time.Time
 }
 
 type bucket struct {
@@ -128,6 +131,26 @@ func (rl *RateLimiter) Allow(key string) bool {
 	now := time.Now()
 	b, ok := rl.buckets[key]
 	if !ok {
+		// Tracking a new key costs memory, and the key is attacker-chosen (one
+		// per source IP, and a single host can hold a whole IPv6 /64). Sweep
+		// early rather than waiting for the periodic GC, and if the table is
+		// still full afterwards every entry is genuinely active — refuse the
+		// newcomer instead of growing without limit. Fail-closed is the right
+		// bias here: the alternative is admitting untracked requests to a login
+		// endpoint precisely when it is under the heaviest spray.
+		if len(rl.buckets) >= maxRateLimitBuckets {
+			// The sweep is O(len(buckets)) and runs under the lock, so it is
+			// itself rate-limited: doing one per request while the table sits
+			// at the cap would turn a flood of fresh keys into quadratic work
+			// and hand the attacker a better weapon than the one being closed.
+			if now.Sub(rl.lastCapSweep) >= time.Second {
+				rl.sweep(now, rl.WindowPeriod)
+				rl.lastCapSweep = now
+			}
+			if len(rl.buckets) >= maxRateLimitBuckets {
+				return false
+			}
+		}
 		b = &bucket{tokens: float64(rl.MaxBurst), updated: now}
 		rl.buckets[key] = b
 	}
@@ -142,14 +165,27 @@ func (rl *RateLimiter) Allow(key string) bool {
 	b.tokens--
 	// Periodic GC of cold buckets.
 	if now.Sub(rl.last) > 5*time.Minute {
-		for k, v := range rl.buckets {
-			if now.Sub(v.updated) > 30*time.Minute {
-				delete(rl.buckets, k)
-			}
-		}
+		rl.sweep(now, 30*time.Minute)
 		rl.last = now
 	}
 	return true
+}
+
+// maxRateLimitBuckets caps how many distinct keys one limiter tracks. Each
+// bucket is tiny, but nothing else bounds the count and the key space is the
+// entire IP address space.
+const maxRateLimitBuckets = 10000
+
+// sweep drops buckets untouched for longer than idle. A bucket idle for at
+// least one full window has refilled to MaxBurst, so forgetting it and
+// recreating it on the next request are equivalent — no request escapes a
+// limit it would otherwise have hit. Caller must hold rl.mu.
+func (rl *RateLimiter) sweep(now time.Time, idle time.Duration) {
+	for k, v := range rl.buckets {
+		if now.Sub(v.updated) >= idle {
+			delete(rl.buckets, k)
+		}
+	}
 }
 
 // LimitMiddleware enforces the limiter. On a deny it writes 429 with a small

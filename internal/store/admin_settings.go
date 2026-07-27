@@ -48,6 +48,11 @@ const (
 	// EMBER_DISABLE_UPDATE_CHECK sets the boot-time default; an admin can
 	// override it at runtime via Settings.
 	keyUpdateCheckEnabled = "update_check_enabled"
+
+	// Whether passkey sign-in demands user verification (PIN/biometric) rather
+	// than merely preferring it. EMBER_PASSKEY_REQUIRE_UV sets the boot-time
+	// default; an admin can override it at runtime via Settings.
+	keyPasskeyRequireUV = "passkey_require_uv"
 )
 
 // Bounds + default for the admin-configurable adaptive-fetch floor. Canonical
@@ -298,4 +303,31 @@ func (s *Store) PutUpdateCheckEnabled(ctx context.Context, on bool) error {
 		v = "1"
 	}
 	return s.PutAppSetting(ctx, keyUpdateCheckEnabled, v)
+}
+
+// ResolvePasskeyRequireUV reports whether passkey sign-in must demand user
+// verification (a PIN, biometric, or equivalent) rather than merely preferring
+// it. Off by default: with it on, a credential enrolled on an authenticator
+// that cannot verify — a security key with no PIN set — stops working and has
+// to be re-enrolled, so turning it on is an operator decision made once every
+// registered passkey is known to verify.
+func (s *Store) ResolvePasskeyRequireUV(ctx context.Context, fallback bool) bool {
+	if v, _ := s.GetAppSetting(ctx, keyPasskeyRequireUV); v != "" {
+		switch strings.ToLower(v) {
+		case "1", "true", "yes", "on":
+			return true
+		case "0", "false", "no", "off":
+			return false
+		}
+	}
+	return fallback
+}
+
+// PutPasskeyRequireUV persists the admin's explicit user-verification choice.
+func (s *Store) PutPasskeyRequireUV(ctx context.Context, on bool) error {
+	v := "0"
+	if on {
+		v = "1"
+	}
+	return s.PutAppSetting(ctx, keyPasskeyRequireUV, v)
 }

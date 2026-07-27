@@ -5,8 +5,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"log/slog"
+	"math"
 	"net/http"
 	"net/mail"
+	"strconv"
 	"strings"
 	"time"
 
@@ -32,7 +35,19 @@ func (d *Dependencies) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	u, err := d.Auth.Login(r.Context(), w, r, req.Username, req.Password)
+	if wait, throttled := auth.AsTooManyAttempts(err); throttled {
+		// Retry-After lets a well-behaved client wait exactly long enough. The
+		// message stays generic: it reveals that this username has recent
+		// failures, which an attacker already knows they caused, and never
+		// whether the account exists.
+		w.Header().Set("Retry-After", strconv.Itoa(int(math.Ceil(wait.Seconds()))))
+		writeError(w, http.StatusTooManyRequests, "too_many_attempts",
+			"too many failed attempts, try again shortly")
+		return
+	}
 	if errors.Is(err, auth.ErrInvalidCredentials) {
+		slog.Default().Warn("failed login",
+			"username", req.Username, "ip", remoteIP(r, d.trustedNets))
 		writeError(w, http.StatusUnauthorized, "invalid_credentials", "invalid username or password")
 		return
 	}

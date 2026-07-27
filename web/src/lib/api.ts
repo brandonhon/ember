@@ -403,8 +403,14 @@ export const api = {
     call<unknown>("DELETE", `/api/me/passkeys/${id}`),
   passkeyLoginBegin: (username: string) =>
     call<PasskeyChallenge>("POST", "/api/auth/passkey/begin", { username }),
+  // Returns the same allowlisted shape as password login, not a full User —
+  // callers refresh /api/me for the complete record.
   passkeyLoginFinish: (session_id: string, response: unknown) =>
-    call<User>("POST", "/api/auth/passkey/finish", { session_id, response }),
+    call<Pick<User, "id" | "username" | "is_admin" | "created_at">>(
+      "POST",
+      "/api/auth/passkey/finish",
+      { session_id, response },
+    ),
   // System-wide "any passkey on this server?" — used by Login.svelte to hide
   // the passkey button when no user has registered one yet. Returns
   // {any_registered: false} when WebAuthn isn't configured either, so the
@@ -501,6 +507,10 @@ export interface AdminSettings {
   // Whether the daily GitHub-releases update check runs. Admins see an "update
   // available" hint in About + a banner when a newer release exists.
   update_check_enabled: boolean;
+  // Whether passkey sign-in demands user verification (PIN/biometric) rather
+  // than merely preferring it. Off by default — turning it on can lock out a
+  // passkey enrolled on a security key with no PIN configured.
+  passkey_require_uv: boolean;
 }
 
 // AdminSettingsPatch mirrors the backend's pointer-bag: only fields included
@@ -520,6 +530,7 @@ export interface AdminSettingsPatch {
   reading_window_hours?: number;
   search_window_hours?: number;
   update_check_enabled?: boolean;
+  passkey_require_uv?: boolean;
 }
 
 export interface TopFeed {
