@@ -183,14 +183,27 @@ func MigrateReset(ctx context.Context, dbh *sql.DB) error {
 // OpenTest returns an isolated, migrated SQLite database backed by a temporary
 // file. The database is automatically closed and removed when the test ends.
 func OpenTest(t *testing.T) *sql.DB {
+	w, _ := OpenTestPair(t)
+	return w
+}
+
+// OpenTestPair is OpenTest plus the read pool, so tests run the same two-handle
+// configuration production does. Without this every test would exercise only
+// the write handle and the read-pool routing would be effectively untested.
+func OpenTestPair(t *testing.T) (write, read *sql.DB) {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "ember-test.db")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	dbh, err := Open(ctx, path)
+	w, err := Open(ctx, path)
 	if err != nil {
 		t.Fatalf("OpenTest: %v", err)
 	}
-	t.Cleanup(func() { _ = dbh.Close() })
-	return dbh
+	t.Cleanup(func() { _ = w.Close() })
+	r, err := OpenRead(ctx, path)
+	if err != nil {
+		t.Fatalf("OpenTest read pool: %v", err)
+	}
+	t.Cleanup(func() { _ = r.Close() })
+	return w, r
 }

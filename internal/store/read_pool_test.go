@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"testing"
 	"time"
@@ -14,12 +15,23 @@ import (
 // to the write handle, so tests and any deployment where the read pool failed
 // to open are unaffected.
 func TestReader_FallsBackToWriteHandle(t *testing.T) {
-	s := NewTest(t)
+	// A Store built without a read pool — the shape main uses when OpenRead
+	// fails, and what any external caller of New() gets.
+	s := New(db.OpenTest(t))
 	if s.ReadDB != nil {
-		t.Fatal("NewTest should not configure a read pool")
+		t.Fatal("New() must not configure a read pool")
 	}
 	if s.reader() != s.DB {
 		t.Error("reader() must fall back to DB when ReadDB is nil")
+	}
+	// And it still works end to end.
+	ctx := context.Background()
+	u, err := s.CreateUser(ctx, models.User{Username: "alice", PasswordHash: "x"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.ListFeedsForUser(ctx, u.ID, 0, false); err != nil {
+		t.Errorf("routed method failed without a read pool: %v", err)
 	}
 }
 
@@ -175,5 +187,110 @@ func TestReadPool_UsesSmallerPageCache(t *testing.T) {
 	}
 	if qo != 1 {
 		t.Error("query_only lost when the cache_size override was added")
+	}
+}
+
+// EDGE CASE 1: read-after-write across the two handles.
+// The SPA marks an article read (write) then immediately polls the counts
+// (routed to the read pool). If the reader could serve a stale WAL snapshot
+// the badge would lag behind the click. Hammered, because a staleness window
+// would be intermittent.
+func TestReadPool_ReadAfterWriteIsImmediatelyVisible(t *testing.T) {
+	s := openBoth(t)
+	ctx := context.Background()
+	u, _ := s.CreateUser(ctx, models.User{Username: "alice", PasswordHash: "x"})
+	f, _ := s.UpsertFeed(ctx, models.Feed{URL: "https://f.test/rss", Title: "F"})
+	_, _ = s.Subscribe(ctx, models.Subscription{UserID: u.ID, FeedID: f.ID})
+
+	now := time.Now().Unix()
+	var ids []int64
+	for i := range 30 {
+		a, _, err := s.UpsertArticle(ctx, models.Article{
+			FeedID: f.ID, GUID: fmt.Sprintf("g%d", i), Title: "T",
+			ContentHash: fmt.Sprintf("h%d", i), PublishedAt: now - int64(i*60),
+			SummaryModel: "noop",
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		ids = append(ids, a.ID)
+	}
+	q := ListArticlesQuery{View: "unread", FreshAfter: now - 86400}
+
+	// After each write, the very next read must reflect it.
+	for i, id := range ids {
+		if err := s.SetRead(ctx, u.ID, []int64{id}, true); err != nil {
+			t.Fatal(err)
+		}
+		got, err := s.CountArticles(ctx, u.ID, q)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want := len(ids) - (i + 1); got != want {
+			t.Fatalf("after marking %d read, read pool reported %d unread, want %d — STALE SNAPSHOT", i+1, got, want)
+		}
+	}
+}
+
+// EDGE CASE 2: FTS5 MATCH under query_only.
+// Search is one of the routed methods. If FTS5 needed to touch a shadow table
+// the read pool would refuse it and search would break entirely — a total
+// feature outage, not a slowdown.
+func TestReadPool_FTSSearchWorksUnderQueryOnly(t *testing.T) {
+	s := openBoth(t)
+	ctx := context.Background()
+	u, _ := s.CreateUser(ctx, models.User{Username: "alice", PasswordHash: "x"})
+	f, _ := s.UpsertFeed(ctx, models.Feed{URL: "https://f.test/rss", Title: "F"})
+	_, _ = s.Subscribe(ctx, models.Subscription{UserID: u.ID, FeedID: f.ID})
+	now := time.Now().Unix()
+	if _, _, err := s.UpsertArticle(ctx, models.Article{
+		FeedID: f.ID, GUID: "g1", Title: "Quantum computing breakthrough",
+		ContentText: "researchers announced a quantum milestone",
+		ContentHash: "h1", PublishedAt: now, SummaryModel: "noop",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	hits, err := s.Search(ctx, u.ID, "quantum", 25, 0, 0)
+	if err != nil {
+		t.Fatalf("FTS search through the read pool failed: %v", err)
+	}
+	if len(hits) != 1 {
+		t.Errorf("search returned %d hits, want 1", len(hits))
+	}
+}
+
+// EDGE CASE 3: the starter-pack remove flow reads ListFeedsForUser, writes
+// (unsubscribe), then reads it AGAIN to decide whether the category is now
+// empty. The second read crosses handles and must see the unsubscribes.
+func TestReadPool_ListFeedsForUserSeesInterleavedWrites(t *testing.T) {
+	s := openBoth(t)
+	ctx := context.Background()
+	u, _ := s.CreateUser(ctx, models.User{Username: "alice", PasswordHash: "x"})
+	c, _ := s.CreateCategory(ctx, models.Category{UserID: u.ID, Name: "Tech"})
+
+	var subIDs []int64
+	for i := range 3 {
+		f, _ := s.UpsertFeed(ctx, models.Feed{URL: fmt.Sprintf("https://f%d.test/rss", i), Title: "F"})
+		sub, err := s.Subscribe(ctx, models.Subscription{UserID: u.ID, FeedID: f.ID, CategoryID: &c.ID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		subIDs = append(subIDs, sub.ID)
+	}
+	if got, _ := s.ListFeedsForUser(ctx, u.ID, 0, false); len(got) != 3 {
+		t.Fatalf("setup: %d feeds, want 3", len(got))
+	}
+	// Unsubscribe one at a time; each subsequent read must reflect it.
+	for i, id := range subIDs {
+		if err := s.Unsubscribe(ctx, u.ID, id); err != nil {
+			t.Fatal(err)
+		}
+		got, err := s.ListFeedsForUser(ctx, u.ID, 0, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want := len(subIDs) - (i + 1); len(got) != want {
+			t.Fatalf("after %d unsubscribes the read pool saw %d feeds, want %d — STALE", i+1, len(got), want)
+		}
 	}
 }

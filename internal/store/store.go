@@ -74,6 +74,11 @@ func (s *Store) nowUnix() int64 {
 // returned clock can be advanced by tests.
 func NewTest(t *testing.T) *Store {
 	t.Helper()
-	dbh := db.OpenTest(t)
-	return New(dbh)
+	// Wire the read pool too, so the whole suite exercises the same two-handle
+	// split production uses. A method wrongly routed to reader() then fails in
+	// ordinary tests rather than only in production.
+	w, r := db.OpenTestPair(t)
+	s := New(w)
+	s.ReadDB = r
+	return s
 }
