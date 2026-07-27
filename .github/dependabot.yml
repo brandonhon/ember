@@ -13,16 +13,23 @@ updates:
 
   # SPA npm packages.
   #
-  # TypeScript is pinned to 6.x on purpose. svelte-check 4.7.x crashes on
-  # startup under TypeScript 7 —
-  #   TypeError: Cannot read properties of undefined
-  #              (reading 'useCaseSensitiveFileNames')
-  # — because it reads a typescript API that 7 removed, which takes down
-  # `npm run check` and with it the Web CI job. Since every web dep is in one
-  # group, an ungated bump drags TypeScript 7 in alongside harmless updates and
-  # the whole group goes red (this is exactly what happened to PR #165).
-  # Ignoring the major keeps the rest of the group mergeable. Drop this ignore
-  # and bump both together once svelte-check supports TypeScript 7.
+  # TypeScript is pinned to 6.x on purpose.
+  #
+  # svelte-check 4.7.1 crashed outright under TypeScript 7 ("Cannot read
+  # properties of undefined (reading 'useCaseSensitiveFileNames')") because it
+  # read a typescript API that 7 removed, taking down `npm run check` and the
+  # Web CI job with it (this is what redded PR #165).
+  #
+  # 4.7.4 does support TypeScript 7, but NOT as a drop-in: it requires BOTH
+  # TypeScript 6 and 7 installed side by side via an npm alias, plus running
+  # svelte-check with --tsgo. That is a build-tooling migration, not a version
+  # bump, so it stays out of routine dependency PRs. Verified 2026-07-27 by
+  # trying it: svelte-check exits with that requirement message.
+  #
+  # Because every web dep shares one group, an ungated bump would drag
+  # TypeScript 7 in alongside harmless updates and red the whole group.
+  # Ignoring the major keeps the rest mergeable. Lift this only as a deliberate
+  # migration: install the alias, add --tsgo, then drop the ignore.
   - package-ecosystem: npm
     directory: /web
     target-branch: develop
