@@ -62,6 +62,31 @@ var DefaultParams = Params{
 	KeyLength:   32,
 }
 
+// maxConcurrentHashes bounds how many argon2id derivations may run at once
+// across the whole process.
+//
+// Each derivation allocates Params.Memory — 64 MiB at the defaults — and the
+// login endpoint runs one per attempt including attempts for usernames that
+// don't exist (see equalizeTiming). Without a bound, concurrent requests from
+// enough source IPs multiply straight into resident memory (a few hundred
+// in flight is several gigabytes) and OOM the process, so the per-IP rate
+// limiter alone does not contain it. Four slots caps the hashing working set
+// at ~256 MiB; excess requests queue on the channel, which costs a parked
+// goroutine each instead of 64 MiB each.
+const maxConcurrentHashes = 4
+
+var hashSlots = make(chan struct{}, maxConcurrentHashes)
+
+// withHashSlot runs fn holding one of the argon2 concurrency slots, blocking
+// until one frees up. Blocking (rather than rejecting) keeps behaviour
+// identical under normal load — the queue only ever forms under a flood, and
+// the request's own server timeout bounds how long a caller waits on it.
+func withHashSlot(fn func()) {
+	hashSlots <- struct{}{}
+	defer func() { <-hashSlots }()
+	fn()
+}
+
 // ErrInvalidCredentials is returned for any login failure.
 var ErrInvalidCredentials = errors.New("auth: invalid credentials")
 
@@ -165,8 +190,11 @@ func (a *Auth) HashPassword(plain string) (string, error) {
 	if _, err := rand.Read(salt); err != nil {
 		return "", err
 	}
-	hash := argon2.IDKey([]byte(plain), salt,
-		a.Params.Iterations, a.Params.Memory, a.Params.Parallelism, a.Params.KeyLength)
+	var hash []byte
+	withHashSlot(func() {
+		hash = argon2.IDKey([]byte(plain), salt,
+			a.Params.Iterations, a.Params.Memory, a.Params.Parallelism, a.Params.KeyLength)
+	})
 	return fmt.Sprintf("$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s",
 		argon2.Version, a.Params.Memory, a.Params.Iterations, a.Params.Parallelism,
 		base64.RawStdEncoding.EncodeToString(salt),
@@ -180,7 +208,10 @@ func (a *Auth) VerifyPassword(plain, encoded string) error {
 	if err != nil {
 		return ErrInvalidCredentials
 	}
-	got := argon2.IDKey([]byte(plain), salt, p.Iterations, p.Memory, p.Parallelism, p.KeyLength)
+	var got []byte
+	withHashSlot(func() {
+		got = argon2.IDKey([]byte(plain), salt, p.Iterations, p.Memory, p.Parallelism, p.KeyLength)
+	})
 	if subtle.ConstantTimeCompare(got, hash) != 1 {
 		return ErrInvalidCredentials
 	}
@@ -190,10 +221,15 @@ func (a *Auth) VerifyPassword(plain, encoded string) error {
 // equalizeTiming runs a throwaway argon2id derivation with the live cost
 // params so the user-not-found path costs the same as a real VerifyPassword.
 // The result is discarded — only the elapsed time matters.
+// It takes a hashing slot like the real path does, both so the unknown-user
+// branch can't sidestep the memory bound and so queueing delay is shared —
+// exempting it would reintroduce the very timing gap it exists to close.
 func (a *Auth) equalizeTiming(password string) {
 	var salt [16]byte // fixed; the derivation is never compared, only timed
-	_ = argon2.IDKey([]byte(password), salt[:],
-		a.Params.Iterations, a.Params.Memory, a.Params.Parallelism, a.Params.KeyLength)
+	withHashSlot(func() {
+		_ = argon2.IDKey([]byte(password), salt[:],
+			a.Params.Iterations, a.Params.Memory, a.Params.Parallelism, a.Params.KeyLength)
+	})
 }
 
 func decodeArgon2id(encoded string) (Params, []byte, []byte, error) {
@@ -482,26 +518,68 @@ func (a *Auth) BootstrapAdmin(ctx context.Context, username, password string) (m
 // in depth — the cookie value is signed + random so pre-planting one is
 // already infeasible, but this prevents any inherited state from carrying
 // across the login boundary).
+//
+// Attempts are throttled per submitted username with an escalating backoff
+// (see throttle.go). The per-IP limiter in the API layer bounds one source;
+// this bounds one *account*, which is what a distributed credential-stuffing
+// run actually attacks. Returns an error matching ErrTooManyAttempts while a
+// username is in backoff.
 func (a *Auth) Login(ctx context.Context, w http.ResponseWriter, r *http.Request, username, password string) (models.User, error) {
+	// Checked before the user lookup and before any argon2 work, so throttled
+	// traffic is rejected for the cost of one indexed read.
+	if err := a.checkThrottle(ctx, username); err != nil {
+		return models.User{}, err
+	}
 	u, err := a.Store.GetUserByUsername(ctx, username)
 	if errors.Is(err, store.ErrNotFound) {
 		// Equalize timing with the found-user path: without a throwaway argon2
 		// derivation, a missing username returns in ~1ms while a real one takes
 		// ~100ms, leaking account existence via a timing side channel.
 		a.equalizeTiming(password)
+		// Count misses against unknown usernames too. Skipping them would make
+		// a nonexistent account the one input that never throttles — both a
+		// free enumeration signal and a way to keep the endpoint busy.
+		a.recordFailure(ctx, username)
 		return models.User{}, ErrInvalidCredentials
 	}
 	if err != nil {
 		return models.User{}, err
 	}
 	if err := a.VerifyPassword(password, u.PasswordHash); err != nil {
+		a.recordFailure(ctx, username)
 		return models.User{}, ErrInvalidCredentials
+	}
+	// Clear before issuing the session: a correct password wipes the backoff so
+	// a user who was being sprayed isn't left waiting behind an attacker's
+	// failures.
+	if err := a.Store.ClearLoginFailures(ctx, username); err != nil {
+		slog.Default().Warn("clearing login failures failed", "err", err)
 	}
 	_ = a.DestroySession(ctx, w, r)
 	if _, err := a.CreateSession(ctx, w, r, u.ID); err != nil {
 		return models.User{}, err
 	}
 	return u, nil
+}
+
+// recordFailure books one failed attempt against a username. Best-effort: a
+// storage failure must not convert a plain wrong-password into a 500, which
+// would itself distinguish the throttled path from the normal one.
+func (a *Auth) recordFailure(ctx context.Context, username string) {
+	fails, err := a.Store.RecordLoginFailure(ctx, username)
+	if err != nil {
+		slog.Default().Warn("recording login failure failed", "err", err)
+		return
+	}
+	// Log once the free allowance is spent — below that it's ordinary typo
+	// noise, above it it's the signal an operator wants to alert on. The
+	// username is passed as a structured attribute (never interpolated into
+	// the message) so a crafted value can't forge log lines.
+	if fails >= LoginFreeAttempts {
+		slog.Default().Warn("repeated failed logins",
+			"username", username, "fails", fails,
+			"backoff", LoginBackoff(fails).String())
+	}
 }
 
 // DeleteUserSessions removes every session row for a user. Called after a

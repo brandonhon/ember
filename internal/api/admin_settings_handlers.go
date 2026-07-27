@@ -41,6 +41,10 @@ type adminSettings struct {
 	// UpdateCheckEnabled reflects whether the background GitHub-releases update
 	// check runs. Defaults to the negation of EMBER_DISABLE_UPDATE_CHECK.
 	UpdateCheckEnabled bool `json:"update_check_enabled"`
+	// PasskeyRequireUV reflects whether passkey sign-in demands user
+	// verification (PIN/biometric) rather than merely preferring it. Defaults
+	// to EMBER_PASSKEY_REQUIRE_UV.
+	PasskeyRequireUV bool `json:"passkey_require_uv"`
 }
 
 func (d *Dependencies) handleGetAdminSettings(w http.ResponseWriter, r *http.Request) {
@@ -64,6 +68,7 @@ func (d *Dependencies) handleGetAdminSettings(w http.ResponseWriter, r *http.Req
 	out.WindowHoursFloor = store.WindowHoursFloor
 	out.WindowHoursCeil = store.WindowHoursCeil
 	out.UpdateCheckEnabled = d.Store.ResolveUpdateCheckEnabled(ctx, d.UpdateCheckEnabledFallback)
+	out.PasskeyRequireUV = d.Store.ResolvePasskeyRequireUV(ctx, d.PasskeyRequireUVFallback)
 	writeData(w, http.StatusOK, out, nil)
 }
 
@@ -84,6 +89,7 @@ type setAdminSettingsReq struct {
 	ReadingWindowHours     *int  `json:"reading_window_hours,omitempty"`
 	SearchWindowHours      *int  `json:"search_window_hours,omitempty"`
 	UpdateCheckEnabled     *bool `json:"update_check_enabled,omitempty"`
+	PasskeyRequireUV       *bool `json:"passkey_require_uv,omitempty"`
 }
 
 func (d *Dependencies) handleSetAdminSettings(w http.ResponseWriter, r *http.Request) {
@@ -158,6 +164,12 @@ func (d *Dependencies) handleSetAdminSettings(w http.ResponseWriter, r *http.Req
 	}
 	if req.UpdateCheckEnabled != nil {
 		if err := d.Store.PutUpdateCheckEnabled(ctx, *req.UpdateCheckEnabled); err != nil {
+			internalError(w, "internal", err)
+			return
+		}
+	}
+	if req.PasskeyRequireUV != nil {
+		if err := d.Store.PutPasskeyRequireUV(ctx, *req.PasskeyRequireUV); err != nil {
 			internalError(w, "internal", err)
 			return
 		}

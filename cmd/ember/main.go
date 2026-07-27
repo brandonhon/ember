@@ -40,6 +40,12 @@ import (
 // version is set via -ldflags at build time.
 var version = "dev"
 
+// loginFailureRetention is how long a login-throttle row outlives its last
+// failure before the hourly sweep drops it. Comfortably longer than the
+// maximum backoff (auth.LoginBackoffCap), so reaping never shortens an active
+// penalty — it only collects rows that can no longer affect a decision.
+const loginFailureRetention = 24 * time.Hour
+
 func main() {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
@@ -419,6 +425,12 @@ func run() error {
 					} else if n > 0 {
 						logger.Info("expired sessions reaped", "deleted", n)
 					}
+					// Drop login-throttle rows that have long since decayed to a
+					// zero backoff. Without this the table grows one row per
+					// distinct username an attacker ever sprayed.
+					if _, err := st.PruneLoginFailures(ctx, loginFailureRetention); err != nil {
+						logger.Warn("login failure cleanup failed", "err", err)
+					}
 				}
 			}
 		})
@@ -486,6 +498,7 @@ func run() error {
 		// The fallback mirrors the env opt-out so the settings echo reads
 		// correctly before any admin override.
 		UpdateCheckEnabledFallback: !cfg.DisableUpdateCheck,
+		PasskeyRequireUVFallback:   cfg.PasskeyRequireUV,
 	}
 	// Set the update checker only when one exists (dev/dirty builds have none).
 	// Assigning a typed-nil *Checker to the interface field would make it

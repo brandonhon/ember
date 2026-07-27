@@ -41,12 +41,26 @@ func NewWebAuthn(st *store.Store, publicURL, displayName string) (*WebAuthn, err
 		RPDisplayName: displayName,
 		RPID:          host,
 		RPOrigins:     []string{origin},
+		// State the user-verification stance explicitly rather than inheriting
+		// the empty value. "preferred" is what an unset field already resolves
+		// to in the browser, so this changes no behaviour — it makes the
+		// posture a decision in the code instead of an accident, and gives
+		// RequireUserVerification something to override.
+		AuthenticatorSelection: protocol.AuthenticatorSelection{
+			UserVerification: protocol.VerificationPreferred,
+		},
 	})
 	if err != nil {
 		return nil, err
 	}
 	return &WebAuthn{Web: web, Store: st}, nil
 }
+
+// ErrClonedAuthenticator is returned when an assertion's signature counter did
+// not advance past the stored value. Per the WebAuthn spec that is the signal
+// of a duplicated authenticator — someone replaying or having extracted the
+// credential — so the assertion is refused rather than merely noted.
+var ErrClonedAuthenticator = errors.New("webauthn: authenticator signature counter did not advance")
 
 // waUser adapts an ember user + their stored passkeys to the webauthn.User
 // interface required by the library.
@@ -194,7 +208,14 @@ func (w *WebAuthn) FinishRegister(ctx context.Context, sessionID, name string, r
 
 // BeginLogin starts an assertion ceremony bound to a specific user (the user
 // types their username first, then is challenged for a passkey).
-func (w *WebAuthn) BeginLogin(ctx context.Context, u models.User) ([]byte, string, error) {
+//
+// requireUV escalates user verification from "preferred" to "required" for
+// this ceremony. The requirement is written into the stored session data, so
+// FinishLogin enforces whatever was demanded at begin — the browser cannot
+// negotiate it down. Left off by default because a passkey enrolled on a
+// hardware key with no PIN configured would stop working; an operator turns
+// it on once every enrolled credential is known to verify.
+func (w *WebAuthn) BeginLogin(ctx context.Context, u models.User, requireUV bool) ([]byte, string, error) {
 	wu, err := w.loadUser(ctx, u)
 	if err != nil {
 		return nil, "", err
@@ -202,7 +223,11 @@ func (w *WebAuthn) BeginLogin(ctx context.Context, u models.User) ([]byte, strin
 	if len(wu.credentials) == 0 {
 		return nil, "", errors.New("webauthn: user has no passkeys")
 	}
-	options, sessionData, err := w.Web.BeginLogin(wu)
+	var opts []wa.LoginOption
+	if requireUV {
+		opts = append(opts, wa.WithUserVerification(protocol.VerificationRequired))
+	}
+	options, sessionData, err := w.Web.BeginLogin(wu, opts...)
 	if err != nil {
 		return nil, "", err
 	}
@@ -265,6 +290,15 @@ func (w *WebAuthn) FinishLogin(ctx context.Context, sessionID string, raw []byte
 	}
 	if pk.UserID != user.ID {
 		return models.User{}, errors.New("webauthn: credential / user mismatch")
+	}
+	// ValidateLogin records a counter regression as a flag instead of an error,
+	// so an unchecked call happily authenticates a cloned credential. Refuse
+	// it, and refuse it *before* UpdatePasskeyOnUse — writing the lower count
+	// back would overwrite the stored high-water mark and leave the next
+	// replay undetectable. Authenticators that always report 0 (most platform
+	// passkeys) never set this flag, so they are unaffected.
+	if cred.Authenticator.CloneWarning {
+		return models.User{}, ErrClonedAuthenticator
 	}
 	if err := w.Store.UpdatePasskeyOnUse(ctx, pk.ID, cred.Authenticator.SignCount); err != nil {
 		return models.User{}, err

@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -107,6 +108,57 @@ func TestRateLimiter_AllowAndDeny(t *testing.T) {
 	// Different key has its own bucket.
 	if !rl.Allow("ip-2") {
 		t.Errorf("ip-2 should be independent")
+	}
+}
+
+// The bucket table must not grow without limit: keys are attacker-chosen (one
+// per source address, and a single host can hold an entire IPv6 /64).
+func TestRateLimiter_BucketTableIsBounded(t *testing.T) {
+	rl := NewRateLimiter(5, time.Minute, nil)
+	for i := range maxRateLimitBuckets * 2 {
+		rl.Allow("key-" + strconv.Itoa(i))
+	}
+	rl.mu.Lock()
+	n := len(rl.buckets)
+	rl.mu.Unlock()
+	if n > maxRateLimitBuckets {
+		t.Errorf("tracked %d buckets, want <= %d", n, maxRateLimitBuckets)
+	}
+}
+
+// Hitting the cap must not become a way to bypass the limiter: a key admitted
+// once the table is full still has to obey its burst.
+func TestRateLimiter_CapDoesNotBypassLimit(t *testing.T) {
+	rl := NewRateLimiter(2, time.Minute, nil)
+	for i := range maxRateLimitBuckets + 100 {
+		rl.Allow("key-" + strconv.Itoa(i))
+	}
+	// "key-0" is still resident and has one token left of its burst of 2.
+	if !rl.Allow("key-0") {
+		t.Fatal("key-0 denied while still inside its burst")
+	}
+	if rl.Allow("key-0") {
+		t.Error("key-0 allowed past its burst — the cap leaked an untracked request")
+	}
+}
+
+// A bucket idle for a full window has refilled to MaxBurst, so sweeping it is
+// equivalent to keeping it. Sweeping a *recently active* bucket would hand
+// back a full burst and defeat the limiter.
+func TestRateLimiter_SweepSparesActiveBuckets(t *testing.T) {
+	rl := NewRateLimiter(1, time.Minute, nil)
+	if !rl.Allow("hot") {
+		t.Fatal("first request should be allowed")
+	}
+	rl.mu.Lock()
+	rl.sweep(time.Now(), rl.WindowPeriod)
+	_, stillTracked := rl.buckets["hot"]
+	rl.mu.Unlock()
+	if !stillTracked {
+		t.Fatal("sweep evicted a bucket used moments ago")
+	}
+	if rl.Allow("hot") {
+		t.Error("exhausted bucket allowed a second request after a sweep")
 	}
 }
 

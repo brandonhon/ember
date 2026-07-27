@@ -48,6 +48,11 @@ type Config struct {
 	// It sets the boot-time default for the update_check_enabled admin setting,
 	// which an admin can still toggle at runtime via Settings.
 	DisableUpdateCheck bool
+	// PasskeyRequireUV makes passkey sign-in demand user verification
+	// (PIN/biometric) instead of merely preferring it. Sets the boot-time
+	// default for the passkey_require_uv admin setting. Off by default: a
+	// passkey already enrolled on a PIN-less security key would stop working.
+	PasskeyRequireUV bool
 	// AllowPrivateURLs disables the SSRF block on outbound HTTP fetches so a
 	// homelab can subscribe to feeds on its LAN. Default false (production).
 	AllowPrivateURLs bool
@@ -250,6 +255,14 @@ func loadFrom(get func(string) string) (Config, error) {
 			errs = append(errs, fmt.Sprintf("EMBER_DISABLE_UPDATE_CHECK %v", err))
 		} else {
 			cfg.DisableUpdateCheck = on
+		}
+	}
+	if v := get("EMBER_PASSKEY_REQUIRE_UV"); v != "" {
+		on, err := parseBool(v)
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("EMBER_PASSKEY_REQUIRE_UV %v", err))
+		} else {
+			cfg.PasskeyRequireUV = on
 		}
 	}
 	if v := get("EMBER_PUBLIC_URL"); v != "" {

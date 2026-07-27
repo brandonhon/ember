@@ -195,7 +195,10 @@ func (d *Dependencies) handlePasskeyLoginBegin(w http.ResponseWriter, r *http.Re
 		internalError(w, "passkeys/login-begin/lookup", err)
 		return
 	}
-	opts, sid, err := d.WebAuthn.BeginLogin(r.Context(), u)
+	// Resolved per ceremony rather than cached at boot, so flipping the admin
+	// toggle takes effect on the next sign-in without a restart.
+	requireUV := d.Store.ResolvePasskeyRequireUV(r.Context(), d.PasskeyRequireUVFallback)
+	opts, sid, err := d.WebAuthn.BeginLogin(r.Context(), u, requireUV)
 	if err != nil {
 		writeError(w, http.StatusUnauthorized, "no_passkey", "this account has no passkey")
 		return
@@ -226,10 +229,21 @@ func (d *Dependencies) handlePasskeyLoginFinish(w http.ResponseWriter, r *http.R
 		writeError(w, http.StatusUnauthorized, "session_expired", "passkey ceremony expired")
 		return
 	}
+	if errors.Is(err, auth.ErrClonedAuthenticator) {
+		// Worth its own log line at a louder level than a generic failure: this
+		// means a credential's counter went backwards, which is either a
+		// duplicated authenticator or a replayed assertion. The client still
+		// gets the same opaque message.
+		slog.Default().Error("passkey assertion rejected: signature counter did not advance",
+			"ip", remoteIP(r, d.trustedNets))
+		writeError(w, http.StatusUnauthorized, "passkey_failed", "passkey authentication failed")
+		return
+	}
 	if err != nil {
 		// Don't leak go-webauthn internals (sign-count/assertion detail) to the
 		// client; log and return a generic failure.
-		slog.Default().Warn("passkey assertion failed", "err", err)
+		slog.Default().Warn("passkey assertion failed", "err", err,
+			"ip", remoteIP(r, d.trustedNets))
 		writeError(w, http.StatusUnauthorized, "passkey_failed", "passkey authentication failed")
 		return
 	}
@@ -240,5 +254,9 @@ func (d *Dependencies) handlePasskeyLoginFinish(w http.ResponseWriter, r *http.R
 		internalError(w, "passkeys/login-finish/session", err)
 		return
 	}
-	writeData(w, http.StatusOK, u, nil)
+	// Same allowlisted shape as password login rather than the raw models.User,
+	// so the two sign-in paths can't drift on what they expose.
+	writeData(w, http.StatusOK, loginResponse{
+		ID: u.ID, Username: u.Username, IsAdmin: u.IsAdmin, CreatedAt: u.CreatedAt,
+	}, nil)
 }

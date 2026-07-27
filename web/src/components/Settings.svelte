@@ -773,6 +773,34 @@
       passkeyErr = e instanceof ApiError ? e.message : String(e);
     }
   }
+  // Admin-only: require user verification (PIN/biometric) at passkey sign-in.
+  let passkeyRequireUV = $state(false);
+  let passkeyUVBusy = $state(false);
+  async function loadPasskeyUV() {
+    try {
+      const res = await api.getAdminSettings();
+      passkeyRequireUV = res.data.passkey_require_uv;
+    } catch (e) {
+      passkeyErr = e instanceof ApiError ? e.message : String(e);
+    }
+  }
+  async function savePasskeyUV(on: boolean) {
+    if (DEMO) { notifyDemoBlocked(); return; }
+    passkeyUVBusy = true;
+    passkeyErr = "";
+    passkeyMsg = "";
+    try {
+      const res = await api.setAdminSettings({ passkey_require_uv: on });
+      passkeyRequireUV = res.data.passkey_require_uv;
+      passkeyMsg = "Saved";
+    } catch (e) {
+      passkeyErr = e instanceof ApiError ? e.message : String(e);
+      passkeyRequireUV = !on; // roll the switch back to the server's reality
+    } finally {
+      passkeyUVBusy = false;
+      setTimeout(() => (passkeyMsg = ""), 3000);
+    }
+  }
   async function addPasskey() {
     if (DEMO) { notifyDemoBlocked(); return; }
     passkeyBusy = "register";
@@ -828,7 +856,10 @@
     if (section === "users" && $user?.is_admin) void loadUsers();
     if (section === "stats") void loadStats();
     if (section === "digest") void loadDigest();
-    if (section === "passkeys") void loadPasskeys();
+    if (section === "passkeys") {
+      void loadPasskeys();
+      if ($user?.is_admin) void loadPasskeyUV();
+    }
     if (section === "notifications") void loadPushSubs();
     if (section === "inbox") void loadInbox();
   });
@@ -1388,6 +1419,24 @@
               </ul>
             {/if}
             </div>
+
+            {#if $user?.is_admin}
+              <div class="card">
+                <div class="card-head"><h4>Security</h4></div>
+                <label class="pref-row">
+                  <div>
+                    <div class="pref-label">Require device verification</div>
+                    <div class="pref-hint">Passkey sign-in must be confirmed with a PIN, fingerprint, or face scan, making it two factors rather than possession alone. Only turn this on once every registered passkey can verify — a security key with no PIN set will stop working and need re-registering. Phones and laptops always verify.</div>
+                  </div>
+                  <span class="switch">
+                    <input type="checkbox" checked={passkeyRequireUV} disabled={passkeyUVBusy}
+                      on:change={(e) => savePasskeyUV(e.currentTarget.checked)}
+                      data-testid="passkey-require-uv" />
+                    <span class="track" aria-hidden="true"></span>
+                  </span>
+                </label>
+              </div>
+            {/if}
           {/if}
         {/if}
 

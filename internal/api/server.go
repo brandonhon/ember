@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"time"
 
@@ -108,10 +109,17 @@ type Dependencies struct {
 	// UpdateCheckEnabledFallback is the env-derived default (the negation of
 	// EMBER_DISABLE_UPDATE_CHECK) for the update_check_enabled admin setting.
 	UpdateCheckEnabledFallback bool
+	// PasskeyRequireUVFallback is the env-derived default
+	// (EMBER_PASSKEY_REQUIRE_UV) for the passkey_require_uv admin setting.
+	PasskeyRequireUVFallback bool
 
 	// img signs + serves the same-origin image proxy. Built in NewRouter
 	// from SessionKey; never set by callers.
 	img *imageProxy
+	// trustedNets is TrustedProxies parsed once in NewRouter, so handlers can
+	// attribute a request to a real client IP for security logging without
+	// re-parsing CIDRs per request. Never set by callers.
+	trustedNets []*net.IPNet
 }
 
 // summariesOn reports whether AI summarization is wired up (an Ollama backend
@@ -135,6 +143,7 @@ func (d *Dependencies) backgroundCtx() context.Context {
 // RequireAdmin. Non-/api routes fall back to the SPA.
 func NewRouter(d Dependencies) http.Handler {
 	trusted := ParseTrustedProxies(d.TrustedProxies)
+	d.trustedNets = trusted
 
 	// Same-origin image proxy. Article responses rewrite image_url to a signed
 	// /api/img path so content blockers don't strip publisher-CDN lead images.

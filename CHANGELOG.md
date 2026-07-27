@@ -14,6 +14,29 @@ full commit-level list; this file curates the highlights and behavior changes.
 - Bumped `golang.org/x/text` to 0.40.0, picking up the fix for `GO-2026-5970`
   (an infinite loop on invalid input). Ember reached the affected code when
   draining an Ollama model-pull response.
+- **Repeated failed logins are now throttled per account, not just per IP.**
+  Ember already rate-limited the login endpoint per source address, which does
+  nothing against a credential-stuffing run spread across many addresses. Each
+  username now also gets an escalating backoff: the first five consecutive
+  failures are free, after which every further attempt has to wait — 1s, 2s,
+  4s, doubling up to a one-minute ceiling — returned as `429` with a
+  `Retry-After` header. A successful sign-in clears it immediately. This is
+  deliberately a delay and not a lockout: a hard lock would let anyone who
+  knows your username keep you out of your own reader. Failed attempts past the
+  free allowance are now logged with the username and client IP so an attack in
+  progress is visible.
+- **A passkey whose signature counter stops advancing is now rejected.** That
+  is the WebAuthn spec's signal of a cloned authenticator or a replayed
+  assertion; Ember previously recorded it and signed the user in anyway.
+  Authenticators that don't implement a counter at all (most phones and
+  laptops) are unaffected, as the spec requires.
+- **Hardened the login endpoint against memory exhaustion.** Every attempt runs
+  a 64 MiB argon2id derivation — including attempts for usernames that don't
+  exist — and nothing bounded how many could run at once, so enough concurrent
+  attempts could push the process into an out-of-memory kill. Derivations are
+  now capped at four in flight; the rest queue.
+- The login rate-limiter's internal table is now bounded, so traffic spread
+  across a large address range can't grow it without limit.
 
 ### Changed
 
@@ -38,6 +61,17 @@ full commit-level list; this file curates the highlights and behavior changes.
   age), which is why only they were affected. The badge self-corrected on the
   next server refresh, but that refresh is debounced and restarts on every
   read, so while you were scrolling through a list it stayed wrong.
+
+### Added
+
+- **Optional device verification for passkey sign-in.** A new **Require device
+  verification** toggle in Settings → Passkeys (or `EMBER_PASSKEY_REQUIRE_UV=1`)
+  makes passkey sign-in demand a PIN, fingerprint, or face scan, so a passkey
+  becomes two factors rather than possession alone. Off by default, because a
+  passkey enrolled on a security key with no PIN configured would stop working
+  and need re-registering — turn it on once you know every registered passkey
+  can verify. Phones and laptops (Touch ID, Windows Hello) always verify, so
+  they're unaffected either way.
 
 ## [0.9.5] - 2026-07-09
 

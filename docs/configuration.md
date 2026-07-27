@@ -23,6 +23,7 @@ Ember reads configuration from environment variables at startup. A handful of se
 | `EMBER_DISABLE_UPDATE_CHECK` | `0` | Turn off the daily check that asks GitHub whether a newer Ember release exists. Sets the boot-time default for the runtime toggle in **Settings → (Feeds/Data) → Check for updates**. The check sends no data about your instance — it's a plain unauthenticated `GET` of the public releases API — and only admins ever see the "update available" hint. |
 | `EMBER_ALLOW_PRIVATE_URLS` | `0` | Bypass the SSRF private-IP block so feeds on RFC1918 / loopback addresses can be subscribed. The scheme allowlist and the non-web service-port block still apply. **Only set this if you trust every user who can add feeds.** |
 | `EMBER_PUBLIC_URL` | — | Canonical `scheme://host` users hit, e.g. `https://reader.example.com`. Required to enable passkey / WebAuthn sign-in. |
+| `EMBER_PASSKEY_REQUIRE_UV` | `0` | Require user verification (PIN, fingerprint, face) at passkey sign-in instead of merely preferring it, making a passkey two factors rather than possession alone. Sets the boot-time default for the runtime toggle in **Settings → Passkeys → Require device verification**. Leave off unless every registered passkey can verify — a security key with no PIN configured stops working and has to be re-registered. Phones and laptops (Touch ID, Windows Hello) always verify, so they're unaffected. |
 | `EMBER_SECURE_COOKIES` | `1` | `Secure` flag on the session + CSRF cookies. Ember serves plain HTTP and expects a TLS-terminating proxy in front, so leave this on. Set `0` **only** for a deliberate plain-HTTP deployment (e.g. private VPN) — otherwise browsers drop the cookies over HTTP and login silently fails. |
 | `EMBER_TRUSTED_PROXIES` | — | Comma/space-separated CIDRs or IPs of the proxy in front of Ember. `X-Real-IP` (rate-limit keying) and `X-Forwarded-Proto` (HTTPS detection for HSTS) are honored **only** from these peers. Empty = trust nobody (Ember is the edge; reads the real client from the connection). The bundled compose sets this to the Caddy bridge range. |
 | `EMBER_SMTP_HOST` | — | SMTP server hostname. Required to enable the daily-digest email feature. Can also be set per-server in **Settings → Email / SMTP** (admin), which takes precedence. |
@@ -52,6 +53,7 @@ Stored in the `app_settings` KV. Edit via the admin UI in **Settings → ...**.
 | Active LLM model | Language model |
 | Temperature / Top P / Context window | Language model → Tuning |
 | Session cookie TTL (overrides `EMBER_SESSION_TTL`) | Sessions |
+| Require device verification for passkey sign-in (`passkey_require_uv`, overrides `EMBER_PASSKEY_REQUIRE_UV`) | Passkeys |
 | App name, page title, favicon URL | Branding |
 | Backup schedule + retention (`db_backup_keep`, default 7) | Database |
 | Backup directory (`db_backup_dir`, default `/data/backups`) | Database → Backups → Directory ([setup](#custom-backup-directory)) |
