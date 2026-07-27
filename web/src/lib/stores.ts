@@ -18,6 +18,12 @@ export const appVersion = writable<string>("");
 // Used by ArticleList.svelte's isFresh() so the client filter matches the
 // server's CountSmartViews query. 6h default until /api/me resolves.
 export const freshWindowSeconds = writable<number>(6 * 3600);
+// Server-computed width of the All-Unread window (reading window, widened back
+// to the previous login, clamped to retention). setRead() needs it so the
+// optimistic All-Unread badge adjustment only counts articles that badge
+// actually included — Starred / Read Later / Shared / board lists are
+// unwindowed and routinely show older items. 24h default until /api/me lands.
+export const unreadWindowSeconds = writable<number>(24 * 3600);
 // Whether AI summarization is configured on this server. Sidebar hides
 // the per-feed Resummarize action when false (EMBER_DISABLE_SUMMARIES=1
 // or no Ollama backend). Default true so existing deployments don't
@@ -36,6 +42,9 @@ export async function refreshMe(): Promise<User | null> {
     appVersion.set(res.data.version);
     if (res.data.fresh_window_seconds && res.data.fresh_window_seconds > 0) {
       freshWindowSeconds.set(res.data.fresh_window_seconds);
+    }
+    if (res.data.unread_window_seconds && res.data.unread_window_seconds > 0) {
+      unreadWindowSeconds.set(res.data.unread_window_seconds);
     }
     summariesEnabled.set(res.data.summaries_enabled !== false);
     updateInfo.set(res.data.update ?? null);
@@ -492,12 +501,25 @@ export async function setRead(
     if (!!a.is_read === read) return n;
     return n + 1;
   }, 0);
-  // Items whose read-state actually flips — drives the optimistic All-Unread
-  // badge update below (computed pre-flip, like freshDelta).
-  const flipped = get(articles).items.reduce(
-    (n, a) => (idSet.has(a.id) && !!a.is_read !== read ? n + 1 : n),
-    0,
-  );
+  // Items whose read-state actually flips AND that fall inside the All-Unread
+  // window — drives the optimistic All-Unread badge update below (computed
+  // pre-flip, like freshDelta).
+  //
+  // The window check is the point: the server counts All-Unread over a window,
+  // but Starred / Read Later / Shared / board lists are unwindowed and happily
+  // show articles from last week. Decrementing for one of those subtracts an
+  // article the badge never counted, pushing it below the true number until
+  // the debounced reconcile catches up — and that debounce keeps resetting
+  // while the reader scrolls, so the wrong value can persist for as long as
+  // they keep reading.
+  const unreadWindowSec = get(unreadWindowSeconds);
+  const flipped = get(articles).items.reduce((n, a) => {
+    if (!idSet.has(a.id)) return n;
+    if (!!a.is_read === read) return n;
+    if (!a.published_at) return n;
+    if (nowSec - a.published_at >= unreadWindowSec) return n;
+    return n + 1;
+  }, 0);
 
   articles.update((s) => ({
     ...s,

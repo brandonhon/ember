@@ -154,7 +154,10 @@ what's already been pruned.
 
 Sidebar badges (All Unread, per-folder, per-feed) are computed server-side with the **same**
 window, summary gate, and cross-feed dedup as the article list, so a badge always matches the
-column it summarizes. When AI summarization is enabled, articles are hidden from every view
+column it summarizes. Reading an article updates the badge immediately in the browser and the
+server's count is re-fetched a moment later to confirm — that local adjustment honors the same
+window, so reading something older than the window (from *Starred*, *Read Later*, *Shared*, or
+a board, none of which are windowed) doesn't move a badge that never counted it. When AI summarization is enabled, articles are hidden from every view
 and count until the summarizer has processed them; when it's disabled, nothing is gated.
 
 Each user also has client-side preferences stored in browser `localStorage`:

@@ -27,6 +27,18 @@ full commit-level list; this file curates the highlights and behavior changes.
   dev-only and are not bundled into the Ember binary. TypeScript is
   deliberately held at 6.x — see below.
 
+### Fixed
+
+- **The All Unread badge could drift below the real count while you read.**
+  Marking an article read from *Starred*, *Read Later*, *Shared*, or a board
+  decremented the All Unread badge even when that article was older than the
+  unread window — so the badge subtracted something it had never counted, and
+  showed fewer unread articles than the All Unread list actually contained.
+  Those four views are deliberately not windowed (they show saved items of any
+  age), which is why only they were affected. The badge self-corrected on the
+  next server refresh, but that refresh is debounced and restarts on every
+  read, so while you were scrolling through a list it stayed wrong.
+
 ## [0.9.5] - 2026-07-09
 
 ### Added
