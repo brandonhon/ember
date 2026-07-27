@@ -141,7 +141,7 @@ func (d *Dependencies) handleUpdateUser(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 	}
-	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
+	writeOK(w)
 }
 
 func (d *Dependencies) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
@@ -157,7 +157,7 @@ func (d *Dependencies) handleDeleteUser(w http.ResponseWriter, r *http.Request) 
 	if mapStoreError(w, d.Store.DeleteUser(r.Context(), id)) {
 		return
 	}
-	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
+	writeOK(w)
 }
 
 func paramInt(w http.ResponseWriter, r *http.Request, key string) (int64, bool) {

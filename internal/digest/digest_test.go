@@ -84,7 +84,10 @@ func TestSendTestMessage_RejectsInjection(t *testing.T) {
 func TestBuildMIME_HeadersAreClean(t *testing.T) {
 	// Smoke check: when fed sanitized inputs, the MIME output has no stray
 	// CRLF in the headers (CRLFs are only allowed as line terminators).
-	msg := buildMIME("ember@example.com", "user@example.com", "Subject line", "plain", "<p>html</p>")
+	msg, err := buildMIME("ember@example.com", "user@example.com", "Subject line", "plain", "<p>html</p>")
+	if err != nil {
+		t.Fatalf("buildMIME: %v", err)
+	}
 	headerBlock, _, ok := strings.Cut(string(msg), "\r\n\r\n")
 	if !ok {
 		t.Fatalf("MIME missing header terminator:\n%s", msg)
@@ -146,7 +149,7 @@ func TestSend_StartTLSRequiredButNotOffered(t *testing.T) {
 	s := &Sender{SMTP: SMTPConfig{
 		Host: host, Port: port, From: "ember@example.com", StartTLS: true,
 	}}
-	err := s.send("user@example.com", []byte("test"))
+	err := s.send("from@example.com", "user@example.com", []byte("test"))
 	if err == nil {
 		t.Fatal("expected error when STARTTLS required but server doesn't offer it, got nil (plaintext downgrade!)")
 	}
@@ -182,7 +185,7 @@ func TestSend_PlainRejectsNonLoopbackHost(t *testing.T) {
 		Host: "smtp.example.com", Port: 25, From: "ember@example.com",
 		Username: "u", Password: "p", StartTLS: false,
 	}}
-	err := s.send("user@example.com", []byte("test"))
+	err := s.send("from@example.com", "user@example.com", []byte("test"))
 	if err == nil {
 		t.Fatal("expected plain-SMTP-to-remote-host to be rejected, got nil")
 	}

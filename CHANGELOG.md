@@ -37,6 +37,29 @@ full commit-level list; this file curates the highlights and behavior changes.
   now capped at four in flight; the rest queue.
 - The login rate-limiter's internal table is now bounded, so traffic spread
   across a large address range can't grow it without limit.
+- **Closed two SSRF bypasses in the private-address block.** `http://[::]/` and
+  IPv4-compatible addresses like `http://[::127.0.0.1]/` slipped past the guard
+  that stops Ember fetching internal hosts, because Go only normalizes the
+  IPv4-*mapped* form (`::ffff:a.b.c.d`) when comparing against IPv4 ranges — so
+  the loopback check never matched, while the connection itself reached
+  localhost. The whole `::/96` range is now blocked (nothing routable lives
+  there). Affected every outbound fetch: adding a feed, discovery, the poller,
+  and the image proxy.
+- **Web Push notifications had a data race that could corrupt payloads.** A
+  single encoded notification was shared across the goroutines fanning out to
+  each of your devices, and the push library writes into the spare capacity of
+  the buffer it's handed — so concurrent sends could scribble over each other.
+  Each send now gets its own copy.
+- **Directory listings are no longer served for static asset paths.** Requesting
+  `/assets/` returned an index of every built file, and because that path also
+  carries a year-long `immutable` cache header, the listing was cached as if it
+  were a content-hashed asset. Directory requests now return 404; single-page-app
+  routes are unaffected.
+- **Digest emails now use an unpredictable MIME boundary.** The boundary was
+  guessable, and article titles are written into the plain-text part unescaped,
+  so a crafted title could close the part early and forge additional MIME
+  sections in the message. Boundary generation now fails the send outright
+  rather than falling back to a fixed value.
 
 ### Changed
 
@@ -48,7 +71,8 @@ full commit-level list; this file curates the highlights and behavior changes.
   `@sveltejs/vite-plugin-svelte` 7.1.4 → 7.2.0, svelte-check 4.7.1 → 4.7.3,
   `@testing-library/jest-dom` 6 → 7, `@types/node` 26.1.0 → 26.1.1. These are
   dev-only and are not bundled into the Ember binary. TypeScript is
-  deliberately held at 6.x — see below.
+  deliberately held at 6.x because svelte-check 4.7.x does not yet support
+  TypeScript 7.
 
 ### Fixed
 
@@ -61,6 +85,24 @@ full commit-level list; this file curates the highlights and behavior changes.
   age), which is why only they were affected. The badge self-corrected on the
   next server refresh, but that refresh is debounced and restarts on every
   read, so while you were scrolling through a list it stayed wrong.
+- **Newsletter mail addressed to several of your inboxes was being dropped.**
+  The inbound SMTP server overwrote the recipient on each `RCPT TO` instead of
+  collecting them, so when one message was addressed to multiple Ember inboxes
+  only the last one received it. Nothing bounced — the sender saw a normal
+  success — so the loss was silent.
+- **Feeds that return unparseable content no longer get retried forever.** Only
+  *fetch* failures widened the retry interval; a feed that fetched fine but
+  failed to parse kept being re-requested at the floor interval indefinitely
+  (~48 requests a day at the default, aimed at someone else's origin). Parse
+  failures now back off on the same curve as fetch failures.
+- **OPML import now reports how many subscriptions it actually added.** It
+  previously counted every feed in the file, so re-importing the same OPML
+  claimed to have added everything again when it had added nothing.
+- **Backup and OPML-export retention only touches files Ember created.** The
+  prune and delete paths matched any `.db` / `.opml` file in the configured
+  directory. Since both directories are admin-settable, pointing one at a
+  directory holding the live `ember.db` could have deleted the database in use.
+  They now match only Ember's own `ember-<timestamp>.db` / `.opml` naming.
 
 ### Added
 

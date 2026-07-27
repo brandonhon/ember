@@ -52,26 +52,17 @@ func ExtractFromURL(ctx context.Context, c *http.Client, target string) (Readabl
 	if err != nil {
 		return Readable{}, err
 	}
-	return Readable{
-		Title:    strings.TrimSpace(art.Title),
-		HTML:     SanitizeHTML(art.Content),
-		Text:     strings.TrimSpace(art.TextContent),
-		ImageURL: SafeImageURL(art.Image),
-	}, nil
+	return readableFrom(art), nil
 }
 
-// extractFromHTML runs readability over the given HTML body without making an
-// HTTP request. Internal test helper; not part of the package's public API.
-func extractFromHTML(body, target string) (Readable, error) {
-	u, _ := url.Parse(target)
-	art, err := readability.FromReader(strings.NewReader(body), u)
-	if err != nil {
-		return Readable{}, err
-	}
+// readableFrom maps a go-readability article onto our view, applying the
+// sanitizer and the image-URL guard. Both extraction entry points funnel
+// through here so neither can return unsanitized HTML.
+func readableFrom(art readability.Article) Readable {
 	return Readable{
 		Title:    strings.TrimSpace(art.Title),
 		HTML:     SanitizeHTML(art.Content),
 		Text:     strings.TrimSpace(art.TextContent),
 		ImageURL: SafeImageURL(art.Image),
-	}, nil
+	}
 }

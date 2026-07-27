@@ -7,7 +7,7 @@ import (
 	"github.com/brandonhon/ember/internal/updatecheck"
 )
 
-// stubUpdateStatus is a canned UpdateStatus for exercising the /api/me gating
+// stubUpdateStatus is a canned updateStatus for exercising the /api/me gating
 // without hitting GitHub.
 type stubUpdateStatus struct {
 	res updatecheck.Result

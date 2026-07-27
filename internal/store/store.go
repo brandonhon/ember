@@ -30,7 +30,7 @@ var ErrInvalidQuery = errors.New("store: invalid search query")
 // ErrNoNewContent is returned by Poller.ExtractArticle when readability ran
 // but the result wasn't an improvement over the stored body. Defined here so
 // the api package can errors.Is without importing poller (which would create
-// a cycle through PollerRefresher).
+// a cycle through pollerRefresher).
 var ErrNoNewContent = errors.New("store: re-extract produced no new content")
 
 // Store wraps a sql.DB with all the data-access methods ember needs. Construct

@@ -13,9 +13,9 @@ import (
 	"github.com/brandonhon/ember/internal/store"
 )
 
-// PasskeySummary is the user-facing view of a registered credential. Raw
+// passkeySummary is the user-facing view of a registered credential. Raw
 // public-key material is never exposed.
-type PasskeySummary struct {
+type passkeySummary struct {
 	ID         int64  `json:"id"`
 	Name       string `json:"name"`
 	CreatedAt  int64  `json:"created_at"`
@@ -49,9 +49,9 @@ func (d *Dependencies) handleListPasskeys(w http.ResponseWriter, r *http.Request
 		internalError(w, "passkeys/list", err)
 		return
 	}
-	out := make([]PasskeySummary, 0, len(pks))
+	out := make([]passkeySummary, 0, len(pks))
 	for _, p := range pks {
-		out = append(out, PasskeySummary{
+		out = append(out, passkeySummary{
 			ID:         p.ID,
 			Name:       p.Name,
 			CreatedAt:  p.CreatedAt,
@@ -61,11 +61,31 @@ func (d *Dependencies) handleListPasskeys(w http.ResponseWriter, r *http.Request
 	writeData(w, http.StatusOK, out, nil)
 }
 
-// passkeyRegisterBeginResp returns the WebAuthn options plus a session ID the
-// client must echo back on finish.
-type passkeyRegisterBeginResp struct {
+// passkeyCeremonyResp returns the WebAuthn options plus a session ID the client
+// must echo back on finish. Shared by the register and login begin endpoints —
+// both ceremonies have the same wire shape.
+type passkeyCeremonyResp struct {
 	SessionID string          `json:"session_id"`
 	Options   json.RawMessage `json:"options"`
+}
+
+// passkeyFinishReq carries a completed ceremony back from the browser. Register
+// also sets Name (a friendly label for the new credential); login ignores it.
+type passkeyFinishReq struct {
+	SessionID string          `json:"session_id"`
+	Name      string          `json:"name,omitempty"`
+	Response  json.RawMessage `json:"response"`
+}
+
+// passkeyID parses the {id} path param. Writes the 400 and returns ok=false on
+// a malformed value.
+func passkeyID(w http.ResponseWriter, r *http.Request) (int64, bool) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "bad_id", "invalid passkey id")
+		return 0, false
+	}
+	return id, true
 }
 
 func (d *Dependencies) handlePasskeyRegisterBegin(w http.ResponseWriter, r *http.Request) {
@@ -79,15 +99,7 @@ func (d *Dependencies) handlePasskeyRegisterBegin(w http.ResponseWriter, r *http
 		internalError(w, "passkeys/begin-register", err)
 		return
 	}
-	writeData(w, http.StatusOK, passkeyRegisterBeginResp{SessionID: sid, Options: opts}, nil)
-}
-
-// passkeyRegisterFinishReq carries the credential attestation back from the
-// browser plus the session ID + a friendly name for the new credential.
-type passkeyRegisterFinishReq struct {
-	SessionID string          `json:"session_id"`
-	Name      string          `json:"name"`
-	Response  json.RawMessage `json:"response"`
+	writeData(w, http.StatusOK, passkeyCeremonyResp{SessionID: sid, Options: opts}, nil)
 }
 
 func (d *Dependencies) handlePasskeyRegisterFinish(w http.ResponseWriter, r *http.Request) {
@@ -96,7 +108,7 @@ func (d *Dependencies) handlePasskeyRegisterFinish(w http.ResponseWriter, r *htt
 		return
 	}
 	u, _ := auth.FromContext(r.Context())
-	var req passkeyRegisterFinishReq
+	var req passkeyFinishReq
 	if !decodeJSON(w, r, &req) {
 		return
 	}
@@ -116,7 +128,7 @@ func (d *Dependencies) handlePasskeyRegisterFinish(w http.ResponseWriter, r *htt
 		writeError(w, http.StatusBadRequest, "registration_failed", "passkey registration failed")
 		return
 	}
-	writeData(w, http.StatusOK, PasskeySummary{
+	writeData(w, http.StatusOK, passkeySummary{
 		ID: pk.ID, Name: pk.Name, CreatedAt: pk.CreatedAt,
 	}, nil)
 }
@@ -127,9 +139,8 @@ type passkeyRenameReq struct {
 
 func (d *Dependencies) handlePasskeyRename(w http.ResponseWriter, r *http.Request) {
 	u, _ := auth.FromContext(r.Context())
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_id", "invalid passkey id")
+	id, ok := passkeyID(w, r)
+	if !ok {
 		return
 	}
 	var req passkeyRenameReq
@@ -143,14 +154,13 @@ func (d *Dependencies) handlePasskeyRename(w http.ResponseWriter, r *http.Reques
 	if mapStoreError(w, d.Store.RenamePasskey(r.Context(), u.ID, id, req.Name)) {
 		return
 	}
-	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
+	writeOK(w)
 }
 
 func (d *Dependencies) handlePasskeyDelete(w http.ResponseWriter, r *http.Request) {
 	u, _ := auth.FromContext(r.Context())
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_id", "invalid passkey id")
+	id, ok := passkeyID(w, r)
+	if !ok {
 		return
 	}
 	if mapStoreError(w, d.Store.DeletePasskey(r.Context(), u.ID, id)) {
@@ -163,10 +173,6 @@ func (d *Dependencies) handlePasskeyDelete(w http.ResponseWriter, r *http.Reques
 
 type passkeyLoginBeginReq struct {
 	Username string `json:"username"`
-}
-type passkeyLoginBeginResp struct {
-	SessionID string          `json:"session_id"`
-	Options   json.RawMessage `json:"options"`
 }
 
 func (d *Dependencies) handlePasskeyLoginBegin(w http.ResponseWriter, r *http.Request) {
@@ -203,12 +209,7 @@ func (d *Dependencies) handlePasskeyLoginBegin(w http.ResponseWriter, r *http.Re
 		writeError(w, http.StatusUnauthorized, "no_passkey", "this account has no passkey")
 		return
 	}
-	writeData(w, http.StatusOK, passkeyLoginBeginResp{SessionID: sid, Options: opts}, nil)
-}
-
-type passkeyLoginFinishReq struct {
-	SessionID string          `json:"session_id"`
-	Response  json.RawMessage `json:"response"`
+	writeData(w, http.StatusOK, passkeyCeremonyResp{SessionID: sid, Options: opts}, nil)
 }
 
 func (d *Dependencies) handlePasskeyLoginFinish(w http.ResponseWriter, r *http.Request) {
@@ -216,7 +217,7 @@ func (d *Dependencies) handlePasskeyLoginFinish(w http.ResponseWriter, r *http.R
 		writeError(w, http.StatusServiceUnavailable, "webauthn_disabled", "passkeys are not configured")
 		return
 	}
-	var req passkeyLoginFinishReq
+	var req passkeyFinishReq
 	if !decodeJSON(w, r, &req) {
 		return
 	}

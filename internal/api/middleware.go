@@ -13,14 +13,14 @@ import (
 	"github.com/brandonhon/ember/internal/auth"
 )
 
-// SecurityHeaders returns middleware that sets common hardening headers. When
+// securityHeaders returns middleware that sets common hardening headers. When
 // the app sits behind a TLS-terminating proxy these complement the proxy's
 // own; exposed directly they are the only source. `trusted` is the set of
 // proxy CIDRs whose X-Forwarded-Proto is believed when deciding whether the
 // edge connection is HTTPS (for the HSTS header). `hstsPreload` appends
 // "; preload" to the HSTS header — only enable after verifying the domain is
 // submitted (or will be submitted) to the HSTS preload list.
-func SecurityHeaders(trusted []*net.IPNet, hstsPreload bool) func(http.Handler) http.Handler {
+func securityHeaders(trusted []*net.IPNet, hstsPreload bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			h := w.Header()
@@ -85,9 +85,9 @@ func httpsDetected(r *http.Request, trusted []*net.IPNet) bool {
 	return false
 }
 
-// RateLimiter is a tiny in-memory leaky-bucket keyed by remote IP. Suitable
+// rateLimiter is a tiny in-memory leaky-bucket keyed by remote IP. Suitable
 // for a single-instance self-hosted deployment; not for fleets. Goroutine-safe.
-type RateLimiter struct {
+type rateLimiter struct {
 	// MaxBurst tokens may be consumed instantaneously; tokens regenerate
 	// at MaxBurst / WindowPeriod.
 	MaxBurst     int
@@ -109,12 +109,12 @@ type bucket struct {
 	updated time.Time
 }
 
-// NewRateLimiter returns a limiter that allows `burst` requests instantly and
+// newRateLimiter returns a limiter that allows `burst` requests instantly and
 // then refills at `burst/window` per second. `trusted` is the set of proxy
 // CIDRs whose X-Real-IP header is honored for bucket keying; pass nil to key
 // strictly on the connection peer.
-func NewRateLimiter(burst int, window time.Duration, trusted []*net.IPNet) *RateLimiter {
-	return &RateLimiter{
+func newRateLimiter(burst int, window time.Duration, trusted []*net.IPNet) *rateLimiter {
+	return &rateLimiter{
 		MaxBurst:     burst,
 		WindowPeriod: window,
 		trusted:      trusted,
@@ -122,9 +122,9 @@ func NewRateLimiter(burst int, window time.Duration, trusted []*net.IPNet) *Rate
 	}
 }
 
-// Allow consumes a token for the given key and returns true if the request
+// allow consumes a token for the given key and returns true if the request
 // should proceed.
-func (rl *RateLimiter) Allow(key string) bool {
+func (rl *rateLimiter) allow(key string) bool {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
 
@@ -180,7 +180,7 @@ const maxRateLimitBuckets = 10000
 // least one full window has refilled to MaxBurst, so forgetting it and
 // recreating it on the next request are equivalent — no request escapes a
 // limit it would otherwise have hit. Caller must hold rl.mu.
-func (rl *RateLimiter) sweep(now time.Time, idle time.Duration) {
+func (rl *rateLimiter) sweep(now time.Time, idle time.Duration) {
 	for k, v := range rl.buckets {
 		if now.Sub(v.updated) >= idle {
 			delete(rl.buckets, k)
@@ -188,12 +188,12 @@ func (rl *RateLimiter) sweep(now time.Time, idle time.Duration) {
 	}
 }
 
-// LimitMiddleware enforces the limiter. On a deny it writes 429 with a small
+// limitMiddleware enforces the limiter. On a deny it writes 429 with a small
 // JSON body.
-func (rl *RateLimiter) LimitMiddleware(next http.Handler) http.Handler {
+func (rl *rateLimiter) limitMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		key := remoteIP(r, rl.trusted)
-		if !rl.Allow(key) {
+		if !rl.allow(key) {
 			writeError(w, http.StatusTooManyRequests, "rate_limited", "too many requests")
 			return
 		}
@@ -201,11 +201,11 @@ func (rl *RateLimiter) LimitMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// ParseTrustedProxies converts CIDR strings (already validated by config) into
+// parseTrustedProxies converts CIDR strings (already validated by config) into
 // *net.IPNet. Invalid entries are skipped defensively. An empty/nil input
 // yields nil — meaning "trust no proxy": ember is the edge and reads the real
 // client from the connection, ignoring X-Real-IP / X-Forwarded-Proto.
-func ParseTrustedProxies(cidrs []string) []*net.IPNet {
+func parseTrustedProxies(cidrs []string) []*net.IPNet {
 	out := make([]*net.IPNet, 0, len(cidrs))
 	for _, c := range cidrs {
 		if _, n, err := net.ParseCIDR(c); err == nil {
@@ -255,23 +255,23 @@ func remoteIP(r *http.Request, trusted []*net.IPNet) string {
 	return hostOnly(r.RemoteAddr)
 }
 
-// CSRFCookieName is the cookie the API sets carrying the CSRF token.
-const CSRFCookieName = "ember_csrf"
+// csrfCookieName is the cookie the API sets carrying the CSRF token.
+const csrfCookieName = "ember_csrf"
 
-// CSRFHeaderName is the header the SPA echoes the cookie value on. Double-
+// csrfHeaderName is the header the SPA echoes the cookie value on. Double-
 // submit pattern — both must match.
-const CSRFHeaderName = "X-Ember-CSRF"
+const csrfHeaderName = "X-Ember-CSRF"
 
-// CSRFIssue returns a chi middleware that lazily sets the CSRF cookie on
+// csrfIssue returns a chi middleware that lazily sets the CSRF cookie on
 // every response that doesn't already carry one. `secure` controls the Secure
 // cookie flag (set to false for plain-HTTP test mode).
-func CSRFIssue(secure bool) func(http.Handler) http.Handler {
+func csrfIssue(secure bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if _, err := r.Cookie(CSRFCookieName); err != nil {
+			if _, err := r.Cookie(csrfCookieName); err != nil {
 				tok := mustRandHex(16)
 				http.SetCookie(w, &http.Cookie{
-					Name:     CSRFCookieName,
+					Name:     csrfCookieName,
 					Value:    tok,
 					Path:     "/",
 					HttpOnly: false, // must be readable by JS to echo into header
@@ -289,13 +289,13 @@ func CSRFIssue(secure bool) func(http.Handler) http.Handler {
 	}
 }
 
-// CSRFVerify is a middleware that rejects unsafe (POST/PUT/PATCH/DELETE)
+// csrfVerify is a middleware that rejects unsafe (POST/PUT/PATCH/DELETE)
 // requests whose CSRF header doesn't match the cookie. GET/HEAD/OPTIONS pass.
 // Also passes when there is no session cookie — the request would be 401'd by
 // RequireAuth anyway, and CSRF only protects authenticated state.
 // Mounted on the /api group only — the Fever shim has its own md5 api_key
 // authentication and intentionally doesn't participate.
-func CSRFVerify(next http.Handler) http.Handler {
+func csrfVerify(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet, http.MethodHead, http.MethodOptions:
@@ -318,12 +318,12 @@ func CSRFVerify(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		cookie, err := r.Cookie(CSRFCookieName)
+		cookie, err := r.Cookie(csrfCookieName)
 		if err != nil {
 			writeError(w, http.StatusForbidden, "csrf_missing", "csrf cookie missing")
 			return
 		}
-		header := r.Header.Get(CSRFHeaderName)
+		header := r.Header.Get(csrfHeaderName)
 		// Constant-time compare: the CSRF token is a secret, so avoid leaking
 		// match progress via timing on the != comparison.
 		if header == "" || subtle.ConstantTimeCompare([]byte(header), []byte(cookie.Value)) != 1 {

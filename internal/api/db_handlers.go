@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"io/fs"
 	"net/http"
@@ -48,7 +49,18 @@ const (
 	keyBackupDir        = "db_backup_dir"
 	keyOPMLExportDir    = "opml_export_dir"
 	keyOPMLKeep         = "opml_keep"
+	keyOPMLSchedule     = "opml_schedule"
 )
+
+// writeDirUnwritable reports a bind-mount permission failure as an actionable
+// 409 rather than a generic 500. Deleting a file needs write permission on its
+// containing directory too, so the create and delete paths share this message.
+func writeDirUnwritable(w http.ResponseWriter, code, action, kind string) {
+	writeError(w, http.StatusConflict, code, action+
+		" failed: the "+kind+" directory isn't writable by the server. If it's a "+
+		"bind-mounted host path, make it owned by or writable by the container "+
+		"user (UID 65532) — see the docs.")
+}
 
 // validDirSetting reports whether p is acceptable as a backup/export directory:
 // empty (reset to default) or an absolute path with no single quote (the
@@ -59,44 +71,43 @@ func validDirSetting(p string) bool {
 
 // resolveBackupDir returns the admin-configured backup directory, falling back
 // to defaultBackupDir when unset.
-func (d *Dependencies) resolveBackupDir(r *http.Request) string {
-	return getSettingOr(r, d, keyBackupDir, defaultBackupDir)
+func (d *Dependencies) resolveBackupDir(ctx context.Context) string {
+	return d.settingOr(ctx, keyBackupDir, defaultBackupDir)
 }
 
 func (d *Dependencies) handleGetDB(w http.ResponseWriter, r *http.Request) {
-	size, pages, err := d.Store.DBSize(r.Context())
+	ctx := r.Context()
+	size, pages, err := d.Store.DBSize(ctx)
 	if err != nil {
 		internalError(w, "internal", err)
 		return
 	}
-	dir := d.resolveBackupDir(r)
+	dir := d.resolveBackupDir(ctx)
 	backups, _ := d.Store.ListBackups(dir)
-	exportDir := getSettingOr(r, d, keyOPMLExportDir, defaultExportDir)
+	exportDir := d.settingOr(ctx, keyOPMLExportDir, defaultExportDir)
 	exports, _ := d.Store.ListExports(exportDir)
 	resp := dbStatus{
 		SizeBytes:        size,
 		PageCount:        pages,
 		BackupDir:        dir,
 		Backups:          backups,
-		BackupSchedule:   getSettingOr(r, d, keyBackupSchedule, "off"),
-		BackupKeepCount:  getIntSettingOr(r, d, keyBackupKeep, 7),
-		CleanupSchedule:  getSettingOr(r, d, keyCleanupSchedule, "off"),
-		CleanupOlderDays: getIntSettingOr(r, d, keyCleanupOlderDays, 90),
-		OPMLSchedule:     getSettingOr(r, d, "opml_schedule", "off"),
+		BackupSchedule:   d.settingOr(ctx, keyBackupSchedule, "off"),
+		BackupKeepCount:  d.intSettingOr(ctx, keyBackupKeep, 7),
+		CleanupSchedule:  d.settingOr(ctx, keyCleanupSchedule, "off"),
+		CleanupOlderDays: d.intSettingOr(ctx, keyCleanupOlderDays, 90),
+		OPMLSchedule:     d.settingOr(ctx, keyOPMLSchedule, "off"),
 		OPMLExportDir:    exportDir,
-		OPMLKeepCount:    getIntSettingOr(r, d, keyOPMLKeep, 12),
+		OPMLKeepCount:    d.intSettingOr(ctx, keyOPMLKeep, 12),
 		Exports:          exports,
 	}
 	writeData(w, http.StatusOK, resp, nil)
 }
 
 func (d *Dependencies) handleDBBackup(w http.ResponseWriter, r *http.Request) {
-	info, err := d.Store.Backup(r.Context(), d.resolveBackupDir(r))
+	ctx := r.Context()
+	info, err := d.Store.Backup(ctx, d.resolveBackupDir(ctx))
 	if errors.Is(err, fs.ErrPermission) {
-		// A bind-mounted host path that isn't writable by the container user is
-		// the common failure — give the admin an actionable message, not a 500.
-		writeError(w, http.StatusConflict, "backup_unwritable",
-			"Backup failed: the backup directory isn't writable by the server. If it's a bind-mounted host path, make it owned by or writable by the container user (UID 65532) — see the docs.")
+		writeDirUnwritable(w, "backup_unwritable", "Backup", "backup")
 		return
 	}
 	if err != nil {
@@ -109,53 +120,49 @@ func (d *Dependencies) handleDBBackup(w http.ResponseWriter, r *http.Request) {
 // handleOPMLExportNow writes the requesting admin's subscription list to the
 // configured export directory, mirroring the manual DB "Back up now".
 func (d *Dependencies) handleOPMLExportNow(w http.ResponseWriter, r *http.Request) {
-	u, _ := auth.FromContext(r.Context())
-	dir := getSettingOr(r, d, keyOPMLExportDir, defaultExportDir)
-	path, size, err := d.OPML.WriteExport(r.Context(), u.ID, dir)
+	ctx := r.Context()
+	u, _ := auth.FromContext(ctx)
+	dir := d.settingOr(ctx, keyOPMLExportDir, defaultExportDir)
+	path, size, err := d.OPML.WriteExport(ctx, u.ID, dir)
 	if errors.Is(err, fs.ErrPermission) {
-		writeError(w, http.StatusConflict, "export_unwritable",
-			"Export failed: the export directory isn't writable by the server. If it's a bind-mounted host path, make it owned by or writable by the container user (UID 65532) — see the docs.")
+		writeDirUnwritable(w, "export_unwritable", "Export", "export")
 		return
 	}
 	if err != nil {
 		internalError(w, "opml_export", err)
 		return
 	}
-	_, _ = d.Store.PruneExports(dir, getIntSettingOr(r, d, keyOPMLKeep, 12))
+	_, _ = d.Store.PruneExports(dir, d.intSettingOr(ctx, keyOPMLKeep, 12))
 	writeData(w, http.StatusOK, store.ExportInfo{Path: path, SizeBytes: size, CreatedAt: time.Now().Unix()}, nil)
 }
 
 // handleDeleteBackup removes a single backup file by name from the backup dir.
 func (d *Dependencies) handleDeleteBackup(w http.ResponseWriter, r *http.Request) {
-	err := d.Store.DeleteBackup(d.resolveBackupDir(r), chi.URLParam(r, "name"))
+	err := d.Store.DeleteBackup(d.resolveBackupDir(r.Context()), chi.URLParam(r, "name"))
 	if errors.Is(err, fs.ErrPermission) {
-		// Deleting a file needs write permission on its directory. A bind-mounted
-		// host path that isn't writable by the container user is the common
-		// failure (a backup can have been created earlier when it was writable) —
-		// give the admin an actionable message instead of a generic 500.
-		writeError(w, http.StatusConflict, "backup_undeletable",
-			"Delete failed: the backup directory isn't writable by the server. If it's a bind-mounted host path, make it owned by or writable by the container user (UID 65532) — see the docs.")
+		// A backup can have been created earlier, when the directory was still
+		// writable, and only now fail to unlink.
+		writeDirUnwritable(w, "backup_undeletable", "Delete", "backup")
 		return
 	}
 	if mapStoreError(w, err) {
 		return
 	}
-	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
+	writeOK(w)
 }
 
 // handleDeleteExport removes a single OPML export file by name from the export dir.
 func (d *Dependencies) handleDeleteExport(w http.ResponseWriter, r *http.Request) {
-	dir := getSettingOr(r, d, keyOPMLExportDir, defaultExportDir)
+	dir := d.settingOr(r.Context(), keyOPMLExportDir, defaultExportDir)
 	err := d.Store.DeleteExport(dir, chi.URLParam(r, "name"))
 	if errors.Is(err, fs.ErrPermission) {
-		writeError(w, http.StatusConflict, "export_undeletable",
-			"Delete failed: the export directory isn't writable by the server. If it's a bind-mounted host path, make it owned by or writable by the container user (UID 65532) — see the docs.")
+		writeDirUnwritable(w, "export_undeletable", "Delete", "export")
 		return
 	}
 	if mapStoreError(w, err) {
 		return
 	}
-	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
+	writeOK(w)
 }
 
 type cleanupReq struct {
@@ -228,40 +235,22 @@ func (d *Dependencies) handleDBSchedule(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusBadRequest, "bad_request", "opml_export_dir must be an absolute path with no quote characters")
 		return
 	}
-	ctx := r.Context()
-	if err := d.Store.PutAppSetting(ctx, keyBackupDir, backupDir); err != nil {
-		internalError(w, "internal", err)
-		return
+	writes := []appSetting{
+		{keyBackupDir, backupDir},
+		{keyOPMLExportDir, exportDir},
+		{keyOPMLKeep, strconv.Itoa(req.OPMLKeepCount)},
+		{keyBackupSchedule, req.BackupSchedule},
+		{keyBackupKeep, strconv.Itoa(req.BackupKeepCount)},
+		{keyCleanupSchedule, req.CleanupSchedule},
+		{keyCleanupOlderDays, strconv.Itoa(req.CleanupOlderDays)},
 	}
-	if err := d.Store.PutAppSetting(ctx, keyOPMLExportDir, exportDir); err != nil {
-		internalError(w, "internal", err)
-		return
-	}
-	if err := d.Store.PutAppSetting(ctx, keyOPMLKeep, strconv.Itoa(req.OPMLKeepCount)); err != nil {
-		internalError(w, "internal", err)
-		return
-	}
-	if err := d.Store.PutAppSetting(ctx, keyBackupSchedule, req.BackupSchedule); err != nil {
-		internalError(w, "internal", err)
-		return
-	}
-	if err := d.Store.PutAppSetting(ctx, keyBackupKeep, strconv.Itoa(req.BackupKeepCount)); err != nil {
-		internalError(w, "internal", err)
-		return
-	}
-	if err := d.Store.PutAppSetting(ctx, keyCleanupSchedule, req.CleanupSchedule); err != nil {
-		internalError(w, "internal", err)
-		return
-	}
-	if err := d.Store.PutAppSetting(ctx, keyCleanupOlderDays, strconv.Itoa(req.CleanupOlderDays)); err != nil {
-		internalError(w, "internal", err)
-		return
-	}
+	// An omitted opml_schedule leaves the stored value alone, unlike the fields
+	// above which always write (their zero values were defaulted earlier).
 	if req.OPMLSchedule != "" {
-		if err := d.Store.PutAppSetting(ctx, "opml_schedule", req.OPMLSchedule); err != nil {
-			internalError(w, "internal", err)
-			return
-		}
+		writes = append(writes, appSetting{keyOPMLSchedule, req.OPMLSchedule})
+	}
+	if !d.putAppSettings(r.Context(), w, writes) {
+		return
 	}
 	writeData(w, http.StatusOK, map[string]string{"ok": "saved"}, nil)
 }
@@ -275,19 +264,35 @@ func validSchedule(v string, allowed ...string) bool {
 	return false
 }
 
-func getSettingOr(r *http.Request, d *Dependencies, key, fallback string) string {
-	v, _ := d.Store.GetAppSetting(r.Context(), key)
+// appSetting is one key/value pair destined for the app_settings table.
+type appSetting struct{ key, value string }
+
+// putAppSettings writes each setting in order, reporting a 500 and returning
+// false on the first failure. Not transactional — a mid-way failure leaves the
+// earlier writes applied, same as the sequential writes it replaced.
+func (d *Dependencies) putAppSettings(ctx context.Context, w http.ResponseWriter, settings []appSetting) bool {
+	for _, s := range settings {
+		if err := d.Store.PutAppSetting(ctx, s.key, s.value); err != nil {
+			internalError(w, "internal", err)
+			return false
+		}
+	}
+	return true
+}
+
+// settingOr reads an app_settings value, falling back when it is unset.
+func (d *Dependencies) settingOr(ctx context.Context, key, fallback string) string {
+	v, _ := d.Store.GetAppSetting(ctx, key)
 	if v == "" {
 		return fallback
 	}
 	return v
 }
-func getIntSettingOr(r *http.Request, d *Dependencies, key string, fallback int) int {
-	v, _ := d.Store.GetAppSetting(r.Context(), key)
-	if v == "" {
-		return fallback
-	}
-	n, err := strconv.Atoi(v)
+
+// intSettingOr is settingOr for numeric settings; an unset or unparseable
+// value yields the fallback.
+func (d *Dependencies) intSettingOr(ctx context.Context, key string, fallback int) int {
+	n, err := strconv.Atoi(d.settingOr(ctx, key, ""))
 	if err != nil {
 		return fallback
 	}

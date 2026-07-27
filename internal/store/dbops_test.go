@@ -16,7 +16,15 @@ func TestPruneExports_KeepsNewestN(t *testing.T) {
 	// Create 5 .opml files with explicit, increasing mtimes so newest-first
 	// ordering is deterministic.
 	now := time.Now()
-	names := []string{"a.opml", "b.opml", "c.opml", "d.opml", "e.opml"}
+	// Use ember's real generated filenames: list/prune only manage artifacts
+	// ember itself created (see isEmberArtifact).
+	names := []string{
+		"ember-2026-07-21-100000.opml",
+		"ember-2026-07-22-100000.opml",
+		"ember-2026-07-23-100000.opml",
+		"ember-2026-07-24-100000.opml",
+		"ember-2026-07-25-100000.opml",
+	}
 	for i, n := range names {
 		path := filepath.Join(dir, n)
 		if err := os.WriteFile(path, []byte("x"), 0o644); err != nil {
@@ -48,8 +56,9 @@ func TestPruneExports_KeepsNewestN(t *testing.T) {
 	if len(left) != 2 {
 		t.Fatalf("len(left) = %d, want 2", len(left))
 	}
-	// Newest two are e.opml and d.opml (newest first).
-	if filepath.Base(left[0].Path) != "e.opml" || filepath.Base(left[1].Path) != "d.opml" {
+	// Newest two, newest first.
+	if filepath.Base(left[0].Path) != "ember-2026-07-25-100000.opml" ||
+		filepath.Base(left[1].Path) != "ember-2026-07-24-100000.opml" {
 		t.Errorf("kept wrong files: %s, %s", left[0].Path, left[1].Path)
 	}
 	// Non-.opml sibling is untouched.
@@ -61,7 +70,7 @@ func TestPruneExports_KeepsNewestN(t *testing.T) {
 func TestPruneExports_NoopWhenAtOrBelowKeep(t *testing.T) {
 	s := NewTest(t)
 	dir := t.TempDir()
-	for _, n := range []string{"a.opml", "b.opml"} {
+	for _, n := range []string{"ember-2026-07-21-100000.opml", "ember-2026-07-22-100000.opml"} {
 		if err := os.WriteFile(filepath.Join(dir, n), []byte("x"), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -89,7 +98,7 @@ func TestPruneExports_MissingDirIsOK(t *testing.T) {
 func TestPruneExports_NonPositiveKeep(t *testing.T) {
 	s := NewTest(t)
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "a.opml"), []byte("x"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "ember-2026-07-21-100000.opml"), []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	n, err := s.PruneExports(dir, 0)
@@ -103,15 +112,15 @@ func TestDeleteBackup_RejectsTraversalAndBadNames(t *testing.T) {
 	dir := t.TempDir()
 
 	// Happy path: a real backup is deleted.
-	good := filepath.Join(dir, "good.db")
+	good := filepath.Join(dir, "ember-2026-07-21-100000.db")
 	if err := os.WriteFile(good, []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.DeleteBackup(dir, "good.db"); err != nil {
-		t.Fatalf("delete good.db: %v", err)
+	if err := s.DeleteBackup(dir, "ember-2026-07-21-100000.db"); err != nil {
+		t.Fatalf("delete a real backup: %v", err)
 	}
 	if _, err := os.Stat(good); !os.IsNotExist(err) {
-		t.Errorf("good.db still present, stat err = %v", err)
+		t.Errorf("backup still present, stat err = %v", err)
 	}
 
 	// A file the deleter must never reach: a .db sibling outside dir.

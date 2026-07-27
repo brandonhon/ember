@@ -124,6 +124,15 @@ backed by a mount is lost when the container is recreated.
 The same directory is used by both the scheduled job and the manual button;
 **Keep** prunes the oldest snapshots beyond the count you set.
 
+::: tip Retention only ever touches Ember's own files
+Pruning and per-file delete match **only** the `ember-<timestamp>.db` /
+`ember-<timestamp>.opml` names Ember generates — not every `.db` or `.opml` in
+the directory. That matters because these directories are admin-settable: point
+one at a directory that also holds a live database and a "match any `.db`"
+rule could delete the file in use. Anything else you keep alongside them is left
+alone.
+:::
+
 The **OPML export directory** (**Settings → Database → OPML export → Directory**,
 default `/data/exports`) works exactly the same way — bind-mount the host path,
 `chown -R` it to UID 65532 (same ownership caveat for creating *and* deleting

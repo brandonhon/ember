@@ -258,6 +258,23 @@ func decodeArgon2id(encoded string) (Params, []byte, []byte, error) {
 	return p, salt, hash, nil
 }
 
+// setSessionCookie writes the session cookie. The flags (Path, HttpOnly,
+// SameSite=Strict, Secure) must be identical across issue, renewal, and clear —
+// a browser only replaces a cookie when they match, so drift here silently
+// leaves a stale duplicate behind. maxAge<0 clears it.
+func (a *Auth) setSessionCookie(w http.ResponseWriter, value string, expires time.Time, maxAge int) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     CookieName,
+		Value:    value,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   a.SecureCookies,
+		SameSite: http.SameSiteStrictMode,
+		Expires:  expires,
+		MaxAge:   maxAge,
+	})
+}
+
 // CreateSession inserts a session row and writes a signed cookie identifying
 // it to the response.
 func (a *Auth) CreateSession(ctx context.Context, w http.ResponseWriter, r *http.Request, userID int64) (models.Session, error) {
@@ -294,16 +311,7 @@ func (a *Auth) CreateSession(ctx context.Context, w http.ResponseWriter, r *http
 	if err != nil {
 		return models.Session{}, err
 	}
-	http.SetCookie(w, &http.Cookie{
-		Name:     CookieName,
-		Value:    encoded,
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   a.SecureCookies,
-		SameSite: http.SameSiteStrictMode,
-		Expires:  now.Add(ttl),
-		MaxAge:   int(ttl.Seconds()),
-	})
+	a.setSessionCookie(w, encoded, now.Add(ttl), int(ttl.Seconds()))
 	return sess, nil
 }
 
@@ -388,16 +396,7 @@ func (a *Auth) maybeRenew(ctx context.Context, w http.ResponseWriter, sessionID 
 		return
 	}
 	exp := time.Unix(newExpiry, 0)
-	http.SetCookie(w, &http.Cookie{
-		Name:     CookieName,
-		Value:    encoded,
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   a.SecureCookies,
-		SameSite: http.SameSiteStrictMode,
-		Expires:  exp,
-		MaxAge:   int(exp.Sub(now).Seconds()),
-	})
+	a.setSessionCookie(w, encoded, exp, int(exp.Sub(now).Seconds()))
 }
 
 // DestroySession deletes the current session row and clears the cookie.
@@ -412,15 +411,8 @@ func (a *Auth) DestroySession(ctx context.Context, w http.ResponseWriter, r *htt
 			}
 		}
 	}
-	http.SetCookie(w, &http.Cookie{
-		Name:     CookieName,
-		Value:    "",
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   a.SecureCookies,
-		SameSite: http.SameSiteStrictMode,
-		MaxAge:   -1,
-	})
+	// Zero Expires + MaxAge -1 is the standard "delete this cookie" response.
+	a.setSessionCookie(w, "", time.Time{}, -1)
 	return nil
 }
 
@@ -446,32 +438,33 @@ func FromContext(ctx context.Context) (models.User, bool) {
 	return u, ok
 }
 
-// withUser stores the user on a context. Exported only for tests.
+// withUser stores the authenticated user on a context for FromContext.
 func withUser(ctx context.Context, u models.User) context.Context {
 	return context.WithValue(ctx, userCtxKey, u)
 }
 
 // RequireAuth returns chi middleware that requires a valid session.
 func (a *Auth) RequireAuth(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		u, err := a.VerifySession(r.Context(), w, r)
-		if err != nil {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
-			return
-		}
-		next.ServeHTTP(w, r.WithContext(withUser(r.Context(), u)))
-	})
+	return a.requireSession(next, false)
 }
 
 // RequireAdmin returns chi middleware that requires an authenticated admin.
+// A signed-in non-admin gets 403; an anonymous caller still gets 401, so the
+// two cases stay distinguishable to the client.
 func (a *Auth) RequireAdmin(next http.Handler) http.Handler {
+	return a.requireSession(next, true)
+}
+
+// requireSession is the body of both middlewares: verify the cookie, optionally
+// require admin, and attach the user to the request context.
+func (a *Auth) requireSession(next http.Handler, adminOnly bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		u, err := a.VerifySession(r.Context(), w, r)
 		if err != nil {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
-		if !u.IsAdmin {
+		if adminOnly && !u.IsAdmin {
 			http.Error(w, "forbidden", http.StatusForbidden)
 			return
 		}

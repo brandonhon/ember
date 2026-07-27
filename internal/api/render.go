@@ -39,6 +39,12 @@ func writeData(w http.ResponseWriter, status int, data any, meta map[string]any)
 	writeJSON(w, status, dataEnvelope[any]{Data: data, Meta: meta})
 }
 
+// writeOK writes the bare `{"data":{"ok":true}}` acknowledgement used by every
+// mutation endpoint that has nothing else to return.
+func writeOK(w http.ResponseWriter) {
+	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
+}
+
 // writeError writes the standard error envelope.
 func writeError(w http.ResponseWriter, status int, code, msg string) {
 	writeJSON(w, status, errorEnvelope{Error: errorPayload{Code: code, Message: msg}})

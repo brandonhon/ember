@@ -343,6 +343,25 @@ Full Go audit (login bypass, SQL injection, transport/HTTP-vs-HTTPS, RCE, SSRF) 
 
 ---
 
+## Review #5 (2026-07-27) — package-by-package `internal/` sweep
+
+A consolidation pass over all 18 `internal/` packages, driven by characterization tests rather than a threat model, which surfaced eight latent defects. Every finding below was **mutation-verified**: the fix was reverted and a test confirmed to fail, so none of these are speculative. Four are security-relevant, four are correctness/data-loss. Dead-code result was 18 for 18 — none.
+
+| ID | Severity | Status | File | Finding |
+| --- | --- | --- | --- | --- |
+| V5-1 | HIGH | `fixed` | `internal/urlcheck/urlcheck.go` | **SSRF bypass.** `http://[::]/` and IPv4-compatible `http://[::127.0.0.1]/` passed the private-address check in both `Check` and `DialContext`. Go's `net.IP.To4()` normalizes only the IPv4-**mapped** form (`::ffff:a.b.c.d`), so `IPNet.Contains` silently missed the IPv4-**compatible** form while the dial still reached loopback. Fixed by blocking `::/96` wholesale. |
+| V5-2 | MEDIUM | `fixed` | `internal/push/notify.go` | **Data race.** One `json.Marshal` buffer was shared across the goroutines fanning out to each subscribed device; `webpush-go` wraps the caller's slice in `bytes.NewBuffer` and writes into its spare capacity, so concurrent sends could corrupt each other's payloads. Each send now gets a `bytes.Clone`. |
+| V5-3 | MEDIUM | `fixed` | `internal/web/embed.go` | **Information disclosure.** `http.FileServer` rendered a directory index for `/assets/`, enumerating every built asset filename — and the `/assets/` prefix applies a year-long `immutable` cache header, so the listing was cached as if it were a content-hashed file. Directory requests now 404 before any cache header is set. |
+| V5-4 | MEDIUM | `fixed` | `internal/digest/render.go` | **Forgeable MIME parts.** The `multipart/alternative` boundary was predictable and `renderText` writes feed/article titles raw (only `renderHTML` escapes). A crafted title could close the part early and inject MIME sections. Boundary now from `crypto/rand`, failing the send closed rather than falling back to a fixed value. |
+| V5-5 | HIGH | `fixed` | `internal/store/dbops.go` | **Potential data loss.** `PruneBackups` matched any `.db`/`.opml` file in the configured directory. Both directories are admin-settable, so pointing one at a directory holding the live `ember.db` could delete the database in use. Now matches only the generated `ember-<timestamp>.<ext>` pattern. |
+| V5-6 | HIGH | `fixed` | `internal/emailinbox/server.go` | **Silent mail loss.** The SMTP `Rcpt` handler overwrote the recipient instead of accumulating, so a message addressed to several Ember inboxes reached only the last one. The sender saw `250 OK` and nothing bounced. Found by driving a real SMTP conversation, not by unit-testing `Rcpt` in isolation. |
+| V5-7 | MEDIUM | `fixed` | `internal/poller/poller.go` | **Abusive outbound traffic.** Only fetch failures widened the retry interval; a feed returning 200 with unparseable content was re-requested at the floor interval forever (~48 requests/day at the default, at a third-party origin). Parse failures now back off on the same curve. |
+| V5-8 | LOW | `fixed` | `internal/opml/opml.go` | **Misreported count.** Import returned "feeds processed" while documenting itself as returning new subscriptions, so re-importing the same file claimed to have added everything again. |
+
+**Accepted / not changed:** `Feed.LastError` still surfaces raw `err.Error()` text to any subscriber via the sidebar tooltip — useful diagnostics weighed against a low-severity disclosure; flagged deliberately rather than changed. A latent (not live) lazy-write race on `Ollama.HTTPClient` exists only for a hand-constructed summarizer; production always goes through `NewOllama`.
+
+---
+
 ## Static Analysis Baseline (2026-06-10)
 
 - `go vet ./...` — clean

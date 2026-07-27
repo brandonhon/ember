@@ -4,9 +4,12 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/go-shiori/go-readability"
 )
 
 func TestExtractFromHTML(t *testing.T) {
@@ -56,4 +59,16 @@ func TestExtractFromURL_Non2xxError(t *testing.T) {
 	if _, err := ExtractFromURL(context.Background(), srv.Client(), srv.URL); err == nil {
 		t.Error("expected error for 404")
 	}
+}
+
+// extractFromHTML runs readability over a literal HTML body with no HTTP
+// request. Test-only: it lives here rather than in readability.go so the
+// production build carries no unreachable helper.
+func extractFromHTML(body, target string) (Readable, error) {
+	u, _ := url.Parse(target)
+	art, err := readability.FromReader(strings.NewReader(body), u)
+	if err != nil {
+		return Readable{}, err
+	}
+	return readableFrom(art), nil
 }

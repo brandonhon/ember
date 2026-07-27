@@ -1,13 +1,16 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/go-webauthn/webauthn/protocol"
@@ -15,6 +18,13 @@ import (
 
 	"github.com/brandonhon/ember/internal/models"
 	"github.com/brandonhon/ember/internal/store"
+)
+
+// Ceremony kinds, stored on the webauthn_sessions row so a register session
+// can never be spent finishing a login (or vice versa).
+const (
+	purposeRegister = "register"
+	purposeLogin    = "login"
 )
 
 // WebAuthn wraps the go-webauthn library with ember's storage. The relying
@@ -71,7 +81,7 @@ type waUser struct {
 
 func (u *waUser) WebAuthnID() []byte {
 	// Stable per-user handle. The library expects bytes — encode the int ID.
-	return []byte(fmt.Sprintf("%d", u.user.ID))
+	return []byte(strconv.FormatInt(u.user.ID, 10))
 }
 
 func (u *waUser) WebAuthnName() string                 { return u.user.Username }
@@ -127,6 +137,13 @@ func (w *WebAuthn) BeginRegister(ctx context.Context, u models.User) ([]byte, st
 	if err != nil {
 		return nil, "", err
 	}
+	return w.startCeremony(ctx, u.ID, purposeRegister, options, sessionData)
+}
+
+// startCeremony persists an in-flight ceremony and returns the browser options
+// plus the session ID the client echoes back on finish. Shared by both begin
+// paths — they differ only in which library call produced the options.
+func (w *WebAuthn) startCeremony(ctx context.Context, userID int64, purpose string, options any, sessionData *wa.SessionData) ([]byte, string, error) {
 	sd, err := json.Marshal(sessionData)
 	if err != nil {
 		return nil, "", err
@@ -137,9 +154,9 @@ func (w *WebAuthn) BeginRegister(ctx context.Context, u models.User) ([]byte, st
 	}
 	if err := w.Store.PutWebAuthnSession(ctx, store.WebAuthnSession{
 		ID:      sid,
-		UserID:  nullInt64(u.ID),
+		UserID:  sql.NullInt64{Int64: userID, Valid: true},
 		Data:    sd,
-		Purpose: "register",
+		Purpose: purpose,
 	}); err != nil {
 		return nil, "", err
 	}
@@ -155,29 +172,11 @@ func (w *WebAuthn) BeginRegister(ctx context.Context, u models.User) ([]byte, st
 // stored user — prevents a logged-in user from finishing another user's
 // ceremony by supplying a foreign session ID.
 func (w *WebAuthn) FinishRegister(ctx context.Context, sessionID, name string, raw []byte, callerID int64) (models.Passkey, error) {
-	sess, err := w.Store.TakeWebAuthnSession(ctx, sessionID)
+	user, wu, sd, err := w.takeCeremony(ctx, sessionID, purposeRegister, &callerID)
 	if err != nil {
 		return models.Passkey{}, err
 	}
-	if sess.Purpose != "register" || !sess.UserID.Valid {
-		return models.Passkey{}, errors.New("webauthn: wrong session")
-	}
-	if sess.UserID.Int64 != callerID {
-		return models.Passkey{}, errors.New("webauthn: session does not belong to caller")
-	}
-	user, err := w.Store.GetUser(ctx, sess.UserID.Int64)
-	if err != nil {
-		return models.Passkey{}, err
-	}
-	wu, err := w.loadUser(ctx, user)
-	if err != nil {
-		return models.Passkey{}, err
-	}
-	var sd wa.SessionData
-	if err := json.Unmarshal(sess.Data, &sd); err != nil {
-		return models.Passkey{}, err
-	}
-	parsed, err := protocol.ParseCredentialCreationResponseBody(strings.NewReader(string(raw)))
+	parsed, err := protocol.ParseCredentialCreationResponseBody(bytes.NewReader(raw))
 	if err != nil {
 		return models.Passkey{}, err
 	}
@@ -231,52 +230,19 @@ func (w *WebAuthn) BeginLogin(ctx context.Context, u models.User, requireUV bool
 	if err != nil {
 		return nil, "", err
 	}
-	sd, err := json.Marshal(sessionData)
-	if err != nil {
-		return nil, "", err
-	}
-	sid, err := randomID()
-	if err != nil {
-		return nil, "", err
-	}
-	if err := w.Store.PutWebAuthnSession(ctx, store.WebAuthnSession{
-		ID:      sid,
-		UserID:  nullInt64(u.ID),
-		Data:    sd,
-		Purpose: "login",
-	}); err != nil {
-		return nil, "", err
-	}
-	out, err := json.Marshal(options)
-	if err != nil {
-		return nil, "", err
-	}
-	return out, sid, nil
+	return w.startCeremony(ctx, u.ID, purposeLogin, options, sessionData)
 }
 
 // FinishLogin verifies the assertion and returns the authenticated user. On
 // success the passkey's sign count is updated and the ceremony row consumed.
 func (w *WebAuthn) FinishLogin(ctx context.Context, sessionID string, raw []byte) (models.User, error) {
-	sess, err := w.Store.TakeWebAuthnSession(ctx, sessionID)
+	// nil = no caller binding: a login ceremony is finished by an as-yet-
+	// unauthenticated browser, so there is no session user to match against.
+	user, wu, sd, err := w.takeCeremony(ctx, sessionID, purposeLogin, nil)
 	if err != nil {
 		return models.User{}, err
 	}
-	if sess.Purpose != "login" || !sess.UserID.Valid {
-		return models.User{}, errors.New("webauthn: wrong session")
-	}
-	user, err := w.Store.GetUser(ctx, sess.UserID.Int64)
-	if err != nil {
-		return models.User{}, err
-	}
-	wu, err := w.loadUser(ctx, user)
-	if err != nil {
-		return models.User{}, err
-	}
-	var sd wa.SessionData
-	if err := json.Unmarshal(sess.Data, &sd); err != nil {
-		return models.User{}, err
-	}
-	parsed, err := protocol.ParseCredentialRequestResponseBody(strings.NewReader(string(raw)))
+	parsed, err := protocol.ParseCredentialRequestResponseBody(bytes.NewReader(raw))
 	if err != nil {
 		return models.User{}, err
 	}
@@ -306,23 +272,43 @@ func (w *WebAuthn) FinishLogin(ctx context.Context, sessionID string, raw []byte
 	return user, nil
 }
 
+// takeCeremony consumes a stored ceremony (single-use), enforces that it is of
+// the expected kind, and rehydrates everything the finish step needs. When
+// callerID is non-nil the ceremony must also belong to that user, which stops
+// a signed-in user from finishing someone else's registration with a borrowed
+// session ID. Pass nil only for login, where the browser isn't authenticated
+// yet. A pointer rather than a 0 sentinel so an accidental zero caller ID
+// fails the comparison (no real user has ID 0) instead of skipping the check.
+func (w *WebAuthn) takeCeremony(ctx context.Context, sessionID, purpose string, callerID *int64) (models.User, *waUser, wa.SessionData, error) {
+	var sd wa.SessionData
+	sess, err := w.Store.TakeWebAuthnSession(ctx, sessionID)
+	if err != nil {
+		return models.User{}, nil, sd, err
+	}
+	if sess.Purpose != purpose || !sess.UserID.Valid {
+		return models.User{}, nil, sd, errors.New("webauthn: wrong session")
+	}
+	if callerID != nil && sess.UserID.Int64 != *callerID {
+		return models.User{}, nil, sd, errors.New("webauthn: session does not belong to caller")
+	}
+	user, err := w.Store.GetUser(ctx, sess.UserID.Int64)
+	if err != nil {
+		return models.User{}, nil, sd, err
+	}
+	wu, err := w.loadUser(ctx, user)
+	if err != nil {
+		return models.User{}, nil, sd, err
+	}
+	if err := json.Unmarshal(sess.Data, &sd); err != nil {
+		return models.User{}, nil, sd, err
+	}
+	return user, wu, sd, nil
+}
+
 func randomID() (string, error) {
 	b := make([]byte, 16)
 	if _, err := rand.Read(b); err != nil {
 		return "", err
 	}
 	return hex.EncodeToString(b), nil
-}
-
-func nullInt64(v int64) (n sqlNullInt64) {
-	n.Int64 = v
-	n.Valid = true
-	return
-}
-
-// sqlNullInt64 alias to avoid importing sql in callers that just need the
-// helper. Same shape as sql.NullInt64.
-type sqlNullInt64 = struct {
-	Int64 int64
-	Valid bool
 }

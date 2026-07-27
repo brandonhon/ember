@@ -144,7 +144,11 @@ func (m Match) Validate() error {
 		if len(m.Value) > maxPatternLen {
 			return fmt.Errorf("filters: regex too long (max %d chars)", maxPatternLen)
 		}
-		if _, err := regexp.Compile(m.Value); err != nil {
+		// Go through the cache, not regexp.Compile: Apply calls ParseMatch ->
+		// Validate for every article x every filter, so a bare Compile here
+		// re-parses each pattern on every article and defeats reCache (which
+		// only ever covered the Matches side). Same check, same error.
+		if _, err := cachedRegexp(m.Value); err != nil {
 			return fmt.Errorf("filters: invalid regex %q: %w", m.Value, err)
 		}
 	}

@@ -19,6 +19,76 @@ var ErrNoFeed = errors.New("feed: no feed link found")
 // expose a <link rel="alternate"> hint.
 var DiscoveryFallbacks = []string{"/feed", "/rss", "/atom.xml", "/feed.xml", "/index.xml"}
 
+// requireDiscoveryDeps checks the dependencies both entry points need. The
+// target itself is validated by fetchDiscoveryPage, which is the function that
+// actually reaches the network — keeping validation next to the fetch means it
+// happens exactly once, on the URL that is really requested.
+func requireDiscoveryDeps(name string, c *http.Client, validate func(string) error) error {
+	if c == nil {
+		return errors.New("feed: " + name + " requires a non-nil http.Client")
+	}
+	if validate == nil {
+		return errors.New("feed: " + name + " requires a non-nil validate function")
+	}
+	return nil
+}
+
+// fetchedPage is the result of loading a discovery target.
+type fetchedPage struct {
+	parsed      *url.URL
+	contentType string
+	// body is the bounded HTML body; empty when isFeed is true (the response
+	// was the feed itself, so there is nothing to scrape).
+	body   []byte
+	isFeed bool
+}
+
+// fetchDiscoveryPage validates the target, GETs it, and reads a bounded body.
+//
+// It re-runs validate itself rather than trusting the caller to have done so.
+// Discovery is a user-initiated action (add-feed), not a hot path, so the extra
+// check is cheap — and it makes fetching an unvalidated URL structurally
+// impossible instead of a comment someone has to notice. A previous version of
+// this package leaked exactly that way: the <link rel="alternate"> branch
+// returned a URL the caller then fetched without a check.
+func fetchDiscoveryPage(ctx context.Context, c *http.Client, target string, validate func(string) error) (fetchedPage, error) {
+	if validate == nil {
+		return fetchedPage{}, errors.New("feed: fetchDiscoveryPage requires a non-nil validate function")
+	}
+	if err := validate(target); err != nil {
+		return fetchedPage{}, fmt.Errorf("feed: validate target: %w", err)
+	}
+	parsed, err := url.Parse(target)
+	if err != nil {
+		return fetchedPage{}, fmt.Errorf("feed: parse target: %w", err)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
+	if err != nil {
+		return fetchedPage{}, err
+	}
+	req.Header.Set("User-Agent", DefaultUserAgent)
+	resp, err := c.Do(req)
+	if err != nil {
+		return fetchedPage{}, err
+	}
+	defer resp.Body.Close()
+
+	ct := resp.Header.Get("Content-Type")
+	if isFeedContentType(ct) {
+		return fetchedPage{parsed: parsed, contentType: ct, isFeed: true}, nil
+	}
+	// Cap the HTML we scrape: a hostile origin could otherwise stream an
+	// unbounded body into memory.
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxDiscoveryBodyBytes))
+	if err != nil {
+		return fetchedPage{}, err
+	}
+	return fetchedPage{parsed: parsed, contentType: ct, body: body}, nil
+}
+
+// maxDiscoveryBodyBytes bounds the HTML scraped for <link rel="alternate">.
+const maxDiscoveryBodyBytes = 1 << 20
+
 // Discover attempts to find a feed URL given an HTTP client and a starting
 // URL. It does the following, in order:
 //  1. GET the URL. If the response Content-Type indicates feed, return the URL.
@@ -34,14 +104,8 @@ var DiscoveryFallbacks = []string{"/feed", "/rss", "/atom.xml", "/feed.xml", "/i
 //
 // Returns ErrNoFeed if nothing is discovered.
 func Discover(ctx context.Context, c *http.Client, target string, validate func(rawURL string) error) (string, error) {
-	if c == nil {
-		return "", errors.New("feed: Discover requires a non-nil http.Client")
-	}
-	if validate == nil {
-		return "", errors.New("feed: Discover requires a non-nil validate function")
-	}
-	if err := validate(target); err != nil {
-		return "", fmt.Errorf("feed: validate target: %w", err)
+	if err := requireDiscoveryDeps("Discover", c, validate); err != nil {
+		return "", err
 	}
 	// Pre-pass: recognize known URL shapes (YouTube channel/playlist/handle,
 	// Mastodon profile) and rewrite them straight to their feed URL. For
@@ -51,39 +115,20 @@ func Discover(ctx context.Context, c *http.Client, target string, validate func(
 	if rewritten, ok, err := RewriteKnown(ctx, c, target, validate); err != nil {
 		return "", err
 	} else if ok {
-		// Validate the rewritten URL too — it crosses the same trust boundary.
-		if err := validate(rewritten); err != nil {
-			return "", fmt.Errorf("feed: validate rewritten: %w", err)
-		}
+		// No separate validate here: fetchDiscoveryPage validates whatever it
+		// is about to request, so the rewritten URL is checked on the way in.
 		target = rewritten
 	}
-	parsedTarget, err := url.Parse(target)
-	if err != nil {
-		return "", fmt.Errorf("feed: parse target: %w", err)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
+	page, err := fetchDiscoveryPage(ctx, c, target, validate)
 	if err != nil {
 		return "", err
 	}
-	req.Header.Set("User-Agent", DefaultUserAgent)
-	resp, err := c.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	ct := resp.Header.Get("Content-Type")
-	if isFeedContentType(ct) {
+	if page.isFeed {
 		return target, nil
 	}
+	parsedTarget := page.parsed
 
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	if err != nil {
-		return "", err
-	}
-
-	if href := findAlternateInHTML(body); href != "" {
+	if href := findAlternateInHTML(page.body); href != "" {
 		if abs, rerr := resolveRef(parsedTarget, href); rerr == nil && abs != "" {
 			// The discovered link crosses the same trust boundary as the
 			// target; validate before returning it (the caller fetches it).
@@ -130,43 +175,21 @@ type Discovered struct {
 // fail validation are dropped. Results are de-duplicated by URL. Returns an
 // empty slice (nil error) when the page loads but advertises no feed.
 func DiscoverAll(ctx context.Context, c *http.Client, target string, validate func(rawURL string) error) ([]Discovered, error) {
-	if c == nil {
-		return nil, errors.New("feed: DiscoverAll requires a non-nil http.Client")
+	if err := requireDiscoveryDeps("DiscoverAll", c, validate); err != nil {
+		return nil, err
 	}
-	if validate == nil {
-		return nil, errors.New("feed: DiscoverAll requires a non-nil validate function")
-	}
-	if err := validate(target); err != nil {
-		return nil, fmt.Errorf("feed: validate target: %w", err)
-	}
-	parsedTarget, err := url.Parse(target)
-	if err != nil {
-		return nil, fmt.Errorf("feed: parse target: %w", err)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
+	page, err := fetchDiscoveryPage(ctx, c, target, validate)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", DefaultUserAgent)
-	resp, err := c.Do(req)
-	if err != nil {
-		return nil, err
+	if page.isFeed {
+		return []Discovered{{URL: target, Type: feedTypeFromHint(page.contentType)}}, nil
 	}
-	defer resp.Body.Close()
-
-	if ct := resp.Header.Get("Content-Type"); isFeedContentType(ct) {
-		return []Discovered{{URL: target, Type: feedTypeFromHint(ct)}}, nil
-	}
-
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	if err != nil {
-		return nil, err
-	}
+	parsedTarget := page.parsed
 
 	seen := make(map[string]struct{})
 	var out []Discovered
-	for _, alt := range findAllAlternatesInHTML(body) {
+	for _, alt := range findAllAlternatesInHTML(page.body) {
 		abs, rerr := resolveRef(parsedTarget, alt.href)
 		if rerr != nil || abs == "" {
 			continue

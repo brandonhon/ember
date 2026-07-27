@@ -30,6 +30,18 @@ func Handler() (http.Handler, error) {
 	}
 	fileServer := http.FileServer(http.FS(sub))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Never serve a directory. Go's FileServer renders an index listing for
+		// any directory without an index.html, so /assets/ enumerated every
+		// built asset filename — and because the /assets/ prefix sets the
+		// immutable year-long cache header below, that listing was served as if
+		// it were a content-hashed file. Checked before anything else so no
+		// cache header is applied to the rejected response.
+		if p := strings.Trim(r.URL.Path, "/"); p != "" {
+			if fi, err := fs.Stat(sub, p); err == nil && fi.IsDir() {
+				http.NotFound(w, r)
+				return
+			}
+		}
 		// Long-cache hashed assets in /assets/ — Vite gives them content-
 		// hashed names so the URL itself changes on every build, making
 		// immutable caching safe and aggressive.
