@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -19,42 +20,49 @@ import (
 //go:embed migrations/*.sql
 var migrationsFS embed.FS
 
-// Pragmas applied to every connection.
+// tuning is the single source of truth for the connection PRAGMAs. They are
+// applied via the DSN so EVERY pooled connection gets them — an earlier
+// version also kept a duplicate PRAGMA script that only ran on one connection,
+// which meant the rest of the pool silently ran untuned. Keep this list as the
+// only place they are declared.
+//
 //   - journal_mode=WAL: concurrent readers + one writer
 //   - foreign_keys=ON: enforce referential integrity
-//   - busy_timeout=5s: wait instead of SQLITE_BUSY on contention
-//   - synchronous=NORMAL: safe with WAL, ~2x faster than FULL for our writes
+//   - busy_timeout=5000: wait instead of SQLITE_BUSY on contention
+//   - synchronous=NORMAL: safe under WAL, ~2x faster than FULL for our writes
 //   - temp_store=MEMORY: temp tables in RAM
-//   - cache_size=-65536: 64 MiB page cache (default is 2 MiB — too small for
-//     our workload of nested article queries with dedup joins)
+//   - cache_size=-65536: 64 MiB page cache (default 2 MiB is far too small for
+//     the nested article queries with dedup joins)
 //   - mmap_size=268435456: 256 MiB memory-mapped IO for read-heavy paths
-const pragmas = `
-PRAGMA journal_mode=WAL;
-PRAGMA foreign_keys=ON;
-PRAGMA busy_timeout=5000;
-PRAGMA synchronous=NORMAL;
-PRAGMA temp_store=MEMORY;
-PRAGMA cache_size=-65536;
-PRAGMA mmap_size=268435456;
-`
+var tuning = []struct{ name, value string }{
+	{"busy_timeout", "5000"},
+	{"foreign_keys", "ON"},
+	{"journal_mode", "WAL"},
+	{"synchronous", "NORMAL"},
+	{"temp_store", "MEMORY"},
+	{"cache_size", "-65536"},
+	{"mmap_size", "268435456"},
+}
+
+// dsn builds the driver DSN for path with every tuning pragma attached.
+func dsn(path string) string {
+	var b strings.Builder
+	b.WriteString(path)
+	for i, p := range tuning {
+		if i == 0 {
+			b.WriteString("?")
+		} else {
+			b.WriteString("&")
+		}
+		b.WriteString("_pragma=" + p.name + "(" + p.value + ")")
+	}
+	return b.String()
+}
 
 // Open opens the SQLite database at path, applies PRAGMAs, and runs all
 // pending migrations. Returns the database handle.
 func Open(ctx context.Context, path string) (*sql.DB, error) {
-	// All tuning pragmas live in the DSN so they apply per-connection. The
-	// later ExecContext(pragmas) only hits one connection in the pool, so
-	// without DSN-side pragmas the rest of the pool would run without WAL /
-	// cache / mmap tuning — which is why an earlier attempt to raise the
-	// pool size caused SQLITE_BUSY storms.
-	dsn := path +
-		"?_pragma=busy_timeout(5000)" +
-		"&_pragma=foreign_keys(ON)" +
-		"&_pragma=journal_mode(WAL)" +
-		"&_pragma=synchronous(NORMAL)" +
-		"&_pragma=temp_store(MEMORY)" +
-		"&_pragma=cache_size(-65536)" +
-		"&_pragma=mmap_size(268435456)"
-	dbh, err := sql.Open("sqlite", dsn)
+	dbh, err := sql.Open("sqlite", dsn(path))
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite %q: %w", path, err)
 	}
@@ -64,11 +72,11 @@ func Open(ctx context.Context, path string) (*sql.DB, error) {
 	// WAL doesn't honor busy_timeout). One conn lets Go's database/sql queue
 	// requests cleanly; reads block briefly when the poller writes but the
 	// numbers are tiny for our workload (single-digit RPS).
+	//
+	// NOTE: because every request shares this one connection, a slow query
+	// blocks the whole app for its duration — which is why the article-count
+	// predicates in internal/store are written to stay index-driven.
 	dbh.SetMaxOpenConns(1)
-	if _, err := dbh.ExecContext(ctx, pragmas); err != nil {
-		dbh.Close()
-		return nil, fmt.Errorf("apply pragmas: %w", err)
-	}
 	if err := Migrate(ctx, dbh); err != nil {
 		dbh.Close()
 		return nil, fmt.Errorf("migrate: %w", err)

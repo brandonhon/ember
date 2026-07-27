@@ -60,6 +60,23 @@ func NewOllama(baseURL, model string) *Ollama {
 	return o
 }
 
+// fallbackHTTPClient serves an Ollama built without NewOllama (tests, or a
+// zero-value struct). Shared and never mutated.
+var fallbackHTTPClient = &http.Client{Timeout: 90 * time.Second}
+
+// client returns the effective HTTP client WITHOUT assigning to o.HTTPClient.
+// Summarize used to lazily initialise the field, which is a write to a struct
+// the admin endpoints (ListInstalled/Delete/Pull) read from HTTP handlers at
+// the same time as the poller's summary worker calls Summarize — a data race,
+// and a nil-pointer panic for whichever read lost. model and options are held
+// in atomics for precisely this reason; the client needs the same care.
+func (o *Ollama) client() *http.Client {
+	if o.HTTPClient != nil {
+		return o.HTTPClient
+	}
+	return fallbackHTTPClient
+}
+
 // Model returns the currently active model name. NewOllama always stores
 // a string into o.model (possibly ""), so Load is never nil here.
 func (o *Ollama) Model() string {
@@ -105,7 +122,7 @@ func (o *Ollama) ListInstalled(ctx context.Context) ([]InstalledModel, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := o.HTTPClient.Do(req)
+	resp, err := o.client().Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -146,14 +163,13 @@ func (o *Ollama) Delete(ctx context.Context, name string) error {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := o.HTTPClient.Do(req)
+	resp, err := o.client().Do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		raw, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return fmt.Errorf("summarize: ollama delete status %d: %s", resp.StatusCode, strings.TrimSpace(string(raw)))
+		return statusError("delete", resp)
 	}
 	return nil
 }
@@ -172,11 +188,7 @@ func (o *Ollama) Pull(ctx context.Context, name string) error {
 	// Long-running operation: reuse the configured transport (so custom
 	// proxies / TLS / mTLS still apply) but override the timeout. Default
 	// Summarize timeout is 90s; pulling a multi-GB model can take 30 min.
-	var transport http.RoundTripper
-	if o.HTTPClient != nil {
-		transport = o.HTTPClient.Transport
-	}
-	client := &http.Client{Transport: transport, Timeout: 30 * time.Minute}
+	client := &http.Client{Transport: o.client().Transport, Timeout: 30 * time.Minute}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, o.BaseURL+"/api/pull", bytes.NewReader(body))
 	if err != nil {
 		return err
@@ -188,13 +200,18 @@ func (o *Ollama) Pull(ctx context.Context, name string) error {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		// Drain a snippet for the error message.
-		raw, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return fmt.Errorf("summarize: ollama pull status %d: %s", resp.StatusCode, strings.TrimSpace(string(raw)))
+		return statusError("pull", resp)
 	}
 	// Drain to confirm the pull completed.
 	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 64*1024))
 	return nil
+}
+
+// statusError builds the error for a non-200 Ollama response, including a
+// bounded snippet of the body so the admin UI can show why it was refused.
+func statusError(op string, resp *http.Response) error {
+	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	return fmt.Errorf("summarize: ollama %s status %d: %s", op, resp.StatusCode, strings.TrimSpace(string(raw)))
 }
 
 // promptTemplate asks the model for a labeled plain-text format. Small models
@@ -244,9 +261,6 @@ func (o *Ollama) Summarize(ctx context.Context, title, text string) (Result, str
 	model := o.Model()
 	if o.BaseURL == "" || model == "" {
 		return Result{}, "", errors.New("summarize: ollama url/model not configured")
-	}
-	if o.HTTPClient == nil {
-		o.HTTPClient = &http.Client{Timeout: 90 * time.Second}
 	}
 	input := text
 	if o.MaxInput > 0 && len([]rune(input)) > o.MaxInput {
@@ -305,7 +319,7 @@ func (o *Ollama) tryOnce(ctx context.Context, body []byte) (Result, error) {
 		return Result{}, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := o.HTTPClient.Do(req)
+	resp, err := o.client().Do(req)
 	if err != nil {
 		return Result{}, err
 	}

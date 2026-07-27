@@ -60,10 +60,17 @@ var privateBlocks = mustParseCIDRs(
 	"100.64.0.0/10",  // CGNAT
 	"0.0.0.0/8",      // "this network"
 	"::1/128",        // loopback IPv6
-	"fc00::/7",       // unique-local IPv6
-	"fe80::/10",      // link-local IPv6
-	"2002::/16",      // 6to4 — encodes a (possibly private) IPv4 in bits 16-47
-	"64:ff9b::/96",   // NAT64 well-known prefix (RFC 6052) — maps to IPv4
+	// ::/96 covers the unspecified address (::) and every IPv4-COMPATIBLE
+	// address (::a.b.c.d, RFC 4291 §2.5.5.1 — deprecated but still parsed).
+	// Both were bypasses: net.IP.To4() only normalizes the IPv4-MAPPED form
+	// (::ffff:a.b.c.d), so ::127.0.0.1 never matched 127.0.0.0/8, and ::
+	// matched nothing at all while connecting to localhost on most stacks.
+	// Nothing routable lives in ::/96, so blocking the whole range is safe.
+	"::/96",
+	"fc00::/7",     // unique-local IPv6
+	"fe80::/10",    // link-local IPv6
+	"2002::/16",    // 6to4 — encodes a (possibly private) IPv4 in bits 16-47
+	"64:ff9b::/96", // NAT64 well-known prefix (RFC 6052) — maps to IPv4
 )
 
 // Resolver lets tests inject a fake DNS lookup. Defaults to net.LookupIP.

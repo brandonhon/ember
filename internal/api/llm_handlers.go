@@ -25,8 +25,37 @@ var validModelName = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$`)
 // server goroutines.
 var pullInProgress atomic.Bool
 
-func floatToStr(f float64) string { return strconv.FormatFloat(f, 'f', -1, 64) }
-func intToStr(i int) string       { return strconv.Itoa(i) }
+// requireSummarizer reports whether a live Ollama backend is wired up, writing
+// the 503 when it isn't. Every admin LLM endpoint is a no-op without one.
+func (d *Dependencies) requireSummarizer(w http.ResponseWriter) bool {
+	if d.Ollama == nil {
+		writeError(w, http.StatusServiceUnavailable, "no_summarizer", "summaries are disabled on this server")
+		return false
+	}
+	return true
+}
+
+// modelFromRequest is the shared preamble of the set/pull/delete model
+// endpoints: require a summarizer, decode the body, and validate the model
+// reference. Writes the error response and returns ok=false on any failure.
+func (d *Dependencies) modelFromRequest(w http.ResponseWriter, r *http.Request) (string, bool) {
+	if !d.requireSummarizer(w) {
+		return "", false
+	}
+	var req setModelReq
+	if !decodeJSON(w, r, &req) {
+		return "", false
+	}
+	if req.Model == "" {
+		writeError(w, http.StatusBadRequest, "bad_request", "model required")
+		return "", false
+	}
+	if !validModelName.MatchString(req.Model) {
+		writeError(w, http.StatusBadRequest, "bad_request", "invalid model name")
+		return "", false
+	}
+	return req.Model, true
+}
 
 // llmStatus is the response shape for GET /api/admin/llm. Reports current
 // model, recommended model for the host, and what's installed in Ollama.
@@ -74,35 +103,22 @@ type setModelReq struct {
 // handleSetLLMModel persists the chosen model in app_settings and swaps it
 // into the live summarizer. Admin-only because the model affects every user.
 func (d *Dependencies) handleSetLLMModel(w http.ResponseWriter, r *http.Request) {
-	if d.Ollama == nil {
-		writeError(w, http.StatusServiceUnavailable, "no_summarizer", "summaries are disabled on this server")
+	model, ok := d.modelFromRequest(w, r)
+	if !ok {
 		return
 	}
-	var req setModelReq
-	if !decodeJSON(w, r, &req) {
-		return
-	}
-	if req.Model == "" {
-		writeError(w, http.StatusBadRequest, "bad_request", "model required")
-		return
-	}
-	if !validModelName.MatchString(req.Model) {
-		writeError(w, http.StatusBadRequest, "bad_request", "invalid model name")
-		return
-	}
-	if err := d.Store.PutAppSetting(r.Context(), "ollama_model", req.Model); err != nil {
+	if err := d.Store.PutAppSetting(r.Context(), "ollama_model", model); err != nil {
 		internalError(w, "internal", err)
 		return
 	}
-	d.Ollama.SetModel(req.Model)
-	writeData(w, http.StatusOK, map[string]string{"model": req.Model}, nil)
+	d.Ollama.SetModel(model)
+	writeData(w, http.StatusOK, map[string]string{"model": model}, nil)
 }
 
 // handleSetLLMOptions persists tunables in app_settings and swaps them into
 // the live summarizer. Zero values clear that field.
 func (d *Dependencies) handleSetLLMOptions(w http.ResponseWriter, r *http.Request) {
-	if d.Ollama == nil {
-		writeError(w, http.StatusServiceUnavailable, "no_summarizer", "summaries are disabled on this server")
+	if !d.requireSummarizer(w) {
 		return
 	}
 	var opts summarize.Options
@@ -128,16 +144,11 @@ func (d *Dependencies) handleSetLLMOptions(w http.ResponseWriter, r *http.Reques
 	if opts.NumCtx > 32768 {
 		opts.NumCtx = 32768
 	}
-	if err := d.Store.PutAppSetting(r.Context(), "llm_temperature", floatToStr(opts.Temperature)); err != nil {
-		internalError(w, "internal", err)
-		return
-	}
-	if err := d.Store.PutAppSetting(r.Context(), "llm_top_p", floatToStr(opts.TopP)); err != nil {
-		internalError(w, "internal", err)
-		return
-	}
-	if err := d.Store.PutAppSetting(r.Context(), "llm_num_ctx", intToStr(opts.NumCtx)); err != nil {
-		internalError(w, "internal", err)
+	if !d.putAppSettings(r.Context(), w, []appSetting{
+		{"llm_temperature", strconv.FormatFloat(opts.Temperature, 'f', -1, 64)},
+		{"llm_top_p", strconv.FormatFloat(opts.TopP, 'f', -1, 64)},
+		{"llm_num_ctx", strconv.Itoa(opts.NumCtx)},
+	}) {
 		return
 	}
 	d.Ollama.SetOptions(opts)
@@ -147,32 +158,20 @@ func (d *Dependencies) handleSetLLMOptions(w http.ResponseWriter, r *http.Reques
 // handleDeleteLLMModel removes a model from Ollama's local cache. Refuses
 // to delete the active model — the caller must switch first.
 func (d *Dependencies) handleDeleteLLMModel(w http.ResponseWriter, r *http.Request) {
-	if d.Ollama == nil {
-		writeError(w, http.StatusServiceUnavailable, "no_summarizer", "summaries are disabled on this server")
+	model, ok := d.modelFromRequest(w, r)
+	if !ok {
 		return
 	}
-	var req setModelReq
-	if !decodeJSON(w, r, &req) {
-		return
-	}
-	if req.Model == "" {
-		writeError(w, http.StatusBadRequest, "bad_request", "model required")
-		return
-	}
-	if !validModelName.MatchString(req.Model) {
-		writeError(w, http.StatusBadRequest, "bad_request", "invalid model name")
-		return
-	}
-	if req.Model == d.Ollama.Model() {
+	if model == d.Ollama.Model() {
 		writeError(w, http.StatusConflict, "active_model", "cannot delete the active model — switch first")
 		return
 	}
-	if err := d.Ollama.Delete(r.Context(), req.Model); err != nil {
-		slog.Default().Warn("api: ollama delete failed", "model", req.Model, "err", err)
+	if err := d.Ollama.Delete(r.Context(), model); err != nil {
+		slog.Default().Warn("api: ollama delete failed", "model", model, "err", err)
 		writeError(w, http.StatusBadGateway, "delete_failed", "Ollama refused the delete (model may not exist)")
 		return
 	}
-	writeData(w, http.StatusOK, map[string]string{"model": req.Model}, nil)
+	writeData(w, http.StatusOK, map[string]string{"model": model}, nil)
 }
 
 // handlePullLLMModel proxies an `ollama pull` for the named model. Blocks
@@ -180,20 +179,8 @@ func (d *Dependencies) handleDeleteLLMModel(w http.ResponseWriter, r *http.Reque
 // WriteTimeout (90s) is too short for large models, so we bump the write
 // deadline via ResponseController for this handler. Admin-only.
 func (d *Dependencies) handlePullLLMModel(w http.ResponseWriter, r *http.Request) {
-	if d.Ollama == nil {
-		writeError(w, http.StatusServiceUnavailable, "no_summarizer", "summaries are disabled on this server")
-		return
-	}
-	var req setModelReq
-	if !decodeJSON(w, r, &req) {
-		return
-	}
-	if req.Model == "" {
-		writeError(w, http.StatusBadRequest, "bad_request", "model required")
-		return
-	}
-	if !validModelName.MatchString(req.Model) {
-		writeError(w, http.StatusBadRequest, "bad_request", "invalid model name")
+	model, ok := d.modelFromRequest(w, r)
+	if !ok {
 		return
 	}
 	if !pullInProgress.CompareAndSwap(false, true) {
@@ -215,10 +202,10 @@ func (d *Dependencies) handlePullLLMModel(w http.ResponseWriter, r *http.Request
 	// isn't blocked for up to 30 minutes. Cap at 30 minutes total.
 	ctx, cancel := context.WithTimeout(d.backgroundCtx(), 30*time.Minute)
 	defer cancel()
-	if err := d.Ollama.Pull(ctx, req.Model); err != nil {
-		slog.Default().Warn("api: ollama pull failed", "model", req.Model, "err", err)
+	if err := d.Ollama.Pull(ctx, model); err != nil {
+		slog.Default().Warn("api: ollama pull failed", "model", model, "err", err)
 		writeError(w, http.StatusBadGateway, "pull_failed", "Ollama refused the pull (check model name and network)")
 		return
 	}
-	writeData(w, http.StatusOK, map[string]string{"model": req.Model}, nil)
+	writeData(w, http.StatusOK, map[string]string{"model": model}, nil)
 }

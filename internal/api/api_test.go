@@ -9,8 +9,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"sync"
 	"testing"
@@ -136,7 +139,7 @@ func (h *harness) newClient(jar http.CookieJar) *http.Client {
 }
 
 func newJar() (http.CookieJar, error) {
-	return cookiejarNew()
+	return cookiejar.New(nil)
 }
 
 // json helpers ---------------------------------------------------------------
@@ -207,13 +210,13 @@ func echoCSRF(c *http.Client, rawURL string, req *http.Request) {
 	if c.Jar == nil {
 		return
 	}
-	u, err := neturlParse(rawURL)
+	u, err := url.Parse(rawURL)
 	if err != nil {
 		return
 	}
 	for _, ck := range c.Jar.Cookies(u) {
-		if ck.Name == CSRFCookieName {
-			req.Header.Set(CSRFHeaderName, ck.Value)
+		if ck.Name == csrfCookieName {
+			req.Header.Set(csrfHeaderName, ck.Value)
 			return
 		}
 	}
@@ -908,14 +911,13 @@ func TestStaticFallback(t *testing.T) {
 // field with `filename` and `data`.
 func makeMultipart(field, filename string, data []byte) ([]byte, string) {
 	var buf bytes.Buffer
-	mw := mwNew(&buf)
+	mw := multipart.NewWriter(&buf)
 	fw, _ := mw.CreateFormFile(field, filename)
 	_, _ = fw.Write(data)
 	_ = mw.Close()
 	return buf.Bytes(), mw.FormDataContentType()
 }
 
-// mwNew indirection so we can import multipart in one place.
 func mustJSON(v any) []byte {
 	b, _ := json.Marshal(v)
 	return b

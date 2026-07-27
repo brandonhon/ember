@@ -10,7 +10,7 @@ import (
 )
 
 func TestSecurityHeaders(t *testing.T) {
-	h := SecurityHeaders(nil, false)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	h := securityHeaders(nil, false)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	w := httptest.NewRecorder()
@@ -41,8 +41,8 @@ func TestSecurityHeaders(t *testing.T) {
 }
 
 func TestSecurityHeaders_HSTSGating(t *testing.T) {
-	trusted := ParseTrustedProxies([]string{"10.0.0.0/8"})
-	h := SecurityHeaders(trusted, false)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	trusted := parseTrustedProxies([]string{"10.0.0.0/8"})
+	h := securityHeaders(trusted, false)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -68,7 +68,7 @@ func TestSecurityHeaders_HSTSGating(t *testing.T) {
 }
 
 func TestRemoteIP_TrustBoundary(t *testing.T) {
-	trusted := ParseTrustedProxies([]string{"10.0.0.0/8"})
+	trusted := parseTrustedProxies([]string{"10.0.0.0/8"})
 
 	// Trusted peer → X-Real-IP honored.
 	r := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -96,17 +96,17 @@ func TestRemoteIP_TrustBoundary(t *testing.T) {
 }
 
 func TestRateLimiter_AllowAndDeny(t *testing.T) {
-	rl := NewRateLimiter(3, time.Minute, nil)
+	rl := newRateLimiter(3, time.Minute, nil)
 	for range 3 {
-		if !rl.Allow("ip-1") {
+		if !rl.allow("ip-1") {
 			t.Errorf("should allow within burst")
 		}
 	}
-	if rl.Allow("ip-1") {
+	if rl.allow("ip-1") {
 		t.Errorf("should deny after burst exhausted")
 	}
 	// Different key has its own bucket.
-	if !rl.Allow("ip-2") {
+	if !rl.allow("ip-2") {
 		t.Errorf("ip-2 should be independent")
 	}
 }
@@ -114,9 +114,9 @@ func TestRateLimiter_AllowAndDeny(t *testing.T) {
 // The bucket table must not grow without limit: keys are attacker-chosen (one
 // per source address, and a single host can hold an entire IPv6 /64).
 func TestRateLimiter_BucketTableIsBounded(t *testing.T) {
-	rl := NewRateLimiter(5, time.Minute, nil)
+	rl := newRateLimiter(5, time.Minute, nil)
 	for i := range maxRateLimitBuckets * 2 {
-		rl.Allow("key-" + strconv.Itoa(i))
+		rl.allow("key-" + strconv.Itoa(i))
 	}
 	rl.mu.Lock()
 	n := len(rl.buckets)
@@ -129,15 +129,15 @@ func TestRateLimiter_BucketTableIsBounded(t *testing.T) {
 // Hitting the cap must not become a way to bypass the limiter: a key admitted
 // once the table is full still has to obey its burst.
 func TestRateLimiter_CapDoesNotBypassLimit(t *testing.T) {
-	rl := NewRateLimiter(2, time.Minute, nil)
+	rl := newRateLimiter(2, time.Minute, nil)
 	for i := range maxRateLimitBuckets + 100 {
-		rl.Allow("key-" + strconv.Itoa(i))
+		rl.allow("key-" + strconv.Itoa(i))
 	}
 	// "key-0" is still resident and has one token left of its burst of 2.
-	if !rl.Allow("key-0") {
+	if !rl.allow("key-0") {
 		t.Fatal("key-0 denied while still inside its burst")
 	}
-	if rl.Allow("key-0") {
+	if rl.allow("key-0") {
 		t.Error("key-0 allowed past its burst — the cap leaked an untracked request")
 	}
 }
@@ -146,8 +146,8 @@ func TestRateLimiter_CapDoesNotBypassLimit(t *testing.T) {
 // equivalent to keeping it. Sweeping a *recently active* bucket would hand
 // back a full burst and defeat the limiter.
 func TestRateLimiter_SweepSparesActiveBuckets(t *testing.T) {
-	rl := NewRateLimiter(1, time.Minute, nil)
-	if !rl.Allow("hot") {
+	rl := newRateLimiter(1, time.Minute, nil)
+	if !rl.allow("hot") {
 		t.Fatal("first request should be allowed")
 	}
 	rl.mu.Lock()
@@ -157,17 +157,17 @@ func TestRateLimiter_SweepSparesActiveBuckets(t *testing.T) {
 	if !stillTracked {
 		t.Fatal("sweep evicted a bucket used moments ago")
 	}
-	if rl.Allow("hot") {
+	if rl.allow("hot") {
 		t.Error("exhausted bucket allowed a second request after a sweep")
 	}
 }
 
 func TestRateLimiter_Middleware(t *testing.T) {
-	rl := NewRateLimiter(2, time.Minute, nil)
+	rl := newRateLimiter(2, time.Minute, nil)
 	inner := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
-	mw := rl.LimitMiddleware(inner)
+	mw := rl.limitMiddleware(inner)
 
 	for i := range 3 {
 		w := httptest.NewRecorder()
@@ -190,7 +190,7 @@ func TestCSRFVerify(t *testing.T) {
 	inner := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
-	mw := CSRFVerify(inner)
+	mw := csrfVerify(inner)
 
 	// GET passes without token.
 	w := httptest.NewRecorder()
@@ -229,8 +229,8 @@ func TestCSRFVerify(t *testing.T) {
 	w = httptest.NewRecorder()
 	r = httptest.NewRequest(http.MethodPost, "/api/articles/star", nil)
 	r.AddCookie(&http.Cookie{Name: "ember_session", Value: "dummy"})
-	r.AddCookie(&http.Cookie{Name: CSRFCookieName, Value: "abc"})
-	r.Header.Set(CSRFHeaderName, "xyz")
+	r.AddCookie(&http.Cookie{Name: csrfCookieName, Value: "abc"})
+	r.Header.Set(csrfHeaderName, "xyz")
 	mw.ServeHTTP(w, r)
 	if w.Code != http.StatusForbidden {
 		t.Errorf("mismatch = %d", w.Code)
@@ -240,8 +240,8 @@ func TestCSRFVerify(t *testing.T) {
 	w = httptest.NewRecorder()
 	r = httptest.NewRequest(http.MethodPost, "/api/articles/star", nil)
 	r.AddCookie(&http.Cookie{Name: "ember_session", Value: "dummy"})
-	r.AddCookie(&http.Cookie{Name: CSRFCookieName, Value: "same-token"})
-	r.Header.Set(CSRFHeaderName, "same-token")
+	r.AddCookie(&http.Cookie{Name: csrfCookieName, Value: "same-token"})
+	r.Header.Set(csrfHeaderName, "same-token")
 	mw.ServeHTTP(w, r)
 	if w.Code != http.StatusOK {
 		t.Errorf("match = %d", w.Code)
@@ -252,7 +252,7 @@ func TestCSRFIssue_SetsCookieOnce(t *testing.T) {
 	inner := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
-	mw := CSRFIssue(true)(inner)
+	mw := csrfIssue(true)(inner)
 
 	// First request — no cookie → response sets one.
 	w := httptest.NewRecorder()
@@ -261,21 +261,21 @@ func TestCSRFIssue_SetsCookieOnce(t *testing.T) {
 	cookies := w.Result().Cookies()
 	found := false
 	for _, c := range cookies {
-		if c.Name == CSRFCookieName && len(c.Value) > 0 {
+		if c.Name == csrfCookieName && len(c.Value) > 0 {
 			found = true
 		}
 	}
 	if !found {
-		t.Error("CSRFIssue did not set the cookie")
+		t.Error("csrfIssue did not set the cookie")
 	}
 
 	// Second request — already has cookie → no Set-Cookie issued.
 	w = httptest.NewRecorder()
 	r = httptest.NewRequest(http.MethodGet, "/", nil)
-	r.AddCookie(&http.Cookie{Name: CSRFCookieName, Value: "preexisting"})
+	r.AddCookie(&http.Cookie{Name: csrfCookieName, Value: "preexisting"})
 	mw.ServeHTTP(w, r)
 	for _, c := range w.Result().Cookies() {
-		if c.Name == CSRFCookieName {
+		if c.Name == csrfCookieName {
 			t.Errorf("should not re-issue cookie when present")
 		}
 	}
@@ -302,7 +302,7 @@ func TestHealthEndpoints(t *testing.T) {
 }
 
 // TestMethodNotAllowedHasSecurityHeaders verifies the 405 path (a known route
-// hit with the wrong method) goes through SecurityHeaders rather than chi's
+// hit with the wrong method) goes through securityHeaders rather than chi's
 // bare default handler.
 func TestMethodNotAllowedHasSecurityHeaders(t *testing.T) {
 	h := newHarness(t)

@@ -60,6 +60,45 @@ func sanitizeHeader(v string) (string, error) {
 	return v, nil
 }
 
+// envelope holds the sanitized values that every outbound message needs. Both
+// send paths go through newEnvelope so neither can forget a sanitize* call —
+// the CRLF checks are what keep a header-injection payload out of To/From/
+// Subject.
+type envelope struct {
+	from, to, appName string
+}
+
+// newEnvelope validates the addresses and app name, defaulting the app name to
+// "Ember". It runs before any article fetch or network work so a malformed
+// value fails fast.
+func newEnvelope(from, to, appName string) (envelope, error) {
+	cleanTo, err := sanitizeAddress(to)
+	if err != nil {
+		return envelope{}, err
+	}
+	cleanFrom, err := sanitizeAddress(from)
+	if err != nil {
+		return envelope{}, fmt.Errorf("digest: from: %w", err)
+	}
+	if appName == "" {
+		appName = "Ember"
+	}
+	cleanApp, err := sanitizeHeader(appName)
+	if err != nil {
+		return envelope{}, fmt.Errorf("digest: app name: %w", err)
+	}
+	return envelope{from: cleanFrom, to: cleanTo, appName: cleanApp}, nil
+}
+
+// build sanitizes the subject and assembles the multipart payload.
+func (e envelope) build(subject, textBody, htmlBody string) ([]byte, error) {
+	cleanSubject, err := sanitizeHeader(subject)
+	if err != nil {
+		return nil, err
+	}
+	return buildMIME(e.from, e.to, cleanSubject, textBody, htmlBody)
+}
+
 // SMTPConfig is what the sender needs to talk to an upstream SMTP relay.
 type SMTPConfig struct {
 	Host     string
@@ -81,33 +120,21 @@ func (c SMTPConfig) Configured() bool {
 // so a passing test means the digest sender will work. Returns the underlying
 // error (network, auth, TLS, etc.) so the admin UI can surface it.
 func SendTestMessage(cfg SMTPConfig, to, appName string) error {
-	if appName == "" {
-		appName = "Ember"
-	}
-	cleanTo, err := sanitizeAddress(to)
+	env, err := newEnvelope(cfg.From, to, appName)
 	if err != nil {
 		return err
 	}
-	cleanFrom, err := sanitizeAddress(cfg.From)
-	if err != nil {
-		return fmt.Errorf("digest: from: %w", err)
-	}
-	cleanApp, err := sanitizeHeader(appName)
-	if err != nil {
-		return fmt.Errorf("digest: app name: %w", err)
-	}
-	subject, err := sanitizeHeader(cleanApp + " — SMTP test")
-	if err != nil {
-		return err
-	}
-	textBody := cleanApp + " SMTP test message.\n\nIf you're reading this in your inbox, the relay accepted ember's outbound mail.\n"
+	textBody := env.appName + " SMTP test message.\n\nIf you're reading this in your inbox, the relay accepted ember's outbound mail.\n"
 	htmlBody := `<!doctype html><html><body style="font-family:Georgia,serif;padding:24px;color:#211d18;background:#f6f2e9;">` +
-		`<h1 style="font-weight:500;font-size:20px;margin:0 0 16px;">` + html.EscapeString(cleanApp) + ` SMTP test</h1>` +
+		`<h1 style="font-weight:500;font-size:20px;margin:0 0 16px;">` + html.EscapeString(env.appName) + ` SMTP test</h1>` +
 		`<p style="font-size:14px;line-height:1.55;">If you're reading this in your inbox, the relay accepted ember's outbound mail.</p>` +
 		`</body></html>`
-	msg := buildMIME(cleanFrom, cleanTo, subject, textBody, htmlBody)
-	s := &Sender{SMTP: cfg, AppName: cleanApp}
-	return s.send(cleanTo, msg)
+	msg, err := env.build(env.appName+" — SMTP test", textBody, htmlBody)
+	if err != nil {
+		return err
+	}
+	s := &Sender{SMTP: cfg, AppName: env.appName}
+	return s.send(env.from, env.to, msg)
 }
 
 // Sender ties together a store (to fetch articles + mark sent) and an SMTP
@@ -135,13 +162,9 @@ func (s *Sender) SendForUser(ctx context.Context, u models.User, d models.UserDi
 	if to == "" {
 		return 0, errors.New("digest: user has no email")
 	}
-	cleanTo, err := sanitizeAddress(to)
+	env, err := newEnvelope(s.SMTP.From, to, s.AppName)
 	if err != nil {
 		return 0, err
-	}
-	cleanFrom, err := sanitizeAddress(s.SMTP.From)
-	if err != nil {
-		return 0, fmt.Errorf("digest: from: %w", err)
 	}
 
 	articles, err := s.fetchArticles(ctx, d)
@@ -151,25 +174,16 @@ func (s *Sender) SendForUser(ctx context.Context, u models.User, d models.UserDi
 	if len(articles) == 0 {
 		return 0, nil
 	}
-	appName := s.AppName
-	if appName == "" {
-		appName = "Ember"
-	}
-	cleanApp, err := sanitizeHeader(appName)
-	if err != nil {
-		return 0, fmt.Errorf("digest: app name: %w", err)
-	}
-	subject, err := sanitizeHeader(fmt.Sprintf("%s digest — %d new article%s",
-		cleanApp, len(articles), plural(len(articles))))
+
+	msg, err := env.build(
+		fmt.Sprintf("%s digest — %d new article%s", env.appName, len(articles), plural(len(articles))),
+		renderText(env.appName, s.SiteURL, articles),
+		renderHTML(env.appName, s.SiteURL, articles),
+	)
 	if err != nil {
 		return 0, err
 	}
-
-	htmlBody := renderHTML(cleanApp, s.SiteURL, articles)
-	textBody := renderText(cleanApp, s.SiteURL, articles)
-	msg := buildMIME(cleanFrom, cleanTo, subject, textBody, htmlBody)
-
-	if err := s.send(cleanTo, msg); err != nil {
+	if err := s.send(env.from, env.to, msg); err != nil {
 		return 0, fmt.Errorf("digest: send: %w", err)
 	}
 	return len(articles), nil
@@ -188,15 +202,18 @@ func (s *Sender) fetchArticles(ctx context.Context, d models.UserDigest) ([]mode
 		if d.ViewValue == "fresh" {
 			q.FreshAfter = time.Now().Add(-24 * time.Hour).Unix()
 		}
-	case "feed":
+	case "feed", "category", "board":
+		// All three address a scope by numeric id; an unparseable value yields
+		// 0, which the store treats as "no scope" and returns nothing.
 		id, _ := strconv.ParseInt(d.ViewValue, 10, 64)
-		q.FeedID = id
-	case "category":
-		id, _ := strconv.ParseInt(d.ViewValue, 10, 64)
-		q.CategoryID = id
-	case "board":
-		id, _ := strconv.ParseInt(d.ViewValue, 10, 64)
-		q.BoardID = id
+		switch d.ViewKind {
+		case "feed":
+			q.FeedID = id
+		case "category":
+			q.CategoryID = id
+		case "board":
+			q.BoardID = id
+		}
 	}
 	articles, err := s.Store.ListArticles(ctx, d.UserID, q)
 	if err != nil {
@@ -216,7 +233,10 @@ func (s *Sender) fetchArticles(ctx context.Context, d models.UserDigest) ([]mode
 	return articles, nil
 }
 
-func (s *Sender) send(to string, msg []byte) error {
+// send delivers msg. from/to must already be sanitized (newEnvelope does it) —
+// they become the SMTP envelope, so passing the raw config value here would
+// leave the envelope unchecked while the From: header was sanitized.
+func (s *Sender) send(from, to string, msg []byte) error {
 	addr := fmt.Sprintf("%s:%d", s.SMTP.Host, s.SMTP.Port)
 	if !s.SMTP.StartTLS {
 		// Plain SMTP sends credentials + message body unencrypted. Only allow
@@ -228,7 +248,7 @@ func (s *Sender) send(to string, msg []byte) error {
 				"enable StartTLS for a remote relay")
 		}
 		auth := s.smtpAuth()
-		return smtp.SendMail(addr, auth, s.SMTP.From, []string{to}, msg)
+		return smtp.SendMail(addr, auth, from, []string{to}, msg)
 	}
 	c, err := smtp.Dial(addr)
 	if err != nil {
@@ -253,7 +273,7 @@ func (s *Sender) send(to string, msg []byte) error {
 			return err
 		}
 	}
-	if err := c.Mail(s.SMTP.From); err != nil {
+	if err := c.Mail(from); err != nil {
 		return err
 	}
 	if err := c.Rcpt(to); err != nil {
@@ -305,10 +325,21 @@ func isLoopbackHost(host string) bool {
 	return true
 }
 
-func buildMIME(from, to, subject, textBody, htmlBody string) []byte {
+// buildMIME assembles the multipart/alternative payload.
+//
+// The boundary MUST be unpredictable. Article titles reach the text/plain part
+// verbatim (renderText writes them raw), so an attacker who controls a feed and
+// can guess the boundary could close the part early and forge MIME sections —
+// arbitrary attachments or a spoofed body. Randomness is the only thing
+// preventing that, which is why a crypto/rand failure is a hard error here
+// rather than a silent fallback to a fixed boundary. Mirrors the fail-closed
+// rationale on mustRandHex in internal/api.
+func buildMIME(from, to, subject, textBody, htmlBody string) ([]byte, error) {
 	var b bytes.Buffer
 	var rnd [8]byte
-	_, _ = rand.Read(rnd[:])
+	if _, err := rand.Read(rnd[:]); err != nil {
+		return nil, fmt.Errorf("digest: generating MIME boundary: %w", err)
+	}
 	boundary := "ember-" + hex.EncodeToString(rnd[:])
 	fmt.Fprintf(&b, "From: %s\r\n", from)
 	fmt.Fprintf(&b, "To: %s\r\n", to)
@@ -327,7 +358,7 @@ func buildMIME(from, to, subject, textBody, htmlBody string) []byte {
 	b.WriteString("\r\n")
 
 	fmt.Fprintf(&b, "--%s--\r\n", boundary)
-	return b.Bytes()
+	return b.Bytes(), nil
 }
 
 func renderHTML(appName, siteURL string, articles []models.ArticleView) string {

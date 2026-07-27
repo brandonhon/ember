@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"mime/multipart"
 	"net/http"
 	"time"
 
@@ -71,34 +72,11 @@ func (d *Dependencies) handleAddFeed(w http.ResponseWriter, r *http.Request) {
 	// Let the user omit the scheme: prepend https:// (and upgrade an explicit
 	// http://) before validation so "example.com/feed" just works.
 	req.URL = feed.NormalizeInputURL(req.URL)
-	if err := urlcheck.Check(r.Context(), req.URL, d.AllowPrivateURLs); err != nil {
-		slog.Default().Info("api: add-feed URL rejected", "url", req.URL, "reason", err)
-		writeError(w, http.StatusBadRequest, "bad_request", "URL is not allowed")
+	// SSRF-check, then discover: if the user pasted a website URL (not a feed
+	// URL), resolve it to the feed the page advertises.
+	target, ok := d.resolveFeedURL(w, r, req.URL)
+	if !ok {
 		return
-	}
-	// Discover: if the user pasted a website URL (not a feed URL), find its
-	// <link rel="alternate"> or probe common feed paths. Discover() returns
-	// the input unchanged when it points at a feed already.
-	target := req.URL
-	dctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
-	defer cancel()
-	disco := &http.Client{
-		Timeout:   10 * time.Second,
-		Transport: urlcheck.GuardedTransport(d.AllowPrivateURLs),
-		CheckRedirect: feed.RedirectGuard(func(rawURL string) error {
-			return urlcheck.Check(dctx, rawURL, d.AllowPrivateURLs)
-		}),
-	}
-	discoValidate := func(rawURL string) error {
-		return urlcheck.Check(dctx, rawURL, d.AllowPrivateURLs)
-	}
-	if discovered, derr := feed.Discover(dctx, disco, req.URL, discoValidate); derr == nil && discovered != "" {
-		if err := urlcheck.Check(dctx, discovered, d.AllowPrivateURLs); err != nil {
-			slog.Default().Info("api: discovered feed URL rejected", "url", discovered, "reason", err)
-			writeError(w, http.StatusBadRequest, "bad_request", "URL is not allowed")
-			return
-		}
-		target = discovered
 	}
 	f, err := d.Store.UpsertFeed(r.Context(), models.Feed{URL: target, Title: target})
 	if mapStoreError(w, err) {
@@ -144,18 +122,9 @@ func (d *Dependencies) handleDiscoverFeeds(w http.ResponseWriter, r *http.Reques
 		writeError(w, http.StatusBadRequest, "bad_request", "URL is not allowed")
 		return
 	}
-	dctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	dctx, cancel := context.WithTimeout(r.Context(), feedDiscoveryTimeout)
 	defer cancel()
-	disco := &http.Client{
-		Timeout:   10 * time.Second,
-		Transport: urlcheck.GuardedTransport(d.AllowPrivateURLs),
-		CheckRedirect: feed.RedirectGuard(func(rawURL string) error {
-			return urlcheck.Check(dctx, rawURL, d.AllowPrivateURLs)
-		}),
-	}
-	validate := func(rawURL string) error {
-		return urlcheck.Check(dctx, rawURL, d.AllowPrivateURLs)
-	}
+	disco, validate := d.discoveryClient(dctx)
 	feeds, err := feed.DiscoverAll(dctx, disco, req.URL, validate)
 	if err != nil {
 		slog.Default().Info("api: discover failed", "url", req.URL, "reason", err)
@@ -214,39 +183,105 @@ func (d *Dependencies) handleUpdateFeed(w http.ResponseWriter, r *http.Request) 
 	if mapStoreError(w, d.Store.UpdateSubscription(r.Context(), u.ID, id, patch)) {
 		return
 	}
-	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
+	writeOK(w)
+}
+
+// feedDiscoveryTimeout bounds a discovery fetch — the initial page load plus
+// any probed feed paths.
+const feedDiscoveryTimeout = 10 * time.Second
+
+// discoveryClient builds the SSRF-guarded HTTP client used for feed discovery
+// along with the validator applied to every redirect hop and to any URL the
+// page advertises. ctx bounds the whole discovery attempt.
+func (d *Dependencies) discoveryClient(ctx context.Context) (*http.Client, func(string) error) {
+	validate := func(rawURL string) error { return urlcheck.Check(ctx, rawURL, d.AllowPrivateURLs) }
+	return &http.Client{
+		Timeout:       feedDiscoveryTimeout,
+		Transport:     urlcheck.GuardedTransport(d.AllowPrivateURLs),
+		CheckRedirect: feed.RedirectGuard(validate),
+	}, validate
 }
 
 // resolveFeedURL validates a candidate feed URL (SSRF guard) and runs feed
-// discovery, returning the concrete feed URL to subscribe to. On rejection it
-// writes the error response and returns ok=false. Shared by add-feed and the
-// edit-feed URL change so both apply the same guards.
+// discovery, returning the concrete feed URL to subscribe to. Discover()
+// returns the input unchanged when it already points at a feed. On rejection
+// it writes the error response and returns ok=false. Shared by add-feed and
+// the edit-feed URL change so both apply the same guards.
 func (d *Dependencies) resolveFeedURL(w http.ResponseWriter, r *http.Request, rawURL string) (string, bool) {
 	if err := urlcheck.Check(r.Context(), rawURL, d.AllowPrivateURLs); err != nil {
 		slog.Default().Info("api: feed URL rejected", "url", rawURL, "reason", err)
 		writeError(w, http.StatusBadRequest, "bad_request", "URL is not allowed")
 		return "", false
 	}
-	dctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	dctx, cancel := context.WithTimeout(r.Context(), feedDiscoveryTimeout)
 	defer cancel()
-	disco := &http.Client{
-		Timeout:   10 * time.Second,
-		Transport: urlcheck.GuardedTransport(d.AllowPrivateURLs),
-		CheckRedirect: feed.RedirectGuard(func(u string) error {
-			return urlcheck.Check(dctx, u, d.AllowPrivateURLs)
-		}),
+	disco, validate := d.discoveryClient(dctx)
+	discovered, derr := feed.Discover(dctx, disco, rawURL, validate)
+	if derr != nil || discovered == "" {
+		return rawURL, true
 	}
-	validate := func(u string) error { return urlcheck.Check(dctx, u, d.AllowPrivateURLs) }
-	target := rawURL
-	if discovered, derr := feed.Discover(dctx, disco, rawURL, validate); derr == nil && discovered != "" {
-		if err := urlcheck.Check(dctx, discovered, d.AllowPrivateURLs); err != nil {
-			slog.Default().Info("api: discovered feed URL rejected", "url", discovered, "reason", err)
-			writeError(w, http.StatusBadRequest, "bad_request", "URL is not allowed")
-			return "", false
+	// feed.Discover's alternate-link path can return a URL it never validated,
+	// so re-check what came back before we subscribe to it.
+	if err := validate(discovered); err != nil {
+		slog.Default().Info("api: discovered feed URL rejected", "url", discovered, "reason", err)
+		writeError(w, http.StatusBadRequest, "bad_request", "URL is not allowed")
+		return "", false
+	}
+	return discovered, true
+}
+
+// enqueueSummaries pushes article ids onto the summarizer queue and reports how
+// many were accepted. Returns 0 when no poller is wired (tests, summaries off).
+func (d *Dependencies) enqueueSummaries(ids []int64) int {
+	if d.Poller == nil {
+		return 0
+	}
+	enqueued := 0
+	for _, id := range ids {
+		if d.Poller.EnqueueSummary(id) {
+			enqueued++
 		}
-		target = discovered
 	}
-	return target, true
+	return enqueued
+}
+
+// subscriptionForParam resolves the {id} path param to one of the caller's
+// subscriptions. Writes 400/404/500 and returns ok=false on failure, so a
+// foreign or unknown id can never reach the feed-level actions.
+func (d *Dependencies) subscriptionForParam(w http.ResponseWriter, r *http.Request, userID int64) (models.Subscription, bool) {
+	id, ok := paramInt(w, r, "id")
+	if !ok {
+		return models.Subscription{}, false
+	}
+	sub, err := d.Store.GetSubscriptionByID(r.Context(), userID, id)
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "not_found", "feed not found")
+		return models.Subscription{}, false
+	}
+	if err != nil {
+		internalError(w, "internal", err)
+		return models.Subscription{}, false
+	}
+	return sub, true
+}
+
+// uploadedFile caps the request body, parses the multipart form, and returns
+// its "file" part. Writes the 400 and returns ok=false on failure.
+func uploadedFile(w http.ResponseWriter, r *http.Request, maxBody int64) (multipart.File, bool) {
+	// ParseMultipartForm's argument is the in-memory threshold (parts spill to
+	// disk above it), not a body limit; MaxBytesReader enforces the ceiling.
+	r.Body = http.MaxBytesReader(w, r.Body, maxBody)
+	if err := r.ParseMultipartForm(8 << 20); err != nil {
+		slog.Default().Info("api: upload read failed", "path", r.URL.Path, "err", err)
+		writeError(w, http.StatusBadRequest, "bad_request", "could not read the uploaded file")
+		return nil, false
+	}
+	file, _, err := r.FormFile("file")
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", "multipart file 'file' required")
+		return nil, false
+	}
+	return file, true
 }
 
 func (d *Dependencies) handleDeleteFeed(w http.ResponseWriter, r *http.Request) {
@@ -258,23 +293,14 @@ func (d *Dependencies) handleDeleteFeed(w http.ResponseWriter, r *http.Request) 
 	if mapStoreError(w, d.Store.Unsubscribe(r.Context(), u.ID, id)) {
 		return
 	}
-	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
+	writeOK(w)
 }
 
 func (d *Dependencies) handleRefreshFeed(w http.ResponseWriter, r *http.Request) {
 	u, _ := auth.FromContext(r.Context())
-	id, ok := paramInt(w, r, "id")
+	// Resolve subscription id → feed id. Rejects cross-user.
+	sub, ok := d.subscriptionForParam(w, r, u.ID)
 	if !ok {
-		return
-	}
-	// Resolve subscription id → feed id. Reject cross-user.
-	sub, err := d.Store.GetSubscriptionByID(r.Context(), u.ID, id)
-	if errors.Is(err, store.ErrNotFound) {
-		writeError(w, http.StatusNotFound, "not_found", "feed not found")
-		return
-	}
-	if err != nil {
-		internalError(w, "internal", err)
 		return
 	}
 	if d.Poller != nil {
@@ -283,7 +309,7 @@ func (d *Dependencies) handleRefreshFeed(w http.ResponseWriter, r *http.Request)
 			return
 		}
 	}
-	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
+	writeOK(w)
 }
 
 // refreshAllSem bounds how many "refresh all" walkers run concurrently across
@@ -327,17 +353,8 @@ func (d *Dependencies) handleRefreshAllFeeds(w http.ResponseWriter, r *http.Requ
 // you want to retry now that it's working.
 func (d *Dependencies) handleResummarizeFeed(w http.ResponseWriter, r *http.Request) {
 	u, _ := auth.FromContext(r.Context())
-	id, ok := paramInt(w, r, "id")
+	sub, ok := d.subscriptionForParam(w, r, u.ID)
 	if !ok {
-		return
-	}
-	sub, err := d.Store.GetSubscriptionByID(r.Context(), u.ID, id)
-	if errors.Is(err, store.ErrNotFound) {
-		writeError(w, http.StatusNotFound, "not_found", "feed not found")
-		return
-	}
-	if err != nil {
-		internalError(w, "internal", err)
 		return
 	}
 	ids, err := d.Store.ResetSummariesByFeed(r.Context(), sub.FeedID)
@@ -345,15 +362,7 @@ func (d *Dependencies) handleResummarizeFeed(w http.ResponseWriter, r *http.Requ
 		internalError(w, "internal", err)
 		return
 	}
-	enqueued := 0
-	if d.Poller != nil {
-		for _, aid := range ids {
-			if d.Poller.EnqueueSummary(aid) {
-				enqueued++
-			}
-		}
-	}
-	writeData(w, http.StatusOK, map[string]int{"reset": len(ids), "enqueued": enqueued}, nil)
+	writeData(w, http.StatusOK, map[string]int{"reset": len(ids), "enqueued": d.enqueueSummaries(ids)}, nil)
 }
 
 // handleResummarizeAll clears summary_model on every article in the database
@@ -365,31 +374,14 @@ func (d *Dependencies) handleResummarizeAll(w http.ResponseWriter, r *http.Reque
 		internalError(w, "internal", err)
 		return
 	}
-	enqueued := 0
-	if d.Poller != nil {
-		for _, aid := range ids {
-			if d.Poller.EnqueueSummary(aid) {
-				enqueued++
-			}
-		}
-	}
-	writeData(w, http.StatusOK, map[string]int{"reset": len(ids), "enqueued": enqueued}, nil)
+	writeData(w, http.StatusOK, map[string]int{"reset": len(ids), "enqueued": d.enqueueSummaries(ids)}, nil)
 }
 
 func (d *Dependencies) handleOPMLImport(w http.ResponseWriter, r *http.Request) {
 	u, _ := auth.FromContext(r.Context())
-	// Cap the request body at 8 MiB. ParseMultipartForm's argument is the
-	// in-memory threshold (parts spill to disk above it), not a body limit;
-	// MaxBytesReader enforces the actual ceiling.
-	r.Body = http.MaxBytesReader(w, r.Body, 8<<20)
-	if err := r.ParseMultipartForm(8 << 20); err != nil {
-		slog.Default().Info("api: OPML upload read failed", "err", err)
-		writeError(w, http.StatusBadRequest, "bad_request", "could not read the uploaded file")
-		return
-	}
-	file, _, err := r.FormFile("file")
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "multipart file 'file' required")
+	// OPML is a plain subscription list — 8 MiB is far beyond any real export.
+	file, ok := uploadedFile(w, r, 8<<20)
+	if !ok {
 		return
 	}
 	defer file.Close()
@@ -410,15 +402,8 @@ func (d *Dependencies) handleTTRSSImport(w http.ResponseWriter, r *http.Request)
 	}
 	u, _ := auth.FromContext(r.Context())
 	// TT-RSS exports embed full article HTML and can be large; cap at 50 MiB.
-	r.Body = http.MaxBytesReader(w, r.Body, 50<<20)
-	if err := r.ParseMultipartForm(8 << 20); err != nil {
-		slog.Default().Info("api: TT-RSS upload read failed", "err", err)
-		writeError(w, http.StatusBadRequest, "bad_request", "could not read the uploaded file")
-		return
-	}
-	file, _, err := r.FormFile("file")
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "multipart file 'file' required")
+	file, ok := uploadedFile(w, r, 50<<20)
+	if !ok {
 		return
 	}
 	defer file.Close()

@@ -11,7 +11,6 @@ import (
 	"net/mail"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/brandonhon/ember/internal/auth"
 	"github.com/brandonhon/ember/internal/store"
@@ -77,7 +76,7 @@ func (d *Dependencies) handleLogout(w http.ResponseWriter, r *http.Request) {
 		internalError(w, "internal", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"data": map[string]bool{"ok": true}})
+	writeOK(w)
 }
 
 // meResponse extends the user record with derived fields the SPA needs (Fever
@@ -135,10 +134,6 @@ func (d *Dependencies) handleMe(w http.ResponseWriter, r *http.Request) {
 		}
 		u.FeverToken = token
 	}
-	fw := d.FreshWindow
-	if fw <= 0 {
-		fw = 6 * time.Hour
-	}
 	// Report the window as a width rather than an absolute cutoff: the server
 	// recomputes `now - width` on every request, so a width stays correct in
 	// the client as time passes while a timestamp would go stale.
@@ -147,7 +142,7 @@ func (d *Dependencies) handleMe(w http.ResponseWriter, r *http.Request) {
 		User:                u,
 		FeverAPIKey:         u.FeverToken,
 		Version:             Version,
-		FreshWindowSeconds:  int64(fw.Seconds()),
+		FreshWindowSeconds:  int64(d.freshWindow().Seconds()),
 		UnreadWindowSeconds: unreadWindow,
 		SummariesEnabled:    d.Ollama != nil,
 	}
@@ -215,7 +210,7 @@ func (d *Dependencies) handleChangePassword(w http.ResponseWriter, r *http.Reque
 		internalError(w, "password-change/recreate-session", err)
 		return
 	}
-	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
+	writeOK(w)
 }
 
 type updateSettingsReq struct {
@@ -243,7 +238,7 @@ func (d *Dependencies) handleUpdateSettings(w http.ResponseWriter, r *http.Reque
 	if mapStoreError(w, d.Store.UpdateUser(r.Context(), u.ID, store.UpdateUserPatch{SettingsJSON: &settings})) {
 		return
 	}
-	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
+	writeOK(w)
 }
 
 type updateEmailReq struct {

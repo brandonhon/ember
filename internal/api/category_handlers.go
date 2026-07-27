@@ -69,7 +69,7 @@ func (d *Dependencies) handleUpdateCategory(w http.ResponseWriter, r *http.Reque
 	if mapStoreError(w, d.Store.UpdateCategory(r.Context(), u.ID, id, patch)) {
 		return
 	}
-	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
+	writeOK(w)
 }
 
 type reorderReq struct {
@@ -85,7 +85,7 @@ func (d *Dependencies) handleReorderCategories(w http.ResponseWriter, r *http.Re
 	if mapStoreError(w, d.Store.ReorderCategories(r.Context(), u.ID, req.IDs)) {
 		return
 	}
-	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
+	writeOK(w)
 }
 
 func (d *Dependencies) handleReorderFeeds(w http.ResponseWriter, r *http.Request) {
@@ -97,7 +97,7 @@ func (d *Dependencies) handleReorderFeeds(w http.ResponseWriter, r *http.Request
 	if mapStoreError(w, d.Store.ReorderSubscriptions(r.Context(), u.ID, req.IDs)) {
 		return
 	}
-	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
+	writeOK(w)
 }
 
 func (d *Dependencies) handleDeleteCategory(w http.ResponseWriter, r *http.Request) {
@@ -109,5 +109,5 @@ func (d *Dependencies) handleDeleteCategory(w http.ResponseWriter, r *http.Reque
 	if mapStoreError(w, d.Store.DeleteCategory(r.Context(), u.ID, id)) {
 		return
 	}
-	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
+	writeOK(w)
 }

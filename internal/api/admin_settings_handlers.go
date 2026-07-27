@@ -72,6 +72,17 @@ func (d *Dependencies) handleGetAdminSettings(w http.ResponseWriter, r *http.Req
 	writeData(w, http.StatusOK, out, nil)
 }
 
+// checkIntBounds validates an admin-settings integer against its inclusive
+// bounds, writing a 400 that names the field and echoes the range on failure.
+func checkIntBounds(w http.ResponseWriter, field string, n, lo, hi int) bool {
+	if n < lo || n > hi {
+		writeError(w, http.StatusBadRequest, "bad_request",
+			field+" must be between "+strconv.Itoa(lo)+" and "+strconv.Itoa(hi))
+		return false
+	}
+	return true
+}
+
 // setAdminSettingsReq is a pointer-bag so only fields the caller sends get
 // updated — matches the branding handler's patch semantics.
 type setAdminSettingsReq struct {
@@ -125,39 +136,31 @@ func (d *Dependencies) handleSetAdminSettings(w http.ResponseWriter, r *http.Req
 		}
 	}
 	if req.PollMinIntervalSeconds != nil {
-		iv := time.Duration(*req.PollMinIntervalSeconds) * time.Second
-		if iv < store.PollMinIntervalFloor || iv > store.PollMinIntervalCeil {
-			writeError(w, http.StatusBadRequest, "bad_request",
-				"poll_min_interval_seconds must be between "+
-					strconv.Itoa(int(store.PollMinIntervalFloor.Seconds()))+" and "+
-					strconv.Itoa(int(store.PollMinIntervalCeil.Seconds())))
+		floor, ceil := int(store.PollMinIntervalFloor.Seconds()), int(store.PollMinIntervalCeil.Seconds())
+		if !checkIntBounds(w, "poll_min_interval_seconds", *req.PollMinIntervalSeconds, floor, ceil) {
 			return
 		}
-		if err := d.Store.PutPollMinInterval(ctx, iv); err != nil {
+		if err := d.Store.PutPollMinInterval(ctx, time.Duration(*req.PollMinIntervalSeconds)*time.Second); err != nil {
 			internalError(w, "internal", err)
 			return
 		}
 	}
+	// The reading and search windows share one bounds pair: neither can reach
+	// past what retention keeps.
 	if req.ReadingWindowHours != nil {
-		n := *req.ReadingWindowHours
-		if n < store.WindowHoursFloor || n > store.WindowHoursCeil {
-			writeError(w, http.StatusBadRequest, "bad_request",
-				"reading_window_hours must be between "+strconv.Itoa(store.WindowHoursFloor)+" and "+strconv.Itoa(store.WindowHoursCeil))
+		if !checkIntBounds(w, "reading_window_hours", *req.ReadingWindowHours, store.WindowHoursFloor, store.WindowHoursCeil) {
 			return
 		}
-		if err := d.Store.PutReadingWindowHours(ctx, n); err != nil {
+		if err := d.Store.PutReadingWindowHours(ctx, *req.ReadingWindowHours); err != nil {
 			internalError(w, "internal", err)
 			return
 		}
 	}
 	if req.SearchWindowHours != nil {
-		n := *req.SearchWindowHours
-		if n < store.WindowHoursFloor || n > store.WindowHoursCeil {
-			writeError(w, http.StatusBadRequest, "bad_request",
-				"search_window_hours must be between "+strconv.Itoa(store.WindowHoursFloor)+" and "+strconv.Itoa(store.WindowHoursCeil))
+		if !checkIntBounds(w, "search_window_hours", *req.SearchWindowHours, store.WindowHoursFloor, store.WindowHoursCeil) {
 			return
 		}
-		if err := d.Store.PutSearchWindowHours(ctx, n); err != nil {
+		if err := d.Store.PutSearchWindowHours(ctx, *req.SearchWindowHours); err != nil {
 			internalError(w, "internal", err)
 			return
 		}

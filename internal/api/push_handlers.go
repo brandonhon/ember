@@ -9,11 +9,20 @@ import (
 	"github.com/brandonhon/ember/internal/urlcheck"
 )
 
+// requirePush reports whether Web Push is configured, writing the 503 when it
+// isn't. Nil Push means no VAPID keys were supplied at boot.
+func (d *Dependencies) requirePush(w http.ResponseWriter) bool {
+	if d.Push == nil {
+		writeError(w, http.StatusServiceUnavailable, "push_disabled", "push notifications are not configured")
+		return false
+	}
+	return true
+}
+
 // handleGetVapidKey returns the public VAPID key the SPA needs to call
 // pushManager.subscribe. Returns 503 when push is unconfigured.
 func (d *Dependencies) handleGetVapidKey(w http.ResponseWriter, r *http.Request) {
-	if d.Push == nil {
-		writeError(w, http.StatusServiceUnavailable, "push_disabled", "push notifications are not configured")
+	if !d.requirePush(w) {
 		return
 	}
 	writeData(w, http.StatusOK, map[string]string{"public_key": d.Push.PublicKey()}, nil)
@@ -29,8 +38,7 @@ type createPushSubscriptionReq struct {
 // handleCreatePushSubscription registers a browser subscription against
 // the authenticated user. Returns the row id.
 func (d *Dependencies) handleCreatePushSubscription(w http.ResponseWriter, r *http.Request) {
-	if d.Push == nil {
-		writeError(w, http.StatusServiceUnavailable, "push_disabled", "push notifications are not configured")
+	if !d.requirePush(w) {
 		return
 	}
 	u, _ := auth.FromContext(r.Context())
@@ -83,15 +91,14 @@ func (d *Dependencies) handleDeletePushSubscription(w http.ResponseWriter, r *ht
 	if mapStoreError(w, d.Store.DeletePushSubscription(r.Context(), u.ID, id)) {
 		return
 	}
-	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
+	writeOK(w)
 }
 
 // handleTestPushNotification fires a sample push to all of the user's
 // registered subscriptions. Useful for verifying setup after enabling
 // notifications.
 func (d *Dependencies) handleTestPushNotification(w http.ResponseWriter, r *http.Request) {
-	if d.Push == nil {
-		writeError(w, http.StatusServiceUnavailable, "push_disabled", "push notifications are not configured")
+	if !d.requirePush(w) {
 		return
 	}
 	u, _ := auth.FromContext(r.Context())

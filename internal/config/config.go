@@ -114,6 +114,8 @@ func Defaults() Config {
 		SMTPPort:        587,
 		SMTPStartTLS:    true,
 		SecureCookies:   true,
+		EmailListenAddr: ":2525",
+		EmailMaxBytes:   25 * 1024 * 1024,
 	}
 }
 
@@ -129,232 +131,180 @@ func LoadFromMap(env map[string]string) (Config, error) {
 	return loadFrom(func(k string) string { return env[k] })
 }
 
+// env reads configuration variables, accumulating problems instead of failing
+// on the first one so an operator sees every bad value in a single boot log.
+// Every reader leaves the destination untouched when the variable is unset or
+// empty, which is what preserves the Defaults() value.
+type env struct {
+	get  func(string) string
+	errs []string
+}
+
+// fail records a problem against a variable. Messages always start with the
+// variable name — it is the only context an operator gets at boot.
+func (e *env) fail(key, format string, args ...any) {
+	e.errs = append(e.errs, key+" "+fmt.Sprintf(format, args...))
+}
+
+// str assigns the raw value when set.
+func (e *env) str(key string, dst *string) {
+	if v := e.get(key); v != "" {
+		*dst = v
+	}
+}
+
+// boolean accepts 1/true/yes/on and 0/false/no/off, case-insensitively.
+func (e *env) boolean(key string, dst *bool) {
+	v := e.get(key)
+	if v == "" {
+		return
+	}
+	switch strings.ToLower(v) {
+	case "1", "true", "yes", "on":
+		*dst = true
+	case "0", "false", "no", "off":
+		*dst = false
+	default:
+		e.fail(key, "invalid bool %q", v)
+	}
+}
+
+// duration parses a Go duration and enforces the range. lo == 0 means "any
+// positive value"; hi == 0 means "no upper bound".
+func (e *env) duration(key string, dst *time.Duration, lo, hi time.Duration) {
+	v := e.get(key)
+	if v == "" {
+		return
+	}
+	d, err := time.ParseDuration(v)
+	if err != nil {
+		e.fail(key, "invalid: %v", err)
+		return
+	}
+	if d <= 0 || d < lo || (hi > 0 && d > hi) {
+		switch {
+		case lo == 0 && hi == 0:
+			e.fail(key, "must be > 0")
+		case hi == 0:
+			e.fail(key, "must be >= %s", lo)
+		default:
+			e.fail(key, "must be between %s and %s", lo, hi)
+		}
+		return
+	}
+	*dst = d
+}
+
+// number parses a signed integer and enforces lo <= n <= hi; hi == 0 means "no
+// upper bound". The comparison happens in int64 before narrowing, so a value
+// that would overflow T is rejected rather than silently truncated. A method
+// can't carry type parameters, hence a function over *env.
+func number[T int | int64](e *env, key string, dst *T, lo, hi T) {
+	v := e.get(key)
+	if v == "" {
+		return
+	}
+	n, err := strconv.ParseInt(v, 10, 64)
+	if err != nil {
+		e.fail(key, "invalid: %v", err)
+		return
+	}
+	if n < int64(lo) || (hi > 0 && n > int64(hi)) {
+		if hi > 0 {
+			e.fail(key, "must be between %d and %d", lo, hi)
+		} else {
+			e.fail(key, "must be >= %d", lo)
+		}
+		return
+	}
+	*dst = T(n)
+}
+
+// Bounds for EMBER_POLL_MIN_INTERVAL. These mirror store.PollMinInterval{Floor,
+// Ceil}; kept as literals so config stays free of a store import.
+const (
+	pollMinIntervalFloor = 5 * time.Minute
+	pollMinIntervalCeil  = 24 * time.Hour
+)
+
 func loadFrom(get func(string) string) (Config, error) {
 	cfg := Defaults()
-	var errs []string
+	e := &env{get: get}
 
-	if v := get("EMBER_ADDR"); v != "" {
-		cfg.Addr = v
-	}
-	if v := get("EMBER_DB_PATH"); v != "" {
-		cfg.DBPath = v
-	}
+	e.str("EMBER_ADDR", &cfg.Addr)
+	e.str("EMBER_DB_PATH", &cfg.DBPath)
+	e.str("EMBER_ADMIN_USER", &cfg.AdminUser)
+	e.str("EMBER_OLLAMA_MODEL", &cfg.OllamaModel)
+	e.str("EMBER_PUBLIC_URL", &cfg.PublicURL)
+	e.str("EMBER_SMTP_HOST", &cfg.SMTPHost)
+	e.str("EMBER_SMTP_USER", &cfg.SMTPUser)
+	e.str("EMBER_SMTP_PASSWORD", &cfg.SMTPPassword)
+	e.str("EMBER_SMTP_FROM", &cfg.SMTPFrom)
+	e.str("EMBER_EMAIL_DOMAIN", &cfg.EmailDomain)
+	e.str("EMBER_EMAIL_LISTEN_ADDR", &cfg.EmailListenAddr)
+
+	// Secrets are read raw: an empty value is meaningful (it triggers the
+	// required-key check below) rather than "leave the default".
 	cfg.SessionKey = get("EMBER_SESSION_KEY")
-	if v := get("EMBER_ADMIN_USER"); v != "" {
-		cfg.AdminUser = v
-	}
 	cfg.AdminPassword = get("EMBER_ADMIN_PASSWORD")
+
+	e.duration("EMBER_FRESH_WINDOW", &cfg.FreshWindow, 0, 0)
+	e.duration("EMBER_SESSION_TTL", &cfg.SessionTTL, 0, 0)
+	e.duration("EMBER_POLL_TICK", &cfg.PollTick, 0, 0)
+	e.duration("EMBER_POLL_MIN_INTERVAL", &cfg.PollMinInterval, pollMinIntervalFloor, pollMinIntervalCeil)
+
+	number(e, "EMBER_POLL_CONCURRENCY", &cfg.PollConcurrency, 1, 0)
+	number(e, "EMBER_SMTP_PORT", &cfg.SMTPPort, 1, 65535)
+	number(e, "EMBER_EMAIL_MAX_BYTES", &cfg.EmailMaxBytes, 1, 0)
+
+	e.boolean("EMBER_TEST_MODE", &cfg.TestMode)
+	e.boolean("EMBER_DISABLE_SUMMARIES", &cfg.DisableSummaries)
+	e.boolean("EMBER_DISABLE_IMAGES", &cfg.DisableImages)
+	e.boolean("EMBER_DISABLE_UPDATE_CHECK", &cfg.DisableUpdateCheck)
+	e.boolean("EMBER_PASSKEY_REQUIRE_UV", &cfg.PasskeyRequireUV)
+	e.boolean("EMBER_SECURE_COOKIES", &cfg.SecureCookies)
+	e.boolean("EMBER_ALLOW_PRIVATE_URLS", &cfg.AllowPrivateURLs)
+	e.boolean("EMBER_HSTS_PRELOAD", &cfg.HSTSPreload)
+	e.boolean("EMBER_SMTP_STARTTLS", &cfg.SMTPStartTLS)
+
+	// The remaining three parse into non-primitive shapes.
 	if v := get("EMBER_OLLAMA_URL"); v != "" {
 		u, parseErr := url.Parse(v)
 		switch {
 		case parseErr != nil:
-			errs = append(errs, fmt.Sprintf("EMBER_OLLAMA_URL invalid: %v", parseErr))
+			e.fail("EMBER_OLLAMA_URL", "invalid: %v", parseErr)
 		case u.Scheme != "http" && u.Scheme != "https":
-			errs = append(errs, fmt.Sprintf("EMBER_OLLAMA_URL must use http or https scheme, got %q", u.Scheme))
+			e.fail("EMBER_OLLAMA_URL", "must use http or https scheme, got %q", u.Scheme)
 		default:
 			cfg.OllamaURL = v
-		}
-	}
-	if v := get("EMBER_OLLAMA_MODEL"); v != "" {
-		cfg.OllamaModel = v
-	}
-	if v := get("EMBER_FRESH_WINDOW"); v != "" {
-		d, err := time.ParseDuration(v)
-		switch {
-		case err != nil:
-			errs = append(errs, fmt.Sprintf("EMBER_FRESH_WINDOW invalid: %v", err))
-		case d <= 0:
-			errs = append(errs, "EMBER_FRESH_WINDOW must be > 0")
-		default:
-			cfg.FreshWindow = d
-		}
-	}
-	if v := get("EMBER_SESSION_TTL"); v != "" {
-		d, err := time.ParseDuration(v)
-		switch {
-		case err != nil:
-			errs = append(errs, fmt.Sprintf("EMBER_SESSION_TTL invalid: %v", err))
-		case d <= 0:
-			errs = append(errs, "EMBER_SESSION_TTL must be > 0")
-		default:
-			cfg.SessionTTL = d
-		}
-	}
-	if v := get("EMBER_POLL_CONCURRENCY"); v != "" {
-		n, err := strconv.Atoi(v)
-		switch {
-		case err != nil:
-			errs = append(errs, fmt.Sprintf("EMBER_POLL_CONCURRENCY invalid: %v", err))
-		case n < 1:
-			errs = append(errs, "EMBER_POLL_CONCURRENCY must be >= 1")
-		default:
-			cfg.PollConcurrency = n
-		}
-	}
-	if v := get("EMBER_POLL_TICK"); v != "" {
-		d, err := time.ParseDuration(v)
-		switch {
-		case err != nil:
-			errs = append(errs, fmt.Sprintf("EMBER_POLL_TICK invalid: %v", err))
-		case d <= 0:
-			errs = append(errs, "EMBER_POLL_TICK must be > 0")
-		default:
-			cfg.PollTick = d
-		}
-	}
-	if v := get("EMBER_POLL_MIN_INTERVAL"); v != "" {
-		d, err := time.ParseDuration(v)
-		// Bounds mirror store.PollMinInterval{Floor,Ceil} (5m, 24h) — kept as
-		// literals here so the config package stays free of a store import.
-		switch {
-		case err != nil:
-			errs = append(errs, fmt.Sprintf("EMBER_POLL_MIN_INTERVAL invalid: %v", err))
-		case d < 5*time.Minute || d > 24*time.Hour:
-			errs = append(errs, "EMBER_POLL_MIN_INTERVAL must be between 5m and 24h")
-		default:
-			cfg.PollMinInterval = d
 		}
 	}
 	if v := get("EMBER_LOG_LEVEL"); v != "" {
 		lvl, err := parseLogLevel(v)
 		if err != nil {
-			errs = append(errs, err.Error())
+			e.fail("EMBER_LOG_LEVEL", "invalid: %q", v)
 		} else {
 			cfg.LogLevel = lvl
-		}
-	}
-	if v := get("EMBER_TEST_MODE"); v != "" {
-		switch strings.ToLower(v) {
-		case "1", "true", "yes", "on":
-			cfg.TestMode = true
-		case "0", "false", "no", "off", "":
-			cfg.TestMode = false
-		default:
-			errs = append(errs, fmt.Sprintf("EMBER_TEST_MODE invalid: %q", v))
-		}
-	}
-	if v := get("EMBER_DISABLE_SUMMARIES"); v != "" {
-		on, err := parseBool(v)
-		if err != nil {
-			errs = append(errs, fmt.Sprintf("EMBER_DISABLE_SUMMARIES %v", err))
-		} else {
-			cfg.DisableSummaries = on
-		}
-	}
-	if v := get("EMBER_DISABLE_IMAGES"); v != "" {
-		on, err := parseBool(v)
-		if err != nil {
-			errs = append(errs, fmt.Sprintf("EMBER_DISABLE_IMAGES %v", err))
-		} else {
-			cfg.DisableImages = on
-		}
-	}
-	if v := get("EMBER_DISABLE_UPDATE_CHECK"); v != "" {
-		on, err := parseBool(v)
-		if err != nil {
-			errs = append(errs, fmt.Sprintf("EMBER_DISABLE_UPDATE_CHECK %v", err))
-		} else {
-			cfg.DisableUpdateCheck = on
-		}
-	}
-	if v := get("EMBER_PASSKEY_REQUIRE_UV"); v != "" {
-		on, err := parseBool(v)
-		if err != nil {
-			errs = append(errs, fmt.Sprintf("EMBER_PASSKEY_REQUIRE_UV %v", err))
-		} else {
-			cfg.PasskeyRequireUV = on
-		}
-	}
-	if v := get("EMBER_PUBLIC_URL"); v != "" {
-		cfg.PublicURL = v
-	}
-	if v := get("EMBER_SECURE_COOKIES"); v != "" {
-		on, err := parseBool(v)
-		if err != nil {
-			errs = append(errs, fmt.Sprintf("EMBER_SECURE_COOKIES %v", err))
-		} else {
-			cfg.SecureCookies = on
 		}
 	}
 	if v := get("EMBER_TRUSTED_PROXIES"); v != "" {
 		proxies, err := parseProxyList(v)
 		if err != nil {
-			errs = append(errs, fmt.Sprintf("EMBER_TRUSTED_PROXIES %v", err))
+			e.fail("EMBER_TRUSTED_PROXIES", "%v", err)
 		} else {
 			cfg.TrustedProxies = proxies
 		}
 	}
-	if v := get("EMBER_ALLOW_PRIVATE_URLS"); v != "" {
-		on, err := parseBool(v)
-		if err != nil {
-			errs = append(errs, fmt.Sprintf("EMBER_ALLOW_PRIVATE_URLS %v", err))
-		} else {
-			cfg.AllowPrivateURLs = on
-		}
-	}
-	if v := get("EMBER_HSTS_PRELOAD"); v != "" {
-		on, err := parseBool(v)
-		if err != nil {
-			errs = append(errs, fmt.Sprintf("EMBER_HSTS_PRELOAD %v", err))
-		} else {
-			cfg.HSTSPreload = on
-		}
-	}
-	if v := get("EMBER_SMTP_HOST"); v != "" {
-		cfg.SMTPHost = v
-	}
-	if v := get("EMBER_SMTP_PORT"); v != "" {
-		n, err := strconv.Atoi(v)
-		if err != nil || n < 1 || n > 65535 {
-			errs = append(errs, "EMBER_SMTP_PORT invalid")
-		} else {
-			cfg.SMTPPort = n
-		}
-	}
-	if v := get("EMBER_SMTP_USER"); v != "" {
-		cfg.SMTPUser = v
-	}
-	if v := get("EMBER_SMTP_PASSWORD"); v != "" {
-		cfg.SMTPPassword = v
-	}
-	if v := get("EMBER_SMTP_FROM"); v != "" {
-		cfg.SMTPFrom = v
-	}
-	if v := get("EMBER_SMTP_STARTTLS"); v != "" {
-		on, err := parseBool(v)
-		if err != nil {
-			errs = append(errs, fmt.Sprintf("EMBER_SMTP_STARTTLS %v", err))
-		} else {
-			cfg.SMTPStartTLS = on
-		}
-	}
-	// Inbound email-inbox feature.
-	if v := get("EMBER_EMAIL_DOMAIN"); v != "" {
-		cfg.EmailDomain = v
-	}
-	cfg.EmailListenAddr = ":2525"
-	if v := get("EMBER_EMAIL_LISTEN_ADDR"); v != "" {
-		cfg.EmailListenAddr = v
-	}
-	cfg.EmailMaxBytes = 25 * 1024 * 1024
-	if v := get("EMBER_EMAIL_MAX_BYTES"); v != "" {
-		n, err := strconv.ParseInt(v, 10, 64)
-		if err != nil || n <= 0 {
-			errs = append(errs, "EMBER_EMAIL_MAX_BYTES invalid")
-		} else {
-			cfg.EmailMaxBytes = n
-		}
-	}
 
 	if !cfg.TestMode && cfg.SessionKey == "" {
-		errs = append(errs, "EMBER_SESSION_KEY is required (32+ bytes)")
+		e.errs = append(e.errs, "EMBER_SESSION_KEY is required (32+ bytes)")
 	}
 	if cfg.SessionKey != "" && len(cfg.SessionKey) < 32 {
-		errs = append(errs, "EMBER_SESSION_KEY must be at least 32 bytes")
+		e.errs = append(e.errs, "EMBER_SESSION_KEY must be at least 32 bytes")
 	}
 
-	if len(errs) > 0 {
-		return cfg, errors.New(strings.Join(errs, "; "))
+	if len(e.errs) > 0 {
+		return cfg, errors.New(strings.Join(e.errs, "; "))
 	}
 	return cfg, nil
 }
@@ -387,17 +337,6 @@ func parseProxyList(v string) ([]string, error) {
 	return out, nil
 }
 
-func parseBool(v string) (bool, error) {
-	switch strings.ToLower(v) {
-	case "1", "true", "yes", "on":
-		return true, nil
-	case "0", "false", "no", "off":
-		return false, nil
-	default:
-		return false, fmt.Errorf("invalid bool %q", v)
-	}
-}
-
 func parseLogLevel(v string) (slog.Level, error) {
 	switch strings.ToLower(v) {
 	case "debug":
@@ -409,6 +348,6 @@ func parseLogLevel(v string) (slog.Level, error) {
 	case "error":
 		return slog.LevelError, nil
 	default:
-		return slog.LevelInfo, fmt.Errorf("EMBER_LOG_LEVEL invalid: %q", v)
+		return slog.LevelInfo, fmt.Errorf("invalid log level %q", v)
 	}
 }

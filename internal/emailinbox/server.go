@@ -105,12 +105,14 @@ func (b *backend) NewSession(_ *smtp.Conn) (smtp.Session, error) {
 	return &session{s: b.s}, nil
 }
 
-// session holds per-connection state. go-smtp creates a new one per
-// connection.
+// recipient is one accepted inbox for the current transaction.
+type recipient struct{ userID, feedID int64 }
+
+// session holds per-transaction state. go-smtp creates a new one per
+// connection; MAIL and RSET clear it.
 type session struct {
-	s        *Server
-	rcptUser int64
-	rcptFeed int64
+	s     *Server
+	rcpts []recipient
 }
 
 func (s *session) AuthPlain(string, string) error { return nil }
@@ -118,8 +120,7 @@ func (s *session) AuthPlain(string, string) error { return nil }
 func (s *session) Mail(_ string, _ *smtp.MailOptions) error {
 	// We accept any sender (the per-recipient address check below is the
 	// real gate). Bouncing on MAIL FROM would reject legitimate forwarders.
-	s.rcptUser = 0
-	s.rcptFeed = 0
+	s.rcpts = nil
 	return nil
 }
 
@@ -138,13 +139,21 @@ func (s *session) Rcpt(to string, _ *smtp.RcptOptions) error {
 	if !found {
 		return smtpError(550, "5.1.1", "no such mailbox")
 	}
-	s.rcptUser = userID
-	s.rcptFeed = feedID
+	// Accumulate rather than overwrite. MaxRecipients is 5, so the server
+	// ACCEPTS several inboxes in one transaction — keeping only the last one
+	// silently dropped the mail for every other recipient. Deduped because a
+	// sender may legitimately repeat an address.
+	for _, r := range s.rcpts {
+		if r.userID == userID && r.feedID == feedID {
+			return nil
+		}
+	}
+	s.rcpts = append(s.rcpts, recipient{userID: userID, feedID: feedID})
 	return nil
 }
 
 func (s *session) Data(r io.Reader) error {
-	if s.rcptUser == 0 || s.rcptFeed == 0 {
+	if len(s.rcpts) == 0 {
 		return smtpError(503, "5.5.1", "RCPT required before DATA")
 	}
 	buf, err := io.ReadAll(io.LimitReader(r, s.s.cfg.MaxBytes+1))
@@ -156,14 +165,21 @@ func (s *session) Data(r io.Reader) error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	if err := s.s.store.IngestEmail(ctx, s.rcptUser, s.rcptFeed, buf); err != nil {
-		s.s.logger.Error("ingest email", "user_id", s.rcptUser, "feed_id", s.rcptFeed, "err", err)
-		return smtpError(451, "4.7.0", "ingest failed")
+	// Deliver to every accepted recipient. Any failure fails the whole
+	// transaction with a retryable 4xx: the sender re-delivers, and
+	// store.IngestEmail is idempotent (UpsertArticle dedupes per feed), so a
+	// recipient that already succeeded is not duplicated on the retry.
+	for _, rc := range s.rcpts {
+		if err := s.s.store.IngestEmail(ctx, rc.userID, rc.feedID, buf); err != nil {
+			s.s.logger.Error("ingest email", "user_id", rc.userID, "feed_id", rc.feedID, "err", err)
+			return smtpError(451, "4.7.0", "ingest failed")
+		}
 	}
 	return nil
 }
 
-func (s *session) Reset()        {}
+// Reset clears the in-progress transaction, as RFC 5321 RSET requires.
+func (s *session) Reset()        { s.rcpts = nil }
 func (s *session) Logout() error { return nil }
 
 // extractHandle returns the handle from an envelope-To address that

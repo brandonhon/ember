@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -49,6 +50,55 @@ func TestOpen_MigrationsAndPragmas(t *testing.T) {
 	}
 	if fk != 1 {
 		t.Errorf("foreign_keys = %d, want 1", fk)
+	}
+}
+
+// Every tuning pragma must actually be in effect on the live connection. They
+// are declared only in the DSN now, so a driver that silently ignored one (or a
+// typo in a pragma name, which SQLite accepts without error) would otherwise go
+// unnoticed until someone profiled a slow query.
+func TestOpen_AllTuningPragmasInEffect(t *testing.T) {
+	ctx := context.Background()
+	dbh := OpenTest(t)
+
+	// Expected live values. journal_mode/temp_store report as names; the
+	// size pragmas report the numbers we asked for.
+	want := map[string]string{
+		"journal_mode": "wal",
+		"foreign_keys": "1",
+		"busy_timeout": "5000",
+		"synchronous":  "1", // NORMAL
+		"temp_store":   "2", // MEMORY
+		"cache_size":   "-65536",
+		"mmap_size":    "268435456",
+	}
+	for _, p := range tuning {
+		var got string
+		if err := dbh.QueryRowContext(ctx, "PRAGMA "+p.name).Scan(&got); err != nil {
+			t.Errorf("PRAGMA %s: %v", p.name, err)
+			continue
+		}
+		if strings.ToLower(got) != want[p.name] {
+			t.Errorf("PRAGMA %s = %q, want %q (declared as %q in tuning)", p.name, got, want[p.name], p.value)
+		}
+	}
+}
+
+// dsn must attach every tuning pragma; a dropped separator would silently
+// truncate the list.
+func TestDSN_ContainsEveryPragma(t *testing.T) {
+	got := dsn("/tmp/x.db")
+	if !strings.HasPrefix(got, "/tmp/x.db?") {
+		t.Fatalf("dsn = %q, want it to start with the path and a '?'", got)
+	}
+	for _, p := range tuning {
+		want := "_pragma=" + p.name + "(" + p.value + ")"
+		if !strings.Contains(got, want) {
+			t.Errorf("dsn missing %q: %s", want, got)
+		}
+	}
+	if n := strings.Count(got, "_pragma="); n != len(tuning) {
+		t.Errorf("dsn has %d pragmas, want %d: %s", n, len(tuning), got)
 	}
 }
 

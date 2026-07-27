@@ -43,7 +43,7 @@ func Parse(_ context.Context, feedID int64, body []byte, sourceURL string) (Pars
 		// Titles can carry HTML entities/markup (Atom type="html", entity-encoded
 		// RSS) but render as plain text in the UI, not {@html} — decode here so
 		// "&#8217;" doesn't surface literally. htmlToText handles entities + tags.
-		Title:   htmlToText(parsed.Title),
+		Title:   HTMLToText(parsed.Title),
 		SiteURL: strings.TrimSpace(parsed.Link),
 	}
 	if base != nil && out.SiteURL != "" {
@@ -66,7 +66,7 @@ func normalizeItem(it *gofeed.Item, feedID int64, base *url.URL) models.Article 
 		a.GUID = strings.TrimSpace(it.Link)
 	}
 	// Decode entities/markup so titles read as plain text (see Parse above).
-	a.Title = htmlToText(it.Title)
+	a.Title = HTMLToText(it.Title)
 	// Guard the article link: it is rendered as an href ("Original" button), so
 	// drop javascript:/data: and other non-web schemes. GUID fell back to the
 	// raw link above, so dedup is unaffected when this clears a bad URL.
@@ -81,7 +81,7 @@ func normalizeItem(it *gofeed.Item, feedID int64, base *url.URL) models.Article 
 	// Feed bodies are rendered via {@html}; sanitize before deriving text and
 	// storing so stored HTML is render-safe regardless of the CSP.
 	a.ContentHTML = SanitizeHTML(a.ContentHTML)
-	a.ContentText = htmlToText(a.ContentHTML)
+	a.ContentText = HTMLToText(a.ContentHTML)
 
 	if it.Author != nil {
 		switch {
@@ -177,14 +177,11 @@ func resolveLink(base *url.URL, ref string) string {
 	return base.ResolveReference(u).String()
 }
 
-// HTMLToText returns a plain-text representation of an HTML fragment,
+// HTMLToText returns a plain-text representation of an HTML fragment by
 // extracting text nodes only. Exported for ingest paths that store a text
-// rendering alongside the HTML body (e.g. the TT-RSS import, email inbox).
-func HTMLToText(s string) string { return htmlToText(s) }
-
-// htmlToText returns a plain-text representation of an HTML fragment by
-// extracting text nodes only.
-func htmlToText(s string) string {
+// rendering alongside the HTML body (the TT-RSS import and the email inbox);
+// also used internally by the feed parser.
+func HTMLToText(s string) string {
 	if s == "" {
 		return ""
 	}

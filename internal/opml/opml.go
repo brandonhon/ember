@@ -69,6 +69,21 @@ func (s *Service) Import(ctx context.Context, userID int64, body io.Reader) (int
 		return 0, fmt.Errorf("opml: parse: %w", err)
 	}
 
+	// Snapshot what the user is already subscribed to so the returned count is
+	// what this function documents — NEW subscriptions — rather than "feeds
+	// processed". store.Subscribe returns the existing row on a duplicate and
+	// gives no created/existed signal, so the caller has to know up front.
+	// Newly-added URLs are added to the set as we go, which also stops a file
+	// that lists the same URL twice from counting it twice.
+	existing, err := s.Store.ListFeedsForUser(ctx, userID, 0, false)
+	if err != nil {
+		return 0, err
+	}
+	subscribed := make(map[string]struct{}, len(existing))
+	for _, f := range existing {
+		subscribed[f.URL] = struct{}{}
+	}
+
 	created := 0
 	var addFeed func(ol outline, categoryID *int64) error
 	addFeed = func(ol outline, categoryID *int64) error {
@@ -106,10 +121,10 @@ func (s *Service) Import(ctx context.Context, userID int64, body io.Reader) (int
 				_ = s.Store.UpdateSubscription(ctx, userID, before.ID,
 					store.UpdateSubscriptionPatch{CategoryID: categoryID})
 			}
-			// Track new subscriptions only — Subscribe returns the existing row
-			// on duplicate, so we approximate by checking the created_at fresh
-			// equals our store clock; close enough for the count.
-			created++
+			if _, already := subscribed[ol.XMLURL]; !already {
+				subscribed[ol.XMLURL] = struct{}{}
+				created++
+			}
 		}
 		// Children inherit the current category: feeds in a folder join that
 		// folder's category, and nested sub-folders flatten into it (ember
@@ -193,6 +208,18 @@ func (s *Service) WriteExport(ctx context.Context, userID int64, dir string) (st
 	return out, size, nil
 }
 
+// feedOutline renders one subscription as an OPML leaf. Title and Text carry
+// the same value: readers disagree on which one they honor.
+func feedOutline(f models.FeedWithCounts) outline {
+	return outline{
+		Type:    "rss",
+		Title:   f.Title,
+		Text:    f.Title,
+		XMLURL:  f.URL,
+		HTMLURL: f.SiteURL,
+	}
+}
+
 // Export writes the user's OPML to w.
 func (s *Service) Export(ctx context.Context, userID int64, w io.Writer) error {
 	cats, err := s.Store.ListCategories(ctx, userID)
@@ -220,24 +247,12 @@ func (s *Service) Export(ctx context.Context, userID int64, w io.Writer) error {
 	for _, c := range cats {
 		folder := outline{Title: c.Name, Text: c.Name}
 		for _, f := range byCat[c.ID] {
-			folder.Outlines = append(folder.Outlines, outline{
-				Type:    "rss",
-				Title:   f.Title,
-				Text:    f.Title,
-				XMLURL:  f.URL,
-				HTMLURL: f.SiteURL,
-			})
+			folder.Outlines = append(folder.Outlines, feedOutline(f))
 		}
 		doc.Body.Outlines = append(doc.Body.Outlines, folder)
 	}
 	for _, f := range uncat {
-		doc.Body.Outlines = append(doc.Body.Outlines, outline{
-			Type:    "rss",
-			Title:   f.Title,
-			Text:    f.Title,
-			XMLURL:  f.URL,
-			HTMLURL: f.SiteURL,
-		})
+		doc.Body.Outlines = append(doc.Body.Outlines, feedOutline(f))
 	}
 
 	if _, err := io.WriteString(w, xml.Header); err != nil {

@@ -1,11 +1,13 @@
 package push
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync"
 
 	webpush "github.com/SherClockHolmes/webpush-go"
@@ -125,6 +127,14 @@ func (n *Notifier) NotifyUser(ctx context.Context, userID int64, p Payload) (sen
 		wg.Add(1)
 		go func(sub Subscription) {
 			defer wg.Done()
+			// Each send needs its OWN copy of the payload. webpush-go does
+			// `dataBuf := bytes.NewBuffer(message)` and then appends a padding
+			// delimiter + padding, which writes into the spare capacity of the
+			// slice we hand it — so sharing one json.Marshal result across the
+			// fan-out has every goroutine scribbling on the same backing array.
+			// Caught by `go test -race` once a test finally drove the fan-out
+			// with more than one subscription.
+			msg := bytes.Clone(body)
 			s := &webpush.Subscription{
 				Endpoint: sub.Endpoint,
 				Keys: webpush.Keys{
@@ -140,7 +150,7 @@ func (n *Notifier) NotifyUser(ctx context.Context, userID int64, p Payload) (sen
 				TTL:             86400,
 				Urgency:         webpush.UrgencyNormal,
 			}
-			resp, err := webpush.SendNotificationWithContext(ctx, body, s, opts)
+			resp, err := webpush.SendNotificationWithContext(ctx, msg, s, opts)
 			if err != nil {
 				if !errors.Is(err, context.Canceled) {
 					n.logger.Warn("push: send failed", "endpoint", redactEndpoint(sub.Endpoint), "error", err)
@@ -172,38 +182,25 @@ func (n *Notifier) NotifyUser(ctx context.Context, userID int64, p Payload) (sen
 	return sent, removed
 }
 
-// redactEndpoint trims the endpoint URL down to a host so logs don't
-// carry the full per-device token (which would be sensitive if logs
-// leaked). Mozilla / Google / Apple endpoints all carry the token in
-// the path.
+// redactEndpoint trims the endpoint URL down to scheme://host so logs don't
+// carry the full per-device token (sensitive if logs leaked). Mozilla /
+// Google / Apple endpoints all carry the token in the path. Deliberately
+// string-based rather than url.Parse — this is a log field, and a malformed
+// endpoint should degrade to "log it as-is", not error.
 func redactEndpoint(endpoint string) string {
 	if endpoint == "" {
 		return ""
 	}
-	// Cheap split — we don't need url.Parse precision for a log field.
-	if i := indexAfter(endpoint, "://"); i > 0 {
-		rest := endpoint[i:]
-		if j := indexByte(rest, '/'); j > 0 {
-			return endpoint[:i+j]
-		}
+	i := strings.Index(endpoint, "://")
+	if i < 0 {
+		return endpoint
+	}
+	afterScheme := i + len("://")
+	// j > 0 keeps the original behavior for the degenerate "scheme:///path"
+	// case: with an empty host there is nothing to redact down to, so the
+	// endpoint is returned unchanged.
+	if j := strings.IndexByte(endpoint[afterScheme:], '/'); j > 0 {
+		return endpoint[:afterScheme+j]
 	}
 	return endpoint
-}
-
-func indexAfter(s, sep string) int {
-	for i := 0; i+len(sep) <= len(s); i++ {
-		if s[i:i+len(sep)] == sep {
-			return i + len(sep)
-		}
-	}
-	return -1
-}
-
-func indexByte(s string, b byte) int {
-	for i := 0; i < len(s); i++ {
-		if s[i] == b {
-			return i
-		}
-	}
-	return -1
 }

@@ -5,10 +5,30 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
 )
+
+// Ember names every artifact it generates "ember-<UTC timestamp><ext>" (see
+// Backup and opml.WriteExport). List/prune/delete match that exact shape and
+// nothing else.
+//
+// This is a safety boundary, not cosmetics. The backup and export directories
+// are admin-configurable absolute paths, and pruning "every *.db in the
+// directory" meant that pointing backup_dir at the directory holding the live
+// database made ember.db itself a prune candidate — on an idle instance it
+// ages past the retained backups and gets deleted. It also swept up unrelated
+// files an admin happened to keep alongside. "ember.db" does not match this
+// pattern; "ember-2026-07-27-110000.db" does.
+var emberArtifactRE = regexp.MustCompile(`^ember-\d{4}-\d{2}-\d{2}-\d{6}\.(db|opml)$`)
+
+// isEmberArtifact reports whether name is a file ember itself generated with
+// the given extension.
+func isEmberArtifact(name, ext string) bool {
+	return strings.HasSuffix(name, ext) && emberArtifactRE.MatchString(name)
+}
 
 // BackupInfo describes a single on-disk backup.
 type BackupInfo struct {
@@ -73,7 +93,7 @@ func (s *Store) ListBackups(dir string) ([]BackupInfo, error) {
 		if e.IsDir() {
 			continue
 		}
-		if !strings.HasSuffix(e.Name(), ".db") {
+		if !isEmberArtifact(e.Name(), ".db") {
 			continue
 		}
 		fi, err := e.Info()
@@ -133,7 +153,7 @@ func (s *Store) ListExports(dir string) ([]ExportInfo, error) {
 		if e.IsDir() {
 			continue
 		}
-		if !strings.HasSuffix(e.Name(), ".opml") {
+		if !isEmberArtifact(e.Name(), ".opml") {
 			continue
 		}
 		fi, err := e.Info()
@@ -253,7 +273,11 @@ func (s *Store) DeleteExport(dir, name string) error {
 func deleteFileInDir(dir, name, ext string) error {
 	// name must be a bare filename with the expected extension — never a path,
 	// "..", or a different file type.
-	if name == "" || name != filepath.Base(name) || !strings.HasSuffix(name, ext) {
+	// Restricted to a bare filename matching ember's own generated pattern, so
+	// it can neither traverse out of dir nor target a file ember didn't create
+	// (the live database, an admin's unrelated archive). Delete is deliberately
+	// no broader than List — the UI can only remove what it listed.
+	if name == "" || name != filepath.Base(name) || !isEmberArtifact(name, ext) {
 		return ErrNotFound
 	}
 	// Resolve the file by enumerating dir and matching the basename, so the path

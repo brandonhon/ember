@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -44,6 +45,9 @@ type Checker struct {
 	baseURL string // GitHub API base; overridable in tests
 	client  *http.Client
 	log     *slog.Logger
+	// firstDelay staggers the first poll past boot. Overridden in tests so the
+	// Run loop can be exercised without a 30s wait.
+	firstDelay time.Duration
 
 	mu         sync.RWMutex
 	result     Result
@@ -53,6 +57,10 @@ type Checker struct {
 // githubAPIBase is the default GitHub REST API host.
 const githubAPIBase = "https://api.github.com"
 
+// maxReleaseBytes caps the release payload we will decode. GitHub's response is
+// a few KB; 1 MiB is far beyond any legitimate one.
+const maxReleaseBytes = 1 << 20
+
 // New returns a Checker for the given build version and "owner/name" repo.
 // current should be a clean release tag (e.g. "v0.9.4"); see IsReleaseVersion.
 func New(current, repo string, log *slog.Logger) *Checker {
@@ -60,11 +68,12 @@ func New(current, repo string, log *slog.Logger) *Checker {
 		log = slog.Default()
 	}
 	return &Checker{
-		current: current,
-		repo:    repo,
-		baseURL: githubAPIBase,
-		client:  &http.Client{Timeout: 10 * time.Second},
-		log:     log,
+		current:    current,
+		repo:       repo,
+		baseURL:    githubAPIBase,
+		client:     &http.Client{Timeout: 10 * time.Second},
+		log:        log,
+		firstDelay: initialDelay,
 	}
 }
 
@@ -93,7 +102,7 @@ func (c *Checker) Run(ctx context.Context, interval time.Duration, enabled func(
 	if interval <= 0 {
 		interval = DefaultInterval
 	}
-	timer := time.NewTimer(initialDelay)
+	timer := time.NewTimer(c.firstDelay)
 	defer timer.Stop()
 	for {
 		select {
@@ -154,8 +163,12 @@ func (c *Checker) checkOnce(ctx context.Context) error {
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("github releases: status %d", resp.StatusCode)
 	}
+	// Bound the body. A latest-release payload is a few KB; every other
+	// outbound fetch in the codebase caps what it reads (feed discovery 1 MiB,
+	// readability 8 MiB, ollama 1 MiB) and this one did not, so a compromised
+	// or misconfigured baseURL could stream unbounded JSON into the decoder.
 	var rel ghRelease
-	if err := json.NewDecoder(resp.Body).Decode(&rel); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, maxReleaseBytes)).Decode(&rel); err != nil {
 		return err
 	}
 	if !semver.IsValid(rel.TagName) {

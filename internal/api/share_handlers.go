@@ -64,5 +64,5 @@ func (d *Dependencies) handleMarkShareSeen(w http.ResponseWriter, r *http.Reques
 	if mapStoreError(w, d.Store.MarkShareSeen(r.Context(), u.ID, id)) {
 		return
 	}
-	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
+	writeOK(w)
 }

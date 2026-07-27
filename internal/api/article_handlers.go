@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strconv"
@@ -9,6 +10,26 @@ import (
 	"github.com/brandonhon/ember/internal/auth"
 	"github.com/brandonhon/ember/internal/store"
 )
+
+// viewFreshAfter returns the published-after lower bound for a named reading
+// view: Fresh uses the configured fresh window, Today the admin-configurable
+// reading window (default 24h, capped at retention — older articles stay in the
+// DB so search can reach them, but aren't shown or counted), and All Unread the
+// user's previous-login cutoff so time away surfaces everything new since. Any
+// other view has no inherent bound and returns 0.
+func (d *Dependencies) viewFreshAfter(ctx context.Context, userID int64, view string) int64 {
+	switch view {
+	case "fresh":
+		return time.Now().Add(-d.freshWindow()).Unix()
+	case "today":
+		rw := time.Duration(d.Store.ResolveReadingWindowHours(ctx, store.DefaultReadingWindowHours)) * time.Hour
+		return time.Now().Add(-rw).Unix()
+	case "unread":
+		return d.Store.UnreadCutoff(ctx, userID)
+	default:
+		return 0
+	}
+}
 
 func (d *Dependencies) handleListArticles(w http.ResponseWriter, r *http.Request) {
 	u, _ := auth.FromContext(r.Context())
@@ -26,14 +47,8 @@ func (d *Dependencies) handleListArticles(w http.ResponseWriter, r *http.Request
 	}
 
 	ctx := r.Context()
-	now := time.Now()
 	feedID := atoi("feed_id")
 	categoryID := atoi("category_id")
-
-	// Reading-view window (Today / a feed / a category): admin-configurable,
-	// default 24h, capped at the retention window. Articles older than this are
-	// kept in the DB (so search can reach them) but not shown or counted here.
-	readingWindow := time.Duration(d.Store.ResolveReadingWindowHours(ctx, store.DefaultReadingWindowHours)) * time.Hour
 
 	// freshAfter is the published-after lower bound. The client may pin it via
 	// ?fresh_after=; otherwise it's derived per view. The window bounds which
@@ -41,29 +56,14 @@ func (d *Dependencies) handleListArticles(w http.ResponseWriter, r *http.Request
 	// cursor + "Load more"), so a busy window doesn't dump thousands of rows.
 	freshAfter := atoi("fresh_after")
 	if freshAfter == 0 {
-		switch view {
-		case "fresh":
-			fw := d.FreshWindow
-			if fw <= 0 {
-				fw = 6 * time.Hour
-			}
-			freshAfter = now.Add(-fw).Unix()
-		case "today":
-			freshAfter = now.Add(-readingWindow).Unix()
-		case "unread":
-			// All Unread extends back to the user's previous login (clamped to
-			// [reading window, retention]) so time away surfaces everything new
-			// since.
+		freshAfter = d.viewFreshAfter(ctx, u.ID, view)
+		// A specific feed or category is a reading view too. It uses the same
+		// UnreadCutoff as its sidebar badge (the reading window as a floor,
+		// extended back to the previous login on absence) so the unread items
+		// in the column always match the badge count — never "badge 5,
+		// column 2" when you've been away more than a window.
+		if freshAfter == 0 && (feedID > 0 || categoryID > 0) {
 			freshAfter = d.Store.UnreadCutoff(ctx, u.ID)
-		default:
-			// A specific feed or category is a reading view too. It uses the
-			// same UnreadCutoff as its sidebar badge (the reading window as a
-			// floor, extended back to the previous login on absence) so the
-			// unread items in the column always match the badge count — never
-			// "badge 5, column 2" when you've been away more than a window.
-			if feedID > 0 || categoryID > 0 {
-				freshAfter = d.Store.UnreadCutoff(ctx, u.ID)
-			}
 		}
 	}
 
@@ -191,28 +191,26 @@ type setFlagReq struct {
 	Value bool  `json:"value"`
 }
 
-func (d *Dependencies) handleSetStar(w http.ResponseWriter, r *http.Request) {
+// setArticleFlag decodes the shared {id, value} body and applies it via the
+// given store setter. Backs both the star and read-later toggles.
+func (d *Dependencies) setArticleFlag(w http.ResponseWriter, r *http.Request, set func(context.Context, int64, int64, bool) error) {
 	u, _ := auth.FromContext(r.Context())
 	var req setFlagReq
 	if !decodeJSON(w, r, &req) {
 		return
 	}
-	if mapStoreError(w, d.Store.SetStarred(r.Context(), u.ID, req.ID, req.Value)) {
+	if mapStoreError(w, set(r.Context(), u.ID, req.ID, req.Value)) {
 		return
 	}
-	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
+	writeOK(w)
+}
+
+func (d *Dependencies) handleSetStar(w http.ResponseWriter, r *http.Request) {
+	d.setArticleFlag(w, r, d.Store.SetStarred)
 }
 
 func (d *Dependencies) handleSetLater(w http.ResponseWriter, r *http.Request) {
-	u, _ := auth.FromContext(r.Context())
-	var req setFlagReq
-	if !decodeJSON(w, r, &req) {
-		return
-	}
-	if mapStoreError(w, d.Store.SetLater(r.Context(), u.ID, req.ID, req.Value)) {
-		return
-	}
-	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
+	d.setArticleFlag(w, r, d.Store.SetLater)
 }
 
 type markAllReadReq struct {
@@ -248,20 +246,7 @@ func (d *Dependencies) handleMarkAllRead(w http.ResponseWriter, r *http.Request)
 			return
 		}
 	}
-	var freshAfter int64
-	switch req.View {
-	case "fresh":
-		fw := d.FreshWindow
-		if fw <= 0 {
-			fw = 6 * time.Hour
-		}
-		freshAfter = time.Now().Add(-fw).Unix()
-	case "today":
-		rw := time.Duration(d.Store.ResolveReadingWindowHours(r.Context(), store.DefaultReadingWindowHours)) * time.Hour
-		freshAfter = time.Now().Add(-rw).Unix()
-	case "unread":
-		freshAfter = d.Store.UnreadCutoff(r.Context(), u.ID)
-	}
+	freshAfter := d.viewFreshAfter(r.Context(), u.ID, req.View)
 	n, err := d.Store.MarkAllRead(r.Context(), u.ID, req.FeedID, req.CategoryID, freshAfter)
 	if mapStoreError(w, err) {
 		return

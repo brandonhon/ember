@@ -270,18 +270,7 @@ func (p *Poller) fetchAndStore(ctx context.Context, f models.Feed) {
 	now := p.Config.Now()
 	minIv, maxIv := p.effectiveBounds(ctx)
 	if err != nil {
-		p.Metrics.FetchesErrored.Add(1)
-		errCount := f.ErrorCount + 1
-		next := now.Add(AdaptiveInterval(IntervalInputs{
-			HadError: true, ErrorCount: errCount,
-			Current: time.Duration(f.FetchInterval) * time.Second,
-		}, minIv, maxIv))
-		_ = p.Store.UpdateFeedFetch(ctx, f.ID, store.UpdateFeedFetchPatch{
-			LastFetched: now.Unix(),
-			NextFetch:   next.Unix(),
-			ErrorCount:  errCount,
-			LastError:   err.Error(),
-		})
+		p.recordFetchFailure(ctx, f, now, minIv, maxIv, err)
 		p.Logger.Warn("poller: fetch failed", "feed_id", f.ID, "url", f.URL, "err", err)
 		return
 	}
@@ -302,13 +291,10 @@ func (p *Poller) fetchAndStore(ctx context.Context, f models.Feed) {
 
 	parsed, err := feed.Parse(ctx, f.ID, res.Body, f.URL)
 	if err != nil {
-		p.Metrics.FetchesErrored.Add(1)
-		_ = p.Store.UpdateFeedFetch(ctx, f.ID, store.UpdateFeedFetchPatch{
-			LastFetched: now.Unix(),
-			NextFetch:   now.Add(minIv).Unix(),
-			ErrorCount:  f.ErrorCount + 1,
-			LastError:   err.Error(),
-		})
+		// Same treatment as a fetch failure: a feed that can't be parsed is
+		// broken, and re-requesting it at the floor interval forever just
+		// hammers someone else's origin.
+		p.recordFetchFailure(ctx, f, now, minIv, maxIv, err)
 		p.Logger.Warn("poller: parse failed", "feed_id", f.ID, "err", err)
 		return
 	}
@@ -374,10 +360,8 @@ func (p *Poller) fetchAndStore(ctx context.Context, f models.Feed) {
 		// filter passes it through — otherwise new articles would never
 		// appear without manual refresh.
 		if p.Summarizer != nil {
-			select {
-			case p.summaryCh <- stored.ID:
-			default:
-			}
+			// Best-effort; EnqueueSummary drops the id when the queue is full.
+			p.EnqueueSummary(stored.ID)
 		} else {
 			if err := p.Store.UpdateSummary(ctx, stored.ID, "", "disabled"); err != nil {
 				p.Logger.Warn("poller: stamp summary_model=disabled", "article_id", stored.ID, "err", err)
@@ -408,6 +392,26 @@ func (p *Poller) fetchAndStore(ctx context.Context, f models.Feed) {
 		patch.SiteURL = ptr(parsed.SiteURL)
 	}
 	_ = p.Store.UpdateFeedFetch(ctx, f.ID, patch)
+}
+
+// recordFetchFailure counts the error, widens the retry interval, and records
+// the cause. Fetch failures and parse failures are deliberately identical:
+// both increment error_count, so both must back off exponentially. Treating
+// only one of them adaptively meant a permanently-malformed feed was
+// re-requested at the floor interval indefinitely.
+func (p *Poller) recordFetchFailure(ctx context.Context, f models.Feed, now time.Time, minIv, maxIv time.Duration, cause error) {
+	p.Metrics.FetchesErrored.Add(1)
+	errCount := f.ErrorCount + 1
+	next := now.Add(AdaptiveInterval(IntervalInputs{
+		HadError: true, ErrorCount: errCount,
+		Current: time.Duration(f.FetchInterval) * time.Second,
+	}, minIv, maxIv))
+	_ = p.Store.UpdateFeedFetch(ctx, f.ID, store.UpdateFeedFetchPatch{
+		LastFetched: now.Unix(),
+		NextFetch:   next.Unix(),
+		ErrorCount:  errCount,
+		LastError:   cause.Error(),
+	})
 }
 
 // linkListRE matches "Article URL: ... Comments URL: ..." — the canonical

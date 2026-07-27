@@ -147,7 +147,7 @@ func (d *Dependencies) handleUpdateFilter(w http.ResponseWriter, r *http.Request
 	if mapStoreError(w, d.Store.UpdateFilter(r.Context(), u.ID, id, patch)) {
 		return
 	}
-	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
+	writeOK(w)
 }
 
 // handlePreviewFilter returns the count of articles over the last
@@ -184,7 +184,7 @@ func (d *Dependencies) handleDeleteFilter(w http.ResponseWriter, r *http.Request
 	if mapStoreError(w, d.Store.DeleteFilter(r.Context(), u.ID, id)) {
 		return
 	}
-	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
+	writeOK(w)
 }
 
 // filterExport is the portable shape of a filter — no instance-specific id,

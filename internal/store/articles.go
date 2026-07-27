@@ -430,14 +430,27 @@ JOIN boards b ON b.id = ba.board_id AND b.user_id = ? AND b.id = ?`
 JOIN article_tags atg ON atg.article_id = a.id AND atg.user_id = ? AND atg.tag = ?`
 		args = append(args, userID, q.Tag)
 	}
+	// Unread MUST keep the IFNULL: an article with no article_state row has
+	// never been interacted with, so a missing row means unread and has to be
+	// coerced to 0. `st.is_read = 0` would silently drop every never-touched
+	// article from every unread count and list.
 	if q.Unread {
 		conds = append(conds, "IFNULL(st.is_read,0) = 0")
 	}
+	// Starred/Later deliberately do NOT use IFNULL, even though the LEFT JOIN
+	// can yield NULL. `NULL = 1` is NULL, so a missing state row is excluded
+	// either way — the result set is identical. The bare form additionally lets
+	// SQLite prove the predicate rejects NULLs, strength-reduce the LEFT JOIN
+	// to an INNER JOIN, and drive the query from idx_state_user_star /
+	// idx_state_user_later (a handful of rows) instead of scanning every
+	// subscribed article and evaluating the dedup subquery on each. Measured on
+	// 20k articles: 108ms -> 250us for the Starred badge. See
+	// TestCountStarredLater_MatchesIFNULLSemantics.
 	if q.Starred {
-		conds = append(conds, "IFNULL(st.is_starred,0) = 1")
+		conds = append(conds, "st.is_starred = 1")
 	}
 	if q.Later {
-		conds = append(conds, "IFNULL(st.is_later,0) = 1")
+		conds = append(conds, "st.is_later = 1")
 	}
 	if q.FreshAfter > 0 {
 		conds = append(conds, "IFNULL(a.published_at,0) >= ?")

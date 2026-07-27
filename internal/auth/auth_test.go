@@ -119,6 +119,79 @@ func TestSession_CreateVerifyDestroy(t *testing.T) {
 	}
 }
 
+// Issue, renewal, and clear must emit identical cookie flags. A browser only
+// replaces a cookie when name/path/flags match, so drift between these three
+// paths silently leaves a stale duplicate cookie behind — and a Secure or
+// SameSite that differs on the clear means logout fails to remove it.
+func TestSessionCookie_FlagsConsistentAcrossIssueRenewClear(t *testing.T) {
+	a := newAuth(t)
+	ctx := context.Background()
+	u, _ := a.Store.CreateUser(ctx, models.User{Username: "alice", PasswordHash: "x"})
+	base := time.Now()
+	a.Now = func() time.Time { return base }
+
+	check := func(label string, c *http.Cookie) {
+		t.Helper()
+		if c == nil {
+			// Explicit return: staticcheck doesn't model t.Fatalf as terminal,
+			// so without it the derefs below trip SA5011.
+			t.Errorf("%s: no session cookie emitted", label)
+			return
+		}
+		if c.Path != "/" {
+			t.Errorf("%s: Path = %q, want /", label, c.Path)
+		}
+		if !c.HttpOnly {
+			t.Errorf("%s: HttpOnly = false, want true", label)
+		}
+		if !c.Secure {
+			t.Errorf("%s: Secure = false, want true (SecureCookies defaults on)", label)
+		}
+		if c.SameSite != http.SameSiteStrictMode {
+			t.Errorf("%s: SameSite = %v, want Strict", label, c.SameSite)
+		}
+	}
+
+	// Issue.
+	wNew := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	if _, err := a.CreateSession(ctx, wNew, r, u.ID); err != nil {
+		t.Fatal(err)
+	}
+	issued := extractCookie(t, wNew)
+	check("issue", issued)
+
+	// Renew: jump past the halfway mark so maybeRenew fires.
+	a.Now = func() time.Time { return base.Add(a.SessionTTL - time.Minute) }
+	rWith := httptest.NewRequest(http.MethodGet, "/", nil)
+	rWith.AddCookie(issued)
+	wRenew := httptest.NewRecorder()
+	if _, err := a.VerifySession(ctx, wRenew, rWith); err != nil {
+		t.Fatalf("VerifySession: %v", err)
+	}
+	renewed := extractCookie(t, wRenew)
+	check("renew", renewed)
+
+	// Clear.
+	wDel := httptest.NewRecorder()
+	if err := a.DestroySession(ctx, wDel, rWith); err != nil {
+		t.Fatal(err)
+	}
+	cleared := extractCookie(t, wDel)
+	check("clear", cleared)
+	if cleared == nil {
+		t.Fatal("clear: no session cookie emitted")
+		return // unreachable, but staticcheck doesn't model t.Fatal as terminal
+	}
+	if cleared.Value != "" || cleared.MaxAge != -1 {
+		t.Errorf("clear: value=%q MaxAge=%d, want empty value and MaxAge -1", cleared.Value, cleared.MaxAge)
+	}
+	// A zero Expires must not be serialized as a year-1 date.
+	if raw := wDel.Result().Header.Get("Set-Cookie"); strings.Contains(raw, "Expires=") {
+		t.Errorf("clear: Set-Cookie carries an Expires attribute: %q", raw)
+	}
+}
+
 func TestSession_TamperedCookieRejected(t *testing.T) {
 	a := newAuth(t)
 	ctx := context.Background()

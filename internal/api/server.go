@@ -18,9 +18,9 @@ import (
 	"github.com/brandonhon/ember/internal/updatecheck"
 )
 
-// PollerRefresher is the subset of *poller.Poller the API uses (lets us avoid
+// pollerRefresher is the subset of *poller.Poller the API uses (lets us avoid
 // importing poller here to keep dependencies one-directional).
-type PollerRefresher interface {
+type pollerRefresher interface {
 	RefreshFeed(ctx context.Context, feedID int64) error
 	EnqueueSummary(articleID int64) bool
 	// ExtractArticle re-runs the readability extractor against the article's
@@ -29,16 +29,16 @@ type PollerRefresher interface {
 	ExtractArticle(ctx context.Context, articleID int64) error
 }
 
-// MetricsSnapshotter is implemented by the poller; lets /metrics export
+// metricsSnapshotter is implemented by the poller; lets /metrics export
 // counters without depending on the poller package directly.
-type MetricsSnapshotter interface {
+type metricsSnapshotter interface {
 	MetricsSnapshot() map[string]int64
 }
 
-// UpdateStatus is the subset of *updatecheck.Checker the API reads — the cached
+// updateStatus is the subset of *updatecheck.Checker the API reads — the cached
 // latest-release result. ok is false until the first check completes or when
 // the check is disabled. Injecting it as an interface lets tests stub it.
-type UpdateStatus interface {
+type updateStatus interface {
 	Latest() (updatecheck.Result, bool)
 }
 
@@ -46,8 +46,8 @@ type UpdateStatus interface {
 type Dependencies struct {
 	Store   *store.Store
 	Auth    *auth.Auth
-	Poller  PollerRefresher
-	Metrics MetricsSnapshotter
+	Poller  pollerRefresher
+	Metrics metricsSnapshotter
 	OPML    *opml.Service
 	TTRSS   *ttrss.Service // Tiny Tiny RSS starred/archived import; nil disables the endpoint
 	StaticH http.Handler   // SPA / embed.FS handler; may be nil in tests
@@ -105,7 +105,7 @@ type Dependencies struct {
 	// UpdateChecker holds the cached latest-release result from GitHub. Nil
 	// disables the update hint; /api/me then omits the "update" object. Only
 	// admins see the result (see handleMe).
-	UpdateChecker UpdateStatus
+	UpdateChecker updateStatus
 	// UpdateCheckEnabledFallback is the env-derived default (the negation of
 	// EMBER_DISABLE_UPDATE_CHECK) for the update_check_enabled admin setting.
 	UpdateCheckEnabledFallback bool
@@ -129,6 +129,19 @@ type Dependencies struct {
 // summaries_enabled flag surfaced to the SPA via /api/me.
 func (d *Dependencies) summariesOn() bool { return d.Ollama != nil }
 
+// defaultFreshWindow is the Fresh-view cutoff used when the operator hasn't
+// configured one. Mirrored by the SPA's isFresh() via /api/me.
+const defaultFreshWindow = 6 * time.Hour
+
+// freshWindow is the configured Fresh-view cutoff, falling back to
+// defaultFreshWindow.
+func (d *Dependencies) freshWindow() time.Duration {
+	if d.FreshWindow > 0 {
+		return d.FreshWindow
+	}
+	return defaultFreshWindow
+}
+
 // backgroundCtx returns d.BackgroundCtx or context.Background if unset.
 // Used by handlers that spawn detached goroutines.
 func (d *Dependencies) backgroundCtx() context.Context {
@@ -142,7 +155,7 @@ func (d *Dependencies) backgroundCtx() context.Context {
 // All other /api/* require RequireAuth; /api/users/* admin actions require
 // RequireAdmin. Non-/api routes fall back to the SPA.
 func NewRouter(d Dependencies) http.Handler {
-	trusted := ParseTrustedProxies(d.TrustedProxies)
+	trusted := parseTrustedProxies(d.TrustedProxies)
 	d.trustedNets = trusted
 
 	// Same-origin image proxy. Article responses rewrite image_url to a signed
@@ -154,13 +167,13 @@ func NewRouter(d Dependencies) http.Handler {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Compress(5))
 	r.Use(middleware.Timeout(60 * time.Second))
-	r.Use(SecurityHeaders(trusted, d.HSTSPreload))
-	r.Use(CSRFIssue(!d.TestMode))
+	r.Use(securityHeaders(trusted, d.HSTSPreload))
+	r.Use(csrfIssue(!d.TestMode))
 
 	// 405 responses must carry the security headers too. chi's default
 	// MethodNotAllowed handler runs outside the middleware chain, so register
-	// one that re-applies SecurityHeaders before writing the JSON error.
-	methodNotAllowed := SecurityHeaders(trusted, d.HSTSPreload)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	// one that re-applies securityHeaders before writing the JSON error.
+	methodNotAllowed := securityHeaders(trusted, d.HSTSPreload)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
 	}))
 	r.MethodNotAllowed(methodNotAllowed.ServeHTTP)
@@ -183,7 +196,7 @@ func NewRouter(d Dependencies) http.Handler {
 	if d.TestMode {
 		loginBurst = 1000
 	}
-	loginLimiter := NewRateLimiter(loginBurst, time.Minute, trusted)
+	loginLimiter := newRateLimiter(loginBurst, time.Minute, trusted)
 
 	// Separate, higher-burst limiter for expensive authenticated endpoints
 	// (outbound-fetch / goroutine-spawning / FTS work). Without a fronting
@@ -193,162 +206,193 @@ func NewRouter(d Dependencies) http.Handler {
 	if d.TestMode {
 		expensiveBurst = 1000
 	}
-	expensiveLimiter := NewRateLimiter(expensiveBurst, time.Minute, trusted)
+	expensiveLimiter := newRateLimiter(expensiveBurst, time.Minute, trusted)
 
 	r.Route("/api", func(r chi.Router) {
-		r.Use(CSRFVerify)
-		// Auth — login is the only /api path that bypasses CSRFVerify (no
-		// cookie yet on first call). The wrapping middleware checks for the
-		// login suffix.
-		r.With(loginLimiter.LimitMiddleware).Post("/auth/login", d.handleLogin)
-		// Passkey login (public; rate-limited the same as password login).
-		r.With(loginLimiter.LimitMiddleware).Post("/auth/passkey/begin", d.handlePasskeyLoginBegin)
-		r.With(loginLimiter.LimitMiddleware).Post("/auth/passkey/finish", d.handlePasskeyLoginFinish)
-		// Public probe that drives the login UI's passkey-button visibility.
-		// Returns {any_registered: bool}. No auth, no CSRF (it's a GET).
+		r.Use(csrfVerify)
+
+		// --- Public (pre-session) -------------------------------------------
+		// Login is the only /api path that bypasses csrfVerify (no cookie yet
+		// on the first call); the CSRF middleware checks for the login suffix.
+		r.With(loginLimiter.limitMiddleware).Post("/auth/login", d.handleLogin)
+		// Passkey login — rate-limited the same as password login.
+		r.With(loginLimiter.limitMiddleware).Post("/auth/passkey/begin", d.handlePasskeyLoginBegin)
+		r.With(loginLimiter.limitMiddleware).Post("/auth/passkey/finish", d.handlePasskeyLoginFinish)
+		// Probe driving the login UI's passkey-button visibility. Returns
+		// {any_registered: bool}. No auth, no CSRF (it's a GET).
 		r.Get("/auth/passkey/exists", d.handlePasskeyExists)
 
-		// Branding is auth-required so anonymous callers can't probe whether
-		// an instance exists or what it's branded as. The login page renders
-		// with the stock "Ember" name until a user signs in.
-		r.With(d.Auth.RequireAuth).Get("/branding", d.handleGetBranding)
-		r.With(d.Auth.RequireAdmin).Post("/admin/branding", d.handleSetBranding)
-		r.With(d.Auth.RequireAuth).Post("/auth/logout", d.handleLogout)
-		r.With(d.Auth.RequireAuth).Get("/me", d.handleMe)
-		r.With(d.Auth.RequireAuth).Patch("/me/settings", d.handleUpdateSettings)
-		r.With(d.Auth.RequireAuth).Patch("/me/email", d.handleUpdateEmail)
-		r.With(d.Auth.RequireAuth).Post("/me/password", d.handleChangePassword)
-		// Passkeys (self-service registration + management).
-		r.With(d.Auth.RequireAuth).Get("/me/passkeys", d.handleListPasskeys)
-		r.With(d.Auth.RequireAuth).Post("/me/passkeys/register/begin", d.handlePasskeyRegisterBegin)
-		r.With(d.Auth.RequireAuth).Post("/me/passkeys/register/finish", d.handlePasskeyRegisterFinish)
-		r.With(d.Auth.RequireAuth).Patch("/me/passkeys/{id}", d.handlePasskeyRename)
-		r.With(d.Auth.RequireAuth).Delete("/me/passkeys/{id}", d.handlePasskeyDelete)
+		// --- Signed-in users ------------------------------------------------
+		// Everything in this group requires a session. Routes that spawn
+		// goroutines, run FTS, or make outbound fetches additionally carry the
+		// expensive limiter — without a fronting proxy they are the cheapest
+		// way for a logged-in client to pin CPU or open many connections.
+		r.Group(func(r chi.Router) {
+			r.Use(d.Auth.RequireAuth)
 
-		// Users — list/get auth'd; mutation admin-only
-		r.With(d.Auth.RequireAuth).Get("/users", d.handleListUsers)
-		r.With(d.Auth.RequireAdmin).Post("/users", d.handleCreateUser)
-		r.With(d.Auth.RequireAdmin).Patch("/users/{id}", d.handleUpdateUser)
-		r.With(d.Auth.RequireAdmin).Delete("/users/{id}", d.handleDeleteUser)
+			// Branding is auth-required so anonymous callers can't probe
+			// whether an instance exists or what it's branded as. The login
+			// page renders with the stock "Ember" name until a user signs in.
+			r.Get("/branding", d.handleGetBranding)
+			r.Post("/auth/logout", d.handleLogout)
+			r.Get("/me", d.handleMe)
+			r.Patch("/me/settings", d.handleUpdateSettings)
+			r.Patch("/me/email", d.handleUpdateEmail)
+			r.Post("/me/password", d.handleChangePassword)
 
-		// Categories
-		r.With(d.Auth.RequireAuth).Get("/categories", d.handleListCategories)
-		r.With(d.Auth.RequireAuth).Post("/categories", d.handleCreateCategory)
-		r.With(d.Auth.RequireAuth).Post("/categories/reorder", d.handleReorderCategories)
-		r.With(d.Auth.RequireAuth).Patch("/categories/{id}", d.handleUpdateCategory)
-		r.With(d.Auth.RequireAuth).Delete("/categories/{id}", d.handleDeleteCategory)
+			// Passkeys (self-service registration + management).
+			r.Get("/me/passkeys", d.handleListPasskeys)
+			r.Post("/me/passkeys/register/begin", d.handlePasskeyRegisterBegin)
+			r.Post("/me/passkeys/register/finish", d.handlePasskeyRegisterFinish)
+			r.Patch("/me/passkeys/{id}", d.handlePasskeyRename)
+			r.Delete("/me/passkeys/{id}", d.handlePasskeyDelete)
 
-		// Feeds / subscriptions
-		r.With(d.Auth.RequireAuth).Get("/feeds", d.handleListFeeds)
-		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/feeds", d.handleAddFeed)
-		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/feeds/discover", d.handleDiscoverFeeds)
-		r.With(d.Auth.RequireAuth).Post("/feeds/reorder", d.handleReorderFeeds)
-		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Patch("/feeds/{id}", d.handleUpdateFeed)
-		r.With(d.Auth.RequireAuth).Delete("/feeds/{id}", d.handleDeleteFeed)
-		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/feeds/refresh", d.handleRefreshAllFeeds)
-		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/feeds/{id}/refresh", d.handleRefreshFeed)
-		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/feeds/{id}/resummarize", d.handleResummarizeFeed)
-		r.With(d.Auth.RequireAdmin, expensiveLimiter.LimitMiddleware).Post("/feeds/resummarize-all", d.handleResummarizeAll)
+			// Users — list is readable by any signed-in user (it backs the
+			// share-modal picker, and returns a minimal projection to
+			// non-admins); every mutation is admin-only, below.
+			r.Get("/users", d.handleListUsers)
 
-		// LLM admin
-		r.With(d.Auth.RequireAdmin).Get("/admin/llm", d.handleGetLLM)
-		r.With(d.Auth.RequireAdmin).Post("/admin/llm/model", d.handleSetLLMModel)
-		r.With(d.Auth.RequireAdmin).Post("/admin/llm/pull", d.handlePullLLMModel)
-		r.With(d.Auth.RequireAdmin).Post("/admin/llm/delete", d.handleDeleteLLMModel)
-		r.With(d.Auth.RequireAdmin).Post("/admin/llm/options", d.handleSetLLMOptions)
+			// Categories
+			r.Get("/categories", d.handleListCategories)
+			r.Post("/categories", d.handleCreateCategory)
+			r.Post("/categories/reorder", d.handleReorderCategories)
+			r.Patch("/categories/{id}", d.handleUpdateCategory)
+			r.Delete("/categories/{id}", d.handleDeleteCategory)
 
-		// DB admin
-		r.With(d.Auth.RequireAdmin).Get("/admin/db", d.handleGetDB)
-		r.With(d.Auth.RequireAdmin).Post("/admin/db/backup", d.handleDBBackup)
-		r.With(d.Auth.RequireAdmin).Delete("/admin/db/backups/{name}", d.handleDeleteBackup)
-		r.With(d.Auth.RequireAdmin).Post("/admin/db/opml-export", d.handleOPMLExportNow)
-		r.With(d.Auth.RequireAdmin).Delete("/admin/db/exports/{name}", d.handleDeleteExport)
-		r.With(d.Auth.RequireAdmin).Post("/admin/db/cleanup", d.handleDBCleanup)
-		r.With(d.Auth.RequireAdmin).Post("/admin/db/schedule", d.handleDBSchedule)
-		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/feeds/import", d.handleOPMLImport)
-		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/feeds/import-ttrss", d.handleTTRSSImport)
-		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/feeds/import-ttrss-api", d.handleTTRSSAPIImport)
-		r.With(d.Auth.RequireAuth).Get("/feeds/export", d.handleOPMLExport)
+			// Feeds / subscriptions
+			r.Get("/feeds", d.handleListFeeds)
+			r.With(expensiveLimiter.limitMiddleware).Post("/feeds", d.handleAddFeed)
+			r.With(expensiveLimiter.limitMiddleware).Post("/feeds/discover", d.handleDiscoverFeeds)
+			r.Post("/feeds/reorder", d.handleReorderFeeds)
+			r.With(expensiveLimiter.limitMiddleware).Patch("/feeds/{id}", d.handleUpdateFeed)
+			r.Delete("/feeds/{id}", d.handleDeleteFeed)
+			r.With(expensiveLimiter.limitMiddleware).Post("/feeds/refresh", d.handleRefreshAllFeeds)
+			r.With(expensiveLimiter.limitMiddleware).Post("/feeds/{id}/refresh", d.handleRefreshFeed)
+			r.With(expensiveLimiter.limitMiddleware).Post("/feeds/{id}/resummarize", d.handleResummarizeFeed)
 
-		// Starter packs
-		r.With(d.Auth.RequireAuth).Get("/starter-packs", d.handleListStarterPacks)
-		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/starter-packs/{slug}", d.handleImportStarterPack)
-		r.With(d.Auth.RequireAuth).Delete("/starter-packs/{slug}", d.handleRemoveStarterPack)
+			// Import / export
+			r.With(expensiveLimiter.limitMiddleware).Post("/feeds/import", d.handleOPMLImport)
+			r.With(expensiveLimiter.limitMiddleware).Post("/feeds/import-ttrss", d.handleTTRSSImport)
+			r.With(expensiveLimiter.limitMiddleware).Post("/feeds/import-ttrss-api", d.handleTTRSSAPIImport)
+			r.Get("/feeds/export", d.handleOPMLExport)
 
-		// Same-origin image proxy for article lead images. Signed URLs only
-		// (capability), so it's not an open relay; rate-limited like other
-		// outbound-fetch endpoints since each request opens an origin connection.
-		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Get("/img", d.img.handle)
+			// Starter packs
+			r.Get("/starter-packs", d.handleListStarterPacks)
+			r.With(expensiveLimiter.limitMiddleware).Post("/starter-packs/{slug}", d.handleImportStarterPack)
+			r.Delete("/starter-packs/{slug}", d.handleRemoveStarterPack)
 
-		// Articles
-		r.With(d.Auth.RequireAuth).Get("/articles", d.handleListArticles)
-		r.With(d.Auth.RequireAuth).Get("/articles/{id}", d.handleGetArticle)
-		r.With(d.Auth.RequireAuth).Get("/articles/{id}/cluster", d.handleGetArticleCluster)
-		// Web Push (VAPID) — public key fetch, subscription CRUD, test send.
-		// All 503 if d.Push is nil. See internal/push.
-		r.With(d.Auth.RequireAuth).Get("/me/push-vapid-public-key", d.handleGetVapidKey)
-		r.With(d.Auth.RequireAuth).Get("/me/push-subscriptions", d.handleListPushSubscriptions)
-		r.With(d.Auth.RequireAuth).Post("/me/push-subscriptions", d.handleCreatePushSubscription)
-		r.With(d.Auth.RequireAuth).Delete("/me/push-subscriptions/{id}", d.handleDeletePushSubscription)
-		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/me/push-subscriptions/test", d.handleTestPushNotification)
-		// Email newsletter inbox (per-user address). Endpoints are always
-		// registered; the handlers return enabled=false / 503 when
-		// EMBER_EMAIL_DOMAIN isn't configured.
-		r.With(d.Auth.RequireAuth).Get("/me/inbox", d.handleGetInbox)
-		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/me/inbox/rotate", d.handleRotateInbox)
-		r.With(d.Auth.RequireAuth).Post("/articles/read", d.handleSetRead)
-		r.With(d.Auth.RequireAuth).Post("/articles/star", d.handleSetStar)
-		r.With(d.Auth.RequireAuth).Post("/articles/later", d.handleSetLater)
-		r.With(d.Auth.RequireAuth).Post("/articles/mark-all-read", d.handleMarkAllRead)
-		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Post("/articles/{id}/extract", d.handleReExtractArticle)
+			// Same-origin image proxy for article lead images. Signed URLs
+			// only (a capability), so it's not an open relay; limited like the
+			// other outbound-fetch endpoints since each request opens an
+			// origin connection.
+			r.With(expensiveLimiter.limitMiddleware).Get("/img", d.img.handle)
 
-		// Per-article user tags
-		r.With(d.Auth.RequireAuth).Get("/articles/{id}/tags", d.handleListArticleTags)
-		r.With(d.Auth.RequireAuth).Post("/articles/{id}/tags", d.handleAddArticleTag)
-		r.With(d.Auth.RequireAuth).Delete("/articles/{id}/tags", d.handleRemoveArticleTag)
-		r.With(d.Auth.RequireAuth).Get("/tags", d.handleListUserTags)
-		r.With(d.Auth.RequireAuth).Get("/me/stats", d.handleGetStats)
-		r.With(d.Auth.RequireAuth).Get("/me/smart-counts", d.handleSmartCounts)
-		r.With(d.Auth.RequireAuth).Get("/me/digest", d.handleGetDigest)
-		r.With(d.Auth.RequireAuth).Post("/me/digest", d.handleSetDigest)
+			// Articles
+			r.Get("/articles", d.handleListArticles)
+			r.Get("/articles/{id}", d.handleGetArticle)
+			r.Get("/articles/{id}/cluster", d.handleGetArticleCluster)
+			r.Post("/articles/read", d.handleSetRead)
+			r.Post("/articles/star", d.handleSetStar)
+			r.Post("/articles/later", d.handleSetLater)
+			r.Post("/articles/mark-all-read", d.handleMarkAllRead)
+			r.With(expensiveLimiter.limitMiddleware).Post("/articles/{id}/extract", d.handleReExtractArticle)
 
-		// Admin session policy (server-wide TTL). Per-user TTL is not
-		// supported — see internal/api/session_handlers.go for rationale.
-		r.With(d.Auth.RequireAdmin).Get("/admin/session", d.handleGetSessionTTL)
-		r.With(d.Auth.RequireAdmin).Post("/admin/session/ttl", d.handleSetSessionTTL)
+			// Per-article user tags
+			r.Get("/articles/{id}/tags", d.handleListArticleTags)
+			r.Post("/articles/{id}/tags", d.handleAddArticleTag)
+			r.Delete("/articles/{id}/tags", d.handleRemoveArticleTag)
+			r.Get("/tags", d.handleListUserTags)
 
-		// Admin settings: SMTP + first-ingest backlog window. SMTP password
-		// is write-only — GET returns whether one is set, not the value.
-		r.With(d.Auth.RequireAdmin).Get("/admin/settings", d.handleGetAdminSettings)
-		r.With(d.Auth.RequireAdmin).Patch("/admin/settings", d.handleSetAdminSettings)
-		r.With(d.Auth.RequireAdmin).Post("/admin/settings/email-test", d.handleTestEmail)
+			// Web Push (VAPID) — public key fetch, subscription CRUD, test
+			// send. All 503 if d.Push is nil. See internal/push.
+			r.Get("/me/push-vapid-public-key", d.handleGetVapidKey)
+			r.Get("/me/push-subscriptions", d.handleListPushSubscriptions)
+			r.Post("/me/push-subscriptions", d.handleCreatePushSubscription)
+			r.Delete("/me/push-subscriptions/{id}", d.handleDeletePushSubscription)
+			r.With(expensiveLimiter.limitMiddleware).Post("/me/push-subscriptions/test", d.handleTestPushNotification)
 
-		// Boards
-		r.With(d.Auth.RequireAuth).Get("/boards", d.handleListBoards)
-		r.With(d.Auth.RequireAuth).Post("/boards", d.handleCreateBoard)
-		r.With(d.Auth.RequireAuth).Delete("/boards/{id}", d.handleDeleteBoard)
-		r.With(d.Auth.RequireAuth).Post("/boards/{id}/articles", d.handleBoardAdd)
-		r.With(d.Auth.RequireAuth).Delete("/boards/{id}/articles/{articleId}", d.handleBoardRemove)
+			// Email newsletter inbox (per-user address). Always registered;
+			// the handlers report enabled=false / 503 when EMBER_EMAIL_DOMAIN
+			// isn't configured.
+			r.Get("/me/inbox", d.handleGetInbox)
+			r.With(expensiveLimiter.limitMiddleware).Post("/me/inbox/rotate", d.handleRotateInbox)
 
-		// Shares
-		r.With(d.Auth.RequireAuth).Post("/shares", d.handleCreateShare)
-		r.With(d.Auth.RequireAuth).Get("/shares/inbox", d.handleListInbox)
-		r.With(d.Auth.RequireAuth).Post("/shares/{id}/seen", d.handleMarkShareSeen)
+			r.Get("/me/stats", d.handleGetStats)
+			r.Get("/me/smart-counts", d.handleSmartCounts)
+			r.Get("/me/digest", d.handleGetDigest)
+			r.Post("/me/digest", d.handleSetDigest)
 
-		// Filters
-		r.With(d.Auth.RequireAuth).Get("/filters", d.handleListFilters)
-		r.With(d.Auth.RequireAuth).Post("/filters", d.handleCreateFilter)
-		r.With(d.Auth.RequireAuth).Get("/filters/export", d.handleExportFilters)
-		r.With(d.Auth.RequireAuth).Post("/filters/import", d.handleImportFilters)
-		r.With(d.Auth.RequireAuth).Post("/filters/preview", d.handlePreviewFilter)
-		r.With(d.Auth.RequireAuth).Patch("/filters/{id}", d.handleUpdateFilter)
-		r.With(d.Auth.RequireAuth).Delete("/filters/{id}", d.handleDeleteFilter)
+			// Boards
+			r.Get("/boards", d.handleListBoards)
+			r.Post("/boards", d.handleCreateBoard)
+			r.Delete("/boards/{id}", d.handleDeleteBoard)
+			r.Post("/boards/{id}/articles", d.handleBoardAdd)
+			r.Delete("/boards/{id}/articles/{articleId}", d.handleBoardRemove)
 
-		// Search
-		r.With(d.Auth.RequireAuth, expensiveLimiter.LimitMiddleware).Get("/search", d.handleSearch)
-		r.With(d.Auth.RequireAuth).Get("/saved-searches", d.handleListSavedSearches)
-		r.With(d.Auth.RequireAuth).Post("/saved-searches", d.handleCreateSavedSearch)
-		r.With(d.Auth.RequireAuth).Delete("/saved-searches/{id}", d.handleDeleteSavedSearch)
+			// Shares
+			r.Post("/shares", d.handleCreateShare)
+			r.Get("/shares/inbox", d.handleListInbox)
+			r.Post("/shares/{id}/seen", d.handleMarkShareSeen)
+
+			// Filters
+			r.Get("/filters", d.handleListFilters)
+			r.Post("/filters", d.handleCreateFilter)
+			r.Get("/filters/export", d.handleExportFilters)
+			r.Post("/filters/import", d.handleImportFilters)
+			r.Post("/filters/preview", d.handlePreviewFilter)
+			r.Patch("/filters/{id}", d.handleUpdateFilter)
+			r.Delete("/filters/{id}", d.handleDeleteFilter)
+
+			// Search
+			r.With(expensiveLimiter.limitMiddleware).Get("/search", d.handleSearch)
+			r.Get("/saved-searches", d.handleListSavedSearches)
+			r.Post("/saved-searches", d.handleCreateSavedSearch)
+			r.Delete("/saved-searches/{id}", d.handleDeleteSavedSearch)
+		})
+
+		// --- Admins ---------------------------------------------------------
+		// Server-wide configuration, destructive maintenance, and work spent on
+		// every user's behalf. RequireAdmin 401s the anonymous caller and 403s
+		// the signed-in reader.
+		r.Group(func(r chi.Router) {
+			r.Use(d.Auth.RequireAdmin)
+
+			r.Post("/admin/branding", d.handleSetBranding)
+			r.Patch("/users/{id}", d.handleUpdateUser)
+			r.Post("/users", d.handleCreateUser)
+			r.Delete("/users/{id}", d.handleDeleteUser)
+
+			// Resummarize-all rewrites every article in the database, so it is
+			// both admin-only and rate-limited.
+			r.With(expensiveLimiter.limitMiddleware).Post("/feeds/resummarize-all", d.handleResummarizeAll)
+
+			// LLM
+			r.Get("/admin/llm", d.handleGetLLM)
+			r.Post("/admin/llm/model", d.handleSetLLMModel)
+			r.Post("/admin/llm/pull", d.handlePullLLMModel)
+			r.Post("/admin/llm/delete", d.handleDeleteLLMModel)
+			r.Post("/admin/llm/options", d.handleSetLLMOptions)
+
+			// DB maintenance
+			r.Get("/admin/db", d.handleGetDB)
+			r.Post("/admin/db/backup", d.handleDBBackup)
+			r.Delete("/admin/db/backups/{name}", d.handleDeleteBackup)
+			r.Post("/admin/db/opml-export", d.handleOPMLExportNow)
+			r.Delete("/admin/db/exports/{name}", d.handleDeleteExport)
+			r.Post("/admin/db/cleanup", d.handleDBCleanup)
+			r.Post("/admin/db/schedule", d.handleDBSchedule)
+
+			// Session policy (server-wide TTL). Per-user TTL is not supported —
+			// see internal/api/session_handlers.go for the rationale.
+			r.Get("/admin/session", d.handleGetSessionTTL)
+			r.Post("/admin/session/ttl", d.handleSetSessionTTL)
+
+			// Settings: SMTP + windows + backlog. The SMTP password is
+			// write-only — GET reports whether one is set, not the value.
+			r.Get("/admin/settings", d.handleGetAdminSettings)
+			r.Patch("/admin/settings", d.handleSetAdminSettings)
+			r.Post("/admin/settings/email-test", d.handleTestEmail)
+		})
 
 		// Catch-all under /api/ → 404 JSON
 		r.NotFound(func(w http.ResponseWriter, _ *http.Request) {
@@ -360,8 +404,8 @@ func NewRouter(d Dependencies) http.Handler {
 	// The token is 256-bit random so brute force is infeasible; the limiter
 	// is here to bound the cost of unauthenticated requests, each of which
 	// would otherwise force a full ListUsers scan.
-	r.With(loginLimiter.LimitMiddleware).Post("/fever", d.handleFever)
-	r.With(loginLimiter.LimitMiddleware).Get("/fever", d.handleFever)
+	r.With(loginLimiter.limitMiddleware).Post("/fever", d.handleFever)
+	r.With(loginLimiter.limitMiddleware).Get("/fever", d.handleFever)
 
 	// Static SPA / embed fallback
 	if d.StaticH != nil {

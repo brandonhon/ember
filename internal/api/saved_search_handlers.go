@@ -58,5 +58,5 @@ func (d *Dependencies) handleDeleteSavedSearch(w http.ResponseWriter, r *http.Re
 	if mapStoreError(w, d.Store.DeleteSavedSearch(r.Context(), u.ID, id)) {
 		return
 	}
-	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
+	writeOK(w)
 }

@@ -11,9 +11,9 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// StarterPack is a curated set of feeds an admin or new user can import in a
+// starterPack is a curated set of feeds an admin or new user can import in a
 // single click. Slugs are stable; categories are created if missing.
-type StarterPack struct {
+type starterPack struct {
 	Slug     string   `json:"slug"`
 	Name     string   `json:"name"`
 	Color    string   `json:"color"`
@@ -23,7 +23,7 @@ type StarterPack struct {
 // starterPacks is the curated list. Five categories, 3-5 feeds each. URLs are
 // kept as the canonical feed endpoints; the poller resolves titles + favicons
 // on the first successful fetch.
-var starterPacks = []StarterPack{
+var starterPacks = []starterPack{
 	{
 		Slug:  "technology",
 		Name:  "Technology",
@@ -81,11 +81,51 @@ var starterPacks = []StarterPack{
 	},
 }
 
+// starterPackForParam resolves the {slug} path param to a curated pack,
+// writing 404 and returning ok=false when the slug is unknown.
+func starterPackForParam(w http.ResponseWriter, r *http.Request) (*starterPack, bool) {
+	slug := chi.URLParam(r, "slug")
+	for i := range starterPacks {
+		if starterPacks[i].Slug == slug {
+			return &starterPacks[i], true
+		}
+	}
+	writeError(w, http.StatusNotFound, "not_found", "starter pack not found")
+	return nil, false
+}
+
+// categoryIDByName finds the user's category with the given name, case-
+// insensitively, returning 0 when they have no such category. Both starter-pack
+// handlers match by name so import reuses a folder the user already has and
+// remove can find the one import created.
+func (d *Dependencies) categoryIDByName(ctx context.Context, userID int64, name string) (int64, error) {
+	cats, err := d.Store.ListCategories(ctx, userID)
+	if err != nil {
+		return 0, err
+	}
+	for _, c := range cats {
+		if strings.EqualFold(c.Name, name) {
+			return c.ID, nil
+		}
+	}
+	return 0, nil
+}
+
+// subscribedURLs indexes the user's current subscriptions by feed URL, which is
+// how a pack decides what it still needs to add (or can remove).
+func subscribedURLs(feeds []models.FeedWithCounts) map[string]int64 {
+	out := make(map[string]int64, len(feeds))
+	for _, f := range feeds {
+		out[f.URL] = f.SubscriptionID
+	}
+	return out
+}
+
 // starterPackView is the per-user list response: the pack metadata plus how
 // many of its feeds the caller is currently subscribed to. The UI uses
 // `subscribed == len(feed_urls)` to flip the button between Add and Remove.
 type starterPackView struct {
-	StarterPack
+	starterPack
 	Subscribed int `json:"subscribed"`
 }
 
@@ -95,15 +135,12 @@ func (d *Dependencies) handleListStarterPacks(w http.ResponseWriter, r *http.Req
 	if mapStoreError(w, err) {
 		return
 	}
-	have := make(map[string]bool, len(subs))
-	for _, f := range subs {
-		have[f.URL] = true
-	}
+	have := subscribedURLs(subs)
 	views := make([]starterPackView, len(starterPacks))
 	for i, p := range starterPacks {
-		v := starterPackView{StarterPack: p}
+		v := starterPackView{starterPack: p}
 		for _, url := range p.FeedURLs {
-			if have[url] {
+			if _, ok := have[url]; ok {
 				v.Subscribed++
 			}
 		}
@@ -132,32 +169,17 @@ type starterRemoveResult struct {
 // Existing subscriptions are skipped — the operation is idempotent.
 func (d *Dependencies) handleImportStarterPack(w http.ResponseWriter, r *http.Request) {
 	u, _ := auth.FromContext(r.Context())
-	slug := chi.URLParam(r, "slug")
-	var pack *StarterPack
-	for i := range starterPacks {
-		if starterPacks[i].Slug == slug {
-			pack = &starterPacks[i]
-			break
-		}
-	}
-	if pack == nil {
-		writeError(w, http.StatusNotFound, "not_found", "starter pack not found")
+	pack, ok := starterPackForParam(w, r)
+	if !ok {
 		return
 	}
 
 	ctx := r.Context()
 
 	// Find or create the category.
-	cats, err := d.Store.ListCategories(ctx, u.ID)
+	categoryID, err := d.categoryIDByName(ctx, u.ID, pack.Name)
 	if mapStoreError(w, err) {
 		return
-	}
-	var categoryID int64
-	for _, c := range cats {
-		if strings.EqualFold(c.Name, pack.Name) {
-			categoryID = c.ID
-			break
-		}
 	}
 	if categoryID == 0 {
 		c, err := d.Store.CreateCategory(ctx, models.Category{
@@ -174,14 +196,11 @@ func (d *Dependencies) handleImportStarterPack(w http.ResponseWriter, r *http.Re
 	if mapStoreError(w, err) {
 		return
 	}
-	have := make(map[string]bool, len(existing))
-	for _, f := range existing {
-		have[f.URL] = true
-	}
+	have := subscribedURLs(existing)
 
 	result := starterImportResult{Pack: pack.Slug, CategoryID: categoryID}
 	for _, url := range pack.FeedURLs {
-		if have[url] {
+		if _, ok := have[url]; ok {
 			result.AlreadyHad++
 			continue
 		}
@@ -224,16 +243,8 @@ func (d *Dependencies) handleImportStarterPack(w http.ResponseWriter, r *http.Re
 // subscriptions remain under it — the user may have added their own feeds.
 func (d *Dependencies) handleRemoveStarterPack(w http.ResponseWriter, r *http.Request) {
 	u, _ := auth.FromContext(r.Context())
-	slug := chi.URLParam(r, "slug")
-	var pack *StarterPack
-	for i := range starterPacks {
-		if starterPacks[i].Slug == slug {
-			pack = &starterPacks[i]
-			break
-		}
-	}
-	if pack == nil {
-		writeError(w, http.StatusNotFound, "not_found", "starter pack not found")
+	pack, ok := starterPackForParam(w, r)
+	if !ok {
 		return
 	}
 
@@ -242,26 +253,16 @@ func (d *Dependencies) handleRemoveStarterPack(w http.ResponseWriter, r *http.Re
 	// Capture the pack's category ID before unsubscribing so we can check
 	// whether it should be removed afterward. Matched by name (same lookup
 	// import uses); may not exist if the user renamed/deleted it.
-	cats, err := d.Store.ListCategories(ctx, u.ID)
+	packCategoryID, err := d.categoryIDByName(ctx, u.ID, pack.Name)
 	if mapStoreError(w, err) {
 		return
-	}
-	var packCategoryID int64
-	for _, c := range cats {
-		if strings.EqualFold(c.Name, pack.Name) {
-			packCategoryID = c.ID
-			break
-		}
 	}
 
 	subs, err := d.Store.ListFeedsForUser(ctx, u.ID, 0, false)
 	if mapStoreError(w, err) {
 		return
 	}
-	subByURL := make(map[string]int64, len(subs))
-	for _, f := range subs {
-		subByURL[f.URL] = f.SubscriptionID
-	}
+	subByURL := subscribedURLs(subs)
 
 	result := starterRemoveResult{Pack: pack.Slug}
 	for _, url := range pack.FeedURLs {

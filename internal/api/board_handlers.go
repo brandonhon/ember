@@ -46,7 +46,7 @@ func (d *Dependencies) handleDeleteBoard(w http.ResponseWriter, r *http.Request)
 	if mapStoreError(w, d.Store.DeleteBoard(r.Context(), u.ID, id)) {
 		return
 	}
-	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
+	writeOK(w)
 }
 
 type boardAddReq struct {
@@ -66,7 +66,7 @@ func (d *Dependencies) handleBoardAdd(w http.ResponseWriter, r *http.Request) {
 	if mapStoreError(w, d.Store.AddArticleToBoard(r.Context(), u.ID, boardID, req.ArticleID)) {
 		return
 	}
-	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
+	writeOK(w)
 }
 
 func (d *Dependencies) handleBoardRemove(w http.ResponseWriter, r *http.Request) {
@@ -82,5 +82,5 @@ func (d *Dependencies) handleBoardRemove(w http.ResponseWriter, r *http.Request)
 	if mapStoreError(w, d.Store.RemoveArticleFromBoard(r.Context(), u.ID, boardID, articleID)) {
 		return
 	}
-	writeData(w, http.StatusOK, map[string]bool{"ok": true}, nil)
+	writeOK(w)
 }
