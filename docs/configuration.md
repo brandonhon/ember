@@ -53,6 +53,7 @@ Stored in the `app_settings` KV. Edit via the admin UI in **Settings → ...**.
 | Active LLM model | Language model |
 | Temperature / Top P / Context window | Language model → Tuning |
 | Session cookie TTL (overrides `EMBER_SESSION_TTL`) | Sessions |
+| Require device verification for passkey sign-in (`passkey_require_uv`, overrides `EMBER_PASSKEY_REQUIRE_UV`) | Passkeys |
 | App name, page title, favicon URL | Branding |
 | Backup schedule + retention (`db_backup_keep`, default 7) | Database |
 | Backup directory (`db_backup_dir`, default `/data/backups`) | Database → Backups → Directory ([setup](#custom-backup-directory)) |
