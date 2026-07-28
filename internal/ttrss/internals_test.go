@@ -209,7 +209,7 @@ func TestEnsureImportFeed_IdempotentParkedAndUnmuted(t *testing.T) {
 		t.Errorf("ensureImportFeed returned %d then %d, want the same feed", id1, id2)
 	}
 
-	feeds, err := svc.Store.ListFeedsForUser(ctx, uid, 0, false)
+	feeds, err := svc.Store.ListFeedsForUser(ctx, uid, 0, false, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

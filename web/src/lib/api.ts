@@ -511,6 +511,12 @@ export interface AdminSettings {
   // than merely preferring it. Off by default — turning it on can lock out a
   // passkey enrolled on a security key with no PIN configured.
   passkey_require_uv: boolean;
+  // How long an article stays hidden waiting for its AI summary before being
+  // shown anyway. Only meaningful when summaries_enabled.
+  summary_grace_seconds: number;
+  summary_grace_seconds_floor: number;
+  summary_grace_seconds_ceil: number;
+  summaries_enabled: boolean;
 }
 
 // AdminSettingsPatch mirrors the backend's pointer-bag: only fields included
@@ -531,6 +537,7 @@ export interface AdminSettingsPatch {
   search_window_hours?: number;
   update_check_enabled?: boolean;
   passkey_require_uv?: boolean;
+  summary_grace_seconds?: number;
 }
 
 export interface TopFeed {

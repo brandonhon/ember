@@ -53,6 +53,15 @@ const (
 	// than merely preferring it. EMBER_PASSKEY_REQUIRE_UV sets the boot-time
 	// default; an admin can override it at runtime via Settings.
 	keyPasskeyRequireUV = "passkey_require_uv"
+
+	// How long an article may stay hidden waiting for its AI summary before it
+	// is shown anyway. EMBER_SUMMARY_GRACE sets the boot-time default; admins
+	// tune it live in Settings. 0 disables the wait (articles appear as soon as
+	// they are fetched); the ceiling stops a typo from hiding a feed for a day.
+	keySummaryGraceSeconds     = "summary_grace_seconds"
+	DefaultSummaryGraceSeconds = 120
+	SummaryGraceSecondsFloor   = 0
+	SummaryGraceSecondsCeil    = 3600
 )
 
 // Bounds + default for the admin-configurable adaptive-fetch floor. Canonical
@@ -330,4 +339,22 @@ func (s *Store) PutPasskeyRequireUV(ctx context.Context, on bool) error {
 		v = "1"
 	}
 	return s.PutAppSetting(ctx, keyPasskeyRequireUV, v)
+}
+
+// ResolveSummaryGraceSeconds returns how many seconds an unsummarized article
+// stays hidden before the summary gate lets it through. DB row wins, clamped
+// to [floor, ceil]; otherwise the env-derived fallback (also clamped).
+func (s *Store) ResolveSummaryGraceSeconds(ctx context.Context, fallback int) int {
+	if v, _ := s.GetAppSetting(ctx, keySummaryGraceSeconds); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			return clampInt(n, SummaryGraceSecondsFloor, SummaryGraceSecondsCeil)
+		}
+	}
+	return clampInt(fallback, SummaryGraceSecondsFloor, SummaryGraceSecondsCeil)
+}
+
+// PutSummaryGraceSeconds persists the summary grace window (clamped).
+func (s *Store) PutSummaryGraceSeconds(ctx context.Context, n int) error {
+	n = clampInt(n, SummaryGraceSecondsFloor, SummaryGraceSecondsCeil)
+	return s.PutAppSetting(ctx, keySummaryGraceSeconds, strconv.Itoa(n))
 }

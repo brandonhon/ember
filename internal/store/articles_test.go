@@ -434,7 +434,7 @@ func TestCountSmartViews(t *testing.T) {
 	_, _, _ = s.UpsertArticle(ctx, catArt)
 
 	// cutoff 0 = count unread regardless of age; gate off (no AI).
-	got, err := s.CountSmartViews(ctx, aliceID, 6*time.Hour, 0, false)
+	got, err := s.CountSmartViews(ctx, aliceID, 6*time.Hour, 0, false, 0)
 	if err != nil {
 		t.Fatalf("CountSmartViews: %v", err)
 	}
@@ -496,7 +496,7 @@ func TestArticles_FreshListExcludesRead(t *testing.T) {
 	}
 
 	// Cross-check: CountSmartViews.Fresh must agree with the list length.
-	counts, err := s.CountSmartViews(ctx, aliceID, 6*time.Hour, 0, false)
+	counts, err := s.CountSmartViews(ctx, aliceID, 6*time.Hour, 0, false, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -548,7 +548,7 @@ func TestCountSmartViews_FreshAppliesCrossFeedDedup(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := s.CountSmartViews(ctx, u.ID, 6*time.Hour, 0, false)
+	got, err := s.CountSmartViews(ctx, u.ID, 6*time.Hour, 0, false, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -606,7 +606,7 @@ func TestCountSmartViews_StarredLaterMatchList(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	counts, err := s.CountSmartViews(ctx, aliceID, 6*time.Hour, 0, false)
+	counts, err := s.CountSmartViews(ctx, aliceID, 6*time.Hour, 0, false, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

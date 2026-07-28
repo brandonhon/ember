@@ -53,6 +53,10 @@ type Config struct {
 	// default for the passkey_require_uv admin setting. Off by default: a
 	// passkey already enrolled on a PIN-less security key would stop working.
 	PasskeyRequireUV bool
+	// SummaryGraceSeconds is how long an article may stay hidden waiting for
+	// its AI summary before being shown anyway. Sets the boot-time default for
+	// the summary_grace_seconds admin setting. 0 = show immediately.
+	SummaryGraceSeconds int
 	// AllowPrivateURLs disables the SSRF block on outbound HTTP fetches so a
 	// homelab can subscribe to feeds on its LAN. Default false (production).
 	AllowPrivateURLs bool
@@ -109,13 +113,15 @@ func Defaults() Config {
 		PollConcurrency: 8,
 		PollTick:        60 * time.Second,
 		PollMinInterval: 30 * time.Minute,
-		SessionTTL:      24 * time.Hour,
-		LogLevel:        slog.LevelInfo,
-		SMTPPort:        587,
-		SMTPStartTLS:    true,
-		SecureCookies:   true,
-		EmailListenAddr: ":2525",
-		EmailMaxBytes:   25 * 1024 * 1024,
+		// Bound how long an article can sit hidden waiting for its summary.
+		SummaryGraceSeconds: 120,
+		SessionTTL:          24 * time.Hour,
+		LogLevel:            slog.LevelInfo,
+		SMTPPort:            587,
+		SMTPStartTLS:        true,
+		SecureCookies:       true,
+		EmailListenAddr:     ":2525",
+		EmailMaxBytes:       25 * 1024 * 1024,
 	}
 }
 
@@ -262,6 +268,7 @@ func loadFrom(get func(string) string) (Config, error) {
 	e.boolean("EMBER_DISABLE_IMAGES", &cfg.DisableImages)
 	e.boolean("EMBER_DISABLE_UPDATE_CHECK", &cfg.DisableUpdateCheck)
 	e.boolean("EMBER_PASSKEY_REQUIRE_UV", &cfg.PasskeyRequireUV)
+	number(e, "EMBER_SUMMARY_GRACE_SECONDS", &cfg.SummaryGraceSeconds, 0, 3600)
 	e.boolean("EMBER_SECURE_COOKIES", &cfg.SecureCookies)
 	e.boolean("EMBER_ALLOW_PRIVATE_URLS", &cfg.AllowPrivateURLs)
 	e.boolean("EMBER_HSTS_PRELOAD", &cfg.HSTSPreload)

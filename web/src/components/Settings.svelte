@@ -557,6 +557,39 @@
   let llmBusy = $state<string>(""); // active action: "switch:<model>", "pull:<model>", etc.
   let pullInput = $state<string>("");
 
+  // Summary grace window (admin). Lives in app_settings, not the LLM status
+  // endpoint, so it is fetched alongside it.
+  let summaryGrace = $state(120);
+  let summaryGraceFloor = $state(0);
+  let summaryGraceCeil = $state(3600);
+  let summaryGraceBusy = $state(false);
+  async function loadSummaryGrace() {
+    try {
+      const res = await api.getAdminSettings();
+      summaryGrace = res.data.summary_grace_seconds;
+      summaryGraceFloor = res.data.summary_grace_seconds_floor;
+      summaryGraceCeil = res.data.summary_grace_seconds_ceil;
+    } catch (e) {
+      llmErr = e instanceof ApiError ? e.message : String(e);
+    }
+  }
+  async function saveSummaryGrace() {
+    if (DEMO) { notifyDemoBlocked(); return; }
+    summaryGraceBusy = true;
+    llmMsg = "";
+    llmErr = "";
+    try {
+      const res = await api.setAdminSettings({ summary_grace_seconds: Number(summaryGrace) });
+      summaryGrace = res.data.summary_grace_seconds;
+      llmMsg = "Saved";
+    } catch (e) {
+      llmErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      summaryGraceBusy = false;
+      setTimeout(() => (llmMsg = ""), 3000);
+    }
+  }
+
   async function loadLLM() {
     llmErr = "";
     try {
@@ -857,7 +890,7 @@
 
   $effect(() => {
     if (section === "starter") void loadStarterPacks();
-    if (section === "llm" && $user?.is_admin) void loadLLM();
+    if (section === "llm" && $user?.is_admin) { void loadLLM(); void loadSummaryGrace(); }
     if (section === "branding" && $user?.is_admin) loadBrandingDraft();
     if (section === "database" && $user?.is_admin) void loadDB();
     if (section === "session" && $user?.is_admin) void loadSessionTTL();
@@ -1897,6 +1930,26 @@
             <div class="callout ember">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9h6v6H9z"/></svg>
               <div>Admin-only. Summaries run locally — nothing leaves your server.</div>
+            </div>
+
+            <div class="card">
+              <div class="card-head"><h4>Article visibility</h4></div>
+              <label class="pref-row">
+                <div>
+                  <div class="pref-label">Wait for summaries before showing articles</div>
+                  <div class="pref-hint">New articles are held back until the model has summarized them, so you don't see a story before its summary. After this many seconds they appear anyway, with the summary filling in when it's ready — so slow inference can't leave the reader looking empty. <strong>0</strong> shows articles as soon as they're fetched. Range {summaryGraceFloor}–{summaryGraceCeil}.</div>
+                </div>
+                <div class="row-ctl">
+                  <input class="row-input num" type="number" min={summaryGraceFloor} max={summaryGraceCeil}
+                    bind:value={summaryGrace} data-testid="summary-grace" />
+                  <span class="pref-hint">seconds</span>
+                </div>
+              </label>
+              <div class="actions">
+                <button on:click={saveSummaryGrace} disabled={summaryGraceBusy} data-testid="summary-grace-save">
+                  {summaryGraceBusy ? "Saving…" : "Save"}
+                </button>
+              </div>
             </div>
 
             <div class="card">

@@ -75,7 +75,7 @@ func (s *Service) Import(ctx context.Context, userID int64, body io.Reader) (int
 	// gives no created/existed signal, so the caller has to know up front.
 	// Newly-added URLs are added to the set as we go, which also stops a file
 	// that lists the same URL twice from counting it twice.
-	existing, err := s.Store.ListFeedsForUser(ctx, userID, 0, false)
+	existing, err := s.Store.ListFeedsForUser(ctx, userID, 0, false, 0)
 	if err != nil {
 		return 0, err
 	}
@@ -226,7 +226,7 @@ func (s *Service) Export(ctx context.Context, userID int64, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	feeds, err := s.Store.ListFeedsForUser(ctx, userID, 0, false)
+	feeds, err := s.Store.ListFeedsForUser(ctx, userID, 0, false, 0)
 	if err != nil {
 		return err
 	}

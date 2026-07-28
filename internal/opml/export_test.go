@@ -217,7 +217,7 @@ func TestImport_ValidatorSkipsRejectedFeeds(t *testing.T) {
 	if n != 1 {
 		t.Errorf("import = %d, want 1 (the blocked feed is skipped)", n)
 	}
-	feeds, err := st.ListFeedsForUser(ctx, uid, 0, false)
+	feeds, err := st.ListFeedsForUser(ctx, uid, 0, false, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

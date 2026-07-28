@@ -387,15 +387,18 @@ func (s *Store) ListSubscriberIDs(ctx context.Context, feedID int64) ([]int64, e
 // count regardless of age (Fever / starter-pack callers that don't want the
 // window). onlySummarized gates on the summary marker when AI summarization is
 // enabled, mirroring the article list so the badge never disagrees with it.
-func (s *Store) ListFeedsForUser(ctx context.Context, userID, unreadCutoff int64, onlySummarized bool) ([]models.FeedWithCounts, error) {
+func (s *Store) ListFeedsForUser(ctx context.Context, userID, unreadCutoff int64, onlySummarized bool, summaryGraceBefore int64) ([]models.FeedWithCounts, error) {
 	// Per-feed unread count: unread, non-muted, within the window, and (when AI
 	// is on) summarizer-touched — the same predicate the article list applies,
 	// minus the cross-feed dedup that only makes sense across feeds. The
 	// `s.muted = 0` guard keeps muted subscriptions out of the per-feed (and
 	// therefore the client-summed) count.
 	gate := ""
+	var gateArgs []any
 	if onlySummarized {
-		gate = " AND a.summary_model IS NOT NULL AND a.summary_model <> ''"
+		g, ga := summaryGate("a", summaryGraceBefore)
+		gate = " AND " + g
+		gateArgs = ga
 	}
 	rows, err := s.reader().QueryContext(ctx, `
 		SELECT f.id, f.url, IFNULL(f.site_url,''), f.title, IFNULL(f.favicon_url,''),
@@ -414,7 +417,10 @@ func (s *Store) ListFeedsForUser(ctx context.Context, userID, unreadCutoff int64
 		FROM feeds f
 		JOIN subscriptions s ON s.feed_id = f.id
 		WHERE s.user_id = ?
-		ORDER BY s.position, LOWER(IFNULL(NULLIF(s.title_override,''), f.title))`, unreadCutoff, userID)
+		ORDER BY s.position, LOWER(IFNULL(NULLIF(s.title_override,''), f.title))`,
+		// Positional: the window placeholder, then the gate's (if any), then
+		// the outer user id — the gate is interpolated between them.
+		append(append([]any{unreadCutoff}, gateArgs...), userID)...)
 	if err != nil {
 		return nil, err
 	}

@@ -45,6 +45,13 @@ type adminSettings struct {
 	// verification (PIN/biometric) rather than merely preferring it. Defaults
 	// to EMBER_PASSKEY_REQUIRE_UV.
 	PasskeyRequireUV bool `json:"passkey_require_uv"`
+	// SummaryGraceSeconds is how long an article stays hidden waiting for its
+	// AI summary before being shown anyway. Only meaningful when summaries are
+	// enabled — SummariesEnabled lets the UI hide the control otherwise.
+	SummaryGraceSeconds      int  `json:"summary_grace_seconds"`
+	SummaryGraceSecondsFloor int  `json:"summary_grace_seconds_floor"`
+	SummaryGraceSecondsCeil  int  `json:"summary_grace_seconds_ceil"`
+	SummariesEnabled         bool `json:"summaries_enabled"`
 }
 
 func (d *Dependencies) handleGetAdminSettings(w http.ResponseWriter, r *http.Request) {
@@ -69,6 +76,10 @@ func (d *Dependencies) handleGetAdminSettings(w http.ResponseWriter, r *http.Req
 	out.WindowHoursCeil = store.WindowHoursCeil
 	out.UpdateCheckEnabled = d.Store.ResolveUpdateCheckEnabled(ctx, d.UpdateCheckEnabledFallback)
 	out.PasskeyRequireUV = d.Store.ResolvePasskeyRequireUV(ctx, d.PasskeyRequireUVFallback)
+	out.SummaryGraceSeconds = d.Store.ResolveSummaryGraceSeconds(ctx, d.SummaryGraceSecondsFallback)
+	out.SummaryGraceSecondsFloor = store.SummaryGraceSecondsFloor
+	out.SummaryGraceSecondsCeil = store.SummaryGraceSecondsCeil
+	out.SummariesEnabled = d.summariesOn()
 	writeData(w, http.StatusOK, out, nil)
 }
 
@@ -101,6 +112,7 @@ type setAdminSettingsReq struct {
 	SearchWindowHours      *int  `json:"search_window_hours,omitempty"`
 	UpdateCheckEnabled     *bool `json:"update_check_enabled,omitempty"`
 	PasskeyRequireUV       *bool `json:"passkey_require_uv,omitempty"`
+	SummaryGraceSeconds    *int  `json:"summary_grace_seconds,omitempty"`
 }
 
 func (d *Dependencies) handleSetAdminSettings(w http.ResponseWriter, r *http.Request) {
@@ -173,6 +185,19 @@ func (d *Dependencies) handleSetAdminSettings(w http.ResponseWriter, r *http.Req
 	}
 	if req.PasskeyRequireUV != nil {
 		if err := d.Store.PutPasskeyRequireUV(ctx, *req.PasskeyRequireUV); err != nil {
+			internalError(w, "internal", err)
+			return
+		}
+	}
+	if req.SummaryGraceSeconds != nil {
+		n := *req.SummaryGraceSeconds
+		if n < store.SummaryGraceSecondsFloor || n > store.SummaryGraceSecondsCeil {
+			writeError(w, http.StatusBadRequest, "bad_request",
+				"summary_grace_seconds must be between "+strconv.Itoa(store.SummaryGraceSecondsFloor)+
+					" and "+strconv.Itoa(store.SummaryGraceSecondsCeil))
+			return
+		}
+		if err := d.Store.PutSummaryGraceSeconds(ctx, n); err != nil {
 			internalError(w, "internal", err)
 			return
 		}

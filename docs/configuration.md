@@ -19,6 +19,7 @@ Ember reads configuration from environment variables at startup. A handful of se
 | `EMBER_OLLAMA_URL` | `http://ollama:11434` | Ollama API endpoint. |
 | `EMBER_OLLAMA_MODEL` | `qwen2.5:0.5b` | Initial active model. The admin UI can swap to any pulled model live. |
 | `EMBER_DISABLE_SUMMARIES` | `0` | Skip LLM summarization entirely. Articles still surface (poller stamps `summary_model='disabled'`). |
+| `EMBER_SUMMARY_GRACE_SECONDS` | `120` | How long a new article waits for its AI summary before being shown anyway. The wait stops a story appearing before the model has looked at it; the bound stops slow inference from leaving the reader empty. `0` shows articles as soon as they're fetched. Range **0–3600**. Ignored when summaries are disabled. Runtime-tunable in **Settings → Language model → Article visibility**. |
 | `EMBER_DISABLE_IMAGES` | `0` | Drop article hero images at ingest. |
 | `EMBER_DISABLE_UPDATE_CHECK` | `0` | Turn off the daily check that asks GitHub whether a newer Ember release exists. Sets the boot-time default for the runtime toggle in **Settings → (Feeds/Data) → Check for updates**. The check sends no data about your instance — it's a plain unauthenticated `GET` of the public releases API — and only admins ever see the "update available" hint. |
 | `EMBER_ALLOW_PRIVATE_URLS` | `0` | Bypass the SSRF private-IP block so feeds on RFC1918 / loopback addresses can be subscribed. The scheme allowlist and the non-web service-port block still apply. **Only set this if you trust every user who can add feeds.** |
@@ -54,6 +55,7 @@ Stored in the `app_settings` KV. Edit via the admin UI in **Settings → ...**.
 | Temperature / Top P / Context window | Language model → Tuning |
 | Session cookie TTL (overrides `EMBER_SESSION_TTL`) | Sessions |
 | Require device verification for passkey sign-in (`passkey_require_uv`, overrides `EMBER_PASSKEY_REQUIRE_UV`) | Passkeys |
+| Summary grace window (`summary_grace_seconds`, default 120, range 0–3600; overrides `EMBER_SUMMARY_GRACE_SECONDS`) | Language model → Article visibility |
 | App name, page title, favicon URL | Branding |
 | Backup schedule + retention (`db_backup_keep`, default 7) | Database |
 | Backup directory (`db_backup_dir`, default `/data/backups`) | Database → Backups → Directory ([setup](#custom-backup-directory)) |

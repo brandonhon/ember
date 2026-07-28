@@ -120,6 +120,10 @@ Each feed has `next_fetch` (unix seconds) and an `error_count`. The poller:
 
 The summary worker is a separate goroutine that drains `summaryCh`, calls Ollama, writes `summary` + `summary_model` + `cleaned_html`. Failures stamp `summary_model = 'skipped'` so the article still surfaces in the UI.
 
+`summaryCh` is bounded, and `EnqueueSummary` drops on a full queue rather than blocking the poller. A dropped article keeps an empty `summary_model`, so `enqueuePendingSummaries` re-queues stragglers **every tick** — it used to run only at startup, which left a dropped article hidden behind the summary gate until the process restarted.
+
+The summary gate itself is time-boxed rather than absolute: `store.summaryGate` passes an article that is summarized **or** was fetched before `SummaryGraceBefore` (now − `summary_grace_seconds`, default 120s). All three gate sites — the list/count filter, the cross-feed dedup sibling subquery, and `ListFeedsForUser` — must use that helper, or a badge disagrees with its column.
+
 Restart safety: `enqueuePendingSummaries` runs at startup and seeds the channel from any articles with empty `summary_model`.
 
 ## Summarizer pipeline

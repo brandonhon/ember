@@ -30,7 +30,7 @@ func TestReader_FallsBackToWriteHandle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.ListFeedsForUser(ctx, u.ID, 0, false); err != nil {
+	if _, err := s.ListFeedsForUser(ctx, u.ID, 0, false, 0); err != nil {
 		t.Errorf("routed method failed without a read pool: %v", err)
 	}
 }
@@ -152,7 +152,7 @@ func TestReadPool_SeesCommittedWritesImmediately(t *testing.T) {
 	}
 	// ListFeedsForUser is one of the routed methods; it must see the
 	// subscription that was just committed on the other handle.
-	feeds, err := s.ListFeedsForUser(ctx, u.ID, 0, false)
+	feeds, err := s.ListFeedsForUser(ctx, u.ID, 0, false, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -277,7 +277,7 @@ func TestReadPool_ListFeedsForUserSeesInterleavedWrites(t *testing.T) {
 		}
 		subIDs = append(subIDs, sub.ID)
 	}
-	if got, _ := s.ListFeedsForUser(ctx, u.ID, 0, false); len(got) != 3 {
+	if got, _ := s.ListFeedsForUser(ctx, u.ID, 0, false, 0); len(got) != 3 {
 		t.Fatalf("setup: %d feeds, want 3", len(got))
 	}
 	// Unsubscribe one at a time; each subsequent read must reflect it.
@@ -285,7 +285,7 @@ func TestReadPool_ListFeedsForUserSeesInterleavedWrites(t *testing.T) {
 		if err := s.Unsubscribe(ctx, u.ID, id); err != nil {
 			t.Fatal(err)
 		}
-		got, err := s.ListFeedsForUser(ctx, u.ID, 0, false)
+		got, err := s.ListFeedsForUser(ctx, u.ID, 0, false, 0)
 		if err != nil {
 			t.Fatal(err)
 		}

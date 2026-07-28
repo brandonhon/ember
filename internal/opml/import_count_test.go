@@ -47,7 +47,7 @@ func TestImport_CountsOnlyNewSubscriptions(t *testing.T) {
 	}
 
 	// The subscriptions themselves must not have been duplicated.
-	feeds, err := st.ListFeedsForUser(ctx, u.ID, 0, false)
+	feeds, err := st.ListFeedsForUser(ctx, u.ID, 0, false, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

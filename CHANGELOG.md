@@ -101,6 +101,19 @@ full commit-level list; this file curates the highlights and behavior changes.
 
 ### Fixed
 
+- **Articles no longer stay hidden waiting for their AI summary.** When
+  summaries are enabled, a new article was held back until the model had
+  finished with it — with no time limit. On CPU-only inference that meant
+  minutes of an apparently empty reader, and an article dropped from a full
+  summary queue stayed invisible until Ember was restarted. Articles now appear
+  once they've waited longer than a grace window (2 minutes by default), with
+  the summary filling in when it's ready. Tune it in **Settings → Language
+  model → Article visibility** or with `EMBER_SUMMARY_GRACE_SECONDS`; `0` shows
+  articles as soon as they're fetched. (#162)
+- **Articles dropped from a busy summary queue are picked back up.** The queue
+  is bounded, and when it was full the article was silently skipped — it then
+  had no summary, so the gate above hid it, and the only thing that retried was
+  a sweep that ran once at startup. That sweep now runs every poll cycle.
 - **Turning on the daily digest works again.** Saving from Settings → Digest
   always failed with a generic "invalid request body" error, so the feature
   could not be enabled at all from the UI. Ember was rejecting a request its

@@ -164,6 +164,16 @@ func (p *Poller) Run(ctx context.Context) {
 			return
 		case <-ticker.C:
 			p.Tick(ctx)
+			// Re-enqueue anything still unsummarized. EnqueueSummary is
+			// best-effort and silently drops when the queue is full, which
+			// on slow inference happens routinely; before this ran on every
+			// tick, a dropped article kept summary_model empty and stayed
+			// hidden behind the summary gate until the process restarted,
+			// because the backfill was startup-only. Cheap: one LIMITed
+			// query, and it returns immediately when nothing is pending.
+			if p.Summarizer != nil {
+				p.enqueuePendingSummaries(ctx)
+			}
 		}
 	}
 }
