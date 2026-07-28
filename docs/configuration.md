@@ -170,8 +170,11 @@ window, summary gate, and cross-feed dedup as the article list, so a badge alway
 column it summarizes. Reading an article updates the badge immediately in the browser and the
 server's count is re-fetched a moment later to confirm — that local adjustment honors the same
 window, so reading something older than the window (from *Starred*, *Read Later*, *Shared*, or
-a board, none of which are windowed) doesn't move a badge that never counted it. When AI summarization is enabled, articles are hidden from every view
-and count until the summarizer has processed them; when it's disabled, nothing is gated.
+a board, none of which are windowed) doesn't move a badge that never counted it. When AI summarization is enabled, a new article is held back from every view and
+count until the summarizer has processed it **or** until the summary grace window
+(`summary_grace_seconds`, default 120s) has passed, whichever comes first — so a
+slow model delays an article but can never hide it indefinitely. When
+summarization is disabled, nothing is gated.
 
 Each user also has client-side preferences stored in browser `localStorage`:
 
