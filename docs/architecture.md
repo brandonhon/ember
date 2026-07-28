@@ -27,7 +27,7 @@ cmd/ember/                    main + probe subcommand + DB maintenance + digest 
 internal/api/                 chi router, handlers, middleware (CSRF, rate limit, auth context)
 internal/auth/                argon2id passwords, securecookie sessions, WebAuthn (passkeys), RequireAuth/Admin middleware
 internal/config/              env-var loading (typed Config)
-internal/db/                  SQLite open, pragmas, embedded migrations (goose)
+internal/db/                  SQLite open (write handle + read-only pool), pragmas, embedded migrations (goose)
 internal/digest/              SMTP daily-digest builder + sender (multipart/alt + STARTTLS)
 internal/feed/                gofeed wrapper + readability fallback fetcher + Discover / DiscoverAll (homepage → one or many feed URLs) + URL normalize (schemeless → https) + CanonicalURL / ClusterID / TitleFingerprint (cross-feed dedup keys)
 internal/filters/             matcher (field/op/value), apply outcome combiner
@@ -67,7 +67,12 @@ SQLite. Migrations in `internal/db/migrations/*.sql`, applied at startup. Key ta
 - `passkeys` — WebAuthn credentials (credential_id, public_key, sign_count, name, timestamps).
 - `webauthn_sessions` — short-lived ceremony state for in-flight register/login flows; reaped after 5 min.
 
-WAL mode, 64 MiB page cache, 256 MiB mmap, busy_timeout=5s. Single Go connection — writes are serialized (SQLite single-writer); reads are fast enough that the connection pool isn't the bottleneck at this scale.
+WAL mode, 256 MiB mmap, busy_timeout=5s. **Two handles over the same file:**
+
+- **Write handle** (`db.Open`) — `MaxOpenConns=1`, 64 MiB page cache. SQLite has a single writer, and multiple writing connections hit `SQLITE_BUSY` in a form `busy_timeout` doesn't cover (`BUSY_SNAPSHOT`), so the cap is deliberate. It also runs the migrations.
+- **Read handle** (`db.OpenRead`) — `MaxOpenConns=4`, opened `query_only`, 16 MiB page cache per connection. WAL serves readers concurrently with the writer, so the heavy list/count/search queries (`Store.reader()`) no longer queue behind whatever the poller is writing: worst-case read latency during a fetch drops from ~166ms to ~23ms. `query_only` means a store method routed here by mistake fails loudly instead of silently reintroducing write contention. It deliberately does **not** migrate, so it can't race the writer's schema work.
+
+`cache_size` is per *connection*, so the read pool uses 16 MiB rather than inheriting the writer's 64 MiB — that keeps the total page-cache budget at roughly 64 + 4×16 MiB instead of 5×64. If `OpenRead` fails the store falls back to the write handle and behaves exactly as before.
 
 ## Request lifecycle
 

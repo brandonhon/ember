@@ -87,14 +87,17 @@ full commit-level list; this file curates the highlights and behavior changes.
   serves reads from the write connection exactly as before.
 - Bumped Go runtime dependencies: `github.com/mmcdole/gofeed` 1.3.0 → 1.4.0
   (which moves to `goxpp/v2` and drops five transitive dependencies),
-  `golang.org/x/crypto` 0.53.0 → 0.54.0, `golang.org/x/net` 0.56.0 → 0.57.0,
-  and `modernc.org/sqlite` 1.53.0 → 1.54.0.
-- Bumped SPA build/dev tooling: Svelte 5.56.4 → 5.56.7, Vite 8.1.3 → 8.1.5,
-  `@sveltejs/vite-plugin-svelte` 7.1.4 → 7.2.0, svelte-check 4.7.1 → 4.7.3,
-  `@testing-library/jest-dom` 6 → 7, `@types/node` 26.1.0 → 26.1.1. These are
-  dev-only and are not bundled into the Ember binary. TypeScript is
-  deliberately held at 6.x because svelte-check 4.7.x does not yet support
-  TypeScript 7.
+  `github.com/pressly/goose/v3` 3.27.2 → 3.27.3, `golang.org/x/crypto`
+  0.53.0 → 0.54.0, `golang.org/x/net` 0.56.0 → 0.57.0, and
+  `modernc.org/sqlite` 1.53.0 → 1.54.0.
+- Bumped SPA build/dev tooling: Svelte 5.56.4 → 5.56.8, Vite 8.1.3 → 8.1.5,
+  `@sveltejs/vite-plugin-svelte` 7.1.4 → 7.2.0, svelte-check 4.7.1 → 4.7.4,
+  `@testing-library/jest-dom` 6 → 7, `@types/node` 26.1.0 → 26.1.2, jsdom
+  29 → 30, and `@playwright/test` 1.61.1 → 1.62.0. These are dev-only and are
+  not bundled into the Ember binary. TypeScript is deliberately held at 6.x:
+  svelte-check 4.7.4 supports TypeScript 7 only with both TypeScript 6 and 7
+  installed side by side and an extra `--tsgo` flag, which is a build-tooling
+  migration rather than a version bump.
 
 ### Fixed
 
