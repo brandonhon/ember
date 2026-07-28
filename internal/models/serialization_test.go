@@ -92,7 +92,7 @@ func TestWireNamesAreStable(t *testing.T) {
 	}{
 		{"User", User{}, []string{"id", "username", "is_admin", "settings_json", "created_at"}, []string{"password_hash", "fever_token"}},
 		{"ArticleView", ArticleView{}, []string{"id", "feed_id", "title", "is_read", "is_starred", "is_later", "dup_count"}, []string{"canonical_url", "cluster_id", "title_fingerprint"}},
-		{"FeedWithCounts", FeedWithCounts{}, []string{"id", "url", "title", "subscription_id", "muted", "position", "unread"}, nil},
+		{"FeedWithCounts", FeedWithCounts{}, []string{"id", "url", "title", "subscription_id", "muted", "summarize", "position", "unread"}, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			b, err := json.Marshal(tc.v)

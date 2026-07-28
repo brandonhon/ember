@@ -176,6 +176,15 @@ count until the summarizer has processed it **or** until the summary grace windo
 slow model delays an article but can never hide it indefinitely. When
 summarization is disabled, nothing is gated.
 
+Summaries can also be turned off for a single feed, from that feed's **⋯** menu in the
+sidebar (**Don't summarize** / **Summarize**). This is per-account, not an admin setting,
+and the entry only appears while AI summaries are enabled on the server. Turning it off
+stops Ember spending inference on that feed and hides existing summaries from your view;
+turning it back on re-queues the articles that were skipped while it was off. Because a
+summary is stored once and shared by everyone subscribed to the feed, Ember only skips the
+work when *every* subscriber has opted out — otherwise it still summarizes, and your copy
+simply arrives without the summary card.
+
 Each user also has client-side preferences stored in browser `localStorage`:
 
 | Preference | Default | Key |

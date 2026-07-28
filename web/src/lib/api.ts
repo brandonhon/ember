@@ -127,6 +127,7 @@ export const api = {
       category_id?: number;
       clear_category?: boolean;
       muted?: boolean;
+      summarize?: boolean;
       url?: string;
     },
   ) => call<unknown>("PATCH", `/api/feeds/${id}`, req),

@@ -155,6 +155,19 @@ full commit-level list; this file curates the highlights and behavior changes.
 
 ### Added
 
+- **Turn AI summaries off for a single feed.** Feeds you skim don't need a
+  summary, and on CPU-only inference they cost minutes of work each. The feed's
+  **⋯** menu in the sidebar gains **Don't summarize** — the feed keeps updating
+  normally, it just stops being sent to the model, and its existing summary
+  cards disappear from your view. Switching it back on re-queues the articles
+  that were skipped while it was off, so you don't have to wait for the feed to
+  publish something new. The entry only appears while AI summaries are enabled
+  on the server. It's a per-account choice: because a summary is stored once and
+  shared by everyone subscribed to a feed, Ember only skips the inference when
+  every subscriber has opted out — otherwise the work still happens and your
+  copy simply arrives without the summary card. The "Summarizing N articles"
+  indicator no longer counts work for feeds you've opted out of.
+
 - **Optional device verification for passkey sign-in.** A new **Require device
   verification** toggle in Settings → Passkeys (or `EMBER_PASSKEY_REQUIRE_UV=1`)
   makes passkey sign-in demand a PIN, fingerprint, or face scan, so a passkey

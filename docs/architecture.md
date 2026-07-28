@@ -126,6 +126,10 @@ The summary gate itself is time-boxed rather than absolute: `store.summaryGate` 
 
 Restart safety: `enqueuePendingSummaries` runs at startup and seeds the channel from any articles with empty `summary_model`.
 
+Per-feed opt-out (`subscriptions.summarize`, default 1) is enforced at the queue **consumer**, in `summarizeOne`, not at the producers — articles reach `summaryCh` from poller ingest, the email inbox, `resummarize-all`, the per-feed re-summarize action, and the every-tick pending sweep, so one check covers them all. A suppressed article is stamped `summary_model = 'excluded'`: the marker is non-empty on purpose, so the row neither re-queues forever (`ListUnsummarizedIDs` selects on an empty `summary_model`) nor sits behind the summary gate waiting out a grace window it will never satisfy.
+
+Suppression is **unanimous**, not per-user: the summary lives on the shared article row, so a feed is skipped only when it has subscribers and none of them want summaries. A feed with *no* subscribers fails open — `handleAddFeed` does upsert → subscribe → refresh, and a poller tick can ingest in the window before the first subscription exists. For a subscriber who opted out while others didn't, the summary is blanked per-user at **serve** time (`store.summaryProjection`, applied in `ListArticles`, `GetArticleForUser`, and `Search`) rather than removed from storage. Toggling back on runs `ResetExcludedByFeed`, which clears only the `'excluded'` marker (never `'skipped'`, which belongs to the re-summarize action) and re-enqueues those ids.
+
 ## Summarizer pipeline
 
 ```

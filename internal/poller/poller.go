@@ -706,6 +706,26 @@ func (p *Poller) summarizeOne(ctx context.Context, articleID int64) {
 		p.markSkipped(ctx, articleID)
 		return
 	}
+	// Per-feed opt-out (issue #163). This check lives HERE, at the consumer,
+	// rather than at the ingest enqueue, because an article reaches the queue
+	// from several places that all leave summary_model NULL — poller ingest,
+	// the email inbox, ClearAllSummaries, ResetSummariesByFeed, and the manual
+	// re-enqueue behind Resummarize — and enqueuePendingSummaries feeds every
+	// one of them to the model on each tick. Deciding once here covers them all.
+	//
+	// Stamping 'excluded' rather than leaving NULL is load-bearing:
+	// ListUnsummarizedIDs selects on an empty summary_model, so a NULL row would
+	// be re-queued forever. A non-empty marker also satisfies the summary gate,
+	// so the article becomes visible immediately instead of waiting out the
+	// grace window, and drops out of the "Summarizing N articles" count.
+	if suppressed, err := p.Store.FeedSummariesSuppressed(ctx, art.FeedID); err != nil {
+		p.Logger.Warn("poller: summary opt-out check failed", "article_id", articleID, "err", err)
+	} else if suppressed {
+		if err := p.Store.UpdateSummary(ctx, articleID, "", "excluded"); err != nil {
+			p.Logger.Warn("poller: stamp summary_model=excluded", "article_id", articleID, "err", err)
+		}
+		return
+	}
 	res, model, err := p.Summarizer.Summarize(ctx, art.Title, art.ContentText)
 	if err != nil {
 		p.Metrics.SummariesErrored.Add(1)
