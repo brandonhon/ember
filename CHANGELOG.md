@@ -11,6 +11,16 @@ full commit-level list; this file curates the highlights and behavior changes.
 
 ### Security
 
+- **Feed error messages no longer expose server network details.** When a feed
+  fails to fetch, the reason shown in the sidebar tooltip is read by every
+  subscriber of that feed. It was the raw Go error, which embeds whatever the
+  connection resolved to — e.g. `dial tcp 10.0.0.5:443: connect: connection
+  refused`, handing any user a piece of your internal network map. Subscribers
+  now see a plain summary ("could not connect to the server", "the server
+  responded 404", "the server's TLS certificate could not be verified"), while
+  the complete error is still written to the server log for operators. The
+  mapping is fail-closed: an unrecognised error reports a generic message
+  rather than falling back to the raw text.
 - Bumped `golang.org/x/text` to 0.40.0, picking up the fix for `GO-2026-5970`
   (an infinite loop on invalid input). Ember reached the affected code when
   draining an Ollama model-pull response.

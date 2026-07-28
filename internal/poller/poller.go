@@ -410,7 +410,10 @@ func (p *Poller) recordFetchFailure(ctx context.Context, f models.Feed, now time
 		LastFetched: now.Unix(),
 		NextFetch:   next.Unix(),
 		ErrorCount:  errCount,
-		LastError:   cause.Error(),
+		// Sanitized: feeds.last_error is read by every subscriber of the feed
+		// via GET /api/feeds, and a raw transport error embeds resolved
+		// addresses. Both call sites log the unmodified error for operators.
+		LastError: publicFetchError(cause),
 	})
 }
 
