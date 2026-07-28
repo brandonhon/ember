@@ -98,6 +98,17 @@ full commit-level list; this file curates the highlights and behavior changes.
 
 ### Fixed
 
+- **Turning on the daily digest works again.** Saving from Settings → Digest
+  always failed with a generic "invalid request body" error, so the feature
+  could not be enabled at all from the UI. Ember was rejecting a request its
+  own interface had built: the settings it sends back on save included two
+  read-only fields (`user_id`, `last_sent_at`) that the save endpoint didn't
+  accept. The endpoint now accepts and ignores them — so fetching your digest
+  settings, changing one, and saving them back works from any client — and the
+  interface no longer sends them in the first place. Which account the settings
+  belong to is still taken from your session, never from the request, so the
+  accepted field can't be used to change someone else's digest.
+  Thanks to @Zaptorg for the report and the root-cause analysis (#161).
 - **The All Unread badge could drift below the real count while you read.**
   Marking an article read from *Starred*, *Read Later*, *Shared*, or a board
   decremented the All Unread badge even when that article was older than the

@@ -305,7 +305,7 @@ export const api = {
 
   // Daily digest -----------------------------------------------------
   getDigest: () => call<UserDigest>("GET", "/api/me/digest"),
-  setDigest: (d: Partial<UserDigest>) =>
+  setDigest: (d: DigestSettings) =>
     call<UserDigest>("POST", "/api/me/digest", d),
 
   // Starter packs ----------------------------------------------------
@@ -576,6 +576,16 @@ export interface UserDigest {
   last_sent_at: number;
   email_override: string;
 }
+
+/**
+ * The subset of UserDigest a client actually owns. `user_id` and `last_sent_at`
+ * are set by the server, so they are not sent on save — posting the whole GET
+ * response back is what caused issue #161.
+ */
+export type DigestSettings = Pick<
+  UserDigest,
+  "enabled" | "view_kind" | "view_value" | "hour_utc" | "minute_utc" | "email_override"
+>;
 
 export interface BrandingDTO {
   name: string;

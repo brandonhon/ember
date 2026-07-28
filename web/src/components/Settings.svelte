@@ -257,7 +257,17 @@
     digestMsg = "";
     digestErr = "";
     try {
-      const res = await api.setDigest(digest);
+      // Send only the fields the client owns. user_id / last_sent_at are
+      // server-set; posting the whole GET response back is what broke saving
+      // (issue #161).
+      const res = await api.setDigest({
+        enabled: digest.enabled,
+        view_kind: digest.view_kind,
+        view_value: digest.view_value,
+        hour_utc: digest.hour_utc,
+        minute_utc: digest.minute_utc,
+        email_override: digest.email_override,
+      });
       digest = res.data;
       digestMsg = "Saved";
     } catch (e) {
