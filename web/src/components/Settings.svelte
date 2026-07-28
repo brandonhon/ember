@@ -1730,7 +1730,7 @@
           <div class="eyebrow">Reading</div>
           <h3>Daily digest</h3>
           <p class="hint">One email a day with the articles in your chosen view. Requires server SMTP.</p>
-          {#if digestErr}<p class="error">{digestErr}</p>{/if}
+          {#if digestErr}<p class="error" data-testid="digest-err">{digestErr}</p>{/if}
           {#if digestMsg}<p class="ok" data-testid="digest-msg">{digestMsg}</p>{/if}
           {#if !digest}
             <p class="muted">Loading…</p>
