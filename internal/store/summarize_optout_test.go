@@ -304,6 +304,173 @@ func TestSubscriptionSummarize_RoundTrips(t *testing.T) {
 	}
 }
 
+// The 'excluded' marker has to SATISFY the summary gate, not merely be
+// non-empty. If it didn't, opting a feed out would hide its articles for the
+// whole grace window — turning "don't summarize this" into "delay this", which
+// is the exact behaviour issue #162 existed to remove.
+func TestExcluded_IsVisibleImmediatelyUnderTheGate(t *testing.T) {
+	s := NewTest(t)
+	ctx := context.Background()
+	userID, feedID := seedUserAndFeed(t, s, "alice")
+	now := s.Now().Unix()
+
+	// fetched_at = NOW, so the grace window has NOT elapsed for either article.
+	// That isolates the marker: anything visible here is visible because of
+	// summary_model, not because it timed out of the gate.
+	excl := mkArticle(feedID, "e1", "Excluded", "h-e1", now)
+	excl.FetchedAt = now
+	exclStored, _, err := s.UpsertArticle(ctx, excl)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.UpdateSummary(ctx, exclStored.ID, "", "excluded"); err != nil {
+		t.Fatal(err)
+	}
+	pending := mkArticle(feedID, "p1", "Pending", "h-p1", now)
+	pending.FetchedAt = now
+	pendStored, _, err := s.UpsertArticle(ctx, pending)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	q := ListArticlesQuery{
+		Limit:              10,
+		OnlySummarized:     true,
+		SummaryGraceBefore: now - 120,
+	}
+	list, err := s.ListArticles(ctx, userID, q)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var sawExcluded, sawPending bool
+	for _, a := range list {
+		switch a.ID {
+		case exclStored.ID:
+			sawExcluded = true
+		case pendStored.ID:
+			sawPending = true
+		}
+	}
+	// Control: the gate really is engaged. Without this the assertion below
+	// would also pass if OnlySummarized were being ignored entirely.
+	if sawPending {
+		t.Fatal("precondition: an unsummarized article inside the grace window should be hidden — the gate isn't engaged, so this test proves nothing")
+	}
+	if !sawExcluded {
+		t.Error("an opted-out article is hidden behind the summary gate — opting out must not become opting into a delay")
+	}
+
+	// The badge has to agree with the column, same as every other gate site.
+	counts, err := s.CountSmartViews(ctx, userID, 6*time.Hour, 0, true, now-120)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if counts.Unread != 1 {
+		t.Errorf("unread badge = %d, want 1 (the excluded article, not the pending one)", counts.Unread)
+	}
+	feeds, err := s.ListFeedsForUser(ctx, userID, 0, true, now-120)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(feeds) != 1 || feeds[0].Unread != 1 {
+		t.Errorf("per-feed unread = %+v, want 1 — ListFeedsForUser hand-rolls its own gate and drifts easily", feeds)
+	}
+}
+
+// The 'shared' view rebuilds its FROM clause from scratch, swapping the
+// subscriptions join for a shares join — so it was the one path where the
+// per-user summary projection had no `s` alias to read. It is joined LEFT now,
+// which has to mean both of these at once.
+func TestSharedView_SummaryProjection(t *testing.T) {
+	s := NewTest(t)
+	ctx := context.Background()
+	alice, bob, feedID, articleID := seedTwoSubscribers(t, s)
+
+	// carol receives shares but does NOT subscribe to the feed.
+	carol, err := s.CreateUser(ctx, models.User{Username: "carol", PasswordHash: "h"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, to := range []int64{bob, carol.ID} {
+		if _, err := s.CreateShare(ctx, models.Share{
+			ArticleID: articleID, FromUser: alice, ToUser: to,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	setSummarize(t, s, bob, feedID, false)
+
+	q := ListArticlesQuery{Limit: 10, View: "shared"}
+
+	// A non-subscriber has nothing to opt out OF. Their NULL must fall through
+	// to the summary being shown — the behaviour before the join existed.
+	carolList, err := s.ListArticles(ctx, carol.ID, q)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(carolList) != 1 {
+		t.Fatalf("carol's shared view = %d articles, want 1", len(carolList))
+	}
+	if carolList[0].Summary == "" {
+		t.Error("a shared article lost its summary for a non-subscriber — the LEFT JOIN is behaving like an INNER one")
+	}
+
+	// A subscriber who opted out stays opted out here too; a share is not a
+	// side door around it.
+	bobList, err := s.ListArticles(ctx, bob, q)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(bobList) != 1 {
+		t.Fatalf("bob's shared view = %d articles, want 1 (opting out hides the summary, never the article)", len(bobList))
+	}
+	if bobList[0].Summary != "" || bobList[0].SummaryModel != "" {
+		t.Errorf("the shared view leaked the summary to an opted-out subscriber: %q / %q",
+			bobList[0].Summary, bobList[0].SummaryModel)
+	}
+}
+
+// Opting out changes the summary TEXT, never which rows exist. The badge==column
+// invariant every other gate has to hold must therefore be untouched by it.
+func TestSummarizeOptOut_DoesNotMoveAnyBadge(t *testing.T) {
+	s := NewTest(t)
+	ctx := context.Background()
+	userID, feedID := seedUserAndFeed(t, s, "alice")
+	for _, g := range []string{"a1", "a2", "a3"} {
+		art := mkArticle(feedID, g, "Story "+g, "h-"+g, s.Now().Add(-time.Hour).Unix())
+		art.Summary, art.SummaryModel = "sum "+g, "test-model"
+		if _, _, err := s.UpsertArticle(ctx, art); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	before, err := s.CountSmartViews(ctx, userID, 6*time.Hour, 0, false, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	setSummarize(t, s, userID, feedID, false)
+	after, err := s.CountSmartViews(ctx, userID, 6*time.Hour, 0, false, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before.Unread != after.Unread || before.Fresh != after.Fresh {
+		t.Errorf("opting out moved a badge: unread %d->%d, fresh %d->%d",
+			before.Unread, after.Unread, before.Fresh, after.Fresh)
+	}
+	list, err := s.ListArticles(ctx, userID, ListArticlesQuery{Limit: 10, View: "unread"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != after.Unread {
+		t.Errorf("badge %d != column %d after opting out", after.Unread, len(list))
+	}
+	for _, a := range list {
+		if a.Summary != "" {
+			t.Errorf("article %d kept its summary after opting out: %q", a.ID, a.Summary)
+		}
+	}
+}
+
 func firstSummary(list []models.ArticleView) string {
 	if len(list) == 0 {
 		return "<empty list>"
