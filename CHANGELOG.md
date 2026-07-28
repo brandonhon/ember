@@ -63,6 +63,18 @@ full commit-level list; this file curates the highlights and behavior changes.
 
 ### Changed
 
+- **The interface stays responsive while feeds are being fetched.** Ember opens
+  a single SQLite connection because the database allows only one writer, which
+  meant every *read* — the article list, sidebar counts, search — had to queue
+  behind whatever the background poller happened to be writing. Reads now go
+  through a second, read-only connection pool that runs alongside the writer, so
+  a refresh in progress no longer stalls the UI. Worst-case read latency during
+  a feed fetch drops from ~166ms to ~23ms, roughly 1.45x faster on a typical
+  sidebar load. Note for operators: this raises Ember's SQLite page-cache
+  budget from 64 MiB to about 128 MiB (the read pool is deliberately capped at
+  four connections of 16 MiB rather than inheriting the writer's 64 MiB each).
+  If the read pool can't be opened for any reason, Ember logs a warning and
+  serves reads from the write connection exactly as before.
 - Bumped Go runtime dependencies: `github.com/mmcdole/gofeed` 1.3.0 → 1.4.0
   (which moves to `goxpp/v2` and drops five transitive dependencies),
   `golang.org/x/crypto` 0.53.0 → 0.54.0, `golang.org/x/net` 0.56.0 → 0.57.0,
