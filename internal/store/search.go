@@ -31,7 +31,7 @@ func (s *Store) Search(ctx context.Context, userID int64, query string, limit in
 	if query == "" {
 		return nil, nil
 	}
-	rows, err := s.DB.QueryContext(ctx, `
+	rows, err := s.reader().QueryContext(ctx, `
 		SELECT a.id, a.feed_id, a.guid, IFNULL(a.url,''), a.title, IFNULL(a.author,''),
 		       IFNULL(a.content_html,''), IFNULL(a.content_text,''),
 		       IFNULL(a.summary,''), IFNULL(a.summary_model,''),
