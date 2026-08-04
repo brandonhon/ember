@@ -159,7 +159,7 @@ func (s *Store) GetArticleForUser(ctx context.Context, userID, articleID int64) 
 	row := s.DB.QueryRowContext(ctx, `
 		SELECT a.id, a.feed_id, a.guid, IFNULL(a.url,''), a.title, IFNULL(a.author,''),
 		       IFNULL(a.content_html,''), IFNULL(a.content_text,''), IFNULL(a.cleaned_html,''),
-		       IFNULL(a.summary,''), IFNULL(a.summary_model,''),
+		       `+summaryProjection+`,
 		       IFNULL(a.image_url,''), IFNULL(a.published_at,0),
 		       a.fetched_at, a.content_hash, IFNULL(a.tags,''),
 		       IFNULL(st.is_read,0), IFNULL(st.is_starred,0), IFNULL(st.is_later,0)
@@ -195,7 +195,7 @@ func (s *Store) ClearAllSummaries(ctx context.Context) ([]int64, error) {
 	}
 	defer func() { _ = tx.Rollback() }()
 	rows, err := tx.QueryContext(ctx,
-		`SELECT id FROM articles WHERE IFNULL(summary_model,'') <> ''`)
+		`SELECT id FROM articles WHERE IFNULL(summary_model,'') <> '' AND summary_model <> 'excluded'`)
 	if err != nil {
 		return nil, err
 	}
@@ -216,7 +216,7 @@ func (s *Store) ClearAllSummaries(ctx context.Context) ([]int64, error) {
 		return nil, tx.Commit()
 	}
 	if _, err := tx.ExecContext(ctx,
-		`UPDATE articles SET summary_model = NULL, summary = '' WHERE IFNULL(summary_model,'') <> ''`); err != nil {
+		`UPDATE articles SET summary_model = NULL, summary = '' WHERE IFNULL(summary_model,'') <> '' AND summary_model <> 'excluded'`); err != nil {
 		return nil, err
 	}
 	return ids, tx.Commit()
@@ -245,6 +245,45 @@ func (s *Store) ListUnsummarizedIDs(ctx context.Context, limit int) ([]int64, er
 		ids = append(ids, id)
 	}
 	return ids, rows.Err()
+}
+
+// ResetExcludedByFeed clears the 'excluded' marker on a feed's articles and
+// returns their ids so the caller can re-enqueue them. Used when a user turns
+// AI summaries back ON for a feed (issue #163): those articles were skipped
+// deliberately while the feed was opted out, so without this the toggle would
+// only affect articles that arrive later.
+//
+// Kept separate from ResetSummariesByFeed, which resets 'skipped' (genuine
+// failures). Folding the two together would let the Resummarize action burn
+// inference on a feed the user is still opted out of.
+func (s *Store) ResetExcludedByFeed(ctx context.Context, feedID int64) ([]int64, error) {
+	rows, err := s.DB.QueryContext(ctx,
+		`SELECT id FROM articles WHERE feed_id = ? AND summary_model = 'excluded'`, feedID)
+	if err != nil {
+		return nil, err
+	}
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	if _, err := s.DB.ExecContext(ctx,
+		`UPDATE articles SET summary_model = NULL, summary = '' WHERE feed_id = ? AND summary_model = 'excluded'`,
+		feedID); err != nil {
+		return nil, err
+	}
+	return ids, nil
 }
 
 // ResetSummariesByFeed clears summary_model on every article in the feed
@@ -348,6 +387,11 @@ type ListArticlesQuery struct {
 	// first page.
 	PublishedBefore int64
 	IDBefore        int64
+	// SummaryGraceBefore bounds the summary gate: an article fetched before this
+	// unix timestamp passes even if it has not been summarized yet. Zero keeps
+	// the gate absolute (the old behaviour). Only consulted when
+	// OnlySummarized is set.
+	SummaryGraceBefore int64
 	// OnlySummarized restricts results to articles the summarizer has already
 	// processed (success or 'skipped' marker). The SPA passes true so users
 	// never see a story before the LLM has had a chance to look at it.
@@ -364,6 +408,44 @@ type ListArticlesQuery struct {
 	// unread cards shown always equal the badge (no phantom count). The "unread"
 	// and "fresh" views set it implicitly via buildArticleFilter.
 	DedupUnread bool
+}
+
+// summaryProjection is the per-user view of the shared summary columns.
+//
+// A summary lives on the article row and is shared by every subscriber, but
+// opting out of summaries is per-user (subscriptions.summarize, issue #163).
+// So a user who opted out has the text blanked at serve time rather than the
+// row being changed. summary_model is blanked with it — otherwise the API would
+// report a model for a summary it isn't returning.
+//
+// Deliberately PARAMETERLESS: it goes in projection lists whose args are
+// assembled positionally (see the userID prepend for dup_count in ListArticles),
+// and a placeholder here would shift every following argument. It requires the
+// subscriptions alias `s`, which every user-scoped article query joins.
+const summaryProjection = `CASE WHEN s.summarize = 0 THEN '' ELSE IFNULL(a.summary,'') END, ` +
+	`CASE WHEN s.summarize = 0 THEN '' ELSE IFNULL(a.summary_model,'') END`
+
+// summaryGate returns the predicate deciding whether an article is visible
+// under the AI-summary gate, for the given table alias, plus its args.
+//
+// The gate exists so a story isn't shown before the summarizer has looked at
+// it. Left binary, that made visibility depend on LLM latency: on CPU-only
+// inference an article could stay hidden for minutes, and one dropped from a
+// full summary queue stayed hidden until the process restarted. graceBefore
+// bounds it — an article fetched before that timestamp is shown regardless,
+// so the gate holds in the common fast case and can never hide anything
+// indefinitely.
+//
+// All three gate sites (list/count filter, the cross-feed dedup sibling
+// subquery, and ListFeedsForUser) MUST use this. The sibling especially: if
+// the suppressor's predicate doesn't match the rows being listed, a hidden
+// lower-id copy suppresses its visible siblings and the count collapses to 0.
+func summaryGate(alias string, graceBefore int64) (string, []any) {
+	summarized := alias + ".summary_model IS NOT NULL AND " + alias + ".summary_model <> ''"
+	if graceBefore <= 0 {
+		return summarized, nil
+	}
+	return "(" + summarized + " OR " + alias + ".fetched_at < ?)", []any{graceBefore}
 }
 
 // buildArticleFilter assembles the FROM + WHERE clauses (and their args, in
@@ -386,12 +468,18 @@ LEFT JOIN article_state st ON st.article_id = a.id AND st.user_id = ?`
 
 	switch q.View {
 	case "shared":
+		// Shared articles are not scoped to a subscription — someone can share
+		// a story from a feed the recipient doesn't follow. The subscriptions
+		// join is still needed, LEFT and optional, because summaryProjection
+		// reads `s.summarize`: a subscriber who opted out stays opted out here,
+		// and a non-subscriber's NULL falls through to the summary being shown.
 		from = `
 FROM articles a
 JOIN shares sh ON sh.article_id = a.id AND sh.to_user = ?
+LEFT JOIN subscriptions s ON s.feed_id = a.feed_id AND s.user_id = ?
 LEFT JOIN article_state st ON st.article_id = a.id AND st.user_id = ?`
 		args = args[:0]
-		args = append(args, userID, userID)
+		args = append(args, userID, userID, userID)
 	case "starred":
 		q.Starred = true
 	case "later":
@@ -461,7 +549,9 @@ JOIN article_tags atg ON atg.article_id = a.id AND atg.user_id = ? AND atg.tag =
 		args = append(args, q.PublishedBefore, q.PublishedBefore, q.IDBefore)
 	}
 	if q.OnlySummarized {
-		conds = append(conds, "a.summary_model IS NOT NULL AND a.summary_model <> ''")
+		gate, gateArgs := summaryGate("a", q.SummaryGraceBefore)
+		conds = append(conds, gate)
+		args = append(args, gateArgs...)
 	}
 	// Muted feeds: excluded from smart views (fresh/today/unread/starred/later)
 	// and category views; still visible when the user explicitly clicks the
@@ -519,7 +609,9 @@ JOIN article_tags atg ON atg.article_id = a.id AND atg.user_id = ? AND atg.tag =
 			sibArgs = append(sibArgs, q.FreshAfter)
 		}
 		if q.OnlySummarized {
-			sib.WriteString(" AND a3.summary_model IS NOT NULL AND a3.summary_model <> ''")
+			gate, gateArgs := summaryGate("a3", q.SummaryGraceBefore)
+			sib.WriteString(" AND " + gate)
+			sibArgs = append(sibArgs, gateArgs...)
 		}
 		sib.WriteString(`
 			AND (
@@ -561,7 +653,7 @@ func (s *Store) ListArticles(ctx context.Context, userID int64, q ListArticlesQu
 	query := fmt.Sprintf(`
 SELECT a.id, a.feed_id, a.guid, IFNULL(a.url,''), a.title, IFNULL(a.author,''),
        IFNULL(a.content_html,''), IFNULL(a.content_text,''), IFNULL(a.cleaned_html,''),
-       IFNULL(a.summary,''), IFNULL(a.summary_model,''),
+       `+summaryProjection+`,
        IFNULL(a.image_url,''), IFNULL(a.published_at,0),
        a.fetched_at, a.content_hash, IFNULL(a.tags,''),
        IFNULL(st.is_read,0), IFNULL(st.is_starred,0), IFNULL(st.is_later,0),
@@ -705,7 +797,7 @@ type SmartViewCounts struct {
 // published within the window). The caller passes cfg.FreshWindow so the
 // EMBER_FRESH_WINDOW env var actually takes effect; a zero or negative
 // window falls back to 6h to match the legacy hardcoded value.
-func (s *Store) CountSmartViews(ctx context.Context, userID int64, freshWindow time.Duration, unreadCutoff int64, onlySummarized bool) (SmartViewCounts, error) {
+func (s *Store) CountSmartViews(ctx context.Context, userID int64, freshWindow time.Duration, unreadCutoff int64, onlySummarized bool, summaryGraceBefore int64) (SmartViewCounts, error) {
 	var c SmartViewCounts
 	c.UnreadByCategory = map[int64]int{}
 	if freshWindow <= 0 {
@@ -717,12 +809,12 @@ func (s *Store) CountSmartViews(ctx context.Context, userID int64, freshWindow t
 	freshCutoff := s.nowUnix() - int64(freshWindow.Seconds())
 	var err error
 	if c.Fresh, err = s.CountArticles(ctx, userID, ListArticlesQuery{
-		View: "fresh", FreshAfter: freshCutoff, OnlySummarized: onlySummarized,
+		View: "fresh", FreshAfter: freshCutoff, OnlySummarized: onlySummarized, SummaryGraceBefore: summaryGraceBefore,
 	}); err != nil {
 		return c, fmt.Errorf("count fresh: %w", err)
 	}
 	if c.Unread, err = s.CountArticles(ctx, userID, ListArticlesQuery{
-		View: "unread", FreshAfter: unreadCutoff, OnlySummarized: onlySummarized,
+		View: "unread", FreshAfter: unreadCutoff, OnlySummarized: onlySummarized, SummaryGraceBefore: summaryGraceBefore,
 	}); err != nil {
 		return c, fmt.Errorf("count unread: %w", err)
 	}
@@ -731,7 +823,7 @@ func (s *Store) CountSmartViews(ctx context.Context, userID int64, freshWindow t
 	// window, summary gate, cross-feed dedup — as the All-Unread list, so a
 	// folder badge can never disagree with its column.
 	if c.UnreadByCategory, err = s.CountUnreadByCategory(ctx, userID, ListArticlesQuery{
-		FreshAfter: unreadCutoff, OnlySummarized: onlySummarized,
+		FreshAfter: unreadCutoff, OnlySummarized: onlySummarized, SummaryGraceBefore: summaryGraceBefore,
 	}); err != nil {
 		return c, fmt.Errorf("count unread by category: %w", err)
 	}
@@ -742,12 +834,12 @@ func (s *Store) CountSmartViews(ctx context.Context, userID int64, freshWindow t
 	// subscription is gone — making "Starred N" disagree with the column. No
 	// window: the starred/later lists show items of any age (freshAfter unset).
 	if c.Starred, err = s.CountArticles(ctx, userID, ListArticlesQuery{
-		View: "starred", OnlySummarized: onlySummarized,
+		View: "starred", OnlySummarized: onlySummarized, SummaryGraceBefore: summaryGraceBefore,
 	}); err != nil {
 		return c, fmt.Errorf("count starred: %w", err)
 	}
 	if c.Later, err = s.CountArticles(ctx, userID, ListArticlesQuery{
-		View: "later", OnlySummarized: onlySummarized,
+		View: "later", OnlySummarized: onlySummarized, SummaryGraceBefore: summaryGraceBefore,
 	}); err != nil {
 		return c, fmt.Errorf("count later: %w", err)
 	}
@@ -764,6 +856,7 @@ SELECT COUNT(*)
 FROM articles a
 JOIN subscriptions sub ON sub.feed_id = a.feed_id AND sub.user_id = ?
 WHERE sub.muted = 0
+  AND sub.summarize = 1
   AND (a.summary_model IS NULL OR a.summary_model = '')`,
 		userID).Scan(&c.PendingSummary); err != nil {
 		return c, fmt.Errorf("count pending summary: %w", err)

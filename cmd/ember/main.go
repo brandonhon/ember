@@ -511,8 +511,9 @@ func run() error {
 		SessionKey: sessionKey,
 		// The fallback mirrors the env opt-out so the settings echo reads
 		// correctly before any admin override.
-		UpdateCheckEnabledFallback: !cfg.DisableUpdateCheck,
-		PasskeyRequireUVFallback:   cfg.PasskeyRequireUV,
+		UpdateCheckEnabledFallback:  !cfg.DisableUpdateCheck,
+		PasskeyRequireUVFallback:    cfg.PasskeyRequireUV,
+		SummaryGraceSecondsFallback: cfg.SummaryGraceSeconds,
 	}
 	// Set the update checker only when one exists (dev/dirty builds have none).
 	// Assigning a typed-nil *Checker to the interface field would make it

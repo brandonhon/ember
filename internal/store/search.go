@@ -34,7 +34,7 @@ func (s *Store) Search(ctx context.Context, userID int64, query string, limit in
 	rows, err := s.reader().QueryContext(ctx, `
 		SELECT a.id, a.feed_id, a.guid, IFNULL(a.url,''), a.title, IFNULL(a.author,''),
 		       IFNULL(a.content_html,''), IFNULL(a.content_text,''),
-		       IFNULL(a.summary,''), IFNULL(a.summary_model,''),
+		       `+summaryProjection+`,
 		       IFNULL(a.image_url,''), IFNULL(a.published_at,0),
 		       a.fetched_at, a.content_hash, IFNULL(a.tags,''),
 		       IFNULL(st.is_read,0), IFNULL(st.is_starred,0), IFNULL(st.is_later,0),

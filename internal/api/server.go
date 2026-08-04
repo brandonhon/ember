@@ -112,6 +112,9 @@ type Dependencies struct {
 	// PasskeyRequireUVFallback is the env-derived default
 	// (EMBER_PASSKEY_REQUIRE_UV) for the passkey_require_uv admin setting.
 	PasskeyRequireUVFallback bool
+	// SummaryGraceSecondsFallback is the env-derived default
+	// (EMBER_SUMMARY_GRACE_SECONDS) for the summary_grace_seconds setting.
+	SummaryGraceSecondsFallback int
 
 	// img signs + serves the same-origin image proxy. Built in NewRouter
 	// from SessionKey; never set by callers.
@@ -128,6 +131,23 @@ type Dependencies struct {
 // stamped yet; when off, the gate is bypassed everywhere. Mirrors the
 // summaries_enabled flag surfaced to the SPA via /api/me.
 func (d *Dependencies) summariesOn() bool { return d.Ollama != nil }
+
+// summaryGraceBefore returns the unix timestamp before which an unsummarized
+// article is shown anyway, or 0 when the gate is inactive. Resolved per
+// request so an admin's change takes effect without a restart. Every consumer
+// of the summary gate (article list, smart counts, per-feed unread) must pass
+// the SAME value or a badge will disagree with the column it summarizes.
+func (d *Dependencies) summaryGraceBefore(ctx context.Context) int64 {
+	if !d.summariesOn() {
+		return 0
+	}
+	secs := d.Store.ResolveSummaryGraceSeconds(ctx, d.SummaryGraceSecondsFallback)
+	if secs <= 0 {
+		// 0 = no wait: everything fetched so far passes the gate.
+		return time.Now().Unix() + 1
+	}
+	return time.Now().Add(-time.Duration(secs) * time.Second).Unix()
+}
 
 // defaultFreshWindow is the Fresh-view cutoff used when the operator hasn't
 // configured one. Mirrored by the SPA's isFresh() via /api/me.

@@ -58,7 +58,7 @@ func TestImportCategorizes(t *testing.T) {
 		t.Fatalf("nested 'World' folder should not create a category; got %v", catByName)
 	}
 
-	feeds, err := st.ListFeedsForUser(ctx, u.ID, 0, false)
+	feeds, err := st.ListFeedsForUser(ctx, u.ID, 0, false, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +116,7 @@ func TestImportIsIdempotent(t *testing.T) {
 	}
 
 	// Still exactly one subscription — no duplicate from the re-import.
-	feeds, err := st.ListFeedsForUser(ctx, u.ID, 0, false)
+	feeds, err := st.ListFeedsForUser(ctx, u.ID, 0, false, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

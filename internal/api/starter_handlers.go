@@ -131,7 +131,7 @@ type starterPackView struct {
 
 func (d *Dependencies) handleListStarterPacks(w http.ResponseWriter, r *http.Request) {
 	u, _ := auth.FromContext(r.Context())
-	subs, err := d.Store.ListFeedsForUser(r.Context(), u.ID, 0, false)
+	subs, err := d.Store.ListFeedsForUser(r.Context(), u.ID, 0, false, 0)
 	if mapStoreError(w, err) {
 		return
 	}
@@ -192,7 +192,7 @@ func (d *Dependencies) handleImportStarterPack(w http.ResponseWriter, r *http.Re
 	}
 
 	// Subscribe to each feed; track already-had vs newly-added.
-	existing, err := d.Store.ListFeedsForUser(ctx, u.ID, 0, false)
+	existing, err := d.Store.ListFeedsForUser(ctx, u.ID, 0, false, 0)
 	if mapStoreError(w, err) {
 		return
 	}
@@ -258,7 +258,7 @@ func (d *Dependencies) handleRemoveStarterPack(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	subs, err := d.Store.ListFeedsForUser(ctx, u.ID, 0, false)
+	subs, err := d.Store.ListFeedsForUser(ctx, u.ID, 0, false, 0)
 	if mapStoreError(w, err) {
 		return
 	}
@@ -284,7 +284,7 @@ func (d *Dependencies) handleRemoveStarterPack(w http.ResponseWriter, r *http.Re
 	// delete it so the sidebar doesn't keep a vestigial folder. Skip when
 	// no category was resolved (already removed manually, etc).
 	if packCategoryID != 0 {
-		remaining, err := d.Store.ListFeedsForUser(ctx, u.ID, 0, false)
+		remaining, err := d.Store.ListFeedsForUser(ctx, u.ID, 0, false, 0)
 		if mapStoreError(w, err) {
 			return
 		}

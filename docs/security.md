@@ -96,6 +96,17 @@ Ember can tell admins when a newer release exists. The mechanism is deliberately
 - Each decoded inbound-email MIME part is capped at **16 MiB** (base64 expands ~4:3, so a near-limit message can't balloon past the 25 MiB message ceiling).
 - `GET /api/search` clamps `limit` to **100** and `offset` to **10000**.
 
+## Feed error messages
+
+A feed's last fetch error is shown in the sidebar tooltip and returned by `GET /api/feeds`, which every **subscriber** of that feed can read — not just admins. Raw Go transport errors embed whatever the connection resolved to (`dial tcp 10.0.0.5:443: connect: connection refused`), and a redirect chain can add internal hostnames, so the stored value is a classified summary rather than the raw error:
+
+- the publisher's HTTP status is kept verbatim (`the server responded 404`) — it's their response, and it's the most useful thing to show;
+- transport failures collapse to a category — `could not connect to the server`, `the server took too long to respond`, `could not find that domain`, `the server's TLS certificate could not be verified`, `too many redirects`;
+- parse failures report `the response was not a valid RSS or Atom feed`;
+- Ember's own SSRF guard reports why it refused (private/loopback address, non-http scheme, disallowed port).
+
+The mapping is **fail-closed**: an error shape it doesn't recognise reports a generic `the feed could not be fetched` rather than falling through to the raw text, so a new error from a dependency can't silently start leaking. Operators lose nothing — the poller logs the unmodified error at both call sites.
+
 ## Error responses
 
 5xx responses always read `{"error": {"code": "internal", "message": "internal error"}}`. The actual error is logged server-side via `slog.Default().Error(...)`. No SQLite errors, file paths, or constraint details leak to clients. OPML / TT-RSS import and multipart-parse failures likewise return a generic 400 ("could not read the uploaded file" / "check the file is a valid … export"); the underlying XML offset, SQLite constraint, or temp-path detail is logged only.
@@ -122,7 +133,7 @@ The card thumbnail and the reader's lead image are served from Ember's own origi
 
 ## Database
 
-- SQLite WAL with single-writer semantics. `MaxOpenConns=1` to avoid `SQLITE_BUSY` storms.
+- SQLite WAL with single-writer semantics. The write handle is capped at `MaxOpenConns=1` to avoid `SQLITE_BUSY` storms; a second, read-only handle (`query_only`, 4 connections) serves heavy read queries alongside it, and SQLite itself rejects any write attempted on that handle.
 - `synchronous=NORMAL` (safe with WAL), `busy_timeout=5s`, 64 MiB cache, 256 MiB mmap.
 - Backups via `VACUUM INTO` are safe to run live and produce a compacted snapshot.
 

@@ -64,6 +64,7 @@ function feedRow(over: Partial<FeedWithCounts> = {}): FeedWithCounts {
     created_at: 0,
     subscription_id: 1,
     muted: false,
+    summarize: true,
     position: 0,
     unread: 5,
     ...over,

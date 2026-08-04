@@ -16,6 +16,20 @@ type setDigestReq struct {
 	HourUTC       int    `json:"hour_utc"`
 	MinuteUTC     int    `json:"minute_utc"`
 	EmailOverride string `json:"email_override"`
+
+	// Server-owned fields that GET /api/me/digest emits as part of
+	// models.UserDigest. They are declared here so a GET -> edit -> POST
+	// round-trip works: the SPA (and any script) naturally posts the object
+	// back, and decodeJSON uses DisallowUnknownFields, so an undeclared field
+	// makes the request fail with 400 "invalid request body".
+	//
+	// They are accepted and then DELIBERATELY IGNORED — the stored UserID
+	// always comes from the session (see u.ID below), never from the body, so
+	// posting someone else's user_id cannot retarget the write. Declaring them
+	// explicitly is what keeps DisallowUnknownFields strict about genuine
+	// typos instead of having to relax it for this endpoint.
+	IgnoredUserID     int64 `json:"user_id"`
+	IgnoredLastSentAt int64 `json:"last_sent_at"`
 }
 
 func (d *Dependencies) handleGetDigest(w http.ResponseWriter, r *http.Request) {

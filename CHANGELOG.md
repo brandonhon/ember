@@ -9,8 +9,20 @@ full commit-level list; this file curates the highlights and behavior changes.
 
 ## [Unreleased]
 
+## [0.9.6] - 2026-08-04
+
 ### Security
 
+- **Feed error messages no longer expose server network details.** When a feed
+  fails to fetch, the reason shown in the sidebar tooltip is read by every
+  subscriber of that feed. It was the raw Go error, which embeds whatever the
+  connection resolved to — e.g. `dial tcp 10.0.0.5:443: connect: connection
+  refused`, handing any user a piece of your internal network map. Subscribers
+  now see a plain summary ("could not connect to the server", "the server
+  responded 404", "the server's TLS certificate could not be verified"), while
+  the complete error is still written to the server log for operators. The
+  mapping is fail-closed: an unrecognised error reports a generic message
+  rather than falling back to the raw text.
 - Bumped `golang.org/x/text` to 0.40.0, picking up the fix for `GO-2026-5970`
   (an infinite loop on invalid input). Ember reached the affected code when
   draining an Ollama model-pull response.
@@ -77,17 +89,53 @@ full commit-level list; this file curates the highlights and behavior changes.
   serves reads from the write connection exactly as before.
 - Bumped Go runtime dependencies: `github.com/mmcdole/gofeed` 1.3.0 → 1.4.0
   (which moves to `goxpp/v2` and drops five transitive dependencies),
-  `golang.org/x/crypto` 0.53.0 → 0.54.0, `golang.org/x/net` 0.56.0 → 0.57.0,
-  and `modernc.org/sqlite` 1.53.0 → 1.54.0.
-- Bumped SPA build/dev tooling: Svelte 5.56.4 → 5.56.7, Vite 8.1.3 → 8.1.5,
-  `@sveltejs/vite-plugin-svelte` 7.1.4 → 7.2.0, svelte-check 4.7.1 → 4.7.3,
-  `@testing-library/jest-dom` 6 → 7, `@types/node` 26.1.0 → 26.1.1. These are
-  dev-only and are not bundled into the Ember binary. TypeScript is
-  deliberately held at 6.x because svelte-check 4.7.x does not yet support
-  TypeScript 7.
+  `github.com/pressly/goose/v3` 3.27.2 → 3.27.3, `golang.org/x/crypto`
+  0.53.0 → 0.54.0, `golang.org/x/net` 0.56.0 → 0.57.0, and
+  `modernc.org/sqlite` 1.53.0 → 1.55.0.
+- Bumped SPA build/dev tooling: Svelte 5.56.4 → 5.56.8, Vite 8.1.3 → 8.2.0,
+  `@sveltejs/vite-plugin-svelte` 7.1.4 → 7.2.0, svelte-check 4.7.1 → 4.7.4,
+  `@testing-library/jest-dom` 6 → 7, `@types/node` 26.1.0 → 26.1.2, jsdom
+  29 → 30.0.1, and `@playwright/test` 1.61.1 → 1.62.1. These are dev-only and are
+  not bundled into the Ember binary. TypeScript is deliberately held at 6.x:
+  svelte-check 4.7.4 supports TypeScript 7 only with both TypeScript 6 and 7
+  installed side by side and an extra `--tsgo` flag, which is a build-tooling
+  migration rather than a version bump.
 
 ### Fixed
 
+- **Scheduled OPML exports written before noon UTC are no longer lost.** The
+  export filename was built from a Go time layout that had `.opml` folded into
+  it, and Go reads the `pm` in that extension as the AM/PM marker — so every
+  export produced between 00:00 and 11:59 UTC was written as `.oaml` instead.
+  Those files landed on disk but never matched the `.opml` filter behind the
+  admin export list, leaving them invisible in **Settings → Database** and
+  impossible to download or delete from the UI. Affects 0.9.4 and 0.9.5;
+  existing `.oaml` files can be renamed to `.opml` to bring them back into the
+  list.
+- **Articles no longer stay hidden waiting for their AI summary.** When
+  summaries are enabled, a new article was held back until the model had
+  finished with it — with no time limit. On CPU-only inference that meant
+  minutes of an apparently empty reader, and an article dropped from a full
+  summary queue stayed invisible until Ember was restarted. Articles now appear
+  once they've waited longer than a grace window (2 minutes by default), with
+  the summary filling in when it's ready. Tune it in **Settings → Language
+  model → Article visibility** or with `EMBER_SUMMARY_GRACE_SECONDS`; `0` shows
+  articles as soon as they're fetched. (#162)
+- **Articles dropped from a busy summary queue are picked back up.** The queue
+  is bounded, and when it was full the article was silently skipped — it then
+  had no summary, so the gate above hid it, and the only thing that retried was
+  a sweep that ran once at startup. That sweep now runs every poll cycle.
+- **Turning on the daily digest works again.** Saving from Settings → Digest
+  always failed with a generic "invalid request body" error, so the feature
+  could not be enabled at all from the UI. Ember was rejecting a request its
+  own interface had built: the settings it sends back on save included two
+  read-only fields (`user_id`, `last_sent_at`) that the save endpoint didn't
+  accept. The endpoint now accepts and ignores them — so fetching your digest
+  settings, changing one, and saving them back works from any client — and the
+  interface no longer sends them in the first place. Which account the settings
+  belong to is still taken from your session, never from the request, so the
+  accepted field can't be used to change someone else's digest.
+  Thanks to @Zaptorg for the report and the root-cause analysis (#161).
 - **The All Unread badge could drift below the real count while you read.**
   Marking an article read from *Starred*, *Read Later*, *Shared*, or a board
   decremented the All Unread badge even when that article was older than the
@@ -117,6 +165,19 @@ full commit-level list; this file curates the highlights and behavior changes.
   They now match only Ember's own `ember-<timestamp>.db` / `.opml` naming.
 
 ### Added
+
+- **Turn AI summaries off for a single feed.** Feeds you skim don't need a
+  summary, and on CPU-only inference they cost minutes of work each. The feed's
+  **⋯** menu in the sidebar gains **Don't summarize** — the feed keeps updating
+  normally, it just stops being sent to the model, and its existing summary
+  cards disappear from your view. Switching it back on re-queues the articles
+  that were skipped while it was off, so you don't have to wait for the feed to
+  publish something new. The entry only appears while AI summaries are enabled
+  on the server. It's a per-account choice: because a summary is stored once and
+  shared by everyone subscribed to a feed, Ember only skips the inference when
+  every subscriber has opted out — otherwise the work still happens and your
+  copy simply arrives without the summary card. The "Summarizing N articles"
+  indicator no longer counts work for feeds you've opted out of.
 
 - **Optional device verification for passkey sign-in.** A new **Require device
   verification** toggle in Settings → Passkeys (or `EMBER_PASSKEY_REQUIRE_UV=1`)
@@ -454,7 +515,8 @@ TT-RSS full migration (subscriptions, folders, starred/archived) and fail-fast
 admin bootstrap. See the
 [v0.8.7 release](https://github.com/brandonhon/ember/releases/tag/v0.8.7).
 
-[Unreleased]: https://github.com/brandonhon/ember/compare/v0.9.5...develop
+[Unreleased]: https://github.com/brandonhon/ember/compare/v0.9.6...develop
+[0.9.6]: https://github.com/brandonhon/ember/compare/v0.9.5...v0.9.6
 [0.9.5]: https://github.com/brandonhon/ember/compare/v0.9.4...v0.9.5
 [0.9.4]: https://github.com/brandonhon/ember/compare/v0.9.3...v0.9.4
 [0.9.3]: https://github.com/brandonhon/ember/compare/v0.9.2...v0.9.3

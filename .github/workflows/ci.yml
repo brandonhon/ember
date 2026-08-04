@@ -157,7 +157,19 @@ jobs:
   e2e:
     name: E2E (Playwright)
     needs: [changes, go, web]
-    if: needs.changes.outputs.e2e == 'true'
+    # `needs` here is a cost gate, not a data dependency — this job builds the
+    # SPA and binary itself. But a SKIPPED dependency skips the dependent job by
+    # default, so a change touching only cmd/ or internal/ (which correctly
+    # skips the web job) was silently skipping E2E too, even though the e2e
+    # filter matched. That hid E2E from the DB/store-layer PRs that needed it
+    # most. `!cancelled()` lets the job evaluate past a skipped dependency;
+    # the explicit result checks keep the original intent — don't spend E2E
+    # minutes when a cheaper job has already failed.
+    if: >-
+      !cancelled()
+      && needs.changes.outputs.e2e == 'true'
+      && needs.go.result != 'failure'
+      && needs.web.result != 'failure'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2

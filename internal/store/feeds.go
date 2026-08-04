@@ -174,10 +174,34 @@ func (s *Store) Subscribe(ctx context.Context, sub models.Subscription) (models.
 	return sub, nil
 }
 
+// FeedSummariesSuppressed reports whether AI summarization should be skipped for
+// a feed entirely: it has at least one subscriber and NONE of them want
+// summaries (issue #163).
+//
+// The summary lives on the shared article row, so one user opting out must not
+// remove it from another — hence "suppressed" means unanimous, not "anyone
+// opted out".
+//
+// It deliberately FAILS OPEN on a feed with no subscribers. handleAddFeed does
+// UpsertFeed -> Subscribe -> RefreshFeed, and a feed with next_fetch NULL is
+// immediately due, so a concurrent poller tick can ingest a feed in the window
+// before its first subscription exists. Treating "no subscribers" as suppressed
+// would permanently stamp those articles excluded.
+func (s *Store) FeedSummariesSuppressed(ctx context.Context, feedID int64) (bool, error) {
+	var total, wanting int
+	err := s.reader().QueryRowContext(ctx, `
+		SELECT COUNT(*), COALESCE(SUM(summarize), 0)
+		FROM subscriptions WHERE feed_id = ?`, feedID).Scan(&total, &wanting)
+	if err != nil {
+		return false, err
+	}
+	return total > 0 && wanting == 0, nil
+}
+
 // GetSubscription returns the user's subscription to a feed.
 func (s *Store) GetSubscription(ctx context.Context, userID, feedID int64) (models.Subscription, error) {
 	row := s.DB.QueryRowContext(ctx, `
-		SELECT id, user_id, feed_id, category_id, IFNULL(title_override,''), muted, position, created_at
+		SELECT id, user_id, feed_id, category_id, IFNULL(title_override,''), muted, summarize, position, created_at
 		FROM subscriptions WHERE user_id = ? AND feed_id = ?`, userID, feedID)
 	return scanSubscription(row)
 }
@@ -186,7 +210,7 @@ func (s *Store) GetSubscription(ctx context.Context, userID, feedID int64) (mode
 // the user (returns ErrNotFound on cross-user access).
 func (s *Store) GetSubscriptionByID(ctx context.Context, userID, subID int64) (models.Subscription, error) {
 	row := s.DB.QueryRowContext(ctx, `
-		SELECT id, user_id, feed_id, category_id, IFNULL(title_override,''), muted, position, created_at
+		SELECT id, user_id, feed_id, category_id, IFNULL(title_override,''), muted, summarize, position, created_at
 		FROM subscriptions WHERE id = ? AND user_id = ?`, subID, userID)
 	return scanSubscription(row)
 }
@@ -197,6 +221,7 @@ type UpdateSubscriptionPatch struct {
 	ClearCategory bool
 	TitleOverride *string
 	Muted         *bool
+	Summarize     *bool
 }
 
 // UpdateSubscription updates a subscription's category or title override.
@@ -232,6 +257,10 @@ func (s *Store) UpdateSubscription(ctx context.Context, userID, subID int64, p U
 	if p.Muted != nil {
 		sets = append(sets, "muted = ?")
 		args = append(args, boolToInt(*p.Muted))
+	}
+	if p.Summarize != nil {
+		sets = append(sets, "summarize = ?")
+		args = append(args, boolToInt(*p.Summarize))
 	}
 	if len(sets) == 0 {
 		return nil
@@ -387,22 +416,25 @@ func (s *Store) ListSubscriberIDs(ctx context.Context, feedID int64) ([]int64, e
 // count regardless of age (Fever / starter-pack callers that don't want the
 // window). onlySummarized gates on the summary marker when AI summarization is
 // enabled, mirroring the article list so the badge never disagrees with it.
-func (s *Store) ListFeedsForUser(ctx context.Context, userID, unreadCutoff int64, onlySummarized bool) ([]models.FeedWithCounts, error) {
+func (s *Store) ListFeedsForUser(ctx context.Context, userID, unreadCutoff int64, onlySummarized bool, summaryGraceBefore int64) ([]models.FeedWithCounts, error) {
 	// Per-feed unread count: unread, non-muted, within the window, and (when AI
 	// is on) summarizer-touched — the same predicate the article list applies,
 	// minus the cross-feed dedup that only makes sense across feeds. The
 	// `s.muted = 0` guard keeps muted subscriptions out of the per-feed (and
 	// therefore the client-summed) count.
 	gate := ""
+	var gateArgs []any
 	if onlySummarized {
-		gate = " AND a.summary_model IS NOT NULL AND a.summary_model <> ''"
+		g, ga := summaryGate("a", summaryGraceBefore)
+		gate = " AND " + g
+		gateArgs = ga
 	}
 	rows, err := s.reader().QueryContext(ctx, `
 		SELECT f.id, f.url, IFNULL(f.site_url,''), f.title, IFNULL(f.favicon_url,''),
 		       IFNULL(f.etag,''), IFNULL(f.last_modified,''),
 		       IFNULL(f.last_fetched,0), IFNULL(f.next_fetch,0),
 		       f.fetch_interval, f.error_count, IFNULL(f.last_error,''), f.created_at,
-		       s.id AS sub_id, s.category_id, IFNULL(s.title_override,''), s.muted, s.position,
+		       s.id AS sub_id, s.category_id, IFNULL(s.title_override,''), s.muted, s.summarize, s.position,
 		       (SELECT COUNT(*)
 		          FROM articles a
 		          LEFT JOIN article_state st ON st.article_id = a.id AND st.user_id = s.user_id
@@ -414,7 +446,10 @@ func (s *Store) ListFeedsForUser(ctx context.Context, userID, unreadCutoff int64
 		FROM feeds f
 		JOIN subscriptions s ON s.feed_id = f.id
 		WHERE s.user_id = ?
-		ORDER BY s.position, LOWER(IFNULL(NULLIF(s.title_override,''), f.title))`, unreadCutoff, userID)
+		ORDER BY s.position, LOWER(IFNULL(NULLIF(s.title_override,''), f.title))`,
+		// Positional: the window placeholder, then the gate's (if any), then
+		// the outer user id — the gate is interpolated between them.
+		append(append([]any{unreadCutoff}, gateArgs...), userID)...)
 	if err != nil {
 		return nil, err
 	}
@@ -423,12 +458,12 @@ func (s *Store) ListFeedsForUser(ctx context.Context, userID, unreadCutoff int64
 	for rows.Next() {
 		var f models.FeedWithCounts
 		var catID sql.NullInt64
-		var muted int
+		var muted, summarize int
 		err := rows.Scan(
 			&f.ID, &f.URL, &f.SiteURL, &f.Title, &f.FaviconURL,
 			&f.ETag, &f.LastModified, &f.LastFetched, &f.NextFetch,
 			&f.FetchInterval, &f.ErrorCount, &f.LastError, &f.CreatedAt,
-			&f.SubscriptionID, &catID, &f.TitleOverride, &muted, &f.Position, &f.Unread,
+			&f.SubscriptionID, &catID, &f.TitleOverride, &muted, &summarize, &f.Position, &f.Unread,
 		)
 		if err != nil {
 			return nil, err
@@ -438,6 +473,7 @@ func (s *Store) ListFeedsForUser(ctx context.Context, userID, unreadCutoff int64
 			f.CategoryID = &v
 		}
 		f.Muted = muted == 1
+		f.Summarize = summarize == 1
 		out = append(out, f)
 	}
 	return out, rows.Err()
@@ -458,8 +494,8 @@ func scanFeed(row scannable) (models.Feed, error) {
 func scanSubscription(row scannable) (models.Subscription, error) {
 	var s models.Subscription
 	var catID sql.NullInt64
-	var muted int
-	err := row.Scan(&s.ID, &s.UserID, &s.FeedID, &catID, &s.TitleOverride, &muted, &s.Position, &s.CreatedAt)
+	var muted, summarize int
+	err := row.Scan(&s.ID, &s.UserID, &s.FeedID, &catID, &s.TitleOverride, &muted, &summarize, &s.Position, &s.CreatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return models.Subscription{}, ErrNotFound
 	}
@@ -471,6 +507,7 @@ func scanSubscription(row scannable) (models.Subscription, error) {
 		s.CategoryID = &v
 	}
 	s.Muted = muted == 1
+	s.Summarize = summarize == 1
 	return s, nil
 }
 

@@ -11,6 +11,12 @@ NPM           ?= npm
 # the developer's global go env.
 export GO111MODULE := on
 export GOTOOLCHAIN := auto
+# `go install` puts tools in $(go env GOPATH)/bin, which plenty of environments
+# never add to PATH — so `make lint` / `make vulncheck` / `make security` fail
+# with "No such file or directory ... Error 127" against tools that are in fact
+# installed and working. Appended, not prepended, so a binary the developer put
+# earlier on PATH deliberately still wins; this only adds a fallback.
+export PATH := $(PATH):$(shell $(GO) env GOPATH 2>/dev/null)/bin
 BIN           ?= ./bin/ember
 PKG           := ./...
 COVER_OUT     ?= coverage.out

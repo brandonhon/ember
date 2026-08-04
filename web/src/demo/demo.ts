@@ -41,6 +41,21 @@ let loggedIn = false;
 export const DEMO_DATE: string =
   (import.meta.env.VITE_DEMO_DATE as string) || demoData.captured_at || "";
 
+// The article/read windows the demo reports from /api/me.
+//
+// installDemo() widens freshWindowSeconds before mount, but that is NOT enough
+// on its own: App.onMount calls refreshMe(), which overwrites both window stores
+// from the /api/me response whenever the value is > 0. The captured `me` carries
+// the real instance's `fresh_window_seconds: 21600`, so the widening was being
+// silently reverted ~a second after boot — with data frozen months ago, every
+// article fell outside the window, "Fresh only" filtered the list to empty and
+// the per-card "Fresh" tag never rendered. The shim IS the server here, so it
+// has to report windows that match the frozen data.
+const DEMO_WINDOWS = {
+  fresh_window_seconds: 100 * 365 * 24 * 3600,
+  unread_window_seconds: 100 * 365 * 24 * 3600,
+};
+
 type Json = Record<string, unknown>;
 
 // Mutable session state — a deep copy so we never scribble on the imported
@@ -88,6 +103,16 @@ function articlesForView(p: URLSearchParams): ArticleView[] {
   });
 }
 
+// Deliberately WITHOUT `unread` / `unread_by_category`: stores.totalUnread does
+// `$sc.unread ?? sum(feeds)` and Sidebar.unreadInCategory falls back the same
+// way, so omitting them routes both badges through feedsWithCounts(), which is
+// recomputed from live session state on every fetch.
+//
+// ⚠️ Don't "improve" this by adding `unread` here unless the demo windows below
+// stay wide. setRead's optimistic decrement only counts articles inside
+// unreadWindowSeconds; the frozen data is months old, so with a real 24h window
+// the delta is always 0 and a server-provided `unread` would sit frozen at 51
+// while the list shrinks — exactly the drift #167 fixed.
 function smartCounts() {
   const unread = state.articles.filter((a) => !a.is_read).length;
   return {
@@ -115,7 +140,10 @@ function route(method: string, path: string, p: URLSearchParams, body: Json | un
   const noContent = (): RouteResult => ({ status: 204 });
 
   // ---- Auth: show the real login screen, then accept any creds ----
-  if (path === "/api/me" && method === "GET") return loggedIn ? ok({ ...demoData.me, version: DEMO_VERSION }) : { status: 401 };
+  if (path === "/api/me" && method === "GET")
+    return loggedIn
+      ? ok({ ...demoData.me, version: DEMO_VERSION, ...DEMO_WINDOWS })
+      : { status: 401 };
   if (path === "/api/auth/login" && method === "POST") { loggedIn = true; return ok((demoData.me as Json).user); }
   if (path === "/api/auth/logout") { loggedIn = false; return noContent(); }
   if (path === "/api/auth/passkey/exists") return ok({ any_registered: false });
