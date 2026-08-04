@@ -7,6 +7,12 @@ All notable user-facing changes to Ember are documented here. The format follows
 Per-tag [GitHub Releases](https://github.com/brandonhon/ember/releases) hold the
 full commit-level list; this file curates the highlights and behavior changes.
 
+From 0.9.6 onward, build-infrastructure dependency bumps (pinned GitHub Actions
+and the like) are recorded too, under **Changed** and labelled as such. They
+don't reach the released binaries or container image — they're listed so the
+provenance of the build is auditable from one file. Releases before 0.9.6 omit
+them.
+
 ## [Unreleased]
 
 ### Changed
