@@ -9,6 +9,15 @@ full commit-level list; this file curates the highlights and behavior changes.
 
 ## [Unreleased]
 
+### Changed
+
+- Bumped the pinned `actions/checkout` from 6.0.2 to 7.0.1 across all five
+  workflows. This is build infrastructure only: it changes how CI checks the
+  repository out, not anything in the released binaries or container image.
+  Version 7 stops fork pull-request code being checked out under
+  `pull_request_target` / `workflow_run`; Ember uses neither trigger, so the
+  behaviour of every workflow is unchanged.
+
 ## [0.9.6] - 2026-08-04
 
 ### Security
