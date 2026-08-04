@@ -164,6 +164,16 @@ func (p *Poller) Run(ctx context.Context) {
 			return
 		case <-ticker.C:
 			p.Tick(ctx)
+			// Re-enqueue anything still unsummarized. EnqueueSummary is
+			// best-effort and silently drops when the queue is full, which
+			// on slow inference happens routinely; before this ran on every
+			// tick, a dropped article kept summary_model empty and stayed
+			// hidden behind the summary gate until the process restarted,
+			// because the backfill was startup-only. Cheap: one LIMITed
+			// query, and it returns immediately when nothing is pending.
+			if p.Summarizer != nil {
+				p.enqueuePendingSummaries(ctx)
+			}
 		}
 	}
 }
@@ -410,7 +420,10 @@ func (p *Poller) recordFetchFailure(ctx context.Context, f models.Feed, now time
 		LastFetched: now.Unix(),
 		NextFetch:   next.Unix(),
 		ErrorCount:  errCount,
-		LastError:   cause.Error(),
+		// Sanitized: feeds.last_error is read by every subscriber of the feed
+		// via GET /api/feeds, and a raw transport error embeds resolved
+		// addresses. Both call sites log the unmodified error for operators.
+		LastError: publicFetchError(cause),
 	})
 }
 
@@ -691,6 +704,26 @@ func (p *Poller) summarizeOne(ctx context.Context, articleID int64) {
 	if p.Summarizer == nil {
 		// No summarizer configured — mark skipped so the article still shows.
 		p.markSkipped(ctx, articleID)
+		return
+	}
+	// Per-feed opt-out (issue #163). This check lives HERE, at the consumer,
+	// rather than at the ingest enqueue, because an article reaches the queue
+	// from several places that all leave summary_model NULL — poller ingest,
+	// the email inbox, ClearAllSummaries, ResetSummariesByFeed, and the manual
+	// re-enqueue behind Resummarize — and enqueuePendingSummaries feeds every
+	// one of them to the model on each tick. Deciding once here covers them all.
+	//
+	// Stamping 'excluded' rather than leaving NULL is load-bearing:
+	// ListUnsummarizedIDs selects on an empty summary_model, so a NULL row would
+	// be re-queued forever. A non-empty marker also satisfies the summary gate,
+	// so the article becomes visible immediately instead of waiting out the
+	// grace window, and drops out of the "Summarizing N articles" count.
+	if suppressed, err := p.Store.FeedSummariesSuppressed(ctx, art.FeedID); err != nil {
+		p.Logger.Warn("poller: summary opt-out check failed", "article_id", articleID, "err", err)
+	} else if suppressed {
+		if err := p.Store.UpdateSummary(ctx, articleID, "", "excluded"); err != nil {
+			p.Logger.Warn("poller: stamp summary_model=excluded", "article_id", articleID, "err", err)
+		}
 		return
 	}
 	res, model, err := p.Summarizer.Summarize(ctx, art.Title, art.ContentText)

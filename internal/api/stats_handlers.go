@@ -22,7 +22,7 @@ func (d *Dependencies) handleGetStats(w http.ResponseWriter, r *http.Request) {
 func (d *Dependencies) handleSmartCounts(w http.ResponseWriter, r *http.Request) {
 	u, _ := auth.FromContext(r.Context())
 	cutoff := d.Store.UnreadCutoff(r.Context(), u.ID)
-	out, err := d.Store.CountSmartViews(r.Context(), u.ID, d.FreshWindow, cutoff, d.summariesOn())
+	out, err := d.Store.CountSmartViews(r.Context(), u.ID, d.FreshWindow, cutoff, d.summariesOn(), d.summaryGraceBefore(r.Context()))
 	if mapStoreError(w, err) {
 		return
 	}

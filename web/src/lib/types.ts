@@ -76,6 +76,8 @@ export interface FeedWithCounts extends Feed {
   category_id?: number;
   title_override?: string;
   muted: boolean;
+  /** This user's opt-in to AI summaries for the feed (issue #163). */
+  summarize: boolean;
   position: number;
   unread: number;
 }

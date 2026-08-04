@@ -111,7 +111,7 @@ func TestCountSmartViews_AllBadgesMatchTheirLists(t *testing.T) {
 
 			freshWindow := 6 * time.Hour
 			unreadCutoff := now.Add(-24 * time.Hour).Unix()
-			counts, err := s.CountSmartViews(ctx, userID, freshWindow, unreadCutoff, onlySummarized)
+			counts, err := s.CountSmartViews(ctx, userID, freshWindow, unreadCutoff, onlySummarized, 0)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -197,7 +197,7 @@ func TestCountSmartViews_ExcludesMutedAndDuplicates(t *testing.T) {
 	mk(feedB.ID, "shared-story-dup", "Shared Story") // duplicate: must collapse
 	mk(feedM.ID, "muted-1", "Muted One")             // muted: must not count
 
-	counts, err := s.CountSmartViews(ctx, userID, 6*time.Hour, now.Add(-24*time.Hour).Unix(), true)
+	counts, err := s.CountSmartViews(ctx, userID, 6*time.Hour, now.Add(-24*time.Hour).Unix(), true, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

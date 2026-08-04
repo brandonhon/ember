@@ -722,7 +722,7 @@ func TestOPMLRoundtrip(t *testing.T) {
 	if len(cats) != 1 || cats[0].Name != "Tech" {
 		t.Errorf("imported categories: %+v", cats)
 	}
-	feeds, _ := h.store.ListFeedsForUser(context.Background(), u.ID, 0, false)
+	feeds, _ := h.store.ListFeedsForUser(context.Background(), u.ID, 0, false, 0)
 	if len(feeds) != 2 {
 		t.Errorf("imported feeds = %d, want 2", len(feeds))
 	}

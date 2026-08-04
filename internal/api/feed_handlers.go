@@ -27,6 +27,8 @@ type updateFeedReq struct {
 	CategoryID    *int64  `json:"category_id,omitempty"`
 	ClearCategory bool    `json:"clear_category,omitempty"`
 	Muted         *bool   `json:"muted,omitempty"`
+	// Summarize opts this subscription in/out of AI summaries (issue #163).
+	Summarize *bool `json:"summarize,omitempty"`
 	// URL, when set, re-points the subscription to a new source. Validated +
 	// SSRF-checked + discovered like add-feed; the shared feed row is never
 	// mutated in place (other subscribers keep theirs).
@@ -39,7 +41,7 @@ func (d *Dependencies) handleListFeeds(w http.ResponseWriter, r *http.Request) {
 	// to [1d, retention]) and gated on the summary marker when AI is on, so a
 	// badge agrees with the article list.
 	cutoff := d.Store.UnreadCutoff(r.Context(), u.ID)
-	feeds, err := d.Store.ListFeedsForUser(r.Context(), u.ID, cutoff, d.summariesOn())
+	feeds, err := d.Store.ListFeedsForUser(r.Context(), u.ID, cutoff, d.summariesOn(), d.summaryGraceBefore(r.Context()))
 	if mapStoreError(w, err) {
 		return
 	}
@@ -49,6 +51,7 @@ func (d *Dependencies) handleListFeeds(w http.ResponseWriter, r *http.Request) {
 	// ttrss, starter-pack); only this SPA endpoint overlays the deduped counts.
 	deduped, err := d.Store.CountUnreadByFeed(r.Context(), u.ID, store.ListArticlesQuery{
 		FreshAfter: cutoff, OnlySummarized: d.summariesOn(),
+		SummaryGraceBefore: d.summaryGraceBefore(r.Context()),
 	})
 	if mapStoreError(w, err) {
 		return
@@ -174,14 +177,36 @@ func (d *Dependencies) handleUpdateFeed(w http.ResponseWriter, r *http.Request) 
 			}
 		}
 	}
+	// Capture the prior opt-out state before the patch: turning summaries back
+	// ON should backfill the articles that were stamped 'excluded' while off,
+	// otherwise the toggle appears to do nothing until new articles arrive.
+	var wasOptedOut bool
+	if req.Summarize != nil && *req.Summarize {
+		if prior, err := d.Store.GetSubscriptionByID(r.Context(), u.ID, id); err == nil {
+			wasOptedOut = !prior.Summarize
+		}
+	}
 	patch := store.UpdateSubscriptionPatch{
 		TitleOverride: req.TitleOverride,
 		CategoryID:    req.CategoryID,
 		ClearCategory: req.ClearCategory,
 		Muted:         req.Muted,
+		Summarize:     req.Summarize,
 	}
 	if mapStoreError(w, d.Store.UpdateSubscription(r.Context(), u.ID, id, patch)) {
 		return
+	}
+	// Re-enqueue what was skipped while this feed was opted out. Best-effort:
+	// the subscription change already succeeded, and enqueuePendingSummaries
+	// picks up anything the queue drops.
+	if wasOptedOut {
+		if sub, err := d.Store.GetSubscriptionByID(r.Context(), u.ID, id); err == nil {
+			if ids, err := d.Store.ResetExcludedByFeed(r.Context(), sub.FeedID); err != nil {
+				slog.Default().Warn("feeds: reset excluded summaries", "feed_id", sub.FeedID, "err", err)
+			} else if n := d.enqueueSummaries(ids); n > 0 {
+				slog.Default().Info("feeds: re-enqueued summaries after opt-in", "feed_id", sub.FeedID, "count", n)
+			}
+		}
 	}
 	writeOK(w)
 }
@@ -324,7 +349,7 @@ var refreshAllSem = make(chan struct{}, 3)
 // straight away; newly-ingested articles surface via the next poll/merge.
 func (d *Dependencies) handleRefreshAllFeeds(w http.ResponseWriter, r *http.Request) {
 	u, _ := auth.FromContext(r.Context())
-	feeds, err := d.Store.ListFeedsForUser(r.Context(), u.ID, 0, false)
+	feeds, err := d.Store.ListFeedsForUser(r.Context(), u.ID, 0, false, 0)
 	if mapStoreError(w, err) {
 		return
 	}

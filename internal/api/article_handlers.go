@@ -83,19 +83,20 @@ func (d *Dependencies) handleListArticles(w http.ResponseWriter, r *http.Request
 	// everything shows everywhere. ?all=1 force-bypasses for admin/debug.
 	onlySummarized := d.summariesOn() && !atoB("all")
 	query := store.ListArticlesQuery{
-		View:            view,
-		FeedID:          feedID,
-		CategoryID:      categoryID,
-		BoardID:         atoi("board_id"),
-		Unread:          atoB("unread"),
-		Starred:         atoB("starred"),
-		Later:           atoB("later"),
-		FreshAfter:      freshAfter,
-		Limit:           limit,
-		PublishedBefore: atoi("cursor_pub"),
-		IDBefore:        atoi("cursor_id"),
-		OnlySummarized:  onlySummarized,
-		Tag:             q.Get("tag"),
+		View:               view,
+		FeedID:             feedID,
+		CategoryID:         categoryID,
+		BoardID:            atoi("board_id"),
+		Unread:             atoB("unread"),
+		Starred:            atoB("starred"),
+		Later:              atoB("later"),
+		FreshAfter:         freshAfter,
+		Limit:              limit,
+		PublishedBefore:    atoi("cursor_pub"),
+		IDBefore:           atoi("cursor_id"),
+		OnlySummarized:     onlySummarized,
+		SummaryGraceBefore: d.summaryGraceBefore(ctx),
+		Tag:                q.Get("tag"),
 		// Feed/category columns show read+unread but their sidebar badges count
 		// only unread; dedup unread copies the same way the badge does so the
 		// unread cards shown always equal the badge.

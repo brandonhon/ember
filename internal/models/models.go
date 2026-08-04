@@ -61,8 +61,13 @@ type Subscription struct {
 	CategoryID    *int64 `json:"category_id,omitempty"`
 	TitleOverride string `json:"title_override,omitempty"`
 	Muted         bool   `json:"muted"`
-	Position      int    `json:"position"`
-	CreatedAt     int64  `json:"created_at"`
+	// Summarize is this user's opt-in to AI summaries for the feed. Defaults
+	// true. A feed is only skipped when it has subscribers and none of them
+	// want summaries — the summary itself lives on the shared article row, so
+	// one user opting out must not remove it from another.
+	Summarize bool  `json:"summarize"`
+	Position  int   `json:"position"`
+	CreatedAt int64 `json:"created_at"`
 }
 
 // Article is a single item ingested from a feed. Shared storage across users.
@@ -216,6 +221,7 @@ type FeedWithCounts struct {
 	CategoryID     *int64 `json:"category_id,omitempty"`
 	TitleOverride  string `json:"title_override,omitempty"`
 	Muted          bool   `json:"muted"`
+	Summarize      bool   `json:"summarize"`
 	Position       int    `json:"position"`
 	Unread         int    `json:"unread"`
 }

@@ -257,7 +257,17 @@
     digestMsg = "";
     digestErr = "";
     try {
-      const res = await api.setDigest(digest);
+      // Send only the fields the client owns. user_id / last_sent_at are
+      // server-set; posting the whole GET response back is what broke saving
+      // (issue #161).
+      const res = await api.setDigest({
+        enabled: digest.enabled,
+        view_kind: digest.view_kind,
+        view_value: digest.view_value,
+        hour_utc: digest.hour_utc,
+        minute_utc: digest.minute_utc,
+        email_override: digest.email_override,
+      });
       digest = res.data;
       digestMsg = "Saved";
     } catch (e) {
@@ -546,6 +556,39 @@
   let llmMsg = $state<string>("");
   let llmBusy = $state<string>(""); // active action: "switch:<model>", "pull:<model>", etc.
   let pullInput = $state<string>("");
+
+  // Summary grace window (admin). Lives in app_settings, not the LLM status
+  // endpoint, so it is fetched alongside it.
+  let summaryGrace = $state(120);
+  let summaryGraceFloor = $state(0);
+  let summaryGraceCeil = $state(3600);
+  let summaryGraceBusy = $state(false);
+  async function loadSummaryGrace() {
+    try {
+      const res = await api.getAdminSettings();
+      summaryGrace = res.data.summary_grace_seconds;
+      summaryGraceFloor = res.data.summary_grace_seconds_floor;
+      summaryGraceCeil = res.data.summary_grace_seconds_ceil;
+    } catch (e) {
+      llmErr = e instanceof ApiError ? e.message : String(e);
+    }
+  }
+  async function saveSummaryGrace() {
+    if (DEMO) { notifyDemoBlocked(); return; }
+    summaryGraceBusy = true;
+    llmMsg = "";
+    llmErr = "";
+    try {
+      const res = await api.setAdminSettings({ summary_grace_seconds: Number(summaryGrace) });
+      summaryGrace = res.data.summary_grace_seconds;
+      llmMsg = "Saved";
+    } catch (e) {
+      llmErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      summaryGraceBusy = false;
+      setTimeout(() => (llmMsg = ""), 3000);
+    }
+  }
 
   async function loadLLM() {
     llmErr = "";
@@ -847,7 +890,7 @@
 
   $effect(() => {
     if (section === "starter") void loadStarterPacks();
-    if (section === "llm" && $user?.is_admin) void loadLLM();
+    if (section === "llm" && $user?.is_admin) { void loadLLM(); void loadSummaryGrace(); }
     if (section === "branding" && $user?.is_admin) loadBrandingDraft();
     if (section === "database" && $user?.is_admin) void loadDB();
     if (section === "session" && $user?.is_admin) void loadSessionTTL();
@@ -1720,7 +1763,7 @@
           <div class="eyebrow">Reading</div>
           <h3>Daily digest</h3>
           <p class="hint">One email a day with the articles in your chosen view. Requires server SMTP.</p>
-          {#if digestErr}<p class="error">{digestErr}</p>{/if}
+          {#if digestErr}<p class="error" data-testid="digest-err">{digestErr}</p>{/if}
           {#if digestMsg}<p class="ok" data-testid="digest-msg">{digestMsg}</p>{/if}
           {#if !digest}
             <p class="muted">Loading…</p>
@@ -1887,6 +1930,26 @@
             <div class="callout ember">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9h6v6H9z"/></svg>
               <div>Admin-only. Summaries run locally — nothing leaves your server.</div>
+            </div>
+
+            <div class="card">
+              <div class="card-head"><h4>Article visibility</h4></div>
+              <label class="pref-row">
+                <div>
+                  <div class="pref-label">Wait for summaries before showing articles</div>
+                  <div class="pref-hint">New articles are held back until the model has summarized them, so you don't see a story before its summary. After this many seconds they appear anyway, with the summary filling in when it's ready — so slow inference can't leave the reader looking empty. <strong>0</strong> shows articles as soon as they're fetched. Range {summaryGraceFloor}–{summaryGraceCeil}.</div>
+                </div>
+                <div class="row-ctl">
+                  <input class="row-input num" type="number" min={summaryGraceFloor} max={summaryGraceCeil}
+                    bind:value={summaryGrace} data-testid="summary-grace" />
+                  <span class="pref-hint">seconds</span>
+                </div>
+              </label>
+              <div class="actions">
+                <button on:click={saveSummaryGrace} disabled={summaryGraceBusy} data-testid="summary-grace-save">
+                  {summaryGraceBusy ? "Saving…" : "Save"}
+                </button>
+              </div>
             </div>
 
             <div class="card">

@@ -115,6 +115,20 @@
   onMount(() => document.addEventListener("click", onDocClick));
   onDestroy(() => document.removeEventListener("click", onDocClick));
 
+  // Unlike mute, this changes the ARTICLE payload — summaries are blanked
+  // per-user server-side — so the loaded list must be re-fetched too;
+  // refreshSidebar alone would leave stale summary text on screen.
+  async function toggleSummarize(f: FeedWithCounts) {
+    menuFor = null;
+    try {
+      await api.updateFeed(f.subscription_id, { summarize: !f.summarize });
+      await refreshSidebar();
+      await loadArticles(get(activeView));
+    } catch (err) {
+      console.error("toggleSummarize", err);
+    }
+  }
+
   async function toggleMute(f: FeedWithCounts) {
     menuFor = null;
     try {
@@ -736,6 +750,13 @@
           {f.muted ? "Unmute" : "Mute"}
         </button>
         {#if $summariesEnabled}
+          <!-- Same guard as Resummarize: with summaries off nothing is
+               summarized anyway, so the per-feed opt-out has nothing to act
+               on. The stored flag is untouched and the entry returns when
+               summaries are re-enabled. -->
+          <button on:click={() => toggleSummarize(f)} data-testid="feed-summarize-{f.id}">
+            {f.summarize ? "Don't summarize" : "Summarize"}
+          </button>
           <button on:click={() => resummarize(f)} data-testid="feed-resummarize-{f.id}">
             Resummarize
           </button>

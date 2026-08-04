@@ -127,6 +127,7 @@ export const api = {
       category_id?: number;
       clear_category?: boolean;
       muted?: boolean;
+      summarize?: boolean;
       url?: string;
     },
   ) => call<unknown>("PATCH", `/api/feeds/${id}`, req),
@@ -305,7 +306,7 @@ export const api = {
 
   // Daily digest -----------------------------------------------------
   getDigest: () => call<UserDigest>("GET", "/api/me/digest"),
-  setDigest: (d: Partial<UserDigest>) =>
+  setDigest: (d: DigestSettings) =>
     call<UserDigest>("POST", "/api/me/digest", d),
 
   // Starter packs ----------------------------------------------------
@@ -511,6 +512,12 @@ export interface AdminSettings {
   // than merely preferring it. Off by default — turning it on can lock out a
   // passkey enrolled on a security key with no PIN configured.
   passkey_require_uv: boolean;
+  // How long an article stays hidden waiting for its AI summary before being
+  // shown anyway. Only meaningful when summaries_enabled.
+  summary_grace_seconds: number;
+  summary_grace_seconds_floor: number;
+  summary_grace_seconds_ceil: number;
+  summaries_enabled: boolean;
 }
 
 // AdminSettingsPatch mirrors the backend's pointer-bag: only fields included
@@ -531,6 +538,7 @@ export interface AdminSettingsPatch {
   search_window_hours?: number;
   update_check_enabled?: boolean;
   passkey_require_uv?: boolean;
+  summary_grace_seconds?: number;
 }
 
 export interface TopFeed {
@@ -576,6 +584,16 @@ export interface UserDigest {
   last_sent_at: number;
   email_override: string;
 }
+
+/**
+ * The subset of UserDigest a client actually owns. `user_id` and `last_sent_at`
+ * are set by the server, so they are not sent on save — posting the whole GET
+ * response back is what caused issue #161.
+ */
+export type DigestSettings = Pick<
+  UserDigest,
+  "enabled" | "view_kind" | "view_value" | "hour_utc" | "minute_utc" | "email_override"
+>;
 
 export interface BrandingDTO {
   name: string;

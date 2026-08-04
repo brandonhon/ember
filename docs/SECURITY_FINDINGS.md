@@ -357,8 +357,11 @@ A consolidation pass over all 18 `internal/` packages, driven by characterizatio
 | V5-6 | HIGH | `fixed` | `internal/emailinbox/server.go` | **Silent mail loss.** The SMTP `Rcpt` handler overwrote the recipient instead of accumulating, so a message addressed to several Ember inboxes reached only the last one. The sender saw `250 OK` and nothing bounced. Found by driving a real SMTP conversation, not by unit-testing `Rcpt` in isolation. |
 | V5-7 | MEDIUM | `fixed` | `internal/poller/poller.go` | **Abusive outbound traffic.** Only fetch failures widened the retry interval; a feed returning 200 with unparseable content was re-requested at the floor interval forever (~48 requests/day at the default, at a third-party origin). Parse failures now back off on the same curve. |
 | V5-8 | LOW | `fixed` | `internal/opml/opml.go` | **Misreported count.** Import returned "feeds processed" while documenting itself as returning new subscriptions, so re-importing the same file claimed to have added everything again. |
+| V5-9 | LOW | `fixed` | `internal/poller/lasterror.go` | **Information disclosure.** `feeds.last_error` stored the raw fetch error and is read by every subscriber of that feed via `GET /api/feeds`. Go transport errors embed the resolved address — `dial tcp 10.0.0.5:443: connect: connection refused` exposes part of the server's internal network map, and redirect chains can add internal hostnames. Now stores a classified summary (HTTP status, timeout, DNS, TLS, connect, redirect loop, parse failure, SSRF-guard reasons); the full error still goes to the log. The mapping is **fail-closed** — an unrecognised error yields a generic message rather than falling through to `err.Error()`. |
 
-**Accepted / not changed:** `Feed.LastError` still surfaces raw `err.Error()` text to any subscriber via the sidebar tooltip — useful diagnostics weighed against a low-severity disclosure; flagged deliberately rather than changed. A latent (not live) lazy-write race on `Ollama.HTTPClient` exists only for a hand-constructed summarizer; production always goes through `NewOllama`.
+**Accepted / not changed:** a latent (not live) lazy-write race on `Ollama.HTTPClient` exists only for a hand-constructed summarizer; production always goes through `NewOllama`.
+
+**Since fixed:** `Feed.LastError` was originally left carrying raw `err.Error()` text — flagged here as diagnostics-vs-disclosure and deferred. It has since been **fixed** (V5-9 below).
 
 ---
 
