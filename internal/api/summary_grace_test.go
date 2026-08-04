@@ -2,12 +2,15 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/brandonhon/ember/internal/store"
+	"github.com/brandonhon/ember/internal/summarize"
 )
 
 // The grace window bounds how long an article stays hidden waiting for its AI
@@ -71,6 +74,44 @@ func TestAdminSettings_SummaryGraceRoundTrip(t *testing.T) {
 	// ...and the rejected write left the previous value alone.
 	if n, _ := get()["summary_grace_seconds"].(float64); int(n) != 45 {
 		t.Errorf("value after rejected writes = %v, want 45 unchanged", get()["summary_grace_seconds"])
+	}
+}
+
+// The round-trip above covers how the setting is STORED. This covers how it is
+// TRANSLATED into the cutoff timestamp, which is the value the article list,
+// the smart counts and the per-feed unread query must all receive identically
+// — the place where a wrong number desyncs a badge from the column it counts.
+func TestSummaryGraceBefore_TranslatesSettingToCutoff(t *testing.T) {
+	ctx := context.Background()
+	withSummarizer := func(d *Dependencies) {
+		d.Ollama = summarize.NewOllama("http://ollama.invalid", "llama3")
+	}
+
+	// No summarizer wired up: the gate is inactive everywhere, signalled by 0.
+	off := newHarnessWith(t, func(d *Dependencies) { d.SummaryGraceSecondsFallback = 120 })
+	if got := off.dep.summaryGraceBefore(ctx); got != 0 {
+		t.Errorf("summaries off: cutoff = %d, want 0 (gate inactive)", got)
+	}
+
+	// A grace of 0 means "show articles as soon as they're fetched", which needs
+	// a cutoff in the FUTURE: a cutoff of exactly now would still withhold an
+	// article fetched during this same second.
+	zero := newHarnessWith(t, func(d *Dependencies) {
+		withSummarizer(d)
+		d.SummaryGraceSecondsFallback = 0
+	})
+	if now, got := time.Now().Unix(), zero.dep.summaryGraceBefore(ctx); got <= now {
+		t.Errorf("grace 0: cutoff = %d, want > now (%d) so a just-fetched article passes", got, now)
+	}
+
+	// A positive grace puts the cutoff that many seconds in the past.
+	on := newHarnessWith(t, func(d *Dependencies) {
+		withSummarizer(d)
+		d.SummaryGraceSecondsFallback = 300
+	})
+	now := time.Now().Unix()
+	if got := on.dep.summaryGraceBefore(ctx); now-got < 295 || now-got > 305 {
+		t.Errorf("grace 300: cutoff is %ds before now, want ~300", now-got)
 	}
 }
 
