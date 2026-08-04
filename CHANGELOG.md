@@ -101,6 +101,15 @@ full commit-level list; this file curates the highlights and behavior changes.
 
 ### Fixed
 
+- **Scheduled OPML exports written before noon UTC are no longer lost.** The
+  export filename was built from a Go time layout that had `.opml` folded into
+  it, and Go reads the `pm` in that extension as the AM/PM marker — so every
+  export produced between 00:00 and 11:59 UTC was written as `.oaml` instead.
+  Those files landed on disk but never matched the `.opml` filter behind the
+  admin export list, leaving them invisible in **Settings → Database** and
+  impossible to download or delete from the UI. Affects 0.9.4 and 0.9.5;
+  existing `.oaml` files can be renamed to `.opml` to bring them back into the
+  list.
 - **Articles no longer stay hidden waiting for their AI summary.** When
   summaries are enabled, a new article was held back until the model had
   finished with it — with no time limit. On CPU-only inference that meant

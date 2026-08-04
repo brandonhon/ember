@@ -5,10 +5,12 @@ import (
 	"context"
 	"encoding/xml"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/brandonhon/ember/internal/models"
 	"github.com/brandonhon/ember/internal/store"
@@ -234,5 +236,18 @@ func TestImport_MalformedXML(t *testing.T) {
 	uid := seedUser(t, st, "alice")
 	if _, err := NewService(st).Import(context.Background(), uid, strings.NewReader("<opml><body>")); err == nil {
 		t.Error("truncated OPML accepted")
+	}
+}
+
+// The extension must survive every hour of the day: a "pm" folded into a time
+// layout is the AM/PM marker, so a morning export used to be written as
+// ".oaml" and then ignored by the ".opml" listing filter.
+func TestExportFilename_ExtensionIsLiteralAtEveryHour(t *testing.T) {
+	for hour := range 24 {
+		got := exportFilename(time.Date(2026, 8, 4, hour, 47, 23, 0, time.UTC))
+		want := fmt.Sprintf("ember-2026-08-04-%02d4723.opml", hour)
+		if got != want {
+			t.Errorf("hour %02d: filename = %q, want %q", hour, got, want)
+		}
 	}
 }

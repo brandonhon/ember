@@ -172,6 +172,14 @@ func (s *Service) Import(ctx context.Context, userID int64, body io.Reader) (int
 	return created, nil
 }
 
+// exportFilename names a timestamped export. The ".opml" suffix is concatenated
+// rather than folded into the layout string: Go reads a "pm" inside a layout as
+// the AM/PM marker, so a morning export would land as ".oaml" and never match
+// the ".opml" listing filter in store.dbops.
+func exportFilename(t time.Time) string {
+	return t.Format("ember-2006-01-02-150405") + ".opml"
+}
+
 // WriteExport writes the user's OPML to a timestamped file under dir and returns
 // the path + size. It probes write access up front so a bind-mounted host path
 // that isn't writable by the server's user fails with a clear message instead of
@@ -189,7 +197,7 @@ func (s *Service) WriteExport(ctx context.Context, userID int64, dir string) (st
 		return "", 0, fmt.Errorf("opml export: %s is not writable by the server (running as uid %d) — make the bind-mounted host path owned by or writable by that user: %w", dir, os.Getuid(), err)
 	}
 	_ = os.Remove(probe)
-	out := filepath.Join(dir, time.Now().UTC().Format("ember-2006-01-02-150405.opml"))
+	out := filepath.Join(dir, exportFilename(time.Now().UTC()))
 	f, err := os.OpenFile(out, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600) //nolint:gosec // dir is an admin-only, validated (absolute, quote-free) setting; the filename is server-generated.
 	if err != nil {
 		return "", 0, fmt.Errorf("opml export: create %s: %w", out, err)
