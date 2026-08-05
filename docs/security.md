@@ -136,7 +136,7 @@ The card thumbnail and the reader's lead image are served from Ember's own origi
 ## Database
 
 - SQLite WAL with single-writer semantics. The write handle is capped at `MaxOpenConns=1` to avoid `SQLITE_BUSY` storms; a second, read-only handle (`query_only`, 4 connections) serves heavy read queries alongside it, and SQLite itself rejects any write attempted on that handle.
-- `synchronous=NORMAL` (safe with WAL), `busy_timeout=5s`, 64 MiB cache, 256 MiB mmap.
+- `synchronous=NORMAL` (safe with WAL), `busy_timeout=5s`, 256 MiB mmap, and a 64 MiB page cache on the write handle plus 16 MiB on each of the four read connections — a total page-cache budget of roughly 128 MiB, which is the figure to size a container memory limit against.
 - Backups via `VACUUM INTO` are safe to run live and produce a compacted snapshot.
 
 ## Secrets at rest

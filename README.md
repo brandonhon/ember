@@ -74,7 +74,7 @@ You'll land on an onboarding panel that points to starter packs or OPML import. 
 - OPML import/export. Optional scheduled OPML export to `/data/exports/`.
 - **Tiny Tiny RSS migration**: pull your subscriptions (recreating TT-RSS categories as folders) plus starred/archived articles from a running instance via its API, or upload an article export file. Already-subscribed feeds are skipped, so it's safe to re-run.
 - **Subscribe by URL**: paste either a feed URL or just the homepage. Ember follows `<link rel=alternate>` and probes common feed paths (`/feed`, `/rss`, `/atom.xml`, `/feed.xml`, `/index.xml`).
-- Drag-to-reorder feeds and folders.
+- Drag to reorder feeds and folders, or to move a feed into another folder. New feeds can be filed straight from the add-feed form.
 - Mark-all-read at view / feed / category scope.
 
 ### Sign-in
@@ -197,11 +197,11 @@ cd web && npx playwright install chromium
 npx playwright test           # spawns the binary in test mode against a temp DB
 ```
 
-In test mode (`EMBER_TEST_MODE=1`) the binary seeds a deterministic admin (`admin` / `admintest`) plus 12 fixture articles and a single feed, so every spec has known data to assert against.
+In test mode (`EMBER_TEST_MODE=1`) the binary seeds a deterministic admin (`admin` / `admintest`) plus two layers of fixtures: the e2e contract (feed 1, "Example Tech Blog", with three articles whose exact titles/ids/freshness the Playwright suite asserts) and a realistic library on top — 6 feeds across 3 folders, with summaries, thumbnails, and cross-feed duplicates — which is also what the documentation screenshots capture.
 
 ## Database
 
-SQLite with WAL mode, 64 MiB cache, 256 MiB mmap, busy_timeout=5s, synchronous=NORMAL. Single connection — SQLite serializes writes, and the workload is small enough that the connection pool isn't a bottleneck. `PRAGMA optimize` runs after every startup migrate. Backups via `VACUUM INTO` are safe to run live.
+SQLite with WAL mode, 256 MiB mmap, busy_timeout=5s, synchronous=NORMAL. **Two handles over the same file**: a write handle capped at one connection (SQLite has a single writer, and more than one hits `SQLITE_BUSY` in a form `busy_timeout` doesn't cover) with a 64 MiB page cache, plus a read-only pool of four `query_only` connections at 16 MiB each that serves the heavy list/count/search queries. WAL lets those run alongside the writer, so the UI no longer queues behind whatever the poller is writing — worst-case read latency during a fetch drops from ~166ms to ~23ms. Total page-cache budget is therefore ~128 MiB, not 64; size container memory limits accordingly. If the read pool can't be opened, Ember logs a warning and serves reads from the write handle exactly as before. `PRAGMA optimize` runs after every startup migrate. Backups via `VACUUM INTO` are safe to run live.
 
 Migration files live under `internal/db/migrations/` and are embedded into the binary.
 

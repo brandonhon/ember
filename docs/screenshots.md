@@ -4,7 +4,7 @@ Captured against the test-mode binary via `web/scripts/screenshots-dual-theme.mj
 
 ## Three-pane reader
 
-The default layout: sidebar of folders + feeds, the article list, and the reader. Keyboard navigation (`j` / `k` / `r` / `m` / `s` / `?`), drag-to-reorder folders and feeds within them.
+The default layout: sidebar of folders + feeds, the article list, and the reader. Keyboard navigation (`j` / `k` / `r` / `m` / `s` / `?`), drag to reorder folders and feeds, or to move a feed from one folder to another.
 
 <img src="./public/screenshots/reader-desktop-light.png" alt="Reader desktop (light)" class="dark-only">
 <img src="./public/screenshots/reader-desktop-dark.png"  alt="Reader desktop (dark)"  class="light-only">
