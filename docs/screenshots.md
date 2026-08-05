@@ -48,6 +48,8 @@ Paper-and-ink split layout. Branding (app name, page title, favicon) is admin-co
 
 ≤900px viewport: sidebar collapses into an off-canvas drawer. Article list and reader take turns at full width — selecting an article switches to the reader; a back arrow returns to the list. Below 520px, the brand text hides so the search bar has room.
 
+The drag gestures described above need a mouse or trackpad: HTML5 drag-and-drop produces no events from touch input, on any browser. Refile a feed from its **⋯ → Edit feed → Folder** instead, or choose the folder in the add-feed form when you subscribe.
+
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin: 24px 0;">
 
 <div>

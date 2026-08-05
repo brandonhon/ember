@@ -37,4 +37,35 @@ test.describe("mobile viewport", () => {
     await expect(list).toBeVisible();
     expect(await list.evaluate((el) => el.scrollTop)).toBe(before);
   });
+
+  // HTML5 drag-and-drop produces no events from touch input, so the sidebar's
+  // drag-to-file gesture is desktop-only. Edit feed → Folder is the only way a
+  // touch user can move a feed between folders — guard it explicitly.
+  test("a feed can be refiled without dragging (the only touch-reachable path)", async ({ page }) => {
+    await signIn(page);
+    await page.setViewportSize({ width: 412, height: 839 });
+    await page.locator('[aria-label="Open sidebar"]').click();
+
+    const folderOf = () =>
+      page.evaluate(() =>
+        document
+          .querySelector('[data-testid="feed-5"]')
+          ?.closest(".folder")
+          ?.querySelector(".folder-name")
+          ?.textContent?.trim(),
+      );
+    const start = await folderOf();
+    const dest = start === "World" ? "Technology" : "World";
+
+    await page.getByTestId("feed-actions-5").click();
+    await page.getByTestId("feed-edit-5").click();
+    await page.getByTestId("edit-feed-folder").selectOption({ label: dest });
+    await page.getByTestId("edit-feed-save").click();
+
+    await expect.poll(folderOf).toBe(dest);
+    await page.reload();
+    await expect(page.getByTestId("article-list")).toBeVisible();
+    await page.locator('[aria-label="Open sidebar"]').click();
+    await expect.poll(folderOf).toBe(dest);
+  });
 });
