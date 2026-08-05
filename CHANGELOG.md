@@ -15,6 +15,34 @@ them.
 
 ## [Unreleased]
 
+### Added
+
+- The **Add feed** form now has a **Folder** picker, so a new feed can be filed
+  as it's added instead of being dragged into place afterwards. It defaults to
+  the folder you're currently viewing (and to "No folder" from any other view);
+  when a site publishes several feeds, every feed picked lands in the chosen
+  folder.
+
+### Security
+
+- `POST /api/feeds` now verifies that a supplied `category_id` names a folder
+  belonging to the caller. It previously accepted any category id, so a
+  subscription could be filed under another user's folder. The folder list and
+  article views are filtered per user, so no other user's content was exposed;
+  the affected subscription simply became invisible in its owner's sidebar.
+
+### Fixed
+
+- Dragging a feed onto a feed row in another folder now actually moves it. The
+  subscription's folder was saved on the server, but the sidebar kept showing
+  the feed under its old folder — and its position within the new folder was
+  never saved — until the page was reloaded.
+- Dropping a feed onto **Uncategorized** no longer fails with a server error;
+  the sidebar now clears the folder instead of sending an invalid folder id.
+- `category_id: 0` on the feed endpoints now returns 400 with an explanatory
+  message instead of a 500. Zero is not a folder id — removing a feed's folder
+  is `clear_category: true`.
+
 ### Changed
 
 - Bumped the pinned `actions/checkout` from 6.0.2 to 7.0.1 across all five

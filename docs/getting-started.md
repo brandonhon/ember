@@ -118,6 +118,12 @@ Migrations are embedded in the binary and apply automatically on startup; no man
    - `https://www.youtube.com/@handle` — channel handle, resolved automatically
    - `https://www.youtube.com/playlist?list=PL...` — playlist video feed
    - `https://<instance>/@user` — Mastodon, Pleroma, or Akkoma profile feed
+
+   The add-feed form also has a **Folder** picker, so a new feed can be filed as
+   it's added rather than dragged in afterwards. It defaults to the folder you're
+   currently viewing, or "No folder" from any other view; when a site publishes
+   several feeds, every feed you pick lands in the folder you chose. You can move
+   a feed later by dragging it onto another folder, or via **Edit feed**.
 6. (Optional) **Settings → Passkeys** to register a passkey for password-less sign-in. Requires `EMBER_PUBLIC_URL` to be set.
 7. (Optional) Configure SMTP env vars (see [Configuration](/configuration#optional-env-vars)) and enable a daily digest email from your profile.
 8. (Optional) Install Ember as a PWA — Chrome / Edge / Safari "Install app" menu. Once installed, new articles trigger an OS-level numeric badge on the app icon (taskbar / dock / launcher) in addition to the in-tab favicon dot.

@@ -72,6 +72,21 @@ func (d *Dependencies) handleAddFeed(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "bad_request", "url required")
 		return
 	}
+	// A target folder must be a real category owned by the caller. The
+	// subscriptions FK only proves the row exists, not whose it is — without
+	// this a caller could file a new subscription under another user's folder,
+	// and a non-positive id would reach SQLite as an FK violation (a 500 for
+	// what is really a bad request). Same check handleUpdateFeed relies on
+	// store.UpdateSubscription for.
+	if req.CategoryID != nil {
+		if *req.CategoryID <= 0 {
+			writeError(w, http.StatusBadRequest, "bad_request", "category_id must be a positive category id; omit it for no folder")
+			return
+		}
+		if _, err := d.Store.GetCategory(r.Context(), u.ID, *req.CategoryID); mapStoreError(w, err) {
+			return
+		}
+	}
 	// Let the user omit the scheme: prepend https:// (and upgrade an explicit
 	// http://) before validation so "example.com/feed" just works.
 	req.URL = feed.NormalizeInputURL(req.URL)

@@ -28,6 +28,8 @@ For vulnerability reporting, see [SECURITY.md](https://github.com/brandonhon/emb
 
 Every user-scoped store query carries `WHERE user_id = ?` so users can't read each other's feeds, shares, tags, or saved searches. Article tag endpoints additionally call `requireArticleAccess`, which confirms the user is subscribed to the article's feed before allowing tag mutations.
 
+Scoping reads isn't sufficient where a request body carries a **reference to another row** — a foreign key the caller chooses. Those are checked for ownership on the way in, not just filtered on the way out: `category_id` on `POST /api/feeds` and `PATCH /api/feeds/{id}`, and `board_id` / `category_id` on `POST /api/articles/mark-all-read`, all resolve the id against the caller's own rows first and 404 on anything else. A database foreign key proves only that the row exists, never whose it is.
+
 The admin file-management endpoints that take a filename — `DELETE /api/admin/db/backups/{name}` and `…/exports/{name}` — reject any `{name}` that isn't a bare basename with the expected extension (`.db` / `.opml`), so a crafted value can't traverse out of the configured backup/export directory. Per-user filter import (`POST /api/filters/import`) validates each rule through the same `ParseMatch` / `ValidateActionWithValue` path as a manual create and silently skips anything invalid or beyond the per-user cap, so a hand-edited bundle can't inject malformed rules.
 
 ## CSRF

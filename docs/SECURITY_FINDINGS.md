@@ -365,6 +365,17 @@ A consolidation pass over all 18 `internal/` packages, driven by characterizatio
 
 ---
 
+## Followup (2026-08-05) — cross-user category reference on add-feed
+
+Found while adding the folder picker to the add-feed form, not by an audit: exposing an existing request field in the UI prompted a check of who validates it. Mutation-verified (the fix was reverted and the test confirmed to fail: `cross-user category on add = 201, want 404`).
+
+| ID | Severity | Status | File | Finding |
+| --- | --- | --- | --- | --- |
+| V6-1 | LOW | `fixed` | `internal/api/feed_handlers.go` | **Cross-user object reference on write.** `POST /api/feeds` passed the caller-supplied `category_id` straight to `store.Subscribe`, which — unlike `store.UpdateSubscription` — does no ownership lookup. A caller could file their own new subscription under **another user's** folder id. Not a disclosure: every list query is `user_id`-scoped, so the victim never sees the row and the attacker gains no read access; the practical effect is self-inflicted (the subscription is grouped under a category the owner's sidebar never renders, so it silently disappears) plus a weak existence oracle for foreign category ids (404 vs 201). `handleAddFeed` now does the same `GetCategory(ctx, u.ID, id)` check `UpdateSubscription` does. Same class as V4-6, which fixed `handleMarkAllRead` but didn't sweep the other `category_id` consumers. |
+| V6-2 | LOW | `fixed` | `internal/api/feed_handlers.go` | **Error-class confusion.** `category_id: 0` on `POST /api/feeds` and `PATCH /api/feeds/{id}` reached SQLite as a `FOREIGN KEY constraint failed` and surfaced as a 500 `internal`, logging a store error for what is a malformed request. Both now return 400 naming `clear_category` as the way to remove a folder. |
+
+---
+
 ## Static Analysis Baseline (2026-06-10)
 
 - `go vet ./...` — clean
@@ -390,5 +401,5 @@ A consolidation pass over all 18 `internal/` packages, driven by characterizatio
 - **HTML sanitization** — bluemonday on all ingested content; `SafeHTTPURL` on all feed-supplied links in the main parse path
 - **SMTP hardening** — CRLF-stripping on all headers, StartTLS enforced for non-loopback relays, TLS 1.2 minimum
 - **Admin route protection** — all `/api/admin/*` and `/metrics` behind `RequireAdmin`
-- **IDOR prevention** — every store method scopes to `user_id`; no object reference leakage found
+- **IDOR prevention** — every store method scopes its *reads* to `user_id`; no object reference leakage found. Note that scoping reads is not sufficient on its own for a **caller-supplied foreign key** (e.g. `category_id` on a subscription): those need an explicit ownership lookup on write, which V4-6 and V6-1 added to the two endpoints that were missing one
 - **Password hash never serialized** — `PasswordHash` and `FeverToken` both tagged `json:"-"`

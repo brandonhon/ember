@@ -80,6 +80,8 @@
   $effect(() => { if (addFormOpen) addFeedInputEl?.focus(); });
   let addingFeed = $state(false);
   let newFeedURL = $state("");
+  // Folder the new feed lands in. 0 = no folder, matching EditFeedModal.
+  let newFeedCategory = $state(0);
   let addError = $state("");
   // When a site advertises more than one feed, hold the candidates here to
   // open the picker modal instead of subscribing immediately.
@@ -638,6 +640,20 @@
     return $activeView.kind === "board" && $activeView.id === id;
   }
 
+  // Opening the form pre-selects the folder the user is currently looking at —
+  // "add a feed to this folder" is the usual intent when a folder is the active
+  // view. Any other view starts at "No folder".
+  function openAddFeed() {
+    newFeedCategory = $activeView.kind === "category" ? $activeView.id : 0;
+    addFormOpen = true;
+  }
+
+  // The API takes category_id only for a real folder; 0 is not a category row
+  // and would trip the subscriptions FK, so omit it for "No folder".
+  function newFeedCategoryArg(): number | undefined {
+    return newFeedCategory > 0 ? newFeedCategory : undefined;
+  }
+
   async function submitAddFeed(e: Event) {
     e.preventDefault();
     const url = newFeedURL.trim();
@@ -658,7 +674,7 @@
         pickerFeeds = feedsFound;
         return; // picker drives the rest; keep the form populated until done
       }
-      await api.addFeed(feedsFound.length === 1 ? feedsFound[0].url : url);
+      await api.addFeed(feedsFound.length === 1 ? feedsFound[0].url : url, newFeedCategoryArg());
       await afterFeedsAdded();
     } catch (err) {
       addError = err instanceof ApiError ? err.message : String(err);
@@ -667,10 +683,12 @@
     }
   }
 
-  // Add the feeds the user picked from the multi-feed modal, in sequence.
+  // Add the feeds the user picked from the multi-feed modal, in sequence. They
+  // all land in the folder chosen on the add form that opened the picker.
   async function addPickedFeeds(urls: string[]) {
+    const cat = newFeedCategoryArg();
     for (const u of urls) {
-      await api.addFeed(u);
+      await api.addFeed(u, cat);
     }
     await afterFeedsAdded();
   }
@@ -681,6 +699,7 @@
   // summarizer pending count once Ollama starts chewing the new feed(s).
   async function afterFeedsAdded() {
     newFeedURL = "";
+    newFeedCategory = 0;
     addFormOpen = false;
     await refreshSidebar();
     await loadArticles($activeView);
@@ -690,6 +709,7 @@
   function cancelAdd() {
     addFormOpen = false;
     newFeedURL = "";
+    newFeedCategory = 0;
     addError = "";
   }
 
@@ -981,7 +1001,7 @@
 
     <div class="add-row">
       {#if !addFormOpen}
-        <button class="add-btn" on:click={() => (addFormOpen = true)} data-testid="open-add-feed">
+        <button class="add-btn" on:click={openAddFeed} data-testid="open-add-feed">
           <svg viewBox="0 0 24 24" width="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" /></svg>
           Add feed
         </button>
@@ -995,6 +1015,15 @@
             disabled={addingFeed}
             data-testid="add-feed-input"
           />
+          <label class="add-form-folder">
+            <span>Folder</span>
+            <select bind:value={newFeedCategory} disabled={addingFeed} data-testid="add-feed-folder">
+              <option value={0}>No folder</option>
+              {#each $categories as c (c.id)}
+                <option value={c.id}>{c.name}</option>
+              {/each}
+            </select>
+          </label>
           <div class="add-form-actions">
             <button type="button" class="ghost" on:click={cancelAdd}>Cancel</button>
             <button type="submit" disabled={addingFeed || !newFeedURL.trim()} data-testid="add-feed-submit">
@@ -1567,6 +1596,24 @@
     color: var(--ink);
   }
   .add-form input:focus { outline: none; border-color: var(--ember); }
+  .add-form-folder { display: flex; align-items: center; gap: 8px; }
+  .add-form-folder span {
+    color: var(--ink-faint);
+    font-size: 11.5px;
+    font-weight: 600;
+  }
+  .add-form-folder select {
+    flex: 1;
+    min-width: 0;
+    padding: 6px 8px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-family: var(--font-ui);
+    font-size: 12.5px;
+    background: var(--card);
+    color: var(--ink);
+  }
+  .add-form-folder select:focus { outline: none; border-color: var(--ember); }
   .add-form-actions { display: flex; gap: 6px; justify-content: flex-end; }
   .add-form-actions button {
     padding: 5px 11px;
