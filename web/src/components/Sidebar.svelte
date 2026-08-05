@@ -230,6 +230,13 @@
     return dragKey(a) === dragKey(b);
   }
 
+  // Category patch for a drop target. catID 0 means "Uncategorized", which the
+  // server only accepts as clear_category — category_id 0 is not a real row and
+  // trips the subscriptions FK.
+  function categoryPatch(catID: number): { category_id?: number; clear_category?: boolean } {
+    return catID > 0 ? { category_id: catID } : { clear_category: true };
+  }
+
   function onFolderDragStart(e: DragEvent, catID: number) {
     drag = { kind: "folder", id: catID };
     e.dataTransfer?.setData("text/x-ember", dragKey(drag));
@@ -282,25 +289,27 @@
   }
   async function onFeedDrop(e: DragEvent, target: FeedWithCounts) {
     e.preventDefault();
-    if (!drag || drag.kind !== "feed") {
+    // Snapshot the drag ref: the browser fires dragend (which clears `drag`)
+    // as soon as this handler returns, so every read after the first await
+    // below must go through the local copy.
+    const d = drag;
+    if (!d || d.kind !== "feed") {
       onDragEnd();
       return;
     }
-    if (drag.id === target.subscription_id) {
+    if (d.id === target.subscription_id) {
       onDragEnd();
       return;
     }
     const targetCat = target.category_id ?? 0;
-    const crossCat = drag.cat !== targetCat;
+    const crossCat = d.cat !== targetCat;
 
     // For cross-category drops, first move the subscription into the target
     // category (or out of any category when targetCat === 0). The reorder
     // call below then slots it at the target's position in the new list.
     if (crossCat) {
       try {
-        // Pointer-to-pointer: CategoryID *int64 — *p=0 sets NULL on the
-        // server (matches "no category"), *p>0 sets the new category.
-        await api.updateFeed(drag.id, { category_id: targetCat });
+        await api.updateFeed(d.id, categoryPatch(targetCat));
       } catch (err) {
         console.error("updateFeed category", err);
         await refreshSidebar();
@@ -313,7 +322,7 @@
     // lives in the target category before the server roundtrip finishes.
     if (crossCat) {
       feeds.update((fs) => fs.map((f) =>
-        f.subscription_id === drag!.id
+        f.subscription_id === d.id
           ? { ...f, category_id: targetCat > 0 ? targetCat : undefined }
           : f
       ));
@@ -335,7 +344,7 @@
     );
     const ids = targetList.map((f) => f.subscription_id);
     // The dragged feed is in targetList now (we updated category_id above).
-    const from = ids.indexOf(drag.id);
+    const from = ids.indexOf(d.id);
     const to = ids.indexOf(target.subscription_id);
     if (from < 0 || to < 0) {
       onDragEnd();
@@ -521,7 +530,7 @@
       return; // already in this folder
     }
     try {
-      await api.updateFeed(d.id, { category_id: catID }); // 0 → NULL (Uncategorized)
+      await api.updateFeed(d.id, categoryPatch(catID));
       await refreshSidebar();
     } catch (err) {
       console.error("move feed to folder", err);

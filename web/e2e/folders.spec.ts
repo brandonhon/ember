@@ -28,4 +28,29 @@ test.describe("folders", () => {
     await page.getByTestId("toggle-collapse-all").click();
     await expect(page.getByTestId("feed-1")).toBeVisible();
   });
+
+  test("dragging a feed onto a feed row in another folder moves it", async ({ page }) => {
+    await signIn(page);
+    const folder = (name: string) =>
+      page.locator("div.folder").filter({
+        has: page.locator('[data-testid^="folder-name-"]', { hasText: name }),
+      });
+    const design = folder("Design");
+    const tech = folder("Technology");
+
+    const dragged = design.locator("[data-testid^='feed-']").first();
+    const id = await dragged.getAttribute("data-testid");
+    await dragged.dragTo(tech.locator("[data-testid^='feed-']").first());
+
+    // No reload: the optimistic store update must already show the move. This
+    // regressed once because the drop handler read the drag ref after an await,
+    // by which point dragend had cleared it.
+    await expect(tech.locator(`[data-testid='${id}']`)).toBeVisible();
+    await expect(design.locator(`[data-testid='${id}']`)).toHaveCount(0);
+
+    // ...and the server persisted it.
+    await page.reload();
+    await expect(page.getByTestId("article-list")).toBeVisible();
+    await expect(tech.locator(`[data-testid='${id}']`)).toBeVisible();
+  });
 });

@@ -150,6 +150,13 @@ func (d *Dependencies) handleUpdateFeed(w http.ResponseWriter, r *http.Request) 
 	if !decodeJSON(w, r, &req) {
 		return
 	}
+	// category_id 0 (or negative) is not a category row: it reaches SQLite as an
+	// FK violation and surfaces as a 500 for what is really a bad request.
+	// Removing a folder is clear_category, not category_id 0.
+	if req.CategoryID != nil && *req.CategoryID <= 0 {
+		writeError(w, http.StatusBadRequest, "bad_request", "category_id must be a positive category id; use clear_category to remove the folder")
+		return
+	}
 	// Source-URL change: resolve + validate the new URL, then re-point this
 	// subscription at it. Done before the metadata patch so a bad URL fails
 	// without half-applying.
