@@ -96,6 +96,10 @@
   let renamingCategoryID = $state<number | null>(null);
   let renameValue = $state("");
   let colorPickerFor = $state<number | null>(null);
+  // Feed whose "Move to folder" panel is open. Dragging a feed does the same
+  // job, but that gesture needs a pointer — HTML5 drag-and-drop gets no events
+  // from touch — so this is the route on a phone or tablet.
+  let movingFeed = $state<FeedWithCounts | null>(null);
 
   const CAT_PALETTE = ["#3b82c4", "#4f7a3d", "#b07d1a", "#a93b16", "#7a3d8b", "#1d4ed8", "#7c4a2a", "#5b6770"];
 
@@ -103,6 +107,16 @@
     const t = e.target as HTMLElement;
     if (menuFor !== null && !t.closest(`[data-feed-menu-for]`) && !t.closest(`[data-feed-actions-trigger]`)) {
       menuFor = null;
+    }
+    if (
+      movingFeed !== null &&
+      !t.closest(`[data-feed-move-for]`) &&
+      // The click that opens the panel comes from inside the feed menu and
+      // bubbles to here; without this it would close the panel immediately.
+      !t.closest(`[data-feed-menu-for]`) &&
+      !t.closest(`[data-feed-actions-trigger]`)
+    ) {
+      movingFeed = null;
     }
     if (
       categoryMenuFor !== null &&
@@ -582,6 +596,19 @@
     onDragEnd();
   }
 
+  // Refile a feed from the ⋯ menu. Same server call the drag path makes, so the
+  // two stay consistent — including catID 0 meaning "no folder".
+  async function moveFeedToFolder(f: FeedWithCounts, catID: number) {
+    movingFeed = null;
+    if ((f.category_id ?? 0) === catID) return;
+    try {
+      await api.updateFeed(f.subscription_id, categoryPatch(catID));
+    } catch (err) {
+      console.error("move feed to folder", err);
+    }
+    await refreshSidebar();
+  }
+
   function startRenameCategory(catID: number, current: string) {
     categoryMenuFor = null;
     renamingCategoryID = catID;
@@ -813,6 +840,9 @@
         <button on:click={() => { editingFeed = f; menuFor = null; }} data-testid="feed-edit-{f.id}">
           Edit feed
         </button>
+        <button on:click={() => { movingFeed = f; menuFor = null; }} data-testid="feed-move-{f.id}">
+          Move to folder…
+        </button>
         <button on:click={() => markFeedRead(f)} data-testid="feed-mark-read-{f.id}">
           Mark feed read
         </button>
@@ -834,6 +864,28 @@
         <button class="danger" on:click={() => deleteFeed(f)} data-testid="feed-delete-{f.id}">
           Delete
         </button>
+      </div>
+    {/if}
+    {#if movingFeed?.id === f.id}
+      <div class="feed-move-menu" data-feed-move-for={f.id}>
+        <button
+          class:current={(f.category_id ?? 0) === 0}
+          aria-current={(f.category_id ?? 0) === 0}
+          on:click={() => moveFeedToFolder(f, 0)}
+          data-testid="feed-move-target-{f.id}-0"
+        >
+          <span class="tick">{(f.category_id ?? 0) === 0 ? "✓" : ""}</span>No folder
+        </button>
+        {#each $categories as c (c.id)}
+          <button
+            class:current={(f.category_id ?? 0) === c.id}
+            aria-current={(f.category_id ?? 0) === c.id}
+            on:click={() => moveFeedToFolder(f, c.id)}
+            data-testid="feed-move-target-{f.id}-{c.id}"
+          >
+            <span class="tick">{(f.category_id ?? 0) === c.id ? "✓" : ""}</span>{c.name}
+          </button>
+        {/each}
       </div>
     {/if}
   </div>
@@ -1605,6 +1657,43 @@
   .feed-menu button:hover { background: var(--line-soft); }
   .feed-menu button.danger { color: #b91c1c; }
   .feed-menu button.danger:hover { background: #fef2f2; }
+  /* Folder list swapped in for the menu, same anchor — mirrors the folder
+     colour picker. Capped so a long folder list scrolls instead of running off
+     the bottom of the rail. */
+  .feed-move-menu {
+    position: absolute;
+    right: 4px;
+    top: calc(100% + 2px);
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: var(--shadow-pane);
+    padding: 4px;
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 150px;
+    max-height: 244px;
+    overflow-y: auto;
+  }
+  .feed-move-menu button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--ink);
+    text-align: left;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .feed-move-menu button:hover { background: var(--line-soft); }
+  .feed-move-menu button.current { color: var(--ember); font-weight: 600; }
+  .feed-move-menu .tick { width: 10px; flex: none; font-size: 10px; }
   .favicon {
     width: 18px;
     height: 18px;

@@ -23,6 +23,12 @@ them.
   when a site publishes several feeds, every feed picked lands in the chosen
   folder.
 
+- **Move to folder…** in a feed's **⋯** menu files it without dragging: pick
+  from the list of folders, or **No folder** to take it out of one. The folder
+  it's in now is ticked. Dragging still works and is often quicker with a mouse,
+  but it needs a pointer — HTML5 drag-and-drop receives no events from touch —
+  so this is the way to reorganise feeds on a phone or tablet.
+
 ### Security
 
 - `POST /api/feeds` now verifies that a supplied `category_id` names a folder

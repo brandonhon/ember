@@ -104,6 +104,47 @@ test.describe("feeds", () => {
     );
   });
 
+  test("the feed menu can move a feed to another folder and out again", async ({ page }) => {
+    await signIn(page);
+    const folderOf = () =>
+      page.evaluate(() =>
+        document
+          .querySelector('[data-testid="feed-5"]')
+          ?.closest(".folder")
+          ?.querySelector(".folder-name")
+          ?.textContent?.trim(),
+      );
+    const catID = (name: string) =>
+      page.evaluate(
+        (n: string) =>
+          Array.from(document.querySelectorAll('[data-testid^="folder-name-"]'))
+            .find((e) => e.textContent?.trim() === n)
+            ?.getAttribute("data-testid")
+            ?.replace("folder-name-", ""),
+        name,
+      );
+
+    await page.getByTestId("feed-actions-5").click();
+    await page.getByTestId("feed-move-5").click();
+    const panel = page.locator("[data-feed-move-for='5']");
+    await expect(panel).toBeVisible();
+    // The folder it's in is marked, so the panel says where it currently lives.
+    await expect(panel.locator("button.current")).toHaveCount(1);
+
+    await page.getByTestId(`feed-move-target-5-${await catID("World")}`).click();
+    await expect.poll(folderOf).toBe("World");
+
+    // 0 is "No folder" — the same clear_category path the drag-out uses.
+    await page.getByTestId("feed-actions-5").click();
+    await page.getByTestId("feed-move-5").click();
+    await page.getByTestId("feed-move-target-5-0").click();
+    await expect.poll(folderOf).toBe("Uncategorized");
+
+    await page.reload();
+    await expect(page.getByTestId("article-list")).toBeVisible();
+    await expect.poll(folderOf).toBe("Uncategorized");
+  });
+
   test("clicking the seeded feed scopes the article list to that feed", async ({ page }) => {
     await signIn(page);
     await page.getByTestId("feed-1").click();

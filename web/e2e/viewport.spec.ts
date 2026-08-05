@@ -39,9 +39,46 @@ test.describe("mobile viewport", () => {
   });
 
   // HTML5 drag-and-drop produces no events from touch input, so the sidebar's
-  // drag-to-file gesture is desktop-only. Edit feed → Folder is the only way a
-  // touch user can move a feed between folders — guard it explicitly.
-  test("a feed can be refiled without dragging (the only touch-reachable path)", async ({ page }) => {
+  // drag-to-file gesture is desktop-only. These two are how a touch user moves
+  // a feed between folders; both must keep working.
+  test("a feed can be refiled by tapping ⋯ → Move to folder", async ({ page }) => {
+    await signIn(page);
+    await page.setViewportSize({ width: 412, height: 839 });
+    await page.locator('[aria-label="Open sidebar"]').click();
+
+    const folderOf = () =>
+      page.evaluate(() =>
+        document
+          .querySelector('[data-testid="feed-5"]')
+          ?.closest(".folder")
+          ?.querySelector(".folder-name")
+          ?.textContent?.trim(),
+      );
+    const start = await folderOf();
+    const dest = start === "World" ? "Technology" : "World";
+    const id = await page.evaluate(
+      (n: string) =>
+        Array.from(document.querySelectorAll('[data-testid^="folder-name-"]'))
+          .find((e) => e.textContent?.trim() === n)
+          ?.getAttribute("data-testid")
+          ?.replace("folder-name-", ""),
+      dest,
+    );
+
+    await page.getByTestId("feed-actions-5").click();
+    await page.getByTestId("feed-move-5").click();
+    const panel = page.locator("[data-feed-move-for='5']");
+    await expect(panel).toBeVisible();
+    // It must fit the narrow rail rather than running off the edge.
+    const box = (await panel.boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(412);
+
+    await page.getByTestId(`feed-move-target-5-${id}`).click();
+    await expect.poll(folderOf).toBe(dest);
+  });
+
+  test("a feed can be refiled from Edit feed → Folder", async ({ page }) => {
     await signIn(page);
     await page.setViewportSize({ width: 412, height: 839 });
     await page.locator('[aria-label="Open sidebar"]').click();
