@@ -255,6 +255,9 @@
     // subscription's category_id alongside the position. Folders drag only
     // within the folder list.
     e.preventDefault();
+    // Claim it: the enclosing folder is a drop target too, and it would
+    // otherwise also highlight and move the feed without a position.
+    e.stopPropagation();
     if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
     dropTarget = target;
   }
@@ -291,6 +294,7 @@
   }
   async function onFeedDrop(e: DragEvent, target: FeedWithCounts) {
     e.preventDefault();
+    e.stopPropagation(); // this row handles it, not the enclosing folder
     // Snapshot the drag ref: the browser fires dragend (which clears `drag`)
     // as soon as this handler returns, so every read after the first await
     // below must go through the local copy.
@@ -508,16 +512,43 @@
       onDragOver(e, { kind: "folder", id: catID });
     } else if (drag.kind === "feed") {
       e.preventDefault();
+      e.stopPropagation();
       if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
       feedDropCat = catID;
     }
   }
   function onFolderHeadDrop(e: DragEvent, catID: number) {
     if (drag?.kind === "folder") {
+      e.stopPropagation();
       void onFolderDrop(e, catID);
     } else if (drag?.kind === "feed") {
+      e.stopPropagation();
       void onFolderFeedDrop(e, catID);
     }
+  }
+
+  // A feed released anywhere inside a folder — the header, a row, or the empty
+  // space around them — belongs in that folder. The header and the rows claim
+  // their own drops (they also set a position), so these wrapper handlers only
+  // run for the gaps, which is where a natural "drop it in the folder" gesture
+  // actually lands.
+  function onFolderBodyOver(e: DragEvent, catID: number) {
+    if (drag?.kind !== "feed") return;
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+    feedDropCat = catID;
+  }
+  // dragleave fires when the pointer crosses onto a child too, which would
+  // strobe the highlight; ignore those by checking the element we moved to.
+  function onFolderBodyLeave(e: DragEvent, catID: number) {
+    const to = e.relatedTarget;
+    const self = e.currentTarget;
+    if (to instanceof Node && self instanceof Node && self.contains(to)) return;
+    if (feedDropCat === catID) feedDropCat = null;
+  }
+  function onFolderBodyDrop(e: DragEvent, catID: number) {
+    if (drag?.kind !== "feed") return;
+    void onFolderFeedDrop(e, catID);
   }
   async function onFolderFeedDrop(e: DragEvent, catID: number) {
     e.preventDefault();
@@ -892,6 +923,9 @@
         class="folder"
         class:collapsed={collapsedCategories[cat.id]}
         class:drop-target={sameDrag(dropTarget, { kind: "folder", id: cat.id })}
+        on:dragover={(e) => onFolderBodyOver(e, cat.id)}
+        on:dragleave={(e) => onFolderBodyLeave(e, cat.id)}
+        on:drop={(e) => onFolderBodyDrop(e, cat.id)}
       >
         <div
           class="folder-head"
@@ -976,8 +1010,16 @@
       </div>
     {/each}
 
-    {#if grouped.uncat.length > 0}
-      <div class="folder" class:collapsed={collapsedUncategorized}>
+    <!-- Shown while a feed is being dragged even when empty: it's the only way
+         to take a feed back out of a folder. -->
+    {#if grouped.uncat.length > 0 || drag?.kind === "feed"}
+      <div
+        class="folder"
+        class:collapsed={collapsedUncategorized}
+        on:dragover={(e) => onFolderBodyOver(e, 0)}
+        on:dragleave={(e) => onFolderBodyLeave(e, 0)}
+        on:drop={(e) => onFolderBodyDrop(e, 0)}
+      >
         <div
           class="folder-head"
           class:feed-drop={feedDropCat === 0}

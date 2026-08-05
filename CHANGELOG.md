@@ -33,6 +33,15 @@ them.
 
 ### Fixed
 
+- **Dropping a feed anywhere inside a folder now files it there.** Only the
+  folder's title row and its individual feed rows accepted a drop, so releasing
+  a feed over the folder's open space — the gap beside or below the feeds, which
+  is where "drop it in the folder" naturally lands — did nothing and the feed
+  sprang back. The whole folder is now a target, and its title row highlights to
+  show which folder will take it.
+- **A feed can be dragged back out of a folder.** The Uncategorized section only
+  existed once something was already in it, so with every feed filed there was
+  nothing to drop onto. It now appears for the duration of a feed drag.
 - Dragging a feed onto a feed row in another folder now actually moves it. The
   subscription's folder was saved on the server, but the sidebar kept showing
   the feed under its old folder — and its position within the new folder was
