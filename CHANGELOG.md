@@ -39,6 +39,10 @@ them.
   is where "drop it in the folder" naturally lands — did nothing and the feed
   sprang back. The whole folder is now a target, and its title row highlights to
   show which folder will take it.
+- **Reordering folders works the same way.** A folder only swapped places when
+  it was released precisely on another folder's title row; released over that
+  folder's contents or open space it did nothing. Dropping a folder anywhere on
+  another folder now moves it to that folder's position.
 - **A feed can be dragged back out of a folder.** The Uncategorized section only
   existed once something was already in it, so with every feed filed there was
   nothing to drop onto. It now appears for the duration of a feed drag.

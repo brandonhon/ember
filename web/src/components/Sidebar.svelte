@@ -293,16 +293,15 @@
     }
   }
   async function onFeedDrop(e: DragEvent, target: FeedWithCounts) {
-    e.preventDefault();
-    e.stopPropagation(); // this row handles it, not the enclosing folder
     // Snapshot the drag ref: the browser fires dragend (which clears `drag`)
     // as soon as this handler returns, so every read after the first await
     // below must go through the local copy.
     const d = drag;
-    if (!d || d.kind !== "feed") {
-      onDragEnd();
-      return;
-    }
+    // A folder dropped on a feed row means "put it where this row's folder is";
+    // leave the event alone so it reaches the enclosing folder's handler.
+    if (!d || d.kind !== "feed") return;
+    e.preventDefault();
+    e.stopPropagation(); // this row handles it, not the enclosing folder
     if (d.id === target.subscription_id) {
       onDragEnd();
       return;
@@ -527,16 +526,22 @@
     }
   }
 
-  // A feed released anywhere inside a folder — the header, a row, or the empty
-  // space around them — belongs in that folder. The header and the rows claim
-  // their own drops (they also set a position), so these wrapper handlers only
-  // run for the gaps, which is where a natural "drop it in the folder" gesture
-  // actually lands.
+  // Anything released anywhere inside a folder — the header, a row, or the
+  // empty space around them — is aimed at that folder: a feed moves into it, a
+  // folder takes its position. The header and the rows claim the drops they
+  // handle themselves (those also set a position within the folder), so these
+  // wrapper handlers cover the gaps, which is where an ordinary drop-it-here
+  // gesture actually lands.
+  //
+  // catID 0 is the Uncategorized zone: it isn't a real category and can't take
+  // part in folder ordering, so it accepts feeds only.
   function onFolderBodyOver(e: DragEvent, catID: number) {
-    if (drag?.kind !== "feed") return;
+    if (!drag) return;
+    if (drag.kind === "folder" && catID === 0) return;
     e.preventDefault();
     if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
-    feedDropCat = catID;
+    if (drag.kind === "feed") feedDropCat = catID;
+    else dropTarget = { kind: "folder", id: catID };
   }
   // dragleave fires when the pointer crosses onto a child too, which would
   // strobe the highlight; ignore those by checking the element we moved to.
@@ -545,10 +550,15 @@
     const self = e.currentTarget;
     if (to instanceof Node && self instanceof Node && self.contains(to)) return;
     if (feedDropCat === catID) feedDropCat = null;
+    if (sameDrag(dropTarget, { kind: "folder", id: catID })) dropTarget = null;
   }
   function onFolderBodyDrop(e: DragEvent, catID: number) {
-    if (drag?.kind !== "feed") return;
-    void onFolderFeedDrop(e, catID);
+    if (!drag) return;
+    if (drag.kind === "feed") {
+      void onFolderFeedDrop(e, catID);
+    } else if (catID !== 0) {
+      void onFolderDrop(e, catID);
+    }
   }
   async function onFolderFeedDrop(e: DragEvent, catID: number) {
     e.preventDefault();

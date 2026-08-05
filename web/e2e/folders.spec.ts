@@ -83,6 +83,45 @@ test.describe("folders", () => {
     await expect(folder("World").locator(`[data-testid='${id}']`)).toBeVisible();
   });
 
+  test("a folder dropped in another folder's body reorders it", async ({ page }) => {
+    await signIn(page);
+    const order = () =>
+      page.evaluate(() =>
+        Array.from(document.querySelectorAll(".folder .folder-name"))
+          .map((e) => e.textContent?.trim())
+          .filter(Boolean) as string[],
+      );
+    const folder = (name: string) =>
+      page.locator("div.folder").filter({
+        has: page.locator('[data-testid^="folder-name-"]', { hasText: name }),
+      });
+
+    // Compute the expectation from the live order — other specs in the shared
+    // database add folders, so nothing here may assume a fixed arrangement.
+    // Dropping A onto B puts A at B's index. Wait for the rail to render first:
+    // reading the order too early yields [] and a nonsense expectation.
+    await expect(folder("Technology").locator(".folder-head")).toBeVisible();
+    const before = await order();
+    expect(before).toContain("Design");
+    const ids = [...before];
+    const [moved] = ids.splice(ids.indexOf("Design"), 1);
+    ids.splice(before.indexOf("Technology"), 0, moved);
+
+    // The body, not the header: this whole region used to ignore folder drops.
+    const src = (await folder("Design").locator(".folder-head").boundingBox())!;
+    const dst = (await folder("Technology").locator(".feed-list").boundingBox())!;
+    await page.mouse.move(src.x + src.width / 2, src.y + src.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(src.x + src.width / 2, src.y + 8, { steps: 5 });
+    await page.mouse.move(dst.x + 4, dst.y + dst.height - 3, { steps: 20 });
+    await page.mouse.up();
+
+    await expect.poll(order).toEqual(ids);
+    await page.reload();
+    await expect(page.getByTestId("article-list")).toBeVisible();
+    await expect.poll(order).toEqual(ids);
+  });
+
   test("a feed can be dragged out of a folder onto Uncategorized", async ({ page }) => {
     await signIn(page);
     const uncatHead = page.locator(".folder-head").filter({ hasText: "Uncategorized" });
