@@ -72,7 +72,7 @@ func NewNotifier(keys Keys, contactEmail string, store SubStore, logger *slog.Lo
 	subject := "mailto:" + contactEmail
 	if contactEmail == "" {
 		subject = "mailto:admin@localhost"
-		logger.Warn("VAPID subject defaulted; set EMBER_ADMIN_EMAIL or the admin user's email for better deliverability")
+		logger.Warn("VAPID subject defaulted; set EMBER_SMTP_FROM (or Settings → Email) for better deliverability")
 	}
 	return &Notifier{
 		keys:    keys,

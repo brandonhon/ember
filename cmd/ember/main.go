@@ -251,9 +251,9 @@ func run() error {
 	}
 
 	// Web Push (VAPID). Generates the keypair on first start, persists to
-	// app_settings. Subject defaults to the admin's email so push services
-	// have a contact for delivery problems; empty falls back to a localhost
-	// address with a warn. Failure here is non-fatal — push endpoints just
+	// app_settings. Subject is the SMTP From address so push services have a
+	// contact for delivery problems; empty falls back to a localhost address
+	// with a warn. Failure here is non-fatal — push endpoints just
 	// return 503 and the rest of the app keeps working.
 	var pushNotifier *push.Notifier
 	if keys, kerr := push.LoadOrCreateKeys(ctx, st); kerr != nil {

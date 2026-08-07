@@ -55,7 +55,7 @@ const (
 	keyPasskeyRequireUV = "passkey_require_uv"
 
 	// How long an article may stay hidden waiting for its AI summary before it
-	// is shown anyway. EMBER_SUMMARY_GRACE sets the boot-time default; admins
+	// is shown anyway. EMBER_SUMMARY_GRACE_SECONDS sets the boot-time default; admins
 	// tune it live in Settings. 0 disables the wait (articles appear as soon as
 	// they are fetched); the ceiling stops a typo from hiding a feed for a day.
 	keySummaryGraceSeconds     = "summary_grace_seconds"

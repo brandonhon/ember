@@ -22,6 +22,11 @@ them.
   the folder you're currently viewing (and to "No folder" from any other view);
   when a site publishes several feeds, every feed picked lands in the chosen
   folder.
+- **The push deliverability warning named an environment variable that doesn't
+  exist.** On startup without a contact address Ember logged "set
+  `EMBER_ADMIN_EMAIL`" — nothing has ever read that name, so following the
+  advice changed nothing and the warning kept appearing. The address comes from
+  `EMBER_SMTP_FROM` (or Settings → Email), which is what it now says.
 - **Turn push notifications off from the device that has them on.** Settings →
   Notifications offered no way back: the button always said *Enable*, and
   revoking a device from the list below removed the server's record while

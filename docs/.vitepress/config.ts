@@ -58,17 +58,17 @@ export default defineConfig({
           { text: 'Upgrading', link: '/upgrading' },
         ],
       },
-      // Features section hidden until these ship in a release — Web Push
-      // and the email newsletter inbox are still in development. The
-      // notifications.md / email-inbox.md pages stay in the repo, just
-      // unlinked from the sidebar. Re-enable when they land in a tagged release.
-      // {
-      //   text: 'Features',
-      //   items: [
-      //     { text: 'Notifications', link: '/notifications' },
-      //     { text: 'Email inbox', link: '/email-inbox' },
-      //   ],
-      // },
+      // Both shipped, so both are linked. Every docs/*.md is published
+      // regardless (there is no srcExclude), so leaving a page unlinked hides
+      // it from the sidebar without hiding it from search — which is how the
+      // notifications page sat stale and reachable for several releases.
+      {
+        text: 'Features',
+        items: [
+          { text: 'Notifications', link: '/notifications' },
+          { text: 'Email inbox', link: '/email-inbox' },
+        ],
+      },
       {
         text: 'Reference',
         items: [
