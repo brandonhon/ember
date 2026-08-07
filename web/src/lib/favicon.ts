@@ -88,8 +88,3 @@ export async function renderFaviconWithDot(
     return baseURL;
   }
 }
-
-// Test/debug helper. Not exported from the package's barrel.
-export function _clearFaviconCache(): void {
-  cache.clear();
-}
