@@ -557,29 +557,6 @@
   // --- Feed → folder drag/drop. Every folder header (named + Uncategorized) is
   // a drop target, so a feed can be moved into a folder that has no rows to
   // land on. catID 0 = Uncategorized (clears the feed's category). ---
-  function onFolderHeadOver(e: DragEvent, catID: number) {
-    const kind = dragKindFrom(e);
-    if (!kind) return;
-    if (kind === "folder") {
-      onDragOver(e, { kind: "folder", id: catID });
-    } else {
-      e.preventDefault();
-      e.stopPropagation();
-      if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
-      feedDropCat = catID;
-    }
-  }
-  function onFolderHeadDrop(e: DragEvent, catID: number) {
-    const d = dragRefFrom(e);
-    if (d?.kind === "folder") {
-      e.stopPropagation();
-      void onFolderDrop(e, catID, d);
-    } else if (d?.kind === "feed") {
-      e.stopPropagation();
-      void onFolderFeedDrop(e, catID, d);
-    }
-  }
-
   // Anything released anywhere inside a folder — the header, a row, or the
   // empty space around them — is aimed at that folder: a feed moves into it, a
   // folder takes its position. The header and the rows claim the drops they
@@ -1036,9 +1013,6 @@
           class:feed-drop={feedDropCat === cat.id}
           draggable="true"
           on:dragstart={(e) => onFolderDragStart(e, cat.id)}
-          on:dragover={(e) => onFolderHeadOver(e, cat.id)}
-          on:dragleave={() => { dropTarget = null; feedDropCat = null; }}
-          on:drop={(e) => onFolderHeadDrop(e, cat.id)}
           on:dragend={onDragEnd}
         >
           <button class="chev-btn" on:click={() => toggleCategory(cat.id)} aria-label="Toggle folder">
@@ -1127,9 +1101,6 @@
         <div
           class="folder-head"
           class:feed-drop={feedDropCat === 0}
-          on:dragover={(e) => onFolderHeadOver(e, 0)}
-          on:dragleave={() => (feedDropCat = null)}
-          on:drop={(e) => onFolderHeadDrop(e, 0)}
         >
           <button class="chev-btn" on:click={() => (collapsedUncategorized = !collapsedUncategorized)} aria-label="Toggle folder">
             <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6" /></svg>
