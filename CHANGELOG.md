@@ -22,6 +22,13 @@ them.
   the folder you're currently viewing (and to "No folder" from any other view);
   when a site publishes several feeds, every feed picked lands in the chosen
   folder.
+- **Turn push notifications off from the device that has them on.** Settings →
+  Notifications offered no way back: the button always said *Enable*, and
+  revoking a device from the list below removed the server's record while
+  leaving the browser itself subscribed. The row now reflects the device you're
+  on and switches to **Turn off**, which unsubscribes this browser and removes
+  its entry in one step. Revoking your current device from the list does the
+  same thing.
 - **Move to folder…** in a feed's **⋯** menu files it without dragging: pick
   from the list of folders, or **No folder** to take it out of one. The folder
   it's in now is ticked. Dragging still works and is often quicker with a mouse,

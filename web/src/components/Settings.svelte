@@ -16,7 +16,13 @@
   import { api, ApiError, type StarterPack, type StarterImportResult, type LLMStatus, type DBStatus, type UserStats, type UserDigest, type PasskeySummary } from "../lib/api";
   import type { PushSubscriptionSummary, EmailInbox } from "../lib/types";
   import { createPasskey, passkeySupported } from "../lib/passkey";
-  import { enablePush, pushSupported } from "../lib/push";
+  import {
+    enablePush,
+    disablePush,
+    pushSupported,
+    pushSubscribedHere,
+    storedPushSubID,
+  } from "../lib/push";
   import { onMount } from "svelte";
   import { refreshSidebar, loadArticles, activeView } from "../lib/stores";
   import { DEMO, notifyDemoBlocked } from "../demo/demo";
@@ -750,6 +756,9 @@
   let pushErr = $state("");
   let pushMsg = $state("");
   let pushBusy = $state(false);
+  // Whether THIS browser is subscribed, which is separate from the account
+  // having registered devices — those may all be other browsers.
+  let pushHere = $state(false);
   async function loadPushSubs() {
     pushErr = "";
     try {
@@ -758,6 +767,7 @@
     } catch (e) {
       pushErr = e instanceof ApiError ? e.message : String(e);
     }
+    pushHere = await pushSubscribedHere();
   }
   async function onEnablePush() {
     if (DEMO) { notifyDemoBlocked(); return; }
@@ -775,9 +785,30 @@
       setTimeout(() => (pushMsg = ""), 3500);
     }
   }
+  async function onDisablePush() {
+    if (DEMO) { notifyDemoBlocked(); return; }
+    pushErr = "";
+    pushMsg = "";
+    pushBusy = true;
+    try {
+      const serverCleared = await disablePush();
+      pushMsg = serverCleared
+        ? "Notifications turned off on this device."
+        : "This device is unsubscribed. Its entry below was registered before, so revoke it by hand.";
+    } catch (e) {
+      pushErr = e instanceof Error ? e.message : String(e);
+    } finally {
+      pushBusy = false;
+      await loadPushSubs();
+      setTimeout(() => (pushMsg = ""), 5000);
+    }
+  }
   async function onDeletePushSub(id: number) {
     try {
       await api.pushUnsubscribe(id);
+      // Revoking this browser's own row should also stop it holding a live
+      // subscription, otherwise the device stays subscribed to nothing.
+      if (pushHere && id === storedPushSubID()) await disablePush();
       await loadPushSubs();
     } catch (e) {
       pushErr = e instanceof ApiError ? e.message : String(e);
@@ -1543,11 +1574,21 @@
               <div class="pref-row">
                 <div>
                   <div class="pref-label">This device</div>
-                  <div class="pref-hint">Enable push so new-article reminders reach you here.</div>
+                  <div class="pref-hint">
+                    {pushHere
+                      ? "Push is on here. Turning it off unsubscribes this browser and removes it from the list below."
+                      : "Enable push so new-article reminders reach you here."}
+                  </div>
                 </div>
-                <button class="pack-btn" on:click={onEnablePush} disabled={pushBusy} data-testid="push-enable">
-                  {pushBusy ? "Enabling…" : "Enable"}
-                </button>
+                {#if pushHere}
+                  <button class="ghost" on:click={onDisablePush} disabled={pushBusy} data-testid="push-disable">
+                    {pushBusy ? "Turning off…" : "Turn off"}
+                  </button>
+                {:else}
+                  <button class="pack-btn" on:click={onEnablePush} disabled={pushBusy} data-testid="push-enable">
+                    {pushBusy ? "Enabling…" : "Enable"}
+                  </button>
+                {/if}
               </div>
               <div class="pref-row">
                 <div>
@@ -3031,6 +3072,9 @@
     font-size: 12.5px;
     font-weight: 600;
     cursor: pointer;
+    /* These sit at the end of a flex row opposite a long hint, so without
+       this a two-word label ("Turn off") breaks across lines. */
+    white-space: nowrap;
   }
   .ghost:hover:not(:disabled) { background: var(--line-soft); }
   .ghost:disabled { opacity: 0.5; cursor: not-allowed; }
