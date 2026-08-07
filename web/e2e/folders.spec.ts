@@ -122,6 +122,56 @@ test.describe("folders", () => {
     await expect.poll(order).toEqual(ids);
   });
 
+  // Firefox symptom reported from a live deployment: the folder highlights on
+  // hover, then the row snaps back and nothing moves. That is a REJECTED drop —
+  // the handler returned without preventDefault() because the module-scope drag
+  // ref had already been cleared by dragend. The drop path reads the payload
+  // from dataTransfer now, so the ordering no longer matters.
+  test("a drop still lands after dragend has cleared the drag state", async ({ page }) => {
+    await signIn(page);
+    // Park feed-5 somewhere that is definitely NOT the drop target, so the
+    // assertion can't be satisfied by whatever an earlier test left behind.
+    await page.evaluate(async () => {
+      const m = document.cookie.match(/(?:^|;\s*)ember_csrf=([^;]+)/);
+      const csrf = m ? decodeURIComponent(m[1]) : "";
+      const cats = (await (await fetch("/api/categories", { credentials: "include" })).json()).data;
+      const design = cats.find((c: any) => c.name === "Design");
+      const feeds = (await (await fetch("/api/feeds", { credentials: "include" })).json()).data;
+      const f = feeds.find((x: any) => (x.title_override || x.title || "").includes("Smashing"));
+      await fetch(`/api/feeds/${f.subscription_id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", "X-Ember-CSRF": csrf },
+        body: JSON.stringify({ category_id: design.id }),
+      });
+    });
+    await page.reload();
+    await expect(page.getByTestId("article-list")).toBeVisible();
+
+    const where = () =>
+      page.evaluate(() =>
+        document.querySelector('[data-testid="feed-5"]')?.closest(".folder")
+          ?.querySelector(".folder-name")?.textContent?.trim());
+
+    const result = await page.evaluate(() => {
+      const row = document.querySelector('[data-testid="feed-5"]')!.closest(".feed-row") as HTMLElement;
+      const head = Array.from(document.querySelectorAll(".folder-head"))
+        .find((h) => h.querySelector(".folder-name")?.textContent?.includes("Technology")) as HTMLElement;
+      const dt = new DataTransfer();
+      row.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer: dt }));
+      head.dispatchEvent(new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer: dt }));
+      // The browser clears the module state here, before delivering the drop.
+      row.dispatchEvent(new DragEvent("dragend", { bubbles: true, dataTransfer: dt }));
+      const drop = new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: dt });
+      head.dispatchEvent(drop);
+      return { dropAccepted: drop.defaultPrevented };
+    });
+
+    // false here means the browser rejects the drop and animates the row back.
+    expect(result.dropAccepted, "drop was rejected \u2192 the row snaps back").toBe(true);
+    await expect.poll(where).toBe("Technology");
+  });
+
   test("a feed can be dragged out of a folder onto Uncategorized", async ({ page }) => {
     await signIn(page);
     const uncatHead = page.locator(".folder-head").filter({ hasText: "Uncategorized" });

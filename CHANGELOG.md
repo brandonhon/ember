@@ -38,6 +38,14 @@ them.
 
 ### Fixed
 
+- **Drag-and-drop no longer silently refuses the drop in Firefox.** The folder
+  would highlight as you dragged over it, then the feed sprang back and nothing
+  moved. The sidebar was reading the details of the drag from a variable the
+  browser is free to clear before it delivers the drop; when that happened the
+  drop was declined outright, which is what produced the spring-back. The drag's
+  own payload is now read from the drag event itself, so the order the browser
+  chooses to fire things in no longer matters. Affects folder reordering and
+  moving feeds equally.
 - **Dropping a feed anywhere inside a folder now files it there.** Only the
   folder's title row and its individual feed rows accepted a drop, so releasing
   a feed over the folder's open space — the gap beside or below the feeds, which

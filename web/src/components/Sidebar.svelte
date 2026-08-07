@@ -238,8 +238,45 @@
   let drag = $state<DragRef | null>(null);
   let dropTarget = $state<DragRef | null>(null);
 
+  // The kind is encoded in the MIME type because `getData` is blocked during
+  // dragover (drag-data protection mode) while `types` is always readable — so
+  // a hover can tell a feed drag from a folder drag without the module state.
+  const DRAG_FEED_MIME = "text/x-ember-feed";
+  const DRAG_FOLDER_MIME = "text/x-ember-folder";
+
   function dragKey(r: DragRef): string {
     return r.kind === "folder" ? `folder:${r.id}` : `feed:${r.id}:${r.cat}`;
+  }
+  function parseDragKey(key: string): DragRef | null {
+    const p = key.split(":");
+    if (p[0] === "folder" && p.length === 2) {
+      const id = Number(p[1]);
+      return Number.isFinite(id) ? { kind: "folder", id } : null;
+    }
+    if (p[0] === "feed" && p.length === 3) {
+      const id = Number(p[1]);
+      const cat = Number(p[2]);
+      return Number.isFinite(id) && Number.isFinite(cat) ? { kind: "feed", id, cat } : null;
+    }
+    return null;
+  }
+  // `drag` is only a convenience for the hover highlight: the browser may clear
+  // it (via dragend) before the drop lands, and a drop handler that returns
+  // without preventDefault() REJECTS the drop — the row snaps back and nothing
+  // happens. dataTransfer carries the payload for the whole drag, so the drop
+  // path trusts that first and falls back to the module state.
+  function dragKindFrom(e: DragEvent): "feed" | "folder" | null {
+    const types = e.dataTransfer?.types;
+    if (types?.includes(DRAG_FEED_MIME)) return "feed";
+    if (types?.includes(DRAG_FOLDER_MIME)) return "folder";
+    return drag?.kind ?? null;
+  }
+  function dragRefFrom(e: DragEvent): DragRef | null {
+    const raw =
+      e.dataTransfer?.getData(DRAG_FEED_MIME) ||
+      e.dataTransfer?.getData(DRAG_FOLDER_MIME) ||
+      "";
+    return (raw ? parseDragKey(raw) : null) ?? drag;
   }
   function sameDrag(a: DragRef | null, b: DragRef | null): boolean {
     if (!a || !b) return false;
@@ -255,16 +292,16 @@
 
   function onFolderDragStart(e: DragEvent, catID: number) {
     drag = { kind: "folder", id: catID };
-    e.dataTransfer?.setData("text/x-ember", dragKey(drag));
+    e.dataTransfer?.setData(DRAG_FOLDER_MIME, dragKey(drag));
     if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
   }
   function onFeedDragStart(e: DragEvent, f: FeedWithCounts) {
     drag = { kind: "feed", id: f.subscription_id, cat: f.category_id ?? 0 };
-    e.dataTransfer?.setData("text/x-ember", dragKey(drag));
+    e.dataTransfer?.setData(DRAG_FEED_MIME, dragKey(drag));
     if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
   }
   function onDragOver(e: DragEvent, target: DragRef) {
-    if (!drag || drag.kind !== target.kind) return;
+    if (dragKindFrom(e) !== target.kind) return;
     // Feeds: cross-category drops are allowed — onFeedDrop updates the
     // subscription's category_id alongside the position. Folders drag only
     // within the folder list.
@@ -279,14 +316,15 @@
     drag = null;
     dropTarget = null;
   }
-  async function onFolderDrop(e: DragEvent, targetID: number) {
+  async function onFolderDrop(e: DragEvent, targetID: number, ref?: DragRef | null) {
     e.preventDefault();
-    if (!drag || drag.kind !== "folder" || drag.id === targetID) {
+    const d = ref ?? dragRefFrom(e);
+    if (!d || d.kind !== "folder" || d.id === targetID) {
       onDragEnd();
       return;
     }
     const ids = $categories.map((c) => c.id);
-    const from = ids.indexOf(drag.id);
+    const from = ids.indexOf(d.id);
     const to = ids.indexOf(targetID);
     if (from < 0 || to < 0) {
       onDragEnd();
@@ -310,7 +348,7 @@
     // Snapshot the drag ref: the browser fires dragend (which clears `drag`)
     // as soon as this handler returns, so every read after the first await
     // below must go through the local copy.
-    const d = drag;
+    const d = dragRefFrom(e);
     // A folder dropped on a feed row means "put it where this row's folder is";
     // leave the event alone so it reaches the enclosing folder's handler.
     if (!d || d.kind !== "feed") return;
@@ -520,10 +558,11 @@
   // a drop target, so a feed can be moved into a folder that has no rows to
   // land on. catID 0 = Uncategorized (clears the feed's category). ---
   function onFolderHeadOver(e: DragEvent, catID: number) {
-    if (!drag) return;
-    if (drag.kind === "folder") {
+    const kind = dragKindFrom(e);
+    if (!kind) return;
+    if (kind === "folder") {
       onDragOver(e, { kind: "folder", id: catID });
-    } else if (drag.kind === "feed") {
+    } else {
       e.preventDefault();
       e.stopPropagation();
       if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
@@ -531,12 +570,13 @@
     }
   }
   function onFolderHeadDrop(e: DragEvent, catID: number) {
-    if (drag?.kind === "folder") {
+    const d = dragRefFrom(e);
+    if (d?.kind === "folder") {
       e.stopPropagation();
-      void onFolderDrop(e, catID);
-    } else if (drag?.kind === "feed") {
+      void onFolderDrop(e, catID, d);
+    } else if (d?.kind === "feed") {
       e.stopPropagation();
-      void onFolderFeedDrop(e, catID);
+      void onFolderFeedDrop(e, catID, d);
     }
   }
 
@@ -550,11 +590,12 @@
   // catID 0 is the Uncategorized zone: it isn't a real category and can't take
   // part in folder ordering, so it accepts feeds only.
   function onFolderBodyOver(e: DragEvent, catID: number) {
-    if (!drag) return;
-    if (drag.kind === "folder" && catID === 0) return;
+    const kind = dragKindFrom(e);
+    if (!kind) return;
+    if (kind === "folder" && catID === 0) return;
     e.preventDefault();
     if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
-    if (drag.kind === "feed") feedDropCat = catID;
+    if (kind === "feed") feedDropCat = catID;
     else dropTarget = { kind: "folder", id: catID };
   }
   // dragleave fires when the pointer crosses onto a child too, which would
@@ -567,17 +608,18 @@
     if (sameDrag(dropTarget, { kind: "folder", id: catID })) dropTarget = null;
   }
   function onFolderBodyDrop(e: DragEvent, catID: number) {
-    if (!drag) return;
-    if (drag.kind === "feed") {
-      void onFolderFeedDrop(e, catID);
+    const d = dragRefFrom(e);
+    if (!d) return;
+    if (d.kind === "feed") {
+      void onFolderFeedDrop(e, catID, d);
     } else if (catID !== 0) {
-      void onFolderDrop(e, catID);
+      void onFolderDrop(e, catID, d);
     }
   }
-  async function onFolderFeedDrop(e: DragEvent, catID: number) {
+  async function onFolderFeedDrop(e: DragEvent, catID: number, ref?: DragRef | null) {
     e.preventDefault();
     feedDropCat = null;
-    const d = drag;
+    const d = ref ?? dragRefFrom(e);
     if (!d || d.kind !== "feed") {
       onDragEnd();
       return;
