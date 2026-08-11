@@ -98,6 +98,14 @@ them.
   explains how to check and apply one yourself if you've vendored the file.
   Ember itself is unaffected, and deployments that don't use the bundled
   `deploy/docker-compose.yml` are too.
+- Bumped `modernc.org/sqlite` 1.55.0 → 1.56.0 (and its transitive
+  `github.com/mattn/go-isatty` 0.0.23 → 0.0.24). This is the pure-Go SQLite
+  driver Ember stores everything in; the full suite passes against it locally
+  and in CI.
+- Bumped SPA build/dev tooling: Vite 8.2.0 → 8.2.1,
+  `@sveltejs/vite-plugin-svelte` 7.2.0 → 7.3.0, svelte-check 4.7.4 → 4.7.5, and
+  `@types/node` 26.1.2 → 26.2.0. Dev-only — none of it is bundled into the Ember
+  binary, and TypeScript stays held at 6.x for the reason given under 0.9.6.
 - **The container build's base images are pinned by digest too** — `node` and
   `golang` for the build stages, `busybox` and `distroless` for the runtime.
   Rebuilding an old commit now reproduces the image it originally produced, and
