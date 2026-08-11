@@ -86,8 +86,9 @@ make security         # go vet + golangci-lint + govulncheck + digest pins + fuz
 
 If you bump a Go dependency, run `make tidy`.
 
-`make check-pins` (also run by `make security`) fails if any image in the
-Dockerfiles or `deploy/` has lost its `@sha256:`. It can't tell whether a digest
+`make check-pins` fails if any image in the Dockerfiles or `deploy/` has lost
+its `@sha256:`. It's part of `make security`, and CI runs it as `Image pins`
+whenever a PR touches those files. It can't tell whether a digest
 is the right *kind*, though: if you move a base-image digest in `Dockerfile` /
 `Dockerfile.release` — by hand or by merging the grouped Dependabot PR — check
 that the new one is the multi-arch **index**, not one platform's manifest. A per-platform digest builds

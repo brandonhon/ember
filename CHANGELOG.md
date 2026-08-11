@@ -103,8 +103,8 @@ them.
   Rebuilding an old commit now reproduces the image it originally produced, and
   the Go toolchain a given release was compiled with is readable from the repo
   instead of being whatever the build host had pulled that day. Dependabot
-  proposes the bumps as a single grouped PR, and `make check-pins` fails if one
-  of the pins is ever dropped. Nothing about the published image's contents or
+  proposes the bumps as a single grouped PR, and a `check-pins` gate — local via
+  `make security`, and the `Image pins` CI job — fails if a pin is ever dropped. Nothing about the published image's contents or
   behaviour changes.
 
 ## [0.9.6] - 2026-08-04

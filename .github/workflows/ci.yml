@@ -8,6 +8,9 @@ name: CI
 # passing). develop is the integration branch (small fixes land there
 # first via PR), main is the release branch.
 #
+# `Image pins` is a fifth job and is NOT in branch protection, so it reports
+# but doesn't block. Add it to the required set if you want it to.
+#
 # Local equivalent of the chain (run before push):
 #   make verify         # go vet + race tests
 #   gofmt -l cmd internal  # must print nothing (gofmt gate)
@@ -18,6 +21,7 @@ name: CI
 #   make web-test       # vitest
 #   make embed build    # produces ./bin/ember (also what release.yml does)
 #   make e2e            # playwright
+#   make check-pins     # container images still digest-pinned
 
 on:
   push:
@@ -40,6 +44,7 @@ jobs:
       go: ${{ steps.filter.outputs.go }}
       web: ${{ steps.filter.outputs.web }}
       e2e: ${{ steps.filter.outputs.e2e }}
+      pins: ${{ steps.filter.outputs.pins }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
@@ -67,6 +72,17 @@ jobs:
               - 'web/**'
               - 'go.mod'
               - 'go.sum'
+              - 'Makefile'
+              - '.github/workflows/ci.yml'
+            # Deliberately its own filter rather than folding these paths into
+            # `go`: a compose-only change (a Dependabot digest bump, say) has no
+            # reason to spend a runner on vet + lint + race tests + govulncheck,
+            # but every reason to be checked for a dropped pin.
+            pins:
+              - 'Dockerfile'
+              - 'Dockerfile.release'
+              - 'deploy/**'
+              - 'scripts/check-pins.sh'
               - 'Makefile'
               - '.github/workflows/ci.yml'
 
@@ -123,6 +139,19 @@ jobs:
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest
           govulncheck ./...
+
+  pins:
+    name: Image pins
+    needs: changes
+    if: needs.changes.outputs.pins == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      # No toolchain setup: the target is a shell script, and the Makefile's
+      # `go env GOPATH` PATH line degrades to a no-op when Go is absent.
+      - name: check-pins
+        run: make check-pins
 
   web:
     name: Web (typecheck + build)

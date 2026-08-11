@@ -169,8 +169,8 @@ The Fever-compatible endpoint (`/fever`) uses a per-user random 32-byte token st
 - Dependabot opens PRs against `develop`: Go modules and the SPA's npm packages
   weekly, base images and the compose stack weekly, the docs site's npm packages
   and pinned GitHub Actions monthly.
-- `make check-pins` (part of `make security`) fails the build if any of those
-  images loses its digest.
+- `make check-pins` fails the build if any of those images loses its digest. It
+  runs locally as part of `make security` and in CI as the `Image pins` job.
 - Digest pinning means image updates are proposed rather than picked up
   silently, so those PRs are the mechanism — a stale queue is a stale base
   image. Note that Dependabot does version updates but *not* security updates
