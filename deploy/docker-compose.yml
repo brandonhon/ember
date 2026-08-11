@@ -2,7 +2,12 @@ name: ember
 
 services:
   caddy:
-    image: caddy:2-alpine
+    # Pinned by digest, not by the floating `caddy:2-alpine` tag, so a rebuild
+    # can't silently change the proxy version in either direction. The tag is
+    # kept alongside the digest purely so the version is readable here; Docker
+    # resolves the digest and ignores it. Bumping is manual — see
+    # "Pin the image digest" in docs/caddy-hardening.md.
+    image: caddy:2.11.4-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
     restart: unless-stopped
     # Override EMBER_HTTP_PORT / EMBER_HTTPS_PORT in .env when 80/443 are
     # already taken on the host. Container-side stays 80/443 so Caddy's

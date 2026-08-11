@@ -197,7 +197,7 @@ Defenses that live in `docker-compose.yml`, not the Caddyfile:
 
 ```yaml
 caddy:
-  image: caddy:2-alpine
+  # keep the pinned image: line already in deploy/docker-compose.yml
   read_only: true                 # Caddyfile is mounted :ro; data/config are named volumes
   cap_drop: [ALL]
   cap_add: [NET_BIND_SERVICE]     # needed to bind 80/443
@@ -212,6 +212,46 @@ caddy:
 - `cap_drop: ALL` then re-add only `NET_BIND_SERVICE` so Caddy can bind the
   privileged ports without running as root.
 - Keep ports `80`/`443` published but **never** publish the admin port `2019`.
+
+## Pin the image digest
+
+`deploy/docker-compose.yml` pins Caddy by digest rather than by the floating
+`caddy:2-alpine` tag:
+
+```yaml
+image: caddy:2.11.4-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
+```
+
+A floating tag means the version you audited and the version you run can differ:
+the same `docker compose up` gives a fresh host the newest build and leaves a
+long-running host on whatever it pulled months ago. A digest makes the running
+version a property of the repo, so a CVE advisory can be answered by reading the
+compose file. The tag next to the digest is only there to keep the version
+legible — Docker resolves the digest and ignores it.
+
+The tradeoff is that **security updates are now opt-in**. Nothing bumps this for
+you, so check it when you upgrade Ember:
+
+```sh
+# What does the current 2-alpine tag resolve to?
+TOKEN=$(curl -s "https://auth.docker.io/token?service=registry.docker.io&scope=repository:library/caddy:pull" \
+  | grep -o '"token":"[^"]*' | cut -d'"' -f4)
+curl -sI -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/vnd.oci.image.index.v1+json" \
+  https://registry-1.docker.io/v2/library/caddy/manifests/2-alpine | grep -i docker-content-digest
+```
+
+If that digest differs from the pinned one, check the [Caddy
+releases](https://github.com/caddyserver/caddy/releases) for what changed, update
+the `image:` line to the new version tag and digest, then:
+
+```sh
+docker compose pull caddy && docker compose up -d caddy
+docker compose exec caddy caddy version
+```
+
+If you would rather track the tag and accept the drift, replace the whole value
+with `caddy:2-alpine` and re-pull on a schedule instead.
 
 ## A hardened Caddyfile, end to end
 
