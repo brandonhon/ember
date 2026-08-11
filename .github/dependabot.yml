@@ -101,6 +101,10 @@ updates:
   # `docker` here is the right ecosystem (it reads Dockerfiles); the compose
   # entry above needs `docker-compose`. Same caveat as above — version updates
   # only, no security updates.
+  #
+  # Before merging one of these, confirm the proposed digest is the multi-arch
+  # index rather than one platform's manifest; a per-platform digest only fails
+  # on the linux/arm64 leg of a release. CONTRIBUTING.md has the buildx check.
   - package-ecosystem: docker
     directory: "/"
     target-branch: develop
