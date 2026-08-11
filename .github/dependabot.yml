@@ -87,3 +87,26 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 3
+
+  # Base images in Dockerfile and Dockerfile.release, also digest-pinned: node
+  # and golang for the build stages, busybox and distroless for the runtime.
+  # These reach the released binaries and the published container, so the same
+  # "a pin needs something to move it" argument applies, with more at stake —
+  # an unmoved golang pin means shipping a Go toolchain with known CVEs.
+  #
+  # Grouped: four images across two files would otherwise open four PRs, and
+  # they're reviewed as one question ("is the build still green?"). Ungroup if
+  # a single image starts needing to move on its own.
+  #
+  # `docker` here is the right ecosystem (it reads Dockerfiles); the compose
+  # entry above needs `docker-compose`. Same caveat as above — version updates
+  # only, no security updates.
+  - package-ecosystem: docker
+    directory: "/"
+    target-branch: develop
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      base-images:
+        patterns: ["*"]

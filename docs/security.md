@@ -157,6 +157,20 @@ The Fever-compatible endpoint (`/fever`) uses a per-user random 32-byte token st
 
 ## CVE posture
 
-- Go stdlib pinned to **1.26.4**.
+- Go stdlib pinned to **1.26.5**.
 - CI runs `go vet`, `golangci-lint`, and `govulncheck` on every push.
-- Dependabot opens PRs weekly for `gomod` + `npm` updates.
+- Every container image Ember builds or ships is pinned by digest — the `node`,
+  `golang`, `busybox`, and `distroless` bases in `Dockerfile` /
+  `Dockerfile.release`, and the Caddy proxy in `deploy/docker-compose.yml`. So
+  the toolchain that compiled a given release and the proxy that fronts it are
+  both readable from the repo at that commit, rather than depending on when the
+  build host last pulled. Each pin is the multi-arch index digest, since
+  releases are built for `linux/amd64` and `linux/arm64`.
+- Dependabot opens PRs against `develop`: Go modules and the SPA's npm packages
+  weekly, base images and the compose stack weekly, the docs site's npm packages
+  and pinned GitHub Actions monthly.
+- Digest pinning means image updates are proposed rather than picked up
+  silently, so those PRs are the mechanism — a stale queue is a stale base
+  image. Note that Dependabot does version updates but *not* security updates
+  for Docker and Docker Compose, so an advisory against a base image raises no
+  alert here; the scheduled PR is the signal.

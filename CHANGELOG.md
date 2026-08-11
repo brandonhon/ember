@@ -98,6 +98,13 @@ them.
   explains how to check and apply one yourself if you've vendored the file.
   Ember itself is unaffected, and deployments that don't use the bundled
   `deploy/docker-compose.yml` are too.
+- **The container build's base images are pinned by digest too** — `node` and
+  `golang` for the build stages, `busybox` and `distroless` for the runtime.
+  Rebuilding an old commit now reproduces the image it originally produced, and
+  the Go toolchain a given release was compiled with is readable from the repo
+  instead of being whatever the build host had pulled that day. Dependabot
+  proposes the bumps as a single grouped PR. Nothing about the published image's
+  contents or behaviour changes.
 
 ## [0.9.6] - 2026-08-04
 
