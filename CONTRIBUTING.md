@@ -81,14 +81,16 @@ make web-check        # svelte-check
 make e2e-install      # one-time
 make embed build      # produces ./bin/ember
 make e2e              # playwright suite
-make security         # go vet + golangci-lint + govulncheck + fuzz seed corpora
+make security         # go vet + golangci-lint + govulncheck + digest pins + fuzz seed corpora
 ```
 
 If you bump a Go dependency, run `make tidy`.
 
-If you move a base-image digest in `Dockerfile` / `Dockerfile.release` — by hand
-or by merging the grouped Dependabot PR — check that the new digest is the
-multi-arch **index**, not one platform's manifest. A per-platform digest builds
+`make check-pins` (also run by `make security`) fails if any image in the
+Dockerfiles or `deploy/` has lost its `@sha256:`. It can't tell whether a digest
+is the right *kind*, though: if you move a base-image digest in `Dockerfile` /
+`Dockerfile.release` — by hand or by merging the grouped Dependabot PR — check
+that the new one is the multi-arch **index**, not one platform's manifest. A per-platform digest builds
 fine on an amd64 machine and fails only on the `linux/arm64` leg of the release,
 which nothing exercises until you tag:
 

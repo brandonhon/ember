@@ -50,8 +50,12 @@ lint: ## golangci-lint run (requires golangci-lint)
 vulncheck: ## scan for known Go CVEs (requires govulncheck)
 	govulncheck $(PKG)
 
+.PHONY: check-pins
+check-pins: ## verify every container image is pinned by digest
+	@scripts/check-pins.sh
+
 .PHONY: security
-security: vet lint vulncheck ## security scan: vet + golangci-lint(gosec) + govulncheck + fuzz seed corpora
+security: vet lint vulncheck check-pins ## security scan: vet + golangci-lint(gosec) + govulncheck + digest pins + fuzz seed corpora
 	$(GO) test -run '^Fuzz' -count=1 $(PKG)
 
 # Deep fuzzing of one target at a time (Go fuzzing is single-target). Override
