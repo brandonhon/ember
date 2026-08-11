@@ -65,3 +65,25 @@ updates:
     target-branch: develop
     schedule:
       interval: monthly
+
+  # Bundled compose stack. This exists for the Caddy proxy, which is pinned by
+  # digest in deploy/docker-compose.yml so the running version is a property of
+  # this repo rather than of when a host last pulled. That pin is only as good
+  # as the thing that moves it: without this entry a Caddy release — including
+  # a security release — would sit unnoticed until someone bumped the digest by
+  # hand. Weekly rather than monthly for that reason; a proxy CVE shouldn't wait
+  # up to four weeks.
+  #
+  # Caveat worth knowing: Dependabot does version updates but NOT security
+  # updates for docker-compose, so a Caddy advisory raises no alert here. The
+  # weekly PR is the whole signal — don't let it sit.
+  #
+  # Caddy is the only pinned image in deploy/. The ollama/ollama:latest services
+  # track the tag, which gives Dependabot no version to compare, so they should
+  # stay quiet here.
+  - package-ecosystem: docker-compose
+    directory: /deploy
+    target-branch: develop
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
