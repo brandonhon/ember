@@ -229,8 +229,11 @@ version a property of the repo, so a CVE advisory can be answered by reading the
 compose file. The tag next to the digest is only there to keep the version
 legible — Docker resolves the digest and ignores it.
 
-The tradeoff is that **security updates are now opt-in**. Nothing bumps this for
-you, so check it when you upgrade Ember:
+The tradeoff is that **Caddy updates arrive with Ember releases** instead of
+whenever your host happens to pull. Upstream tracks new Caddy builds with
+Dependabot and moves the pin, so taking a newer Ember takes the newer proxy with
+it. If you've forked this file or vendored your own copy, that automation isn't
+yours and the bump is — check it yourself:
 
 ```sh
 # What does the current 2-alpine tag resolve to?

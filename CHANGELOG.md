@@ -92,10 +92,12 @@ them.
 - **The bundled Caddy proxy is now pinned by digest** (`2.11.4-alpine`) instead
   of following the `caddy:2-alpine` tag. Which Caddy you run was previously
   decided by when your host last pulled, so two deployments on the same version
-  of Ember could differ; it is now fixed by the compose file. The tradeoff is
-  that Caddy updates no longer arrive on their own — `docs/caddy-hardening.md`
-  explains how to check for and apply them. Ember itself is unaffected, and
-  deployments that don't use the bundled `deploy/docker-compose.yml` are too.
+  of Ember could differ; it is now fixed by the compose file. Proxy updates
+  therefore arrive with Ember releases rather than on their own — Dependabot
+  tracks new Caddy builds and moves the pin, and `docs/caddy-hardening.md`
+  explains how to check and apply one yourself if you've vendored the file.
+  Ember itself is unaffected, and deployments that don't use the bundled
+  `deploy/docker-compose.yml` are too.
 
 ## [0.9.6] - 2026-08-04
 
