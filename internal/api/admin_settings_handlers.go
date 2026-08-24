@@ -52,6 +52,11 @@ type adminSettings struct {
 	SummaryGraceSecondsFloor int  `json:"summary_grace_seconds_floor"`
 	SummaryGraceSecondsCeil  int  `json:"summary_grace_seconds_ceil"`
 	SummariesEnabled         bool `json:"summaries_enabled"`
+	// SummaryTimeoutSeconds bounds one summarization request. Surfaced with its
+	// bounds so the UI constrains the input without hardcoding them.
+	SummaryTimeoutSeconds      int `json:"summary_timeout_seconds"`
+	SummaryTimeoutSecondsFloor int `json:"summary_timeout_seconds_floor"`
+	SummaryTimeoutSecondsCeil  int `json:"summary_timeout_seconds_ceil"`
 }
 
 func (d *Dependencies) handleGetAdminSettings(w http.ResponseWriter, r *http.Request) {
@@ -80,6 +85,9 @@ func (d *Dependencies) handleGetAdminSettings(w http.ResponseWriter, r *http.Req
 	out.SummaryGraceSecondsFloor = store.SummaryGraceSecondsFloor
 	out.SummaryGraceSecondsCeil = store.SummaryGraceSecondsCeil
 	out.SummariesEnabled = d.summariesOn()
+	out.SummaryTimeoutSeconds = d.Store.ResolveSummaryTimeoutSeconds(ctx, d.SummaryTimeoutSecondsFallback)
+	out.SummaryTimeoutSecondsFloor = store.SummaryTimeoutSecondsFloor
+	out.SummaryTimeoutSecondsCeil = store.SummaryTimeoutSecondsCeil
 	writeData(w, http.StatusOK, out, nil)
 }
 
@@ -113,6 +121,7 @@ type setAdminSettingsReq struct {
 	UpdateCheckEnabled     *bool `json:"update_check_enabled,omitempty"`
 	PasskeyRequireUV       *bool `json:"passkey_require_uv,omitempty"`
 	SummaryGraceSeconds    *int  `json:"summary_grace_seconds,omitempty"`
+	SummaryTimeoutSeconds  *int  `json:"summary_timeout_seconds,omitempty"`
 }
 
 func (d *Dependencies) handleSetAdminSettings(w http.ResponseWriter, r *http.Request) {
@@ -198,6 +207,17 @@ func (d *Dependencies) handleSetAdminSettings(w http.ResponseWriter, r *http.Req
 			return
 		}
 		if err := d.Store.PutSummaryGraceSeconds(ctx, n); err != nil {
+			internalError(w, "internal", err)
+			return
+		}
+	}
+	if req.SummaryTimeoutSeconds != nil {
+		n := *req.SummaryTimeoutSeconds
+		if !checkIntBounds(w, "summary_timeout_seconds", n,
+			store.SummaryTimeoutSecondsFloor, store.SummaryTimeoutSecondsCeil) {
+			return
+		}
+		if err := d.Store.PutSummaryTimeoutSeconds(ctx, n); err != nil {
 			internalError(w, "internal", err)
 			return
 		}
