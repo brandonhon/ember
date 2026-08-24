@@ -406,6 +406,12 @@ func NewRouter(d Dependencies) http.Handler {
 			r.Post("/admin/llm/delete", d.handleDeleteLLMModel)
 			r.Post("/admin/llm/options", d.handleSetLLMOptions)
 
+			// Summarization queue recovery (#198). Both rewrite summary_model
+			// across every user's article rows, so they get the same
+			// admin+rate-limit treatment as resummarize-all above.
+			r.With(expensiveLimiter.limitMiddleware).Post("/admin/summaries/drain", d.handleDrainSummaryQueue)
+			r.With(expensiveLimiter.limitMiddleware).Post("/admin/summaries/requeue", d.handleRequeueSummaries)
+
 			// DB maintenance
 			r.Get("/admin/db", d.handleGetDB)
 			r.Post("/admin/db/backup", d.handleDBBackup)

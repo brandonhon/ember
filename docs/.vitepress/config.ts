@@ -54,6 +54,7 @@ export default defineConfig({
           { text: 'Introduction', link: '/' },
           { text: 'Getting started', link: '/getting-started' },
           { text: 'Configuration', link: '/configuration' },
+          { text: 'Summarization', link: '/summarization' },
           { text: 'Hardening Caddy', link: '/caddy-hardening' },
           { text: 'Upgrading', link: '/upgrading' },
         ],
