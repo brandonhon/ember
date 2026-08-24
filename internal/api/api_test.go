@@ -86,6 +86,10 @@ func newHarnessWith(t *testing.T, mutate func(*Dependencies)) *harness {
 		// Test fixtures use synthetic hosts like x.test that don't resolve;
 		// the SSRF block would reject those, so bypass it in tests.
 		AllowPrivateURLs: true,
+		// Production default: EMBER_DISABLE_SUMMARIES unset. Whether summaries
+		// are actually on then hinges on d.Ollama, which the base harness
+		// leaves nil — tests that want the gate active wire one up.
+		SummariesEnabledFallback: true,
 	}
 	if mutate != nil {
 		mutate(&dep)

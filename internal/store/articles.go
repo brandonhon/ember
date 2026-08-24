@@ -264,6 +264,44 @@ func (s *Store) MarkUnsummarizedDisabled(ctx context.Context) (int64, error) {
 	return n, nil
 }
 
+// ResetDisabledSummaries clears the 'disabled' marker on every article that was
+// finalized while summaries were switched off, returning their ids so the
+// caller can re-enqueue them. Used when an admin turns summaries back ON: those
+// articles were never offered to a model, so without this the toggle would only
+// affect articles that arrive later.
+//
+// Deliberately narrow. 'skipped' means a real attempt failed, 'excluded' means a
+// per-feed opt-out was in force, and a model name means the article is done —
+// re-running any of those would burn inference the admin did not ask for.
+func (s *Store) ResetDisabledSummaries(ctx context.Context) ([]int64, error) {
+	rows, err := s.DB.QueryContext(ctx,
+		`SELECT id FROM articles WHERE summary_model = 'disabled'`)
+	if err != nil {
+		return nil, err
+	}
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	if _, err := s.DB.ExecContext(ctx,
+		`UPDATE articles SET summary_model = NULL, summary = '' WHERE summary_model = 'disabled'`); err != nil {
+		return nil, err
+	}
+	return ids, nil
+}
+
 // ResetExcludedByFeed clears the 'excluded' marker on a feed's articles and
 // returns their ids so the caller can re-enqueue them. Used when a user turns
 // AI summaries back ON for a feed (issue #163): those articles were skipped

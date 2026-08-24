@@ -53,6 +53,8 @@ func mkPoller(t *testing.T, ff Fetcher) *Poller {
 	return New(st, ff, summarize.Noop{}, Config{
 		Tick:        time.Millisecond,
 		Concurrency: 2,
+		// Production default: EMBER_DISABLE_SUMMARIES unset, no admin override.
+		SummariesEnabledFallback: true,
 	}, lg)
 }
 

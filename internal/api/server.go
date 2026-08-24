@@ -118,6 +118,10 @@ type Dependencies struct {
 	// SummaryTimeoutSecondsFallback is the env-derived default
 	// (EMBER_SUMMARY_TIMEOUT_SECONDS) for the summary_timeout_seconds setting.
 	SummaryTimeoutSecondsFallback int
+	// SummariesEnabledFallback is the env-derived default (the negation of
+	// EMBER_DISABLE_SUMMARIES) for the summaries_enabled admin setting. It
+	// only applies until an admin sets the switch explicitly in Settings.
+	SummariesEnabledFallback bool
 
 	// img signs + serves the same-origin image proxy. Built in NewRouter
 	// from SessionKey; never set by callers.
@@ -128,12 +132,18 @@ type Dependencies struct {
 	trustedNets []*net.IPNet
 }
 
-// summariesOn reports whether AI summarization is wired up (an Ollama backend
-// is configured). It is the single switch for the article summary gate: when
-// on, every reading view + every count hides articles the summarizer hasn't
-// stamped yet; when off, the gate is bypassed everywhere. Mirrors the
-// summaries_enabled flag surfaced to the SPA via /api/me.
-func (d *Dependencies) summariesOn() bool { return d.Ollama != nil }
+// summariesOn reports whether AI summarization is active: a backend must be
+// wired up AND the admin must not have switched it off. It is the single
+// switch for the article summary gate: when on, every reading view + every
+// count hides articles the summarizer hasn't stamped yet; when off, the gate
+// is bypassed everywhere. Mirrors the summaries_enabled flag surfaced to the
+// SPA via /api/me.
+//
+// Resolved per request rather than at boot so an admin's toggle takes effect
+// without a restart (issue #198) — which is why it takes a ctx.
+func (d *Dependencies) summariesOn(ctx context.Context) bool {
+	return d.Ollama != nil && d.Store.ResolveSummariesEnabled(ctx, d.SummariesEnabledFallback)
+}
 
 // summaryGraceBefore returns the unix timestamp before which an unsummarized
 // article is shown anyway, or 0 when the gate is inactive. Resolved per
@@ -141,7 +151,7 @@ func (d *Dependencies) summariesOn() bool { return d.Ollama != nil }
 // of the summary gate (article list, smart counts, per-feed unread) must pass
 // the SAME value or a badge will disagree with the column it summarizes.
 func (d *Dependencies) summaryGraceBefore(ctx context.Context) int64 {
-	if !d.summariesOn() {
+	if !d.summariesOn(ctx) {
 		return 0
 	}
 	secs := d.Store.ResolveSummaryGraceSeconds(ctx, d.SummaryGraceSecondsFallback)

@@ -48,10 +48,14 @@ type adminSettings struct {
 	// SummaryGraceSeconds is how long an article stays hidden waiting for its
 	// AI summary before being shown anyway. Only meaningful when summaries are
 	// enabled — SummariesEnabled lets the UI hide the control otherwise.
-	SummaryGraceSeconds      int  `json:"summary_grace_seconds"`
-	SummaryGraceSecondsFloor int  `json:"summary_grace_seconds_floor"`
-	SummaryGraceSecondsCeil  int  `json:"summary_grace_seconds_ceil"`
-	SummariesEnabled         bool `json:"summaries_enabled"`
+	SummaryGraceSeconds      int `json:"summary_grace_seconds"`
+	SummaryGraceSecondsFloor int `json:"summary_grace_seconds_floor"`
+	SummaryGraceSecondsCeil  int `json:"summary_grace_seconds_ceil"`
+	// SummariesEnabled is the global AI-summarization switch: writable, and
+	// persisted so it survives a restart. Reads back as false whenever no
+	// summarization backend is configured, since the setting cannot turn on
+	// what isn't wired up.
+	SummariesEnabled bool `json:"summaries_enabled"`
 	// SummaryTimeoutSeconds bounds one summarization request. Surfaced with its
 	// bounds so the UI constrains the input without hardcoding them.
 	SummaryTimeoutSeconds      int `json:"summary_timeout_seconds"`
@@ -84,7 +88,7 @@ func (d *Dependencies) handleGetAdminSettings(w http.ResponseWriter, r *http.Req
 	out.SummaryGraceSeconds = d.Store.ResolveSummaryGraceSeconds(ctx, d.SummaryGraceSecondsFallback)
 	out.SummaryGraceSecondsFloor = store.SummaryGraceSecondsFloor
 	out.SummaryGraceSecondsCeil = store.SummaryGraceSecondsCeil
-	out.SummariesEnabled = d.summariesOn()
+	out.SummariesEnabled = d.summariesOn(ctx)
 	out.SummaryTimeoutSeconds = d.Store.ResolveSummaryTimeoutSeconds(ctx, d.SummaryTimeoutSecondsFallback)
 	out.SummaryTimeoutSecondsFloor = store.SummaryTimeoutSecondsFloor
 	out.SummaryTimeoutSecondsCeil = store.SummaryTimeoutSecondsCeil
@@ -122,6 +126,11 @@ type setAdminSettingsReq struct {
 	PasskeyRequireUV       *bool `json:"passkey_require_uv,omitempty"`
 	SummaryGraceSeconds    *int  `json:"summary_grace_seconds,omitempty"`
 	SummaryTimeoutSeconds  *int  `json:"summary_timeout_seconds,omitempty"`
+	// SummariesEnabled is the global AI-summarization switch. Writable (issue
+	// #198): before this, the only way to stop summarization was an env var
+	// and a restart, and the switch users actually found in the UI was a
+	// per-user display preference that never touched the queue.
+	SummariesEnabled *bool `json:"summaries_enabled,omitempty"`
 }
 
 func (d *Dependencies) handleSetAdminSettings(w http.ResponseWriter, r *http.Request) {
@@ -220,6 +229,36 @@ func (d *Dependencies) handleSetAdminSettings(w http.ResponseWriter, r *http.Req
 		if err := d.Store.PutSummaryTimeoutSeconds(ctx, n); err != nil {
 			internalError(w, "internal", err)
 			return
+		}
+	}
+	if req.SummariesEnabled != nil {
+		if err := d.Store.PutSummariesEnabled(ctx, *req.SummariesEnabled); err != nil {
+			internalError(w, "internal", err)
+			return
+		}
+		if *req.SummariesEnabled {
+			// Back on: re-queue what was finalized while it was off, so the
+			// toggle isn't a no-op until new articles arrive. Best-effort —
+			// the setting write already succeeded, and the poller's
+			// enqueuePendingSummaries picks up anything the in-memory queue
+			// drops on the floor.
+			if ids, err := d.Store.ResetDisabledSummaries(ctx); err != nil {
+				slog.Default().Warn("settings: reset disabled summaries", "err", err)
+			} else if n := d.enqueueSummaries(ids); n > 0 {
+				slog.Default().Info("settings: re-enqueued summaries after enabling", "count", n)
+			}
+		} else {
+			// Off: drain the queue instead of freezing it. Without this the
+			// pending rows keep summary_model NULL, which hides them behind
+			// the summary gate and counts them in "Summarizing N articles"
+			// while no worker is willing to touch them — issue #198's core
+			// symptom, which survived even a container restart. Stamping a
+			// terminal marker makes them readable now and empties the queue.
+			if n, err := d.Store.MarkUnsummarizedDisabled(ctx); err != nil {
+				slog.Default().Warn("settings: drain summary queue", "err", err)
+			} else if n > 0 {
+				slog.Default().Info("settings: drained summary queue", "count", n)
+			}
 		}
 	}
 	// Echo the resolved (post-update) view so the UI can reconcile.
