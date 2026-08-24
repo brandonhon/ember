@@ -328,6 +328,12 @@ export const api = {
   setLLMOptions: (opts: LLMOptions) =>
     call<LLMOptions>("POST", "/api/admin/llm/options", opts),
 
+  // Summarization queue admin ---------------------------------------
+  drainSummaryQueue: () =>
+    call<{ drained: number }>("POST", "/api/admin/summaries/drain"),
+  requeueSummaries: () =>
+    call<{ reset: number; enqueued: number }>("POST", "/api/admin/summaries/requeue"),
+
   // Branding ---------------------------------------------------------
   getBranding: () => call<BrandingDTO>("GET", "/api/branding"),
   setBranding: (b: Partial<BrandingDTO>) =>
@@ -545,6 +551,7 @@ export interface AdminSettingsPatch {
   passkey_require_uv?: boolean;
   summary_grace_seconds?: number;
   summary_timeout_seconds?: number;
+  summaries_enabled?: boolean;
 }
 
 export interface TopFeed {
