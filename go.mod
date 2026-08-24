@@ -1,6 +1,6 @@
 module github.com/brandonhon/ember
 
-go 1.26.5
+go 1.26.7
 
 require (
 	github.com/SherClockHolmes/webpush-go v1.4.0
