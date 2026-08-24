@@ -10,7 +10,6 @@ import (
 
 	"github.com/brandonhon/ember/internal/models"
 	"github.com/brandonhon/ember/internal/store"
-	"github.com/brandonhon/ember/internal/summarize"
 )
 
 // getAdminSettings reads the admin settings envelope as a typed struct.
@@ -76,7 +75,7 @@ func listArticleIDs(t *testing.T, cl *http.Client, base string) []int64 {
 // freeze it, and the choice must outlive a restart.
 func TestAdminSettings_SummariesToggle_PersistsAndDrains(t *testing.T) {
 	h := newHarnessWith(t, func(d *Dependencies) {
-		d.Ollama = summarize.NewOllama("http://ollama.invalid", "llama3")
+		wireOllama(d, "http://ollama.invalid", "llama3")
 		// A long grace so freshly-ingested unsummarized articles really are
 		// hidden by the gate — otherwise "the queue drained" and "the articles
 		// became visible" would both pass for the wrong reason.
@@ -189,7 +188,7 @@ func TestAdminSettings_SummariesToggle_PersistsAndDrains(t *testing.T) {
 func TestSummariesOn_StoredChoiceBeatsEnvFallback(t *testing.T) {
 	ctx := context.Background()
 	h := newHarnessWith(t, func(d *Dependencies) {
-		d.Ollama = summarize.NewOllama("http://ollama.invalid", "llama3")
+		wireOllama(d, "http://ollama.invalid", "llama3")
 		d.SummariesEnabledFallback = true // EMBER_DISABLE_SUMMARIES unset
 	})
 	if !h.dep.summariesOn(ctx) {
@@ -204,7 +203,7 @@ func TestSummariesOn_StoredChoiceBeatsEnvFallback(t *testing.T) {
 
 	// The mirror image: EMBER_DISABLE_SUMMARIES=1 at boot, admin turns it on.
 	off := newHarnessWith(t, func(d *Dependencies) {
-		d.Ollama = summarize.NewOllama("http://ollama.invalid", "llama3")
+		wireOllama(d, "http://ollama.invalid", "llama3")
 		d.SummariesEnabledFallback = false
 	})
 	if off.dep.summariesOn(ctx) {
@@ -233,7 +232,7 @@ func TestSummariesOn_StoredChoiceBeatsEnvFallback(t *testing.T) {
 // able to reach it.
 func TestAdminSettings_SummariesToggle_IsAdminOnly(t *testing.T) {
 	h := newHarnessWith(t, func(d *Dependencies) {
-		d.Ollama = summarize.NewOllama("http://ollama.invalid", "llama3")
+		wireOllama(d, "http://ollama.invalid", "llama3")
 	})
 	h.seedUser(t, "reader", "p", false)
 	cl := h.login(t, "reader", "p")

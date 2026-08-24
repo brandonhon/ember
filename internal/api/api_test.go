@@ -24,6 +24,7 @@ import (
 	"github.com/brandonhon/ember/internal/models"
 	"github.com/brandonhon/ember/internal/opml"
 	"github.com/brandonhon/ember/internal/store"
+	"github.com/brandonhon/ember/internal/summarize"
 )
 
 type harness struct {
@@ -68,6 +69,18 @@ func (f *fakePoller) ExtractArticle(_ context.Context, _ int64) error {
 
 func newHarness(t *testing.T) *harness { return newHarnessWith(t, nil) }
 
+// wireOllama points a harness at an Ollama backend, the way buildBackend does
+// at boot: the Switcher is what makes summariesOn true, and d.Ollama is what
+// makes the model-management endpoints answer. Both come from one call so a
+// test can't accidentally wire half of it.
+func wireOllama(d *Dependencies, baseURL, model string) *summarize.Ollama {
+	o := summarize.NewOllama(baseURL, model)
+	d.Ollama = o
+	d.Backend = &summarize.Switcher{}
+	d.Backend.Set(o)
+	return o
+}
+
 // newHarnessWith is newHarness with a hook to tweak Dependencies before the
 // router is built — e.g. flip AllowPrivateURLs off or wire a Push notifier for
 // tests that exercise those paths.
@@ -87,8 +100,8 @@ func newHarnessWith(t *testing.T, mutate func(*Dependencies)) *harness {
 		// the SSRF block would reject those, so bypass it in tests.
 		AllowPrivateURLs: true,
 		// Production default: EMBER_DISABLE_SUMMARIES unset. Whether summaries
-		// are actually on then hinges on d.Ollama, which the base harness
-		// leaves nil — tests that want the gate active wire one up.
+		// are actually on then hinges on d.Backend, which the base harness
+		// leaves nil — tests that want the gate active call wireOllama.
 		SummariesEnabledFallback: true,
 	}
 	if mutate != nil {

@@ -63,6 +63,23 @@ type Config struct {
 	// for CPU-only inference on a short article, short enough that one stuck
 	// request doesn't stall the single summary worker.
 	SummaryTimeoutSeconds int
+	// SummaryBackend selects the summarization transport: "ollama" (default),
+	// "openai" (any OpenAI-compatible /v1/chat/completions endpoint), or
+	// "anthropic" (Claude). Sets the boot-time default for the
+	// summarize_backend admin setting, which an admin can change at runtime
+	// without a restart.
+	SummaryBackend string
+	// SummaryBaseURL is the endpoint root for the openai backend (ignored by
+	// anthropic, which uses the SDK default, and by ollama, which keeps
+	// EMBER_OLLAMA_URL). Boot-time default for summarize_base_url.
+	SummaryBaseURL string
+	// SummaryAPIKey is the bearer token / API key for the openai and anthropic
+	// backends. Boot-time default for summarize_api_key; an admin can rotate it
+	// in Settings without redeploying, and the stored key then wins.
+	SummaryAPIKey string
+	// SummaryModel is the model id for the openai and anthropic backends
+	// (ollama keeps EMBER_OLLAMA_MODEL). Boot-time default for summarize_model.
+	SummaryModel string
 	// AllowPrivateURLs disables the SSRF block on outbound HTTP fetches so a
 	// homelab can subscribe to feeds on its LAN. Default false (production).
 	AllowPrivateURLs bool
@@ -115,6 +132,7 @@ func Defaults() Config {
 		AdminUser:       "admin",
 		OllamaURL:       "http://ollama:11434",
 		OllamaModel:     "qwen2.5:0.5b",
+		SummaryBackend:  "ollama",
 		FreshWindow:     6 * time.Hour,
 		PollConcurrency: 8,
 		PollTick:        60 * time.Second,
@@ -248,6 +266,7 @@ func loadFrom(get func(string) string) (Config, error) {
 	e.str("EMBER_DB_PATH", &cfg.DBPath)
 	e.str("EMBER_ADMIN_USER", &cfg.AdminUser)
 	e.str("EMBER_OLLAMA_MODEL", &cfg.OllamaModel)
+	e.str("EMBER_SUMMARY_MODEL", &cfg.SummaryModel)
 	e.str("EMBER_PUBLIC_URL", &cfg.PublicURL)
 	e.str("EMBER_SMTP_HOST", &cfg.SMTPHost)
 	e.str("EMBER_SMTP_USER", &cfg.SMTPUser)
@@ -260,6 +279,7 @@ func loadFrom(get func(string) string) (Config, error) {
 	// required-key check below) rather than "leave the default".
 	cfg.SessionKey = get("EMBER_SESSION_KEY")
 	cfg.AdminPassword = get("EMBER_ADMIN_PASSWORD")
+	cfg.SummaryAPIKey = get("EMBER_SUMMARY_API_KEY")
 
 	e.duration("EMBER_FRESH_WINDOW", &cfg.FreshWindow, 0, 0)
 	e.duration("EMBER_SESSION_TTL", &cfg.SessionTTL, 0, 0)
@@ -292,6 +312,42 @@ func loadFrom(get func(string) string) (Config, error) {
 			e.fail("EMBER_OLLAMA_URL", "must use http or https scheme, got %q", u.Scheme)
 		default:
 			cfg.OllamaURL = v
+		}
+	}
+	// The hosted backend's endpoint gets the same scheme check as Ollama's: it
+	// is an outbound request target that we hand an API key to, so a file:/
+	// gopher:/ftp: scheme has to fail at boot rather than at the first article.
+	//
+	// The host check has no counterpart above only because this value has a
+	// second gate — the admin API's httpScheme, which rejects a hostless URL —
+	// and boot and runtime disagreeing about what is valid is its own bug:
+	// "https:" would be accepted here and refused the moment an admin re-saved
+	// the same value in Settings.
+	if v := get("EMBER_SUMMARY_BASE_URL"); v != "" {
+		u, parseErr := url.Parse(v)
+		switch {
+		case parseErr != nil:
+			e.fail("EMBER_SUMMARY_BASE_URL", "invalid: %v", parseErr)
+		case u.Scheme != "http" && u.Scheme != "https":
+			e.fail("EMBER_SUMMARY_BASE_URL", "must use http or https scheme, got %q", u.Scheme)
+		case u.Host == "":
+			e.fail("EMBER_SUMMARY_BASE_URL", "must include a host, got %q", v)
+		default:
+			cfg.SummaryBaseURL = v
+		}
+	}
+	// A typo here has to fail at boot alongside every other config error rather
+	// than silently falling through to Ollama and summarizing against the wrong
+	// endpoint — the same treatment EMBER_LOG_LEVEL gets below.
+	//
+	// The names are spelled out here rather than taken from store.ValidBackend
+	// so config stays a leaf package — it is loaded before the database exists.
+	if v := get("EMBER_SUMMARY_BACKEND"); v != "" {
+		switch v {
+		case "ollama", "openai", "anthropic":
+			cfg.SummaryBackend = v
+		default:
+			e.fail("EMBER_SUMMARY_BACKEND", "must be one of ollama, openai, anthropic; got %q", v)
 		}
 	}
 	if v := get("EMBER_LOG_LEVEL"); v != "" {
