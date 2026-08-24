@@ -41,7 +41,7 @@ func (d *Dependencies) handleListFeeds(w http.ResponseWriter, r *http.Request) {
 	// to [1d, retention]) and gated on the summary marker when AI is on, so a
 	// badge agrees with the article list.
 	cutoff := d.Store.UnreadCutoff(r.Context(), u.ID)
-	feeds, err := d.Store.ListFeedsForUser(r.Context(), u.ID, cutoff, d.summariesOn(), d.summaryGraceBefore(r.Context()))
+	feeds, err := d.Store.ListFeedsForUser(r.Context(), u.ID, cutoff, d.summariesOn(r.Context()), d.summaryGraceBefore(r.Context()))
 	if mapStoreError(w, err) {
 		return
 	}
@@ -50,7 +50,7 @@ func (d *Dependencies) handleListFeeds(w http.ResponseWriter, r *http.Request) {
 	// ListFeedsForUser stays non-deduped for its other callers (Fever, OPML,
 	// ttrss, starter-pack); only this SPA endpoint overlays the deduped counts.
 	deduped, err := d.Store.CountUnreadByFeed(r.Context(), u.ID, store.ListArticlesQuery{
-		FreshAfter: cutoff, OnlySummarized: d.summariesOn(),
+		FreshAfter: cutoff, OnlySummarized: d.summariesOn(r.Context()),
 		SummaryGraceBefore: d.summaryGraceBefore(r.Context()),
 	})
 	if mapStoreError(w, err) {

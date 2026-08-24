@@ -312,15 +312,19 @@ func run() error {
 		return urlcheck.Check(ctx, raw, cfg.AllowPrivateURLs)
 	}
 
-	// Summarizer: noop in test mode, nil if disabled at install, otherwise
-	// Ollama. The active model is the persisted app setting if present, else
-	// the env-var default — so admin model switches survive a restart.
+	// Summarizer: noop in test mode, otherwise Ollama. The active model is the
+	// persisted app setting if present, else the env-var default — so admin
+	// model switches survive a restart.
+	//
+	// EMBER_DISABLE_SUMMARIES is the boot-time DEFAULT for the summaries_enabled
+	// setting, not a hard kill switch: the client is still constructed so an
+	// admin can turn summaries on at runtime without editing the environment
+	// and restarting. The poller and the API both consult
+	// ResolveSummariesEnabled per call, so nothing is summarized while the
+	// setting is off.
 	var sum summarize.Summarizer
 	var ollamaSum *summarize.Ollama
 	switch {
-	case cfg.DisableSummaries:
-		logger.Info("AI summaries disabled via EMBER_DISABLE_SUMMARIES")
-		sum = nil
 	case cfg.TestMode:
 		logger.Warn("AI summarizer: using noop (test mode) — set EMBER_OLLAMA_URL for real summaries")
 		sum = summarize.Noop{}
@@ -351,6 +355,9 @@ func run() error {
 		ollamaSum.SetOptions(opts)
 		sum = ollamaSum
 	}
+	if cfg.DisableSummaries {
+		logger.Info("AI summaries default to off (EMBER_DISABLE_SUMMARIES); an admin can enable them in Settings")
+	}
 
 	// Block redirects to private/internal addresses on every feed fetch — the
 	// guard is baked into the fetcher at construction.
@@ -361,15 +368,19 @@ func run() error {
 	// urlcheck and the actual dial (the redirect guard only covers 3xx hops).
 	fetcher.Client.Transport = urlcheck.GuardedTransport(cfg.AllowPrivateURLs)
 	p := poller.New(st, fetcher, sum, poller.Config{
-		Tick:                          cfg.PollTick,
-		Concurrency:                   cfg.PollConcurrency,
-		SummaryWorker:                 !cfg.TestMode && !cfg.DisableSummaries,
+		Tick:        cfg.PollTick,
+		Concurrency: cfg.PollConcurrency,
+		// The worker exists whenever a summarizer does, so a runtime enable has
+		// something to run; it does no work while the setting is off because
+		// enqueuePendingSummaries returns early and summarizeOne stamps.
+		SummaryWorker:                 !cfg.TestMode,
 		EnrichOnIngest:                !cfg.TestMode,
 		DisableImages:                 cfg.DisableImages,
 		AllowPrivateURLs:              cfg.AllowPrivateURLs,
 		InitialBacklogHoursFallback:   store.DefaultInitialBacklogHours,
 		MinIntervalFallback:           cfg.PollMinInterval,
 		SummaryTimeoutSecondsFallback: cfg.SummaryTimeoutSeconds,
+		SummariesEnabledFallback:      !cfg.DisableSummaries,
 	}, logger.With("component", "poller"))
 
 	// Background workers are tracked in a WaitGroup so shutdown can wait for an
@@ -516,6 +527,7 @@ func run() error {
 		PasskeyRequireUVFallback:      cfg.PasskeyRequireUV,
 		SummaryGraceSecondsFallback:   cfg.SummaryGraceSeconds,
 		SummaryTimeoutSecondsFallback: cfg.SummaryTimeoutSeconds,
+		SummariesEnabledFallback:      !cfg.DisableSummaries,
 	}
 	// Set the update checker only when one exists (dev/dirty builds have none).
 	// Assigning a typed-nil *Checker to the interface field would make it

@@ -49,6 +49,11 @@ const (
 	// override it at runtime via Settings.
 	keyUpdateCheckEnabled = "update_check_enabled"
 
+	// Whether AI summarization runs at all. EMBER_DISABLE_SUMMARIES sets the
+	// boot-time default (negated); an admin can override it at runtime in
+	// Settings and the choice survives a restart (issue #198).
+	keySummariesEnabled = "summaries_enabled"
+
 	// Whether passkey sign-in demands user verification (PIN/biometric) rather
 	// than merely preferring it. EMBER_PASSKEY_REQUIRE_UV sets the boot-time
 	// default; an admin can override it at runtime via Settings.
@@ -326,6 +331,30 @@ func (s *Store) PutUpdateCheckEnabled(ctx context.Context, on bool) error {
 		v = "1"
 	}
 	return s.PutAppSetting(ctx, keyUpdateCheckEnabled, v)
+}
+
+// ResolveSummariesEnabled reports whether AI summarization should run. The
+// fallback (derived from EMBER_DISABLE_SUMMARIES) applies until an admin sets
+// an explicit value via Settings.
+func (s *Store) ResolveSummariesEnabled(ctx context.Context, fallback bool) bool {
+	if v, _ := s.GetAppSetting(ctx, keySummariesEnabled); v != "" {
+		switch strings.ToLower(v) {
+		case "1", "true", "yes", "on":
+			return true
+		case "0", "false", "no", "off":
+			return false
+		}
+	}
+	return fallback
+}
+
+// PutSummariesEnabled persists the admin's explicit on/off choice.
+func (s *Store) PutSummariesEnabled(ctx context.Context, on bool) error {
+	v := "0"
+	if on {
+		v = "1"
+	}
+	return s.PutAppSetting(ctx, keySummariesEnabled, v)
 }
 
 // ResolvePasskeyRequireUV reports whether passkey sign-in must demand user

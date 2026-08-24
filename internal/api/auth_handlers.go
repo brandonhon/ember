@@ -98,11 +98,14 @@ type meResponse struct {
 	// articles far older than this, and decrementing for those drives the
 	// badge below the server's true count.
 	UnreadWindowSeconds int64 `json:"unread_window_seconds"`
-	// SummariesEnabled tells the SPA whether AI summarization is wired up
-	// on this server. False when EMBER_DISABLE_SUMMARIES=1 or no Ollama
-	// summarizer is configured (e.g. test mode). The Sidebar uses this to
-	// hide the per-feed "Resummarize" action that would otherwise enqueue
-	// work for a worker pool that isn't running.
+	// SummariesEnabled tells the SPA whether AI summarization is active on
+	// this server. False when no Ollama summarizer is configured (e.g. test
+	// mode) or when an admin has switched summaries off in Settings (whose
+	// boot-time default is the negation of EMBER_DISABLE_SUMMARIES). The
+	// Sidebar uses this to hide the per-feed "Resummarize" action that would
+	// otherwise enqueue work nothing will process. Resolved through the same
+	// summariesOn helper the summary gate uses, so /api/me and the gate can
+	// never disagree.
 	SummariesEnabled bool `json:"summaries_enabled"`
 	// Update carries the latest-release check result, populated only for admin
 	// users (updating the image is an operator action). Nil/omitted when the
@@ -144,7 +147,7 @@ func (d *Dependencies) handleMe(w http.ResponseWriter, r *http.Request) {
 		Version:             Version,
 		FreshWindowSeconds:  int64(d.freshWindow().Seconds()),
 		UnreadWindowSeconds: unreadWindow,
-		SummariesEnabled:    d.Ollama != nil,
+		SummariesEnabled:    d.summariesOn(r.Context()),
 	}
 	// Surface the update hint to admins only; readers can't act on it.
 	if u.IsAdmin && d.UpdateChecker != nil {

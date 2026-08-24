@@ -32,6 +32,8 @@ func newSummaryTestPoller(t *testing.T, st *store.Store, sum summarize.Summarize
 	lg := slog.New(slog.NewTextHandler(io.Discard, nil))
 	return New(st, &fakeFetcher{notModified: true}, sum, Config{
 		Tick: time.Hour, Concurrency: 1,
+		// Production default: EMBER_DISABLE_SUMMARIES unset, no admin override.
+		SummariesEnabledFallback: true,
 	}, lg)
 }
 

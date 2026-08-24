@@ -81,7 +81,7 @@ func (d *Dependencies) handleListArticles(w http.ResponseWriter, r *http.Request
 	// summarizer hasn't stamped yet — uniformly across every view (including
 	// Fresh) so badges match lists. When off (no Ollama), nothing is gated and
 	// everything shows everywhere. ?all=1 force-bypasses for admin/debug.
-	onlySummarized := d.summariesOn() && !atoB("all")
+	onlySummarized := d.summariesOn(r.Context()) && !atoB("all")
 	query := store.ListArticlesQuery{
 		View:               view,
 		FeedID:             feedID,

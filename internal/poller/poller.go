@@ -63,6 +63,11 @@ type Config struct {
 	// over this fallback, so an admin's change applies to the next article
 	// without a restart.
 	SummaryTimeoutSecondsFallback int
+	// SummariesEnabledFallback is the env-derived default (the negation of
+	// EMBER_DISABLE_SUMMARIES) for the summaries_enabled setting. The poller
+	// resolves the live value per article so an admin's toggle applies without
+	// a restart.
+	SummariesEnabledFallback bool
 }
 
 // effectiveBounds resolves the live adaptive-interval floor (admin-set in
@@ -76,6 +81,12 @@ func (p *Poller) effectiveBounds(ctx context.Context) (minIv, maxIv time.Duratio
 		maxIv = minIv
 	}
 	return minIv, maxIv
+}
+
+// summariesEnabled resolves the live on/off switch (admin-set in app_settings,
+// overlaying the env fallback).
+func (p *Poller) summariesEnabled(ctx context.Context) bool {
+	return p.Store.ResolveSummariesEnabled(ctx, p.Config.SummariesEnabledFallback)
 }
 
 // Metrics is an in-memory snapshot for observability/tests.
@@ -156,11 +167,16 @@ func (p *Poller) Run(ctx context.Context) {
 		}()
 	}
 
-	// Same idea with no summarizer configured: ingest stamps each new article
-	// 'disabled' (see fetchAndStore), but that write shares the poll context,
-	// so a shutdown landing between the INSERT and the stamp strands the row at
-	// NULL — where it counts toward pending_summary forever with no worker to
-	// drain it. Heal the backlog once at startup.
+	// Same idea with no summarizer wired up at all (nil Summarizer — tests, and
+	// any build that constructs the poller without one): ingest stamps each new
+	// article 'disabled' (see fetchAndStore), but that write shares the poll
+	// context, so a shutdown landing between the INSERT and the stamp strands
+	// the row at NULL — where it counts toward pending_summary forever with no
+	// worker to drain it. Heal the backlog once at startup.
+	//
+	// A summarizer that exists but is switched off at runtime is NOT this case:
+	// enqueuePendingSummaries drains that backlog on every tick, which also
+	// covers the boot pass because Run calls it above.
 	if p.Summarizer == nil {
 		wg.Add(1)
 		go func() {
@@ -386,11 +402,13 @@ func (p *Poller) fetchAndStore(ctx context.Context, f models.Feed) {
 		for _, userID := range subs {
 			p.applyFiltersForUser(ctx, userID, stored)
 		}
-		// Enqueue for summarization (best-effort; drop if queue full). When
-		// no summarizer is configured (EMBER_DISABLE_SUMMARIES) we stamp the
-		// article with summary_model='disabled' so the SPA's OnlySummarized
-		// filter passes it through — otherwise new articles would never
-		// appear without manual refresh.
+		// Enqueue for summarization (best-effort; drop if queue full). With no
+		// summarizer wired up at all we stamp summary_model='disabled' here
+		// instead, so the SPA's OnlySummarized filter passes the article
+		// through — otherwise new articles would never appear without a manual
+		// refresh. Note this branch is about a nil Summarizer, not about the
+		// runtime summaries_enabled switch: that one is decided at the consumer
+		// (summarizeOne), which is the only place that sees every enqueue path.
 		if p.Summarizer != nil {
 			// Best-effort; EnqueueSummary drops the id when the queue is full.
 			p.EnqueueSummary(stored.ID)
@@ -692,6 +710,26 @@ const summaryBackfillLimit = 20
 // and pushes them onto the summary worker channel. Bounded by the channel
 // buffer; runs in its own goroutine so it never blocks startup.
 func (p *Poller) enqueuePendingSummaries(ctx context.Context) {
+	// Summaries off: don't refill the queue — the worker would only stamp what
+	// we handed it, tick after tick. Drain instead of merely standing down.
+	//
+	// The drain is not belt-and-braces, it is the ONLY convergence path while
+	// the switch is off. Nothing else stamps a pending row: the settings
+	// handler's drain runs on the request context and is warn-and-continue, so
+	// an aborted PATCH or a DB error leaves the setting off with the backlog
+	// still NULL; ids already sitting in summaryCh are dropped on the floor at
+	// shutdown (Run returns on ctx.Done() without draining the buffer); and the
+	// startup heal below is gated on Summarizer == nil, which no longer happens
+	// in production now that EMBER_DISABLE_SUMMARIES only seeds a setting. In
+	// every one of those cases the rows would stay invisible behind the summary
+	// gate and pinned in "Summarizing N articles" across restarts — issue #198
+	// verbatim, including the reporter's "restarting the container did not
+	// clear it". Run calls this at startup and on every tick, so this one call
+	// closes all of them. The UPDATE matches no rows when nothing is pending.
+	if !p.summariesEnabled(ctx) {
+		p.stampPendingDisabled(ctx)
+		return
+	}
 	ids, err := p.Store.ListUnsummarizedIDs(ctx, min(summaryBackfillLimit, p.Config.SummaryQueue))
 	if err != nil {
 		p.Logger.Warn("poller: backfill summary queue", "err", err)
@@ -712,8 +750,10 @@ func (p *Poller) enqueuePendingSummaries(ctx context.Context) {
 	}
 }
 
-// stampPendingDisabled finalizes articles the previous run left unstamped.
-// Counterpart of enqueuePendingSummaries for the no-summarizer configuration.
+// stampPendingDisabled finalizes articles left unstamped: those a previous run
+// stranded with no summarizer configured, and — since the switch became a
+// runtime setting — the whole pending backlog whenever summaries are off, which
+// is why enqueuePendingSummaries calls it instead of merely standing down.
 func (p *Poller) stampPendingDisabled(ctx context.Context) {
 	n, err := p.Store.MarkUnsummarizedDisabled(ctx)
 	if err != nil {
@@ -739,6 +779,22 @@ func (p *Poller) summarizeOne(ctx context.Context, articleID int64) {
 	if p.Summarizer == nil {
 		// No summarizer configured — mark skipped so the article still shows.
 		p.markSkipped(ctx, articleID)
+		return
+	}
+	// Summaries switched off at runtime (issue #198). Checked HERE, at the
+	// consumer, for the same reason the per-feed opt-out below is: every
+	// enqueue path leaves summary_model NULL, and this is the one place that
+	// sees them all.
+	//
+	// Stamping 'disabled' rather than leaving the row pending is load-bearing:
+	// a pending row is invisible until the grace window lapses and is re-queued
+	// on every tick, which is exactly the "stuck at Summarizing 314 articles"
+	// symptom in the issue. A terminal marker makes the article readable now
+	// and drains the queue.
+	if !p.summariesEnabled(ctx) {
+		if err := p.Store.UpdateSummary(ctx, articleID, "", "disabled"); err != nil {
+			p.Logger.Warn("poller: stamp summary_model=disabled", "article_id", articleID, "err", err)
+		}
 		return
 	}
 	// Per-feed opt-out (issue #163). This check lives HERE, at the consumer,
