@@ -68,6 +68,19 @@ type Config struct {
 	// resolves the live value per article so an admin's toggle applies without
 	// a restart.
 	SummariesEnabledFallback bool
+	// SummarizerReady reports whether the wired summarizer can actually answer
+	// right now. Nil means "always ready", which is what tests and any caller
+	// passing a concrete backend want.
+	//
+	// It exists because the Switcher made p.Summarizer permanently non-nil in
+	// production: the nil-Summarizer branches below can no longer fire, so an
+	// admin who selects a hosted backend and has not yet pasted the API key
+	// would have every incoming article handed to a backend that errors — and
+	// summarizeOne's failure path stamps 'skipped', which is terminal and only
+	// undone by a manual Resummarize. With this hook the same articles are
+	// stamped 'disabled' instead, which the Requeue action reverses in one
+	// click once the key is in place.
+	SummarizerReady func() bool
 }
 
 // effectiveBounds resolves the live adaptive-interval floor (admin-set in
@@ -84,8 +97,15 @@ func (p *Poller) effectiveBounds(ctx context.Context) (minIv, maxIv time.Duratio
 }
 
 // summariesEnabled resolves the live on/off switch (admin-set in app_settings,
-// overlaying the env fallback).
+// overlaying the env fallback) AND whether the selected backend is actually
+// configured. The two are one gate for the poller's purposes: an unconfigured
+// backend and a switched-off one are equally unable to produce a summary, and
+// both want the pending row finalized as 'disabled' rather than left invisible
+// behind the summary gate.
 func (p *Poller) summariesEnabled(ctx context.Context) bool {
+	if p.Config.SummarizerReady != nil && !p.Config.SummarizerReady() {
+		return false
+	}
 	return p.Store.ResolveSummariesEnabled(ctx, p.Config.SummariesEnabledFallback)
 }
 
@@ -781,10 +801,16 @@ func (p *Poller) summarizeOne(ctx context.Context, articleID int64) {
 		p.markSkipped(ctx, articleID)
 		return
 	}
-	// Summaries switched off at runtime (issue #198). Checked HERE, at the
-	// consumer, for the same reason the per-feed opt-out below is: every
-	// enqueue path leaves summary_model NULL, and this is the one place that
-	// sees them all.
+	// Summaries switched off at runtime (issue #198), or the selected backend
+	// not yet configured (issue #200 — a hosted backend picked before its API
+	// key was pasted in). Checked HERE, at the consumer, for the same reason
+	// the per-feed opt-out below is: every enqueue path leaves summary_model
+	// NULL, and this is the one place that sees them all.
+	//
+	// Stamping 'disabled' rather than 'skipped' is what makes the unconfigured
+	// case recoverable: 'skipped' is terminal and only a manual Resummarize
+	// undoes it, whereas Requeue puts every 'disabled' article back in line the
+	// moment the backend is finished.
 	//
 	// Stamping 'disabled' rather than leaving the row pending is load-bearing:
 	// a pending row is invisible until the grace window lapses and is re-queued

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/brandonhon/ember/internal/models"
-	"github.com/brandonhon/ember/internal/summarize"
 )
 
 // The supported recovery path for issue #198: an admin who is staring at
@@ -19,7 +18,7 @@ import (
 // while leaving the gate closed would look fixed and not be.
 func TestDrainSummaryQueue_MakesPendingArticlesVisible(t *testing.T) {
 	h := newHarnessWith(t, func(d *Dependencies) {
-		d.Ollama = summarize.NewOllama("http://ollama.invalid", "llama3")
+		wireOllama(d, "http://ollama.invalid", "llama3")
 		// Long grace so the pending articles are genuinely hidden behind the
 		// gate, not just fast-forwarded past it.
 		d.SummaryGraceSecondsFallback = 3600
@@ -63,7 +62,7 @@ func TestDrainSummaryQueue_MakesPendingArticlesVisible(t *testing.T) {
 // non-admin reader could drain every user's queue.
 func TestDrainSummaryQueue_RequiresAdmin(t *testing.T) {
 	h := newHarnessWith(t, func(d *Dependencies) {
-		d.Ollama = summarize.NewOllama("http://ollama.invalid", "llama3")
+		wireOllama(d, "http://ollama.invalid", "llama3")
 	})
 	h.seedUser(t, "reader", "p", false)
 	cl := h.login(t, "reader", "p")
@@ -91,7 +90,7 @@ func TestDrainSummaryQueue_RequiresAdmin(t *testing.T) {
 // already-summarized article must not be re-run at all.
 func TestRequeueSummaries_ClearsOnlyDisabled(t *testing.T) {
 	h := newHarnessWith(t, func(d *Dependencies) {
-		d.Ollama = summarize.NewOllama("http://ollama.invalid", "llama3")
+		wireOllama(d, "http://ollama.invalid", "llama3")
 	})
 	h.seedUser(t, "admin", "correct-horse", true)
 	cl := h.login(t, "admin", "correct-horse")
@@ -176,7 +175,7 @@ func TestRequeueSummaries_ClearsOnlyDisabled(t *testing.T) {
 // through before the 403 is returned.
 func TestRequeueSummaries_RequiresAdmin(t *testing.T) {
 	h := newHarnessWith(t, func(d *Dependencies) {
-		d.Ollama = summarize.NewOllama("http://ollama.invalid", "llama3")
+		wireOllama(d, "http://ollama.invalid", "llama3")
 	})
 	h.seedUser(t, "reader", "p", false)
 	cl := h.login(t, "reader", "p")

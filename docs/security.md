@@ -141,12 +141,21 @@ The card thumbnail and the reader's lead image are served from Ember's own origi
 
 ## Secrets at rest
 
-Admin-editable secrets — currently the SMTP password (`smtp_password` key in `app_settings`) — are stored **as plaintext** in the SQLite database. This matches the storage model when the same value is supplied via `EMBER_SMTP_PASSWORD` (env vars are also plaintext, just in `.env` rather than `ember.db`).
+Admin-editable secrets are stored **as plaintext** in the SQLite database. There are currently two:
+
+| `app_settings` key | What it is | Env equivalent |
+| --- | --- | --- |
+| `smtp_password` | SMTP auth password for digest email | `EMBER_SMTP_PASSWORD` |
+| `summarize_api_key` | API key for the `openai` / `anthropic` summarization backends — a **paid third-party credential** | `EMBER_SUMMARY_API_KEY` |
+
+This matches the storage model when the same values are supplied via the environment (env vars are also plaintext, just in `.env` rather than `ember.db`).
+
+Both are **write-only over the API**: `GET` returns a `password_set` / `api_key_set` boolean and never the value, an empty string on update means "no change", and only an explicit `clear_password` / `clear_api_key` flag erases one. Neither is ever logged. That protects them in transit and in logs — it does **not** protect them in the database file or in a backup taken from it.
 
 Protect the SQLite file at the filesystem layer:
 
 - Docker compose mounts `ember-data:/data` (root-owned inside the container).
-- Backups produced by `/api/admin/db/backup` inherit those permissions. Don't ship them to anywhere less trustworthy than the host.
+- Backups produced by `/api/admin/db/backup` are a copy of the whole database, so they contain both secrets above in plaintext. They inherit those permissions. Don't ship them to anywhere less trustworthy than the host.
 - Database-encryption-at-rest (SQLCipher) is not currently wired; if you need it, a future change would belong here.
 
 ## Fever shim

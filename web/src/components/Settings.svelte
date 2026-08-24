@@ -13,7 +13,7 @@
     branding,
     refreshBranding,
   } from "../lib/stores";
-  import { api, ApiError, type StarterPack, type StarterImportResult, type LLMStatus, type DBStatus, type UserStats, type UserDigest, type PasskeySummary } from "../lib/api";
+  import { api, ApiError, type StarterPack, type StarterImportResult, type LLMStatus, type LLMBackend, type DBStatus, type UserStats, type UserDigest, type PasskeySummary } from "../lib/api";
   import type { PushSubscriptionSummary, EmailInbox } from "../lib/types";
   import { createPasskey, passkeySupported } from "../lib/passkey";
   import {
@@ -563,6 +563,70 @@
   let llmBusy = $state<string>(""); // active action: "switch:<model>", "pull:<model>", etc.
   let pullInput = $state<string>("");
 
+  // Backend selection (#200). backendKey is write-only in both directions: the
+  // server answers with api_key_set and never the value, so this field starts
+  // empty on every load and an empty value on save means "keep the stored key".
+  // Anything else would round-trip a paid credential through the browser.
+  let backend = $state<LLMBackend>("ollama");
+  let backendBaseURL = $state<string>("");
+  let backendKey = $state<string>("");
+  let backendModel = $state<string>("");
+  let apiKeySet = $state(false);
+  let backendBusy = $state(false);
+
+  // syncBackendFromLLM pulls the saved backend into the form. Called after
+  // every load so a save from another admin's session is reflected.
+  function syncBackendFromLLM() {
+    if (!llm) return;
+    backend = llm.backend ?? "ollama";
+    backendBaseURL = llm.base_url ?? "";
+    backendModel = llm.model ?? "";
+    apiKeySet = llm.api_key_set ?? false;
+    backendKey = "";
+  }
+
+  // pickBackend changes the selection and drops the endpoint and model with it.
+  // Those two inputs are hidden on the Ollama backend, so carrying a hosted
+  // provider's values across the switch would submit values the admin cannot
+  // see or correct. The server blanks them for Ollama regardless — this only
+  // keeps the form honest about what Save will send.
+  function pickBackend(next: LLMBackend) {
+    if (next === backend) return;
+    backend = next;
+    backendBaseURL = "";
+    backendModel = "";
+  }
+
+  async function saveBackend(clearKey = false) {
+    if (DEMO) { notifyDemoBlocked(); return; }
+    backendBusy = true;
+    llmMsg = "";
+    llmErr = "";
+    try {
+      await api.setLLMBackend({
+        backend,
+        base_url: backendBaseURL,
+        api_key: backendKey,
+        clear_api_key: clearKey,
+        model: backendModel,
+      });
+      // Not "key removed": clearing erases the stored override, and
+      // ResolveBackendSettings then falls back to EMBER_SUMMARY_API_KEY. When
+      // one is set in the environment a key is still in force afterwards, and
+      // api_key_set correctly stays true — the message must not claim otherwise.
+      llmMsg = clearKey ? "Stored key cleared — any EMBER_SUMMARY_API_KEY still applies" : "Saved";
+      await loadLLM();
+      // summaries_enabled reads back false while no usable backend is wired
+      // up, so the Summaries card has to be refreshed alongside this one.
+      await loadSummaryGrace();
+    } catch (e) {
+      llmErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      backendBusy = false;
+      setTimeout(() => (llmMsg = ""), 3000);
+    }
+  }
+
   // Summary grace window (admin). Lives in app_settings, not the LLM status
   // endpoint, so it is fetched alongside it.
   let summaryGrace = $state(120);
@@ -683,6 +747,7 @@
     try {
       const res = await api.getLLMStatus();
       llm = res.data;
+      syncBackendFromLLM();
       if (!pullInput && llm?.recommended?.model) {
         pullInput = llm.recommended.model;
       }
@@ -2080,12 +2145,75 @@
 
           {#if !llm}
             <p class="muted">Loading…</p>
-          {:else if !llm.enabled}
-            <p class="muted">Summaries are disabled on this server (EMBER_DISABLE_SUMMARIES=1).</p>
           {:else}
+            <!-- The Backend card sits outside the `enabled` gate on purpose:
+                 when no usable backend is configured it is the only way out of
+                 that state, so hiding it would strand the admin. -->
+            <div class="card">
+              <div class="card-head">
+                <h4>Backend</h4>
+                <p>Where summaries are generated. Ollama runs on your own hardware; the other two send article text to whichever endpoint you point them at — a hosted provider, or a server you run yourself.</p>
+              </div>
+              <div class="seg" role="radiogroup" aria-label="Summarization backend">
+                <button class:on={backend === "ollama"} on:click={() => pickBackend("ollama")} data-testid="backend-ollama">Ollama</button>
+                <button class:on={backend === "openai"} on:click={() => pickBackend("openai")} data-testid="backend-openai">OpenAI-compatible</button>
+                <button class:on={backend === "anthropic"} on:click={() => pickBackend("anthropic")} data-testid="backend-anthropic">Claude</button>
+              </div>
+
+              {#if backend !== "ollama"}
+                <div class="callout">
+                  Article text is sent to this provider. Summaries stop being a local-only feature.
+                </div>
+              {/if}
+
+              {#if backend === "openai"}
+                <label class="pref-row">
+                  <div><div class="pref-label">Base URL</div>
+                  <div class="pref-hint">The endpoint root, with or without the <code>/v1</code> segment — e.g. <code>https://api.groq.com/openai/v1</code>, <code>https://openrouter.ai/api/v1</code>, or a local <code>http://vllm:8000</code>.</div></div>
+                  <input class="row-input" type="url" bind:value={backendBaseURL} data-testid="backend-base-url" />
+                </label>
+              {/if}
+
+              {#if backend !== "ollama"}
+                <label class="pref-row">
+                  <div><div class="pref-label">API key</div>
+                  <div class="pref-hint">{apiKeySet ? "A key is stored. Leave blank to keep it." : "Required."} Self-hosted servers that take no key can leave this empty.</div></div>
+                  <input class="row-input" type="password" autocomplete="off" bind:value={backendKey} data-testid="backend-api-key" />
+                </label>
+                <label class="pref-row">
+                  <div><div class="pref-label">Model</div>
+                  <div class="pref-hint">{backend === "anthropic" ? "e.g. claude-opus-5." : "The provider's model id."} Free text — providers add models faster than Ember ships releases.</div></div>
+                  <input class="row-input" type="text" bind:value={backendModel} data-testid="backend-model" />
+                </label>
+              {/if}
+
+              <div class="actions">
+                {#if apiKeySet}
+                  <button class="ghost-btn" on:click={() => saveBackend(true)} disabled={backendBusy} data-testid="backend-forget-key">
+                    Clear stored key
+                  </button>
+                {/if}
+                <button on:click={() => saveBackend()} disabled={backendBusy} data-testid="backend-save">
+                  {backendBusy ? "Saving…" : "Save"}
+                </button>
+              </div>
+            </div>
+
+            {#if !llm.enabled}
+              <p class="muted" data-testid="llm-unconfigured">
+                No summarization backend is configured yet — finish filling in the card above.
+                {#if backend === "ollama"}Ollama needs <code>EMBER_OLLAMA_URL</code> and a model.{/if}
+              </p>
+            {:else}
             <div class="callout ember">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9h6v6H9z"/></svg>
-              <div>Admin-only. Summaries run locally — nothing leaves your server.</div>
+              <div>
+                {#if llm.backend === "ollama"}
+                  Admin-only. Summaries run locally — nothing leaves your server.
+                {:else}
+                  Admin-only. Article text is sent to your chosen provider — summaries are no longer local-only.
+                {/if}
+              </div>
             </div>
 
             <div class="card">
@@ -2124,6 +2252,10 @@
               </div>
             </div>
 
+            <!-- Everything below is Ollama-only: the host recommendation, the
+                 local model cache (pull/delete/switch) and /api/generate's
+                 tuning options have no equivalent on a hosted provider. -->
+            {#if llm.backend === "ollama"}
             <div class="card">
               <div class="card-head"><h4>This host</h4></div>
               <dl class="kv" style="padding: 14px 0;">
@@ -2248,6 +2380,8 @@
                 </button>
               </div>
             </div>
+            {/if}
+            {/if}
           {/if}
         {/if}
 

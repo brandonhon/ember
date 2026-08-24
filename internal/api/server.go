@@ -51,9 +51,23 @@ type Dependencies struct {
 	OPML    *opml.Service
 	TTRSS   *ttrss.Service // Tiny Tiny RSS starred/archived import; nil disables the endpoint
 	StaticH http.Handler   // SPA / embed.FS handler; may be nil in tests
-	// Ollama exposes the live summarizer so the admin LLM endpoints can list
-	// installed models, pull new ones, and swap the active model. Optional —
-	// nil when the summarizer is disabled or the noop (tests) is in use.
+	// Backend holds the active summarizer behind an atomic pointer, shared with
+	// the poller. The backend-change endpoint swaps it, so an admin's choice
+	// applies to the next article without a restart. Nil in tests that don't
+	// exercise summarization; Configured() is false until a usable backend is
+	// built, which is what keeps the summary gate off while a hosted backend is
+	// selected but not yet credentialed.
+	Backend *summarize.Switcher
+	// BackendFallbacks are the env-derived boot defaults the persisted
+	// summarize_* rows overlay. Set from cfg at boot; never mutated after.
+	BackendFallbacks BackendFallbacks
+	// Ollama is the INITIAL Ollama client — the live one is held in the
+	// ollamaLive holder installed by NewRouter, because the backend-change
+	// handler reassigns it while other handlers read it. Read it through
+	// d.ollama(), never directly. It exists only for model management (the
+	// installed list, pull, delete, the model switch and the tunables) and is
+	// nil unless the Ollama backend is active: those operations have no
+	// equivalent on a hosted provider (issue #200).
 	Ollama *summarize.Ollama
 	// WebAuthn drives passkey registration + assertion. Nil when EMBER_PUBLIC_URL
 	// is not configured; the passkey endpoints then return 503.
@@ -130,6 +144,10 @@ type Dependencies struct {
 	// attribute a request to a real client IP for security logging without
 	// re-parsing CIDRs per request. Never set by callers.
 	trustedNets []*net.IPNet
+	// ollamaLive is the race-safe cell holding the current Ollama client, seeded
+	// from Ollama in NewRouter. A pointer so every by-value copy of
+	// Dependencies shares one cell. Never set by callers.
+	ollamaLive *ollamaHolder
 }
 
 // summariesOn reports whether AI summarization is active: a backend must be
@@ -142,7 +160,8 @@ type Dependencies struct {
 // Resolved per request rather than at boot so an admin's toggle takes effect
 // without a restart (issue #198) — which is why it takes a ctx.
 func (d *Dependencies) summariesOn(ctx context.Context) bool {
-	return d.Ollama != nil && d.Store.ResolveSummariesEnabled(ctx, d.SummariesEnabledFallback)
+	return d.Backend != nil && d.Backend.Configured() &&
+		d.Store.ResolveSummariesEnabled(ctx, d.SummariesEnabledFallback)
 }
 
 // summaryGraceBefore returns the unix timestamp before which an unsummarized
@@ -190,6 +209,12 @@ func (d *Dependencies) backgroundCtx() context.Context {
 func NewRouter(d Dependencies) http.Handler {
 	trusted := parseTrustedProxies(d.TrustedProxies)
 	d.trustedNets = trusted
+
+	// Install the race-safe cell for the Ollama client before any handler is
+	// bound: the backend-change endpoint stores into it while the other admin
+	// LLM handlers load from it.
+	d.ollamaLive = &ollamaHolder{}
+	d.ollamaLive.p.Store(d.Ollama)
 
 	// Same-origin image proxy. Article responses rewrite image_url to a signed
 	// /api/img path so content blockers don't strip publisher-CDN lead images.
@@ -405,6 +430,10 @@ func NewRouter(d Dependencies) http.Handler {
 			r.Post("/admin/llm/pull", d.handlePullLLMModel)
 			r.Post("/admin/llm/delete", d.handleDeleteLLMModel)
 			r.Post("/admin/llm/options", d.handleSetLLMOptions)
+			// Backend selection (#200): which transport summarizes, where it
+			// lives, and the credential for it. Admin-only for the obvious
+			// reason — it decides where every user's article text is sent.
+			r.Post("/admin/llm/backend", d.handleSetLLMBackend)
 
 			// Summarization queue recovery (#198). Both rewrite summary_model
 			// across every user's article rows, so they get the same

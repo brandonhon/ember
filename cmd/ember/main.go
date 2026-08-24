@@ -312,48 +312,72 @@ func run() error {
 		return urlcheck.Check(ctx, raw, cfg.AllowPrivateURLs)
 	}
 
-	// Summarizer: noop in test mode, otherwise Ollama. The active model is the
-	// persisted app setting if present, else the env-var default — so admin
-	// model switches survive a restart.
+	// Summarization backend: noop in test mode, otherwise whichever transport
+	// the persisted summarize_* settings select, falling back to the env vars.
+	// Ollama is the default and keeps taking its endpoint and model from
+	// EMBER_OLLAMA_URL / the ollama_model row, so existing installs are
+	// unaffected by the new selector (issue #200).
+	//
+	// The poller and the API are both handed the Switcher, never a concrete
+	// backend, so the admin endpoint can swap what is behind it at runtime with
+	// a single atomic store — no restart, no coordinated shutdown of the
+	// summary worker.
 	//
 	// EMBER_DISABLE_SUMMARIES is the boot-time DEFAULT for the summaries_enabled
-	// setting, not a hard kill switch: the client is still constructed so an
+	// setting, not a hard kill switch: the backend is still constructed so an
 	// admin can turn summaries on at runtime without editing the environment
 	// and restarting. The poller and the API both consult
 	// ResolveSummariesEnabled per call, so nothing is summarized while the
 	// setting is off.
-	var sum summarize.Summarizer
+	backendFallbacks := api.BackendFallbacks{
+		Backend:       cfg.SummaryBackend,
+		APIKey:        cfg.SummaryAPIKey,
+		OllamaBaseURL: cfg.OllamaURL,
+		OllamaModel:   cfg.OllamaModel,
+		HostedBaseURL: cfg.SummaryBaseURL,
+		HostedModel:   cfg.SummaryModel,
+	}
+	backend := &summarize.Switcher{}
 	var ollamaSum *summarize.Ollama
 	switch {
 	case cfg.TestMode:
 		logger.Warn("AI summarizer: using noop (test mode) — set EMBER_OLLAMA_URL for real summaries")
-		sum = summarize.Noop{}
+		backend.Set(summarize.Noop{})
 	default:
-		model := cfg.OllamaModel
-		if saved, _ := st.GetAppSetting(ctx, "ollama_model"); saved != "" {
-			model = saved
-			logger.Info("loaded saved ollama_model from app_settings", "model", model)
-		}
-		ollamaSum = summarize.NewOllama(cfg.OllamaURL, model)
-		// Load any persisted generation tunables so they survive a restart.
-		opts := summarize.Options{}
-		if v, _ := st.GetAppSetting(ctx, "llm_temperature"); v != "" {
-			if f, err := strconv.ParseFloat(v, 64); err == nil {
-				opts.Temperature = f
+		live := api.ResolveBackend(ctx, st, backendFallbacks)
+		sum, oll := api.BuildBackend(live)
+		backend.Set(sum)
+		ollamaSum = oll
+		if oll != nil {
+			// Load any persisted generation tunables so they survive a restart.
+			// Ollama-only: they map to /api/generate's options block, which the
+			// hosted backends have no equivalent for.
+			opts := summarize.Options{}
+			if v, _ := st.GetAppSetting(ctx, "llm_temperature"); v != "" {
+				if f, err := strconv.ParseFloat(v, 64); err == nil {
+					opts.Temperature = f
+				}
 			}
-		}
-		if v, _ := st.GetAppSetting(ctx, "llm_top_p"); v != "" {
-			if f, err := strconv.ParseFloat(v, 64); err == nil {
-				opts.TopP = f
+			if v, _ := st.GetAppSetting(ctx, "llm_top_p"); v != "" {
+				if f, err := strconv.ParseFloat(v, 64); err == nil {
+					opts.TopP = f
+				}
 			}
-		}
-		if v, _ := st.GetAppSetting(ctx, "llm_num_ctx"); v != "" {
-			if n, err := strconv.Atoi(v); err == nil {
-				opts.NumCtx = n
+			if v, _ := st.GetAppSetting(ctx, "llm_num_ctx"); v != "" {
+				if n, err := strconv.Atoi(v); err == nil {
+					opts.NumCtx = n
+				}
 			}
+			oll.SetOptions(opts)
 		}
-		ollamaSum.SetOptions(opts)
-		sum = ollamaSum
+		// The API key is deliberately absent from this line and every other
+		// one: it is a paid credential and logs outlive the process.
+		logger.Info("AI summarizer configured", "backend", live.Backend,
+			"base_url", live.BaseURL, "model", live.Model, "ready", sum != nil)
+		if sum == nil {
+			logger.Warn("AI summarizer: backend selected but not usable yet — finish configuring it in Settings → Language model",
+				"backend", live.Backend)
+		}
 	}
 	if cfg.DisableSummaries {
 		logger.Info("AI summaries default to off (EMBER_DISABLE_SUMMARIES); an admin can enable them in Settings")
@@ -367,7 +391,7 @@ func run() error {
 	// IP-pinning transport closes the DNS-rebind window between the pre-flight
 	// urlcheck and the actual dial (the redirect guard only covers 3xx hops).
 	fetcher.Client.Transport = urlcheck.GuardedTransport(cfg.AllowPrivateURLs)
-	p := poller.New(st, fetcher, sum, poller.Config{
+	p := poller.New(st, fetcher, backend, poller.Config{
 		Tick:        cfg.PollTick,
 		Concurrency: cfg.PollConcurrency,
 		// The worker exists whenever a summarizer does, so a runtime enable has
@@ -381,6 +405,11 @@ func run() error {
 		MinIntervalFallback:           cfg.PollMinInterval,
 		SummaryTimeoutSecondsFallback: cfg.SummaryTimeoutSeconds,
 		SummariesEnabledFallback:      !cfg.DisableSummaries,
+		// The Switcher is never nil, so the poller's own nil-Summarizer checks
+		// can no longer tell "no backend" apart from "a working one". This is
+		// how it learns: an unconfigured backend stamps articles 'disabled'
+		// (recoverable with Requeue) instead of 'skipped' (terminal).
+		SummarizerReady: backend.Configured,
 	}, logger.With("component", "poller"))
 
 	// Background workers are tracked in a WaitGroup so shutdown can wait for an
@@ -481,7 +510,11 @@ func run() error {
 
 	deps := api.Dependencies{
 		Store: st, Auth: a, Poller: p, Metrics: p, OPML: op, TTRSS: tt,
-		StaticH: staticH, TestMode: cfg.TestMode, Ollama: ollamaSum,
+		StaticH: staticH, TestMode: cfg.TestMode,
+		// Backend is the same Switcher the poller holds, so a backend change
+		// takes effect for both at once. Ollama is non-nil only while the
+		// Ollama backend is active — it drives model management, nothing else.
+		Backend: backend, BackendFallbacks: backendFallbacks, Ollama: ollamaSum,
 		WebAuthn: webAuthn,
 		// Test mode uses synthetic .test hostnames that don't resolve; the
 		// SSRF DNS check would reject them. Production stays strict.

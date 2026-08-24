@@ -187,8 +187,9 @@ Only the `shared` view (explicit one-off share) and board views (explicit curati
 
 ## Admin endpoints (admin-only)
 
-- `GET /api/admin/llm` — detected hardware, recommendation, installed models, current model + options.
-- `POST /api/admin/llm/model` / `…/pull` / `…/delete` / `…/options` — switch / pull / delete / tune.
+- `GET /api/admin/llm` — selected backend (`backend`, `base_url`, `api_key_set`, `model`), detected hardware, recommendation, installed models, current model + options.
+- `POST /api/admin/llm/backend` — select the summarization backend (`ollama` / `openai` / `anthropic`) with its endpoint, API key and model in one call. The key is write-only: the response carries `api_key_set`, never the value.
+- `POST /api/admin/llm/model` / `…/pull` / `…/delete` / `…/options` — switch / pull / delete / tune. **Ollama-only**: they answer `503 not_ollama` on the hosted backends, which have no local model cache.
 - `GET /api/branding` (public) / `POST /api/admin/branding` (admin).
 - `GET /api/admin/db` — size, page count, recent backups + OPML exports, schedules.
 - `POST /api/admin/db/backup` / `…/cleanup` / `…/schedule` — manual + scheduled maintenance.

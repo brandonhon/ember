@@ -327,6 +327,12 @@ export const api = {
     call<{ model: string }>("POST", "/api/admin/llm/delete", { model }),
   setLLMOptions: (opts: LLMOptions) =>
     call<LLMOptions>("POST", "/api/admin/llm/options", opts),
+  // Backend, endpoint, credential and model change together — they are only
+  // meaningful as a set. The key is write-only: the server answers with
+  // api_key_set, never the value, so there is nothing to send back on a
+  // subsequent save unless the admin types a new one.
+  setLLMBackend: (req: LLMBackendUpdate) =>
+    call<LLMBackendResult>("POST", "/api/admin/llm/backend", req),
 
   // Summarization queue admin ---------------------------------------
   drainSummaryQueue: () =>
@@ -635,14 +641,38 @@ export interface LLMOptions {
   top_p: number;
   num_ctx: number;
 }
+// The three summarization transports. "openai" is any endpoint speaking
+// /v1/chat/completions — OpenAI, OpenRouter, Groq, Mistral, vLLM, llama.cpp,
+// LiteLLM — not OpenAI specifically.
+export type LLMBackend = "ollama" | "openai" | "anthropic";
 export interface LLMStatus {
   current_model: string;
   enabled: boolean;
+  backend: LLMBackend;
+  base_url: string;
+  // Whether a key is stored. The key itself is never sent to the browser.
+  api_key_set: boolean;
+  model: string;
   system: LLMSystemInfo;
   recommended: LLMRecommendation;
   installed?: LLMInstalledModel[];
   installed_err?: string;
   options: LLMOptions;
+}
+export interface LLMBackendUpdate {
+  backend: LLMBackend;
+  base_url?: string;
+  // Omit or leave empty to keep the stored key; clear_api_key erases it.
+  api_key?: string;
+  clear_api_key?: boolean;
+  model?: string;
+}
+export interface LLMBackendResult {
+  backend: LLMBackend;
+  base_url: string;
+  api_key_set: boolean;
+  model: string;
+  enabled: boolean;
 }
 
 export interface StarterPack {

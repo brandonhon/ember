@@ -1,9 +1,10 @@
 # Summarization
 
-Ember can generate a short AI summary for every article, using a local Ollama model —
-nothing leaves your server. This page covers how an article gets a summary, the
-`summary_model` state that tracks where each article is in that process, and how to
-recover a backlog that's stuck.
+Ember can generate a short AI summary for every article. By default it uses a local
+Ollama model and nothing leaves your server; it can also talk to any OpenAI-compatible
+endpoint or to Claude — see [Backends](#backends). This page covers how an article gets a
+summary, the `summary_model` state that tracks where each article is in that process, and
+how to recover a backlog that's stuck.
 
 ## How an article gets a summary
 
@@ -17,6 +18,35 @@ recover a backlog that's stuck.
    to the model name. On failure — backend down, empty output, a persist error, or the
    request exceeding `EMBER_SUMMARY_TIMEOUT_SECONDS` — Ember writes `summary_model =
    'skipped'` rather than leaving the row pending, so the article still surfaces.
+
+## Backends
+
+Which transport does the work is chosen in **Settings → Language model → Backend** and
+persisted, so it survives a restart and applies to the next article without one. The
+`EMBER_SUMMARY_*` env vars set the boot-time default; the admin's choice wins from then on.
+
+| Backend | Talks to | Needs | Article text leaves the host? |
+| --- | --- | --- | --- |
+| **Ollama** (default) | Ollama's native `/api/generate` | `EMBER_OLLAMA_URL` + a pulled model | No |
+| **OpenAI-compatible** | `/v1/chat/completions` on any compatible endpoint: OpenAI, OpenRouter, Groq, Mistral, Gemini's compatibility endpoint, vLLM, llama.cpp, LiteLLM | a base URL; an API key only if the server wants one | Yes, to that endpoint |
+| **Claude** | Anthropic's Messages API | an API key | Yes, to Anthropic |
+
+All three run the same prompt and the same parser, so summaries look the same whichever
+you pick. What differs is what the backend can do besides summarize:
+
+- **Model pull, delete, the installed-model list, the active-model picker, the host
+  recommendation and the temperature / Top P / context-window tuning are Ollama-only.**
+  None of them mean anything for a hosted provider — there is no local cache to manage —
+  so those endpoints answer `503 not_ollama` and the UI hides the cards.
+- The API key is stored write-only. The server reports whether a key exists
+  (`api_key_set`), never the value, and an empty key on save means "keep the stored one".
+  Use **Forget stored key** to erase it.
+
+A backend that cannot answer is refused at save time (`openai` with no base URL,
+`anthropic` with no API key, a base URL that isn't `http`/`https` → `400`). A backend
+that is selected but not yet configured leaves summarization off: incoming articles are
+stamped `disabled` — visible straight away, and reversible with **Requeue drained
+articles** once the configuration is finished — rather than `skipped`, which is terminal.
 
 ## The `summary_model` state table
 

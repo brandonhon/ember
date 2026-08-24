@@ -4,7 +4,7 @@ Self-hosted RSS/Atom reader. A single Go binary serving an embedded Svelte SPA, 
 
 _Primary repo on [GitHub](https://github.com/brandonhon/ember) (Releases + CI); mirrored to [Tangled](https://tangled.org/nodnarb.tngl.sh/ember)._
 
-> **AI is fully optional.** Ember can summarize articles with a small local LLM via Ollama, but it's an opt-out feature, not a dependency. Set `EMBER_DISABLE_SUMMARIES=1` (or run the stack without the `ollama` sidecar) and the reader works exactly the same — no summary card, no model download, no inference. `EMBER_DISABLE_SUMMARIES` sets the boot-time default for the summaries switch, which an admin can flip at runtime in Settings → nothing is summarized while it's off. Even when enabled, everything runs on your own box; no article content leaves the host. Pick the deployment that matches your stance.
+> **AI is fully optional.** Ember can summarize articles with a small local LLM via Ollama, but it's an opt-out feature, not a dependency. Set `EMBER_DISABLE_SUMMARIES=1` (or run the stack without the `ollama` sidecar) and the reader works exactly the same — no summary card, no model download, no inference. `EMBER_DISABLE_SUMMARIES` sets the boot-time default for the summaries switch, which an admin can flip at runtime in Settings → nothing is summarized while it's off. With the default **Ollama** backend everything runs on your own box and no article content leaves the host. Ember can also summarize via any OpenAI-compatible endpoint or via Claude — those backends **do** send article text to the provider you choose, which is the trade you make by picking one; the Settings UI says so at the point of choice. Pick the deployment that matches your stance.
 
 ## Install
 
@@ -127,8 +127,12 @@ You'll land on an onboarding panel that points to starter packs or OPML import. 
 | `EMBER_ADDR` | `:8080` | listen address |
 | `EMBER_DB_PATH` | `/data/ember.db` | SQLite file |
 | `EMBER_ADMIN_USER` | `admin` | first-run admin username |
-| `EMBER_OLLAMA_URL` | `http://ollama:11434` | summarizer endpoint |
+| `EMBER_OLLAMA_URL` | `http://ollama:11434` | summarizer endpoint (Ollama backend) |
 | `EMBER_OLLAMA_MODEL` | `qwen2.5:0.5b` | initial model (admin can swap later) |
+| `EMBER_SUMMARY_BACKEND` | `ollama` | `ollama`, `openai`, or `anthropic`; admin can switch at runtime in Settings → Language model → Backend |
+| `EMBER_SUMMARY_BASE_URL` | — | endpoint root for the `openai` backend (OpenRouter, Groq, vLLM, LiteLLM, …) |
+| `EMBER_SUMMARY_API_KEY` | — | API key for the `openai` / `anthropic` backends; rotatable in Settings, never echoed back |
+| `EMBER_SUMMARY_MODEL` | — | model id for the `openai` / `anthropic` backends |
 | `EMBER_DISABLE_SUMMARIES` | `0` | default AI summaries to off (no inference); Settings → AI summaries overrides at runtime |
 | `EMBER_SUMMARY_TIMEOUT_SECONDS` | `90` | give up on one summary after N seconds |
 | `EMBER_DISABLE_IMAGES` | `0` | drop article hero images at ingest |
