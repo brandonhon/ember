@@ -185,6 +185,29 @@ func (s *Store) GetArticleForUser(ctx context.Context, userID, articleID int64) 
 	return v, nil
 }
 
+// summary_model is the summarization state machine for an article. The `summary`
+// TEXT column holds output only; it is NEVER the state, and an empty summary is
+// not by itself terminal — that ambiguity is what made issue #198 hard to
+// diagnose from the database.
+//
+//	NULL or ''      pending: the summarizer has not finished with this article.
+//	                Hidden behind the summary gate until the grace window lapses,
+//	                counted in pending_summary, re-enqueued on every poller tick.
+//	'<model name>'  summarized successfully; `summary` holds the text.
+//	'skipped'       attempted and failed (backend down, empty output, persist
+//	                error, or the request timeout). Terminal — never retried
+//	                automatically; the per-feed Resummarize action clears it.
+//	'excluded'      every subscriber of the feed opted out of summaries.
+//	                Cleared by ResetExcludedByFeed when someone opts back in.
+//	'disabled'      finalized while summaries were switched off. Cleared by
+//	                ResetDisabledSummaries when they are switched back on.
+//	'deferred'      on-demand mode: not queued until a reader stars, saves, or
+//	                pins the article. Cleared by RequestSummary.
+//
+// Every non-empty value satisfies the summary gate, so the article is visible
+// and drops out of the "Summarizing N articles" count. That is why a terminal
+// marker — not a NULL — is written on every give-up path.
+
 // ClearAllSummaries clears summary_model on every article (admin-only). Used
 // after a summarizer prompt change to force re-processing of existing rows.
 // Returns the affected article IDs so the caller can enqueue them.
