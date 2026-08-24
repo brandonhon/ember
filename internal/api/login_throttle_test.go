@@ -28,8 +28,29 @@ func postLogin(t *testing.T, h *harness, username, password string) (int, string
 	return resp.StatusCode, resp.Header.Get("Retry-After")
 }
 
+// frozenClock pins the store and auth clocks to the same fixed instant.
+//
+// The throttle compares now against the last-failure time, which the store
+// keeps in whole Unix seconds. The first backoff step is only LoginBackoffBase
+// (1s), so with a live clock the window can lapse between the fifth failure
+// and the sixth attempt and the expected 429 arrives as a plain 401 — a real
+// CI flake, since five argon2 hashes under -race on a loaded runner take
+// longer than that. Second-granularity truncation makes it worse: a failure
+// stamped at X.9s is read back as X, donating most of the window away.
+//
+// Both clocks must move together. Freezing only the auth side would leave it
+// comparing a fixed instant against wall-clock failure stamps, and the
+// resulting negative elapsed inflates Retry-After past LoginBackoffCap.
+// The instant is an exact second boundary so no sub-second remainder is left
+// to erode the window.
+func frozenClock(d *Dependencies) {
+	now := time.Unix(1700000000, 0)
+	d.Store.Now = func() time.Time { return now }
+	d.Auth.Now = func() time.Time { return now }
+}
+
 func TestLogin_ThrottleReturns429WithRetryAfter(t *testing.T) {
-	h := newHarness(t)
+	h := newHarnessWith(t, frozenClock)
 	h.seedUser(t, "alice", "correct-horse", false)
 
 	// Burn the free allowance. Every one of these is a plain 401.
@@ -62,7 +83,7 @@ func TestLogin_ThrottleReturns429WithRetryAfter(t *testing.T) {
 // an account that doesn't exist. A difference here would let an attacker
 // distinguish real usernames just by counting attempts until the 429.
 func TestLogin_ThrottleDoesNotRevealAccountExistence(t *testing.T) {
-	h := newHarness(t)
+	h := newHarnessWith(t, frozenClock)
 	h.seedUser(t, "alice", "correct-horse", false)
 
 	attemptsUntil429 := func(username string) int {
@@ -86,7 +107,7 @@ func TestLogin_ThrottleDoesNotRevealAccountExistence(t *testing.T) {
 
 // A throttled response must not carry a session cookie.
 func TestLogin_ThrottledResponseIssuesNoSession(t *testing.T) {
-	h := newHarness(t)
+	h := newHarnessWith(t, frozenClock)
 	h.seedUser(t, "alice", "correct-horse", false)
 	for i := 0; i < auth.LoginFreeAttempts; i++ {
 		postLogin(t, h, "alice", "wrong")
