@@ -24,7 +24,7 @@
     storedPushSubID,
   } from "../lib/push";
   import { onMount } from "svelte";
-  import { refreshSidebar, loadArticles, activeView } from "../lib/stores";
+  import { refreshSidebar, loadArticles, activeView, smartCounts, refreshSmartCounts } from "../lib/stores";
   import { DEMO, notifyDemoBlocked } from "../demo/demo";
   import FilterManager from "./FilterManager.svelte";
   import ConfirmDialog from "./ConfirmDialog.svelte";
@@ -573,6 +573,11 @@
   let summaryTimeoutFloor = $state(10);
   let summaryTimeoutCeil = $state(900);
   let summaryTimeoutBusy = $state(false);
+  // Server-wide summaries on/off (#198). Also lives in app_settings, fetched
+  // alongside the grace/timeout settings.
+  let summariesEnabled = $state(true);
+  let summariesBusy = $state(false);
+  let queueBusy = $state(""); // active queue action: "drain", "requeue", or ""
   async function loadSummaryGrace() {
     try {
       const res = await api.getAdminSettings();
@@ -582,6 +587,7 @@
       summaryTimeout = res.data.summary_timeout_seconds;
       summaryTimeoutFloor = res.data.summary_timeout_seconds_floor;
       summaryTimeoutCeil = res.data.summary_timeout_seconds_ceil;
+      summariesEnabled = res.data.summaries_enabled;
     } catch (e) {
       llmErr = e instanceof ApiError ? e.message : String(e);
     }
@@ -615,6 +621,59 @@
       llmErr = e instanceof ApiError ? e.message : String(e);
     } finally {
       summaryTimeoutBusy = false;
+      setTimeout(() => (llmMsg = ""), 3000);
+    }
+  }
+
+  // Summaries on/off (#198). Turning it off drains the pending queue
+  // server-side; turning it back on re-queues exactly those articles. Refresh
+  // smartCounts after so the sidebar's "Summarizing N…" indicator moves.
+  async function setSummaries(on: boolean) {
+    if (DEMO) { notifyDemoBlocked(); return; }
+    summariesBusy = true;
+    llmMsg = "";
+    llmErr = "";
+    try {
+      const res = await api.setAdminSettings({ summaries_enabled: on });
+      summariesEnabled = res.data.summaries_enabled;
+      await refreshSmartCounts();
+    } catch (e) {
+      llmErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      summariesBusy = false;
+    }
+  }
+
+  async function drainQueue() {
+    if (DEMO) { notifyDemoBlocked(); return; }
+    queueBusy = "drain";
+    llmMsg = "";
+    llmErr = "";
+    try {
+      const res = await api.drainSummaryQueue();
+      llmMsg = `Drained ${res.data.drained}`;
+      await refreshSmartCounts();
+    } catch (e) {
+      llmErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      queueBusy = "";
+      setTimeout(() => (llmMsg = ""), 3000);
+    }
+  }
+
+  async function requeue() {
+    if (DEMO) { notifyDemoBlocked(); return; }
+    queueBusy = "requeue";
+    llmMsg = "";
+    llmErr = "";
+    try {
+      const res = await api.requeueSummaries();
+      llmMsg = `Requeued ${res.data.enqueued}`;
+      await refreshSmartCounts();
+    } catch (e) {
+      llmErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      queueBusy = "";
       setTimeout(() => (llmMsg = ""), 3000);
     }
   }
@@ -1721,7 +1780,7 @@
           <div class="pref-row">
             <div>
               <div class="pref-label">AI summary card</div>
-              <div class="pref-hint">When off, the article body is shown directly with no summary card.</div>
+              <div class="pref-hint">When off, the article body is shown directly with no summary card. This only changes what you see — summaries keep being generated. To stop generating them for everyone, use <strong>Language model → Summaries</strong>.</div>
             </div>
             <div class="seg">
               <button class:on={$showSummary} on:click={() => showSummary.set(true)} data-testid="pref-summary-on">On</button>
@@ -1986,6 +2045,39 @@
           <p class="hint">Switch models or pull new ones from Ollama. The recommendation matches your host.</p>
           {#if llmErr}<p class="error" data-testid="llm-error">{llmErr}</p>{/if}
           {#if llmMsg}<p class="ok" data-testid="llm-msg">{llmMsg}</p>{/if}
+
+          <div class="card">
+            <div class="card-head"><h4>Summaries</h4></div>
+            <label class="pref-row">
+              <div>
+                <div class="pref-label">Summarize articles</div>
+                <div class="pref-hint">Off stops all inference and makes every article waiting on a summary readable straight away. Turning it back on re-queues exactly those articles. This is a server-wide setting and it survives a restart — it is not the same as <strong>Reading → AI summary card</strong>, which only hides the card for you.</div>
+              </div>
+              <div class="seg">
+                <button class:on={summariesEnabled} on:click={() => setSummaries(true)} disabled={summariesBusy} data-testid="summaries-on">On</button>
+                <button class:on={!summariesEnabled} on:click={() => setSummaries(false)} disabled={summariesBusy} data-testid="summaries-off">Off</button>
+              </div>
+            </label>
+          </div>
+
+          {#if summariesEnabled}
+          <div class="card">
+            <div class="card-head">
+              <h4>Summarization queue</h4>
+              <p>{$smartCounts.pending_summary} article{$smartCounts.pending_summary === 1 ? "" : "s"} waiting.</p>
+            </div>
+            <div class="actions" style="justify-content:flex-start">
+              <button class="ghost-btn" on:click={drainQueue} disabled={queueBusy !== ""} data-testid="summaries-drain">
+                {queueBusy === "drain" ? "Draining…" : "Drain queue"}
+              </button>
+              <button class="ghost-btn" on:click={requeue} disabled={queueBusy !== ""} data-testid="summaries-requeue">
+                {queueBusy === "requeue" ? "Requeueing…" : "Requeue drained articles"}
+              </button>
+            </div>
+            <p class="pref-hint">Draining marks every waiting article as finished-without-a-summary, so it appears in your lists now. Nothing is deleted — requeueing puts those same articles back in line.</p>
+          </div>
+          {/if}
+
           {#if !llm}
             <p class="muted">Loading…</p>
           {:else if !llm.enabled}

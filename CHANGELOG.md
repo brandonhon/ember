@@ -46,6 +46,21 @@ them.
   `EMBER_SUMMARY_TIMEOUT_SECONDS`. The limit is also enforced properly now: it used to live on the
   HTTP client, where hitting it left the request looking retryable, so the backend generated the
   same article a second time before Ember gave up.
+- **Summaries can be switched off from Settings, and the switch sticks.** There
+  was no server-side toggle at all: the only durable way to stop summarization
+  was `EMBER_DISABLE_SUMMARIES=1` at install, and the *AI summary card* switch
+  in Reading — the obvious candidate — is a per-user display preference that
+  never stopped the model. **Settings → Language model → Summaries** now has a
+  real on/off that persists across restarts. Turning it off also **drains** the
+  queue: every article that was waiting is marked finished-without-a-summary and
+  appears in your lists straight away, instead of sitting invisible behind the
+  summary gate with nothing left to process it. Turning it back on re-queues
+  exactly those articles.
+- **Drain queue / Requeue drained articles**, in the same place, for recovering
+  from a backlog without touching the database. Previously a stuck "Summarizing
+  314 articles…" needed hand-written SQL, and the intuitive fix (blanking
+  `summary`) did nothing, because the state lives in `summary_model`. That
+  column's states are now documented in **docs/summarization.md**.
 
 ### Security
 
