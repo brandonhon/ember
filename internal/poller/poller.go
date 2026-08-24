@@ -57,6 +57,12 @@ type Config struct {
 	// over this fallback, so admin changes apply on the next fetch without a
 	// restart.
 	MinIntervalFallback time.Duration
+	// SummaryTimeoutSecondsFallback is the env-derived default
+	// (EMBER_SUMMARY_TIMEOUT_SECONDS) for how long one summarization request may
+	// run. The poller resolves the live value by preferring the app_settings row
+	// over this fallback, so an admin's change applies to the next article
+	// without a restart.
+	SummaryTimeoutSecondsFallback int
 }
 
 // effectiveBounds resolves the live adaptive-interval floor (admin-set in
@@ -107,6 +113,9 @@ func New(st *store.Store, f Fetcher, s summarize.Summarizer, cfg Config, lg *slo
 	}
 	if cfg.BatchLimit <= 0 {
 		cfg.BatchLimit = 50
+	}
+	if cfg.SummaryTimeoutSecondsFallback <= 0 {
+		cfg.SummaryTimeoutSecondsFallback = store.DefaultSummaryTimeoutSeconds
 	}
 	if cfg.Now == nil {
 		cfg.Now = time.Now
@@ -752,7 +761,15 @@ func (p *Poller) summarizeOne(ctx context.Context, articleID int64) {
 		}
 		return
 	}
-	res, model, err := p.Summarizer.Summarize(ctx, art.Title, art.ContentText)
+	// One deadline per article, covering the backend call and the client's
+	// internal retry. Resolved per call so an admin's change lands on the next
+	// article; without it the deadline lived on the HTTP client, where a
+	// timeout left ctx.Err() nil and the retry regenerated the whole article
+	// a second time (issue #201).
+	secs := p.Store.ResolveSummaryTimeoutSeconds(ctx, p.Config.SummaryTimeoutSecondsFallback)
+	sctx, cancel := context.WithTimeout(ctx, time.Duration(secs)*time.Second)
+	res, model, err := p.Summarizer.Summarize(sctx, art.Title, art.ContentText)
+	cancel()
 	if err != nil {
 		p.Metrics.SummariesErrored.Add(1)
 		p.Logger.Warn("poller: summarize failed", "article_id", articleID, "err", err)

@@ -361,14 +361,15 @@ func run() error {
 	// urlcheck and the actual dial (the redirect guard only covers 3xx hops).
 	fetcher.Client.Transport = urlcheck.GuardedTransport(cfg.AllowPrivateURLs)
 	p := poller.New(st, fetcher, sum, poller.Config{
-		Tick:                        cfg.PollTick,
-		Concurrency:                 cfg.PollConcurrency,
-		SummaryWorker:               !cfg.TestMode && !cfg.DisableSummaries,
-		EnrichOnIngest:              !cfg.TestMode,
-		DisableImages:               cfg.DisableImages,
-		AllowPrivateURLs:            cfg.AllowPrivateURLs,
-		InitialBacklogHoursFallback: store.DefaultInitialBacklogHours,
-		MinIntervalFallback:         cfg.PollMinInterval,
+		Tick:                          cfg.PollTick,
+		Concurrency:                   cfg.PollConcurrency,
+		SummaryWorker:                 !cfg.TestMode && !cfg.DisableSummaries,
+		EnrichOnIngest:                !cfg.TestMode,
+		DisableImages:                 cfg.DisableImages,
+		AllowPrivateURLs:              cfg.AllowPrivateURLs,
+		InitialBacklogHoursFallback:   store.DefaultInitialBacklogHours,
+		MinIntervalFallback:           cfg.PollMinInterval,
+		SummaryTimeoutSecondsFallback: cfg.SummaryTimeoutSeconds,
 	}, logger.With("component", "poller"))
 
 	// Background workers are tracked in a WaitGroup so shutdown can wait for an
