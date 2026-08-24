@@ -155,3 +155,32 @@ func TestResolveUpdateCheckEnabled(t *testing.T) {
 		t.Error("explicit on should win over fallback=false")
 	}
 }
+
+func TestSummaryTimeoutSeconds_ResolveAndClamp(t *testing.T) {
+	s := NewTest(t)
+	ctx := context.Background()
+
+	// No row: the env-derived fallback wins, itself clamped.
+	if got := s.ResolveSummaryTimeoutSeconds(ctx, 45); got != 45 {
+		t.Fatalf("fallback: got %d, want 45", got)
+	}
+	if got := s.ResolveSummaryTimeoutSeconds(ctx, 5); got != SummaryTimeoutSecondsFloor {
+		t.Fatalf("fallback below floor: got %d, want %d", got, SummaryTimeoutSecondsFloor)
+	}
+
+	// A stored row wins over the fallback.
+	if err := s.PutSummaryTimeoutSeconds(ctx, 300); err != nil {
+		t.Fatal(err)
+	}
+	if got := s.ResolveSummaryTimeoutSeconds(ctx, 45); got != 300 {
+		t.Fatalf("stored: got %d, want 300", got)
+	}
+
+	// Out-of-range writes are clamped, not rejected.
+	if err := s.PutSummaryTimeoutSeconds(ctx, 99999); err != nil {
+		t.Fatal(err)
+	}
+	if got := s.ResolveSummaryTimeoutSeconds(ctx, 45); got != SummaryTimeoutSecondsCeil {
+		t.Fatalf("clamped: got %d, want %d", got, SummaryTimeoutSecondsCeil)
+	}
+}

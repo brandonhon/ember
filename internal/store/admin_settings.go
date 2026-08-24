@@ -62,6 +62,20 @@ const (
 	DefaultSummaryGraceSeconds = 120
 	SummaryGraceSecondsFloor   = 0
 	SummaryGraceSecondsCeil    = 3600
+
+	// How long one summarization request may run before it is abandoned.
+	// EMBER_SUMMARY_TIMEOUT_SECONDS sets the boot-time default; admins tune it
+	// live in Settings. The deadline is applied by the poller as a context
+	// deadline covering the backend call AND its internal retry, so a slow
+	// backend costs at most this much wall-clock per article and is never asked
+	// to generate the same article twice.
+	keySummaryTimeoutSeconds     = "summary_timeout_seconds"
+	DefaultSummaryTimeoutSeconds = 90
+	// Floor: below ~10s even a hosted model cannot answer, so a lower value
+	// would just disable summaries in a confusing way. Ceiling: 15 minutes
+	// bounds how long one article can occupy the single summary worker.
+	SummaryTimeoutSecondsFloor = 10
+	SummaryTimeoutSecondsCeil  = 900
 )
 
 // Bounds + default for the admin-configurable adaptive-fetch floor. Canonical
@@ -357,4 +371,22 @@ func (s *Store) ResolveSummaryGraceSeconds(ctx context.Context, fallback int) in
 func (s *Store) PutSummaryGraceSeconds(ctx context.Context, n int) error {
 	n = clampInt(n, SummaryGraceSecondsFloor, SummaryGraceSecondsCeil)
 	return s.PutAppSetting(ctx, keySummaryGraceSeconds, strconv.Itoa(n))
+}
+
+// ResolveSummaryTimeoutSeconds returns how many seconds one summarization
+// request may run before it is abandoned. DB row wins, clamped to
+// [floor, ceil]; otherwise the env-derived fallback (also clamped).
+func (s *Store) ResolveSummaryTimeoutSeconds(ctx context.Context, fallback int) int {
+	if v, _ := s.GetAppSetting(ctx, keySummaryTimeoutSeconds); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return clampInt(n, SummaryTimeoutSecondsFloor, SummaryTimeoutSecondsCeil)
+		}
+	}
+	return clampInt(fallback, SummaryTimeoutSecondsFloor, SummaryTimeoutSecondsCeil)
+}
+
+// PutSummaryTimeoutSeconds persists the request timeout (clamped).
+func (s *Store) PutSummaryTimeoutSeconds(ctx context.Context, n int) error {
+	n = clampInt(n, SummaryTimeoutSecondsFloor, SummaryTimeoutSecondsCeil)
+	return s.PutAppSetting(ctx, keySummaryTimeoutSeconds, strconv.Itoa(n))
 }

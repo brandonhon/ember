@@ -304,3 +304,36 @@ func TestLoad_TrustedProxies(t *testing.T) {
 		t.Error("expected error for invalid EMBER_TRUSTED_PROXIES")
 	}
 }
+
+func TestLoad_SummaryTimeoutSeconds(t *testing.T) {
+	cfg, err := LoadFromMap(map[string]string{
+		"EMBER_TEST_MODE":               "1",
+		"EMBER_SUMMARY_TIMEOUT_SECONDS": "240",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.SummaryTimeoutSeconds != 240 {
+		t.Fatalf("got %d, want 240", cfg.SummaryTimeoutSeconds)
+	}
+
+	if _, err := LoadFromMap(map[string]string{
+		"EMBER_TEST_MODE":               "1",
+		"EMBER_SUMMARY_TIMEOUT_SECONDS": "1",
+	}); err == nil {
+		t.Fatal("expected an error for a below-floor timeout")
+	}
+
+	if _, err := LoadFromMap(map[string]string{
+		"EMBER_TEST_MODE":               "1",
+		"EMBER_SUMMARY_TIMEOUT_SECONDS": "901",
+	}); err == nil {
+		t.Fatal("expected an error for an above-ceiling timeout")
+	}
+}
+
+func TestDefaults_SummaryTimeoutSeconds(t *testing.T) {
+	if Defaults().SummaryTimeoutSeconds != 90 {
+		t.Fatalf("default should stay 90s (issue #201 keeps the current behaviour)")
+	}
+}
