@@ -130,6 +130,7 @@ You'll land on an onboarding panel that points to starter packs or OPML import. 
 | `EMBER_OLLAMA_URL` | `http://ollama:11434` | summarizer endpoint |
 | `EMBER_OLLAMA_MODEL` | `qwen2.5:0.5b` | initial model (admin can swap later) |
 | `EMBER_DISABLE_SUMMARIES` | `0` | skip LLM summarization entirely |
+| `EMBER_SUMMARY_TIMEOUT_SECONDS` | `90` | give up on one summary after N seconds |
 | `EMBER_DISABLE_IMAGES` | `0` | drop article hero images at ingest |
 | `EMBER_DISABLE_UPDATE_CHECK` | `0` | skip the daily GitHub-releases update check (admin-only hint); Settings → Check for updates overrides at runtime |
 | `EMBER_FRESH_WINDOW` | `6h` | "Fresh" cutoff |

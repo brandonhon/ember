@@ -115,6 +115,9 @@ type Dependencies struct {
 	// SummaryGraceSecondsFallback is the env-derived default
 	// (EMBER_SUMMARY_GRACE_SECONDS) for the summary_grace_seconds setting.
 	SummaryGraceSecondsFallback int
+	// SummaryTimeoutSecondsFallback is the env-derived default
+	// (EMBER_SUMMARY_TIMEOUT_SECONDS) for the summary_timeout_seconds setting.
+	SummaryTimeoutSecondsFallback int
 
 	// img signs + serves the same-origin image proxy. Built in NewRouter
 	// from SessionKey; never set by callers.

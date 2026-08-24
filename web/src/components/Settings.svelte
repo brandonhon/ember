@@ -569,12 +569,19 @@
   let summaryGraceFloor = $state(0);
   let summaryGraceCeil = $state(3600);
   let summaryGraceBusy = $state(false);
+  let summaryTimeout = $state(90);
+  let summaryTimeoutFloor = $state(10);
+  let summaryTimeoutCeil = $state(900);
+  let summaryTimeoutBusy = $state(false);
   async function loadSummaryGrace() {
     try {
       const res = await api.getAdminSettings();
       summaryGrace = res.data.summary_grace_seconds;
       summaryGraceFloor = res.data.summary_grace_seconds_floor;
       summaryGraceCeil = res.data.summary_grace_seconds_ceil;
+      summaryTimeout = res.data.summary_timeout_seconds;
+      summaryTimeoutFloor = res.data.summary_timeout_seconds_floor;
+      summaryTimeoutCeil = res.data.summary_timeout_seconds_ceil;
     } catch (e) {
       llmErr = e instanceof ApiError ? e.message : String(e);
     }
@@ -592,6 +599,22 @@
       llmErr = e instanceof ApiError ? e.message : String(e);
     } finally {
       summaryGraceBusy = false;
+      setTimeout(() => (llmMsg = ""), 3000);
+    }
+  }
+  async function saveSummaryTimeout() {
+    if (DEMO) { notifyDemoBlocked(); return; }
+    summaryTimeoutBusy = true;
+    llmMsg = "";
+    llmErr = "";
+    try {
+      const res = await api.setAdminSettings({ summary_timeout_seconds: Number(summaryTimeout) });
+      summaryTimeout = res.data.summary_timeout_seconds;
+      llmMsg = "Saved";
+    } catch (e) {
+      llmErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      summaryTimeoutBusy = false;
       setTimeout(() => (llmMsg = ""), 3000);
     }
   }
@@ -1989,6 +2012,22 @@
               <div class="actions">
                 <button on:click={saveSummaryGrace} disabled={summaryGraceBusy} data-testid="summary-grace-save">
                   {summaryGraceBusy ? "Saving…" : "Save"}
+                </button>
+              </div>
+              <label class="pref-row">
+                <div>
+                  <div class="pref-label">Give up on a summary after</div>
+                  <div class="pref-hint">How long one article's summary may take before Ember abandons it and shows the article without one. Raise it for CPU-only inference or a slow hosted model; the request is abandoned once, not retried, so a long limit costs waiting rather than repeated work. Range {summaryTimeoutFloor}–{summaryTimeoutCeil}.</div>
+                </div>
+                <div class="row-ctl">
+                  <input class="row-input num" type="number" min={summaryTimeoutFloor} max={summaryTimeoutCeil}
+                    bind:value={summaryTimeout} data-testid="summary-timeout" />
+                  <span class="pref-hint">seconds</span>
+                </div>
+              </label>
+              <div class="actions">
+                <button on:click={saveSummaryTimeout} disabled={summaryTimeoutBusy} data-testid="summary-timeout-save">
+                  {summaryTimeoutBusy ? "Saving…" : "Save"}
                 </button>
               </div>
             </div>

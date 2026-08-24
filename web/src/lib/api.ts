@@ -518,6 +518,11 @@ export interface AdminSettings {
   summary_grace_seconds_floor: number;
   summary_grace_seconds_ceil: number;
   summaries_enabled: boolean;
+  // How long one summarization request may run before it's abandoned, with the
+  // bounds the UI constrains its input to.
+  summary_timeout_seconds: number;
+  summary_timeout_seconds_floor: number;
+  summary_timeout_seconds_ceil: number;
 }
 
 // AdminSettingsPatch mirrors the backend's pointer-bag: only fields included
@@ -539,6 +544,7 @@ export interface AdminSettingsPatch {
   update_check_enabled?: boolean;
   passkey_require_uv?: boolean;
   summary_grace_seconds?: number;
+  summary_timeout_seconds?: number;
 }
 
 export interface TopFeed {

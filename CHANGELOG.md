@@ -39,6 +39,13 @@ them.
   it's in now is ticked. Dragging still works and is often quicker with a mouse,
   but it needs a pointer — HTML5 drag-and-drop receives no events from touch —
   so this is the way to reorganise feeds on a phone or tablet.
+- **The 90-second summarization timeout is now a setting.** It was hardcoded, which is below what a
+  slow backend legitimately needs — CPU-only inference costs minutes on a long article, and hosted
+  free tiers routinely take more than a minute. **Settings → Language model → Article visibility**
+  now has a *Give up on a summary after* field (10–900 s, default 90), also settable at install with
+  `EMBER_SUMMARY_TIMEOUT_SECONDS`. The limit is also enforced properly now: it used to live on the
+  HTTP client, where hitting it left the request looking retryable, so the backend generated the
+  same article a second time before Ember gave up.
 
 ### Security
 
