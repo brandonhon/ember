@@ -194,3 +194,31 @@ func TestWithHashSlot_BoundsConcurrency(t *testing.T) {
 		t.Errorf("peak concurrent hashes = %d, want <= %d", got, maxConcurrentHashes)
 	}
 }
+
+// last_fail_at is stored in whole Unix seconds, so a failure at X.9s reads back
+// as X. That makes the measured elapsed time up to a second LONGER than reality
+// — in the wrong direction, since it releases the window early. The first tier
+// is only LoginBackoffBase (1s), so it can lapse almost immediately: here the
+// throttle is probed 200ms after the fifth failure and must still hold.
+func TestCheckThrottle_FirstTierSurvivesSecondTruncation(t *testing.T) {
+	a := newAuth(t)
+	ctx := context.Background()
+	hash, _ := a.HashPassword("hunter2")
+	if _, err := a.Store.CreateUser(ctx, models.User{Username: "alice", PasswordHash: hash}); err != nil {
+		t.Fatal(err)
+	}
+	// A failure time with a large sub-second part is the worst case: .9 of the
+	// window is donated away by the truncation.
+	failedAt := time.Unix(1700000000, 900_000_000)
+	a.Store.Now = func() time.Time { return failedAt }
+	a.Now = func() time.Time { return failedAt }
+	if accepted, _ := loginUntilThrottled(t, a, "alice"); accepted != LoginFreeAttempts {
+		t.Fatalf("precondition: %d attempts accepted, want %d", accepted, LoginFreeAttempts)
+	}
+
+	// Only 200ms of real time later — deep inside the 1s first tier.
+	a.Now = func() time.Time { return failedAt.Add(200 * time.Millisecond) }
+	if err := a.checkThrottle(ctx, "alice"); err == nil {
+		t.Error("throttle released 200ms into a 1s backoff window")
+	}
+}

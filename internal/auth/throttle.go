@@ -87,7 +87,15 @@ func (a *Auth) checkThrottle(ctx context.Context, username string) error {
 	if wait == 0 {
 		return nil
 	}
-	elapsed := a.Now().Sub(time.Unix(lf.LastFailAt, 0))
+	// last_fail_at is stored in whole seconds, so the true failure time lies
+	// somewhere in [last_fail_at, last_fail_at+1). Measuring from the START of
+	// that interval overstates elapsed by up to a second and releases the window
+	// early — enough to erase the first tier outright, since that tier is only
+	// LoginBackoffBase. Measure from the END instead: a wait can then run up to
+	// a second long, which is the safe direction for a throttle, and the
+	// Retry-After below is computed from the same conservative figure so the
+	// header still matches what is actually enforced.
+	elapsed := a.Now().Sub(time.Unix(lf.LastFailAt+1, 0))
 	if elapsed >= wait {
 		return nil
 	}
