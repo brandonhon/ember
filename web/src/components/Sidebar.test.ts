@@ -1,7 +1,7 @@
 import { render, fireEvent } from "@testing-library/svelte";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import Sidebar from "./Sidebar.svelte";
-import { activeView, feeds, summariesEnabled } from "../lib/stores";
+import { activeView, feeds, smartCounts, summariesEnabled } from "../lib/stores";
 import type { FeedWithCounts } from "../lib/types";
 
 const fetchMock = vi.fn();
@@ -114,5 +114,30 @@ describe("Sidebar feed menu — AI summary opt-out", () => {
     expect(queryByTestId("feed-mute-1")).not.toBeNull();
     expect(queryByTestId("feed-summarize-1")).toBeNull();
     expect(queryByTestId("feed-resummarize-1")).toBeNull();
+  });
+});
+
+// The pending-summary count is a plain "articles with no summary_model" tally;
+// it is non-zero on any server that ingested articles before summaries were
+// turned off. With no summarizer running there is no worker to drain it, so
+// the footer would sit there claiming work forever.
+describe("Sidebar summarizing footer", () => {
+  const counts = (pending: number) => ({
+    fresh: 0, starred: 0, later: 0, shared: 0,
+    pending_summary: pending, unread: 0, unread_by_category: {},
+  });
+
+  it("shows the count while summaries are enabled", async () => {
+    smartCounts.set(counts(5));
+    const { queryByTestId } = render(Sidebar);
+    const label = queryByTestId("sidebar-summarizing")?.textContent?.replace(/\s+/g, " ");
+    expect(label).toContain("Summarizing 5 articles");
+  });
+
+  it("is absent when AI summaries are disabled server-wide", async () => {
+    summariesEnabled.set(false);
+    smartCounts.set(counts(5));
+    const { queryByTestId } = render(Sidebar);
+    expect(queryByTestId("sidebar-summarizing")).toBeNull();
   });
 });

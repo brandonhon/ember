@@ -147,6 +147,19 @@ func (p *Poller) Run(ctx context.Context) {
 		}()
 	}
 
+	// Same idea with no summarizer configured: ingest stamps each new article
+	// 'disabled' (see fetchAndStore), but that write shares the poll context,
+	// so a shutdown landing between the INSERT and the stamp strands the row at
+	// NULL — where it counts toward pending_summary forever with no worker to
+	// drain it. Heal the backlog once at startup.
+	if p.Summarizer == nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			p.stampPendingDisabled(ctx)
+		}()
+	}
+
 	ticker := time.NewTicker(p.Config.Tick)
 	defer ticker.Stop()
 
@@ -687,6 +700,19 @@ func (p *Poller) enqueuePendingSummaries(ctx context.Context) {
 		default:
 			return
 		}
+	}
+}
+
+// stampPendingDisabled finalizes articles the previous run left unstamped.
+// Counterpart of enqueuePendingSummaries for the no-summarizer configuration.
+func (p *Poller) stampPendingDisabled(ctx context.Context) {
+	n, err := p.Store.MarkUnsummarizedDisabled(ctx)
+	if err != nil {
+		p.Logger.Warn("poller: stamp pending summaries disabled", "err", err)
+		return
+	}
+	if n > 0 {
+		p.Logger.Info("poller: finalized articles left unstamped by a previous run", "count", n)
 	}
 }
 

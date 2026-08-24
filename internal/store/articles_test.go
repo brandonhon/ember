@@ -630,3 +630,48 @@ func TestCountSmartViews_StarredLaterMatchList(t *testing.T) {
 		t.Errorf("Later badge=%d, list=%d — want both 0 (only saved item is in a muted feed)", counts.Later, len(laterList))
 	}
 }
+
+// A poller run with no summarizer stamps every ingested article 'disabled'.
+// That write can fail (a SIGTERM cancels the ingest context between the insert
+// and the stamp), leaving the row NULL forever and inflating the sidebar's
+// pending-summary count. MarkUnsummarizedDisabled is the heal for those rows;
+// it must not touch articles a summarizer already finalized.
+func TestMarkUnsummarizedDisabled_HealsOnlyUnstamped(t *testing.T) {
+	s := NewTest(t)
+	ctx := context.Background()
+	_, feedID := seedUserAndFeed(t, s, "alice")
+
+	unstamped, _, _ := s.UpsertArticle(ctx, mkArticle(feedID, "a1", "unstamped", "h1", 1000))
+	summarized, _, _ := s.UpsertArticle(ctx, mkArticle(feedID, "a2", "summarized", "h2", 1000))
+	if err := s.UpdateSummary(ctx, summarized.ID, "a real summary", "llama3"); err != nil {
+		t.Fatal(err)
+	}
+	excluded, _, _ := s.UpsertArticle(ctx, mkArticle(feedID, "a3", "excluded", "h3", 1000))
+	if err := s.UpdateSummary(ctx, excluded.ID, "", "excluded"); err != nil {
+		t.Fatal(err)
+	}
+
+	n, err := s.MarkUnsummarizedDisabled(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Errorf("healed %d rows, want 1", n)
+	}
+	for _, tc := range []struct {
+		id   int64
+		want string
+	}{
+		{unstamped.ID, "disabled"},
+		{summarized.ID, "llama3"},
+		{excluded.ID, "excluded"},
+	} {
+		got, err := s.GetArticle(ctx, tc.id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.SummaryModel != tc.want {
+			t.Errorf("article %d: summary_model = %q, want %q", tc.id, got.SummaryModel, tc.want)
+		}
+	}
+}

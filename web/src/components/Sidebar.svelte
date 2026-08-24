@@ -1283,8 +1283,11 @@
        .rail-scroll) so it stays visible regardless of scroll position.
        Shown only while the poller's summary worker has articles to chew
        through. Updates piggyback on refreshSidebar() (login, polling tick,
-       navigation refresh) so the count stays roughly live. -->
-  {#if $smartCounts.pending_summary > 0}
+       navigation refresh) so the count stays roughly live. Gated on
+       summariesEnabled like the Resummarize action above: with no summarizer
+       wired up the pending tally is just "articles nothing ever stamped" and
+       no worker exists to drain it, so the indicator would never clear. -->
+  {#if $summariesEnabled && $smartCounts.pending_summary > 0}
     <div class="summarizing" data-testid="sidebar-summarizing">
       <span class="summarizing-dot" aria-hidden="true"></span>
       <span class="summarizing-label">

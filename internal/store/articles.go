@@ -247,6 +247,23 @@ func (s *Store) ListUnsummarizedIDs(ctx context.Context, limit int) ([]int64, er
 	return ids, rows.Err()
 }
 
+// MarkUnsummarizedDisabled stamps summary_model='disabled' on every article the
+// summarizer never finalized. It is the startup counterpart of the poller's
+// ingest-time stamp: that write shares the poll context, so a SIGTERM landing
+// between the article INSERT and the stamp leaves the row NULL forever, where
+// it inflates the sidebar's pending-summary count with work nothing will ever
+// do. Only NULL/empty markers are touched — a real model name, 'skipped' and
+// 'excluded' all mean the article was already finalized. Returns rows healed.
+func (s *Store) MarkUnsummarizedDisabled(ctx context.Context) (int64, error) {
+	res, err := s.DB.ExecContext(ctx,
+		`UPDATE articles SET summary_model = 'disabled' WHERE IFNULL(summary_model,'') = ''`)
+	if err != nil {
+		return 0, err
+	}
+	n, _ := res.RowsAffected()
+	return n, nil
+}
+
 // ResetExcludedByFeed clears the 'excluded' marker on a feed's articles and
 // returns their ids so the caller can re-enqueue them. Used when a user turns
 // AI summaries back ON for a feed (issue #163): those articles were skipped
