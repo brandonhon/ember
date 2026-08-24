@@ -18,6 +18,7 @@
     pollForNewArticles,
     refreshSmartCounts,
     smartCounts,
+    summariesEnabled,
     newArticleCount,
     branding,
   } from "./lib/stores";
@@ -131,7 +132,10 @@
       // disappears when it hits zero. pollForNewArticles only refreshes the
       // sidebar when NEW articles arrive, so without this the bar stays stuck
       // at its last value after summarization finishes on existing articles.
-      if (get(smartCounts).pending_summary > 0) {
+      // Gated on summariesEnabled like the indicator itself: with no summarizer
+      // running nothing drains the tally, so an ungated check re-requests a
+      // number that cannot move, every tick, for the whole session.
+      if (get(summariesEnabled) && get(smartCounts).pending_summary > 0) {
         void refreshSmartCounts();
       }
     }, 15_000);
