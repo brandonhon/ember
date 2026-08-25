@@ -138,6 +138,14 @@ them.
 
 ### Changed
 
+- Publishing a prerelease no longer rebuilds the documentation site. This is
+  build infrastructure only: it changes when the site deploys, not anything in
+  the released binaries or container image. GitHub's `release: published` event
+  fires for prereleases as well as full releases, so tagging an `-rc` would have
+  rebuilt the public site from the release candidate's tree — putting
+  documentation for unreleased behaviour in front of readers running the last
+  stable version. The site now tracks the latest full release. Pushes to `main`,
+  full releases and manual workflow dispatches deploy exactly as before.
 - Bumped the pinned `actions/checkout` from 6.0.2 to 7.0.1 across all five
   workflows. This is build infrastructure only: it changes how CI checks the
   repository out, not anything in the released binaries or container image.
