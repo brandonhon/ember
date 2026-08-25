@@ -412,6 +412,66 @@ func (s *Store) UpdateSummary(ctx context.Context, articleID int64, summary, mod
 	return nil
 }
 
+// RequestSummary clears the 'deferred' marker on one article so the summary
+// worker will pick it up on its next pass, reporting whether it actually
+// changed anything.
+//
+// Deliberately narrow: only 'deferred' is cleared. Starring an article whose
+// summary genuinely failed ('skipped') or whose feed is opted out ('excluded')
+// must not quietly spend inference the reader didn't ask for — Resummarize is
+// the explicit action for those.
+//
+// This is a convenience, not the gate: the on-demand poller gate consults
+// ArticleSummaryRequested (whether the article is actually starred, saved, or
+// pinned), not whether the marker has been cleared, so clearing it here only
+// gets the article picked up promptly instead of waiting for the marker to be
+// re-evaluated on the next tick — it is never load-bearing for whether the
+// article gets summarized at all.
+func (s *Store) RequestSummary(ctx context.Context, articleID int64) (bool, error) {
+	res, err := s.DB.ExecContext(ctx,
+		`UPDATE articles SET summary_model = NULL, summary = ''
+		 WHERE id = ? AND summary_model = 'deferred'`, articleID)
+	if err != nil {
+		return false, err
+	}
+	n, _ := res.RowsAffected()
+	return n > 0, nil
+}
+
+// ArticleSummaryRequested reports whether ANY user has starred the article,
+// saved it for later, or pinned it to a board whose summarize flag is set —
+// i.e. whether a reader has actually asked for this article, as opposed to
+// merely having a 'deferred' marker cleared.
+//
+// The on-demand poller gate (Task 12) consults THIS, not the marker, because
+// the in-memory summary queue drops ids routinely under load — a dropped id
+// would leave 'deferred' cleared with nobody re-enqueuing the article, and a
+// marker-only gate would then never re-defer it, so the article would sit
+// forever in a state that looks "requested" but isn't backed by any mark. Since
+// the gate re-derives its answer from the marks on every pass instead, a
+// dropped id just means the gate tries again next tick and gets the same
+// (correct) answer.
+//
+// The board half requires summarize = 1 on the board: a board a user files
+// things in rather than reads from (a link dump, an archive) must not trigger
+// inference just because an article landed there.
+func (s *Store) ArticleSummaryRequested(ctx context.Context, articleID int64) (bool, error) {
+	var requested int
+	err := s.reader().QueryRowContext(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM article_state
+			WHERE article_id = ? AND (is_starred = 1 OR is_later = 1)
+		) OR EXISTS (
+			SELECT 1 FROM board_articles ba
+			JOIN boards b ON b.id = ba.board_id
+			WHERE ba.article_id = ? AND b.summarize = 1
+		)`, articleID, articleID).Scan(&requested)
+	if err != nil {
+		return false, err
+	}
+	return requested != 0, nil
+}
+
 // UpdateCleanedHTML stores the LLM-produced ad-stripped article body.
 func (s *Store) UpdateCleanedHTML(ctx context.Context, articleID int64, html string) error {
 	_, err := s.DB.ExecContext(ctx,

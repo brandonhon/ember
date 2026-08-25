@@ -65,9 +65,16 @@ type Subscription struct {
 	// true. A feed is only skipped when it has subscribers and none of them
 	// want summaries — the summary itself lives on the shared article row, so
 	// one user opting out must not remove it from another.
-	Summarize bool  `json:"summarize"`
-	Position  int   `json:"position"`
-	CreatedAt int64 `json:"created_at"`
+	Summarize bool `json:"summarize"`
+	// SummarizeMode is this user's preference for WHEN the feed's articles get
+	// summarized (issue #199): "" inherits the server-wide mode, "all"
+	// summarizes every article, "on_demand" only what the reader stars, saves
+	// for later, or pins to a board. Only meaningful when Summarize is true —
+	// the hard opt-out still wins. See store.FeedSummarizeMode for how
+	// multiple subscribers' preferences resolve to one effective feed mode.
+	SummarizeMode string `json:"summarize_mode"`
+	Position      int    `json:"position"`
+	CreatedAt     int64  `json:"created_at"`
 }
 
 // Article is a single item ingested from a feed. Shared storage across users.
@@ -121,10 +128,16 @@ type ArticleState struct {
 
 // Board is a user-scoped curated collection.
 type Board struct {
-	ID        int64  `json:"id"`
-	UserID    int64  `json:"user_id"`
-	Name      string `json:"name"`
-	CreatedAt int64  `json:"created_at"`
+	ID     int64  `json:"id"`
+	UserID int64  `json:"user_id"`
+	Name   string `json:"name"`
+	// Summarize controls whether pinning an article to this board is one of
+	// the "I mean to read this" signals that requests a summary under
+	// on-demand mode (issue #199). Defaults true; set false on a board used
+	// purely for filing — a link dump or an archive — so pinning there
+	// doesn't spend inference.
+	Summarize bool  `json:"summarize"`
+	CreatedAt int64 `json:"created_at"`
 }
 
 // SavedSearch is a persisted FTS query that the user can re-run from the
@@ -222,6 +235,7 @@ type FeedWithCounts struct {
 	TitleOverride  string `json:"title_override,omitempty"`
 	Muted          bool   `json:"muted"`
 	Summarize      bool   `json:"summarize"`
+	SummarizeMode  string `json:"summarize_mode"`
 	Position       int    `json:"position"`
 	Unread         int    `json:"unread"`
 }
