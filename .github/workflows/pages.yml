@@ -9,6 +9,7 @@ on:
       - '.github/workflows/pages.yml'
   # Rebuild after a release is published so the demo SPA's About version picks up
   # the new tag (release.yml runs on the tag; this redeploys with that version).
+  # Prereleases are filtered out by the job-level `if:` below.
   release:
     types: [published]
   # Manual run from the Actions tab if you change something outside docs/
@@ -24,6 +25,11 @@ concurrency:
 
 jobs:
   build-and-deploy:
+    # `release: published` fires for prereleases too, so publishing an RC would
+    # rebuild the public site from the RC's tree — shipping unreleased docs
+    # ahead of the release they belong to. The site tracks the latest FULL
+    # release; pushes to main, full releases and manual dispatches still deploy.
+    if: ${{ github.event_name != 'release' || !github.event.release.prerelease }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
