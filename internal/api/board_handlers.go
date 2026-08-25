@@ -1,6 +1,7 @@
 package api
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/brandonhon/ember/internal/auth"
@@ -65,6 +66,20 @@ func (d *Dependencies) handleBoardAdd(w http.ResponseWriter, r *http.Request) {
 	}
 	if mapStoreError(w, d.Store.AddArticleToBoard(r.Context(), u.ID, boardID, req.ArticleID)) {
 		return
+	}
+	// Pinning to a board is the third "I mean to read this" signal, unless the
+	// board is one the user files things in rather than reads from — hence the
+	// per-board flag. User-scoped via BoardSummarizes, matching every other
+	// board lookup: a foreign board id must not leak whether it exists, let
+	// alone trigger inference on someone else's behalf.
+	if wants, err := d.Store.BoardSummarizes(r.Context(), u.ID, boardID); err != nil {
+		slog.Default().Warn("boards: summarize flag lookup", "board_id", boardID, "err", err)
+	} else if wants {
+		if changed, err := d.Store.RequestSummary(r.Context(), req.ArticleID); err != nil {
+			slog.Default().Warn("boards: request summary", "article_id", req.ArticleID, "err", err)
+		} else if changed {
+			d.enqueueSummaries([]int64{req.ArticleID})
+		}
 	}
 	writeOK(w)
 }

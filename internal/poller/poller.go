@@ -68,6 +68,12 @@ type Config struct {
 	// resolves the live value per article so an admin's toggle applies without
 	// a restart.
 	SummariesEnabledFallback bool
+	// SummarizeModeFallback is the env-derived default for the server-wide
+	// summarize mode (store.ModeAll or store.ModeOnDemand). The poller
+	// resolves the live value by preferring the app_settings row over this
+	// fallback, so an admin's change applies to the next article without a
+	// restart.
+	SummarizeModeFallback string
 	// SummarizerReady reports whether the wired summarizer can actually answer
 	// right now. Nil means "always ready", which is what tests and any caller
 	// passing a concrete backend want.
@@ -147,6 +153,9 @@ func New(st *store.Store, f Fetcher, s summarize.Summarizer, cfg Config, lg *slo
 	}
 	if cfg.SummaryTimeoutSecondsFallback <= 0 {
 		cfg.SummaryTimeoutSecondsFallback = store.DefaultSummaryTimeoutSeconds
+	}
+	if cfg.SummarizeModeFallback == "" {
+		cfg.SummarizeModeFallback = store.ModeAll
 	}
 	if cfg.Now == nil {
 		cfg.Now = time.Now
@@ -842,6 +851,42 @@ func (p *Poller) summarizeOne(ctx context.Context, articleID int64) {
 			p.Logger.Warn("poller: stamp summary_model=excluded", "article_id", articleID, "err", err)
 		}
 		return
+	}
+	// On-demand mode (issue #199): don't spend inference until a reader signals
+	// they mean to read this. The gate consults ArticleSummaryRequested — whether
+	// the article is actually starred, saved for later, or pinned to a
+	// summarize=1 board — rather than the 'deferred' marker itself: the marker
+	// is cleared by RequestSummary purely to get the article picked up promptly,
+	// and re-checking the marker here would just have this same gate re-stamp
+	// 'deferred' on the very next pass, before the summarizer ever ran. Keying
+	// off the marks instead is also robust to the in-memory queue dropping ids
+	// under load — a dropped id just means the gate answers the same way again
+	// next tick.
+	//
+	// Stamping 'deferred' rather than leaving the row pending is load-bearing
+	// for the same reason 'excluded' is above — a pending row is hidden behind
+	// the summary gate, counted in "Summarizing N articles", and re-queued on
+	// every tick. A terminal marker makes the article readable now and keeps
+	// the queue short enough that a summary requested later is ready quickly.
+	//
+	// On a lookup error this deliberately falls through to summarizing:
+	// matches FeedSummariesSuppressed's fail-open above, and is the recoverable
+	// direction — a wasted summary is cheaper than an article that silently
+	// never gets one.
+	globalMode := p.Store.ResolveSummarizeMode(ctx, p.Config.SummarizeModeFallback)
+	mode, err := p.Store.FeedSummarizeMode(ctx, art.FeedID, globalMode)
+	if err != nil {
+		p.Logger.Warn("poller: summarize mode lookup failed", "article_id", articleID, "err", err)
+	} else if mode == store.ModeOnDemand {
+		requested, err := p.Store.ArticleSummaryRequested(ctx, articleID)
+		if err != nil {
+			p.Logger.Warn("poller: summary request check failed", "article_id", articleID, "err", err)
+		} else if !requested {
+			if err := p.Store.UpdateSummary(ctx, articleID, "", "deferred"); err != nil {
+				p.Logger.Warn("poller: stamp summary_model=deferred", "article_id", articleID, "err", err)
+			}
+			return
+		}
 	}
 	// One deadline per article, covering the backend call and the client's
 	// internal retry. Resolved per call so an admin's change lands on the next
