@@ -24,6 +24,15 @@ export const DEMO: boolean = import.meta.env.VITE_DEMO_MODE === "1";
 // so the demo tracks releases; falls back to the captured value for local builds.
 const DEMO_VERSION: string = import.meta.env.VITE_DEMO_VERSION || demoData.me.version;
 
+// The capture script masks the captured account to is_admin:false, which hides
+// the whole Administration group -- including the Language model pane that the
+// summarization work (#198-#201) exists to show off. Promote to admin here
+// rather than in demo-data.json so a re-capture can't silently undo it.
+//
+// Safe because this shim intercepts every write below: the admin panels are a
+// read-only tour, and anything that would persist pops the demo notice instead.
+const DEMO_USER = { ...demoData.me.user, is_admin: true };
+
 // Drives the "this is a demo site" modal (DemoNotice.svelte). Fired by the
 // shim when a write that can't persist is attempted, and directly by
 // components for actions that bypass fetch (e.g. the OPML export navigation).
@@ -142,12 +151,15 @@ function route(method: string, path: string, p: URLSearchParams, body: Json | un
   // ---- Auth: show the real login screen, then accept any creds ----
   if (path === "/api/me" && method === "GET")
     return loggedIn
-      ? ok({ ...demoData.me, version: DEMO_VERSION, ...DEMO_WINDOWS })
+      ? ok({ ...demoData.me, user: DEMO_USER, version: DEMO_VERSION, ...DEMO_WINDOWS })
       : { status: 401 };
-  if (path === "/api/auth/login" && method === "POST") { loggedIn = true; return ok((demoData.me as Json).user); }
+  if (path === "/api/auth/login" && method === "POST") { loggedIn = true; return ok(DEMO_USER); }
   if (path === "/api/auth/logout") { loggedIn = false; return noContent(); }
   if (path === "/api/auth/passkey/exists") return ok({ any_registered: false });
-  if (path === "/api/users" && method === "GET") return ok([]);
+  // The admin Users pane is reachable now, so list the account you are signed in
+  // as instead of an empty table. ShareModal filters the current user out of its
+  // recipient picker, so that stays empty exactly as before.
+  if (path === "/api/users" && method === "GET") return ok([DEMO_USER]);
   if (path === "/api/shares/inbox" && method === "GET") return ok([]);
 
   // ---- Sidebar / reference data ----
@@ -250,6 +262,8 @@ function adminStub(path: string): unknown {
   if (path === "/api/me/inbox") return { handle: "", address: "", domain: "", enabled: false };
   if (path === "/api/me/passkeys") return [];
   if (path === "/api/me/push-subscriptions") return [];
+  if (path === "/api/admin/db") return { backup_schedule: "daily", backup_keep_count: 7, backup_dir: "/data/backups", cleanup_schedule: "monthly", cleanup_older_days: 90, opml_schedule: "weekly", opml_export_dir: "/data/exports", opml_keep: 4, size_bytes: 24117248, page_count: 5888, backups: [{ path: "/data/backups/ember-20260720-030000.db", size_bytes: 23068672, created_at: 1784950800 }, { path: "/data/backups/ember-20260719-030000.db", size_bytes: 22020096, created_at: 1784864400 }], exports: [{ path: "/data/exports/subscriptions-20260719.opml", size_bytes: 8192, created_at: 1784864400 }] };
+  if (path === "/api/admin/session") return { ttl_seconds: 86400, source: "default" };
   if (path === "/api/admin/settings") return { smtp: { host: "", port: 587, username: "", password_set: false, from: "", starttls: true }, initial_backlog_hours: 24, poll_min_interval_seconds: 1800, poll_min_interval_floor_seconds: 300, poll_min_interval_ceil_seconds: 86400, reading_window_hours: 24, search_window_hours: 48, window_hours_floor: 24, window_hours_ceil: 168, update_check_enabled: true, passkey_require_uv: false, summary_grace_seconds: 120, summary_grace_seconds_floor: 0, summary_grace_seconds_ceil: 3600, summaries_enabled: true, summary_timeout_seconds: 90, summary_timeout_seconds_floor: 10, summary_timeout_seconds_ceil: 900, summarize_mode: "all" };
   if (path === "/api/admin/llm") return { current_model: "qwen2.5:3b", enabled: true, backend: "ollama", base_url: "http://ollama:11434", api_key_set: false, model: "qwen2.5:3b", system: { ram_bytes: 17179869184, cpus: 8, gpu: "", os: "linux" }, recommended: { model: "qwen2.5:3b", reason: "16 GiB+ RAM, CPU-only — 3b model fits", disable_llm: false }, installed: [{ name: "qwen2.5:3b", size_bytes: 1929399296, modified_at: "2026-07-20T14:32:00Z" }, { name: "qwen2.5:1.5b", size_bytes: 986000000, modified_at: "2026-07-15T09:10:00Z" }], options: { temperature: 0.4, top_p: 0.9, num_ctx: 4096 } };
   return {};
