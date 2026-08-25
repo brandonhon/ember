@@ -1,7 +1,7 @@
 ---
 layout: home
 title: Ember
-titleTemplate: Self-hosted RSS reader with on-device AI summaries
+titleTemplate: Self-hosted RSS reader with local-first AI summaries
 
 hero:
   name: Ember
@@ -28,8 +28,8 @@ features:
     title: Three-pane reader
     details: Sidebar of feeds and folders, the article list, and a focused reader. Keyboard navigation (j/k/r/m/s/?), drag-to-reorder on desktop.
   - icon: 🧠
-    title: Local AI summaries
-    details: Optional Ollama integration produces a paragraph + bullet summary for each article. Pull, swap, and tune models from the admin UI. Strips newsletter / podcast promos from the body.
+    title: Pluggable AI summaries
+    details: Local by default via Ollama — pull, swap, and tune models from the admin UI — or point at any OpenAI-compatible endpoint or Claude for a hosted backend. Produces a paragraph + bullet summary per article and strips newsletter / podcast promos from the body.
   - icon: 🔎
     title: FTS5 full-text search
     details: SQLite's FTS5 powers a dedicated search view + saved searches surfaced in the sidebar. Per-article user tags filter the list down further.

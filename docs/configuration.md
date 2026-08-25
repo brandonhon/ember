@@ -93,6 +93,7 @@ Stored in the `app_settings` KV. Edit via the admin UI in **Settings → ...**.
 
 | Setting | Where to change |
 | --- | --- |
+| Summaries on/off (`summaries_enabled`, default from `EMBER_DISABLE_SUMMARIES`; turning it off drains the pending queue) | Language model |
 | Summarization backend + base URL + API key + model (`summarize_backend`, `summarize_base_url`, `summarize_api_key`, `summarize_model`; override `EMBER_SUMMARY_*`) | Language model → Backend |
 | Active LLM model | Language model |
 | Temperature / Top P / Context window | Language model → Tuning |

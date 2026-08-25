@@ -8,7 +8,7 @@ A reference for contributors. Covers process layout, request lifecycle, and how 
 caddy ─┬─> ember (Go binary)
        │     ├─ HTTP API + Fever shim + SPA serve
        │     ├─ Background poller (per-feed adaptive ticker)
-       │     ├─ Summary worker pool (Ollama HTTP client)
+       │     ├─ Summary worker pool (Ollama / OpenAI-compatible / Claude client)
        │     ├─ DB maintenance goroutine (retention prune / backup / cleanup / OPML / hourly)
        │     ├─ Update-check goroutine (daily GitHub-releases poll; release builds only)
        │     └─ Cluster backfill goroutine (one-time at startup; idempotent)
@@ -36,7 +36,7 @@ internal/opml/                OPML import + export + discovery → subscribe
 internal/ttrss/               Tiny Tiny RSS migration — XML export parser (articles → one non-polling "Imported" feed) + live JSON API client (subscriptions + categories→folders, plus starred/archived articles)
 internal/poller/              adaptive scheduler, fetch dispatch, summary queue
 internal/store/               SQLite CRUD, FTS5 search, app_settings KV, dbops, passkeys, digests, cluster backfill + sibling lookup
-internal/summarize/           Summarizer interface + Ollama implementation + noop for tests
+internal/summarize/           Summarizer interface + Ollama/OpenAI/Claude implementations + switcher (runtime backend swap) + noop for tests
 internal/sysinfo/             host-detection (RAM/CPU/GPU) + model recommendation
 internal/updatecheck/         daily GitHub-releases poll + semver compare; caches the latest tag for the admin-only /api/me hint
 internal/urlcheck/            SSRF block (scheme allowlist + private-IP + service-port refusal)
@@ -133,14 +133,22 @@ Suppression is **unanimous**, not per-user: the summary lives on the shared arti
 ## Summarizer pipeline
 
 ```
-poller.summarize ─> Summarizer.Summarize(title, text)
-                       │
-                       ├─ Ollama: POST /api/generate
+poller.summarize ─> Switcher.Summarize(title, text)  ── atomic.Pointer swap,
+                       │                                 admin picks backend
+                       ├─ Ollama (default): POST /api/generate
                        │   prompt = labeled "SUMMARY: / POINTS: / CLEANED:"
                        │   options = {temperature, top_p, num_ctx} from app_settings
-                       │   timeout = 90s, one retry on transient error
+                       │   one retry on transient error
                        │
-                       └─> parseResult(s):
+                       ├─ OpenAI-compatible: POST {base_url}/v1/chat/completions
+                       │   same labeled prompt; Authorization: Bearer <api_key> if set
+                       │   no client-level retry
+                       │
+                       ├─ Claude: Anthropic Messages API
+                       │   same labeled prompt; api_key required
+                       │   no client-level retry
+                       │
+                       └─> parseResult(s):  (shared by all three backends)
                               parseLabeled → parseJSONObject → parseJSONArray
                               → line-based fallback
                               + cleanBullets (strip markers / inline markdown /
@@ -149,7 +157,12 @@ poller.summarize ─> Summarizer.Summarize(title, text)
                               + cleanParagraph
 ```
 
-Active model + tunables held in `atomic.Value`/`atomic.Pointer` on the `Ollama` struct so the admin API can swap them without restarting.
+One deadline per article — `summary_timeout_seconds` (default 90, range
+10–900) — wraps the whole call above, including Ollama's internal retry, so a
+timeout produces one generation attempt, not two (issue #201). Active model +
+tunables held in `atomic.Value`/`atomic.Pointer` on the `Ollama` struct so the
+admin API can swap them without restarting; the active *backend* itself lives
+behind `summarize.Switcher`, which the same admin API swaps atomically.
 
 ## Cross-feed dedup
 
@@ -190,6 +203,7 @@ Only the `shared` view (explicit one-off share) and board views (explicit curati
 - `GET /api/admin/llm` — selected backend (`backend`, `base_url`, `api_key_set`, `model`), detected hardware, recommendation, installed models, current model + options.
 - `POST /api/admin/llm/backend` — select the summarization backend (`ollama` / `openai` / `anthropic`) with its endpoint, API key and model in one call. The key is write-only: the response carries `api_key_set`, never the value.
 - `POST /api/admin/llm/model` / `…/pull` / `…/delete` / `…/options` — switch / pull / delete / tune. **Ollama-only**: they answer `503 not_ollama` on the hosted backends, which have no local model cache.
+- `POST /api/admin/summaries/drain` / `…/requeue` — stamp every pending article `disabled` (drain), or clear that marker and re-enqueue it (requeue), to recover a stuck backlog without touching the database. Both rewrite `summary_model` across every user's article rows, so they carry the same admin+rate-limit treatment as `resummarize-all`.
 - `GET /api/branding` (public) / `POST /api/admin/branding` (admin).
 - `GET /api/admin/db` — size, page count, recent backups + OPML exports, schedules.
 - `POST /api/admin/db/backup` / `…/cleanup` / `…/schedule` — manual + scheduled maintenance.
