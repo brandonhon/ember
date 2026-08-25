@@ -337,8 +337,17 @@ func (d *Dependencies) handleSetLLMBackend(w http.ResponseWriter, r *http.Reques
 	// override the model picker's ollama_model row across restarts. Blanking
 	// here rather than trusting the caller covers curl and every other non-SPA
 	// client, not just the Settings form.
-	if req.Backend == store.BackendOllama {
+	//
+	// Anthropic blanks BaseURL for the same non-nil-client reason — Claude has
+	// no SetBaseURL, so a leftover URL is inert for requests but would still
+	// build NewClaude(key, "llama-3.3-70b") from a stale foreign model id and
+	// report a stale hosted URL beside backend: "anthropic". Model is left
+	// alone there because, unlike Ollama, a model id is meaningful to Claude.
+	switch req.Backend {
+	case store.BackendOllama:
 		req.BaseURL, req.Model = "", ""
+	case store.BackendAnthropic:
+		req.BaseURL = ""
 	}
 
 	// BaseURL and Model are written unconditionally (empty = "inherit the env

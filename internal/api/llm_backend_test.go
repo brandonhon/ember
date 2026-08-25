@@ -320,3 +320,46 @@ func TestLLMBackend_SwitchingBackToOllamaDropsTheHostedEndpoint(t *testing.T) {
 		t.Errorf("GET reports base_url=%q model=%q", status.BaseURL, status.Model)
 	}
 }
+
+// Switching to Anthropic must blank a caller-supplied base_url — Claude has no
+// SetBaseURL, so a leftover URL from a prior OpenAI-compatible backend is
+// inert for requests but would still be echoed by GET as a stale hosted URL
+// beside backend: "anthropic". The model, unlike Ollama's case, is meaningful
+// to Claude and must survive.
+func TestLLMBackend_SwitchingToAnthropicDropsTheBaseURL(t *testing.T) {
+	h := newBackendHarness(t)
+	h.seedUser(t, "root", "p", true)
+	c := h.login(t, "root", "p")
+	ctx := context.Background()
+
+	const hostedURL = "https://api.groq.com/openai/v1"
+	const hostedModel = "llama-3.3-70b"
+
+	if code, raw := postRaw(t, c, h.srv.URL+"/api/admin/llm/backend", map[string]any{
+		"backend": "openai", "base_url": hostedURL, "model": hostedModel,
+	}); code != http.StatusOK {
+		t.Fatalf("switch to openai = %d: %s", code, raw)
+	}
+
+	if code, raw := postRaw(t, c, h.srv.URL+"/api/admin/llm/backend", map[string]any{
+		"backend": "anthropic", "base_url": hostedURL, "api_key": secretKey, "model": "claude-opus-5",
+	}); code != http.StatusOK {
+		t.Fatalf("switch to anthropic = %d: %s", code, raw)
+	}
+
+	live := ResolveBackend(ctx, h.store, h.dep.BackendFallbacks)
+	if live.Backend != store.BackendAnthropic {
+		t.Fatalf("backend = %q, want anthropic", live.Backend)
+	}
+	if live.BaseURL != "" {
+		t.Errorf("base_url = %q, want blank — the OpenAI-compatible URL bled across the switch", live.BaseURL)
+	}
+	if live.Model != "claude-opus-5" {
+		t.Errorf("model = %q, want claude-opus-5 — a real model id must survive for Anthropic", live.Model)
+	}
+
+	status, _ := getLLM(t, c, h.srv.URL)
+	if status.BaseURL != "" {
+		t.Errorf("GET reports base_url=%q, want blank beside backend: anthropic", status.BaseURL)
+	}
+}

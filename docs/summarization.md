@@ -14,10 +14,17 @@ how to recover a backlog that's stuck.
    **summary grace window** (`EMBER_SUMMARY_GRACE_SECONDS`, default 120s, runtime-tunable
    in **Settings → Language model → Article visibility**) lapses — whichever comes first.
    That window exists so a slow model delays an article rather than hiding it indefinitely.
-3. The summarizer calls Ollama. On success, the text is stored and `summary_model` is set
-   to the model name. On failure — backend down, empty output, a persist error, or the
+3. The summarizer calls the backend. On success, the text is stored and `summary_model` is
+   set to the model name. On failure — backend down, empty output, a persist error, or the
    request exceeding `EMBER_SUMMARY_TIMEOUT_SECONDS` — Ember writes `summary_model =
    'skipped'` rather than leaving the row pending, so the article still surfaces.
+
+`summary_timeout_seconds` accepts 10–900, but on the **Claude** backend only 10–600 is
+reachable: the Anthropic SDK's non-streaming timeout calculation returns a flat 10-minute
+default for Ember's `MaxTokens` setting, and that applies whenever it lands before the
+caller's context deadline — so a value of 601–900 is silently clamped to 600 on Claude.
+Ollama and the OpenAI-compatible backend have no client-level timeout and honour the full
+range.
 
 ## Backends
 
@@ -40,7 +47,7 @@ you pick. What differs is what the backend can do besides summarize:
   so those endpoints answer `503 not_ollama` and the UI hides the cards.
 - The API key is stored write-only. The server reports whether a key exists
   (`api_key_set`), never the value, and an empty key on save means "keep the stored one".
-  Use **Forget stored key** to erase it.
+  Use **Clear stored key** to erase it.
 
 A backend that cannot answer is refused at save time (`openai` with no base URL,
 `anthropic` with no API key, a base URL that isn't `http`/`https` → `400`). A backend
@@ -123,8 +130,8 @@ nothing reads `summary` to decide whether an article is done.
 | `'<model name>'` | Summarized successfully; `summary` holds the text. | Yes | No |
 | `'skipped'` | Attempted and failed (backend down, empty output, persist error, timeout). | Yes | No |
 | `'excluded'` | Every subscriber of the feed opted out of summaries. | Yes | No |
-| `'disabled'` | Finalized while summaries were switched off. | Yes | No |
-| `'deferred'` | On-demand mode: not queued until a reader stars, saves, or pins it. Cleared by any of those three, and by switching the feed to *every article*. | Yes | No |
+| `'disabled'` | Finalized while summaries were switched off. Also cleared, alongside every other non-`'excluded'` state, by **Resummarize all**; the poller re-stamps `'disabled'` the next time it lands if summaries are still off. | Yes | No |
+| `'deferred'` | On-demand mode: not queued until a reader stars, saves, or pins it. Cleared by any of those three, by switching the feed to *every article*, and by **Resummarize all**, which re-defers it on the next poller tick if the feed is still on-demand. | Yes | No |
 
 Every non-empty value satisfies the summary gate — that's why every give-up path writes a
 terminal marker instead of leaving the row `NULL`.
@@ -150,7 +157,11 @@ yet by definition — but those articles won't be summarized until you requeue t
 To send drained articles back through the summarizer, use **Requeue** in the same panel. It
 clears only the `'disabled'` marker; articles that genuinely failed (`'skipped'`) or were
 opted out per-feed (`'excluded'`) are left alone on purpose — use **Resummarize** (per-feed,
-or **Resummarize all** for the whole database) for those instead.
+or **Resummarize all** for the whole database) for those instead. Resummarize all clears
+every non-`'excluded'` state, including `'deferred'` and `'disabled'`, not just `'skipped'`
+and finished summaries — it converges harmlessly, since the poller and the disabled-switch
+path both re-stamp those markers on their next pass, but it does mean a Resummarize-all run
+also re-processes articles that were merely deferred or drained, not only failures.
 
 If you don't have shell access to the admin UI, the same actions are:
 

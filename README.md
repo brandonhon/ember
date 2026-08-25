@@ -133,7 +133,7 @@ You'll land on an onboarding panel that points to starter packs or OPML import. 
 | `EMBER_SUMMARY_BASE_URL` | — | endpoint root for the `openai` backend (OpenRouter, Groq, vLLM, LiteLLM, …) |
 | `EMBER_SUMMARY_API_KEY` | — | API key for the `openai` / `anthropic` backends; rotatable in Settings, never echoed back |
 | `EMBER_SUMMARY_MODEL` | — | model id for the `openai` / `anthropic` backends |
-| `EMBER_DISABLE_SUMMARIES` | `0` | default AI summaries to off (no inference); Settings → AI summaries overrides at runtime |
+| `EMBER_DISABLE_SUMMARIES` | `0` | default AI summaries to off (no inference); Settings → Language model → Summaries overrides at runtime |
 | `EMBER_SUMMARY_TIMEOUT_SECONDS` | `90` | give up on one summary after N seconds |
 | `EMBER_DISABLE_IMAGES` | `0` | drop article hero images at ingest |
 | `EMBER_DISABLE_UPDATE_CHECK` | `0` | skip the daily GitHub-releases update check (admin-only hint); Settings → Check for updates overrides at runtime |

@@ -57,7 +57,7 @@ func NewOllama(baseURL, model string) *Ollama {
 				return errors.New("ollama: unexpected redirect")
 			},
 		},
-		MaxInput: 8000,
+		MaxInput: DefaultMaxInput,
 	}
 	o.model.Store(model)
 	return o
