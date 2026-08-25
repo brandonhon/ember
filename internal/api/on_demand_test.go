@@ -12,10 +12,12 @@ import (
 // seedDeferredArticle adds a feed for the logged-in client, subscribes them
 // (addFeedFor already does that), and inserts one article already stamped
 // 'deferred' — standing in for what summarizeOne leaves behind in on-demand
-// mode.
-func seedDeferredArticle(t *testing.T, h *harness, c *http.Client, guid string) (feedID, articleID int64) {
+// mode. The subscription id comes back rather than the feed id because that
+// is what the per-feed endpoints are addressed by; the trigger tests discard
+// it either way.
+func seedDeferredArticle(t *testing.T, h *harness, c *http.Client, guid string) (subID, articleID int64) {
 	t.Helper()
-	_, feedID = addFeedFor(t, h, c, fmt.Sprintf("https://ondemand.test/%s", guid))
+	subID, feedID := addFeedFor(t, h, c, fmt.Sprintf("https://ondemand.test/%s", guid))
 	ctx := context.Background()
 	art, _, err := h.store.UpsertArticle(ctx, models.Article{
 		FeedID: feedID, GUID: guid, Title: guid,
@@ -28,7 +30,7 @@ func seedDeferredArticle(t *testing.T, h *harness, c *http.Client, guid string) 
 	if err := h.store.UpdateSummary(ctx, art.ID, "", "deferred"); err != nil {
 		t.Fatal(err)
 	}
-	return feedID, art.ID
+	return subID, art.ID
 }
 
 // Starring a deferred article is the reader saying "I mean to read this" —

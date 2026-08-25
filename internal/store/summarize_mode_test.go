@@ -34,21 +34,20 @@ func seedFeedWithTwoSubscribers(t *testing.T, s *Store) (feed models.Feed, alice
 	return f, a.ID, b.ID
 }
 
-// setSubscriptionMode writes a subscriber's summarize_mode directly. There is
-// deliberately no store setter for this in Task 11's scope — the API path
-// that will expose it belongs to a later task — so the test reaches the
-// column the same way UpdateSubscription's other fields are exercised
-// (through raw SQL) rather than inventing a method contract nothing else uses.
+// setSubscriptionMode sets a subscriber's summarize_mode through the same
+// store call the API uses. It wrote the column with raw SQL while no setter
+// existed; now that UpdateSubscription carries SummarizeMode, going through
+// it means these resolution tests exercise the production write path rather
+// than a shortcut that could silently diverge from it.
 func setSubscriptionMode(t *testing.T, s *Store, userID, feedID int64, mode string) {
 	t.Helper()
-	res, err := s.DB.ExecContext(context.Background(),
-		`UPDATE subscriptions SET summarize_mode = ? WHERE user_id = ? AND feed_id = ?`,
-		mode, userID, feedID)
+	ctx := context.Background()
+	sub, err := s.GetSubscription(ctx, userID, feedID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n, _ := res.RowsAffected(); n != 1 {
-		t.Fatalf("setSubscriptionMode: %d rows affected, want 1", n)
+	if err := s.UpdateSubscription(ctx, userID, sub.ID, UpdateSubscriptionPatch{SummarizeMode: &mode}); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -340,5 +339,203 @@ func TestResolvePutSummarizeMode(t *testing.T) {
 	// The rejected write must not have clobbered the previously stored value.
 	if got := st.ResolveSummarizeMode(ctx, ModeAll); got != ModeOnDemand {
 		t.Errorf("rejected write disturbed the stored mode: got %q", got)
+	}
+}
+
+// The per-subscription mode has to survive the real write path, not just the
+// column: UpdateSubscription is what the API calls, and a patch field that
+// silently no-ops would leave the sidebar's three-way choice inert. ModeInherit
+// is checked explicitly because "" is a meaningful value here — clearing an
+// override back to "follow the server" is a distinct outcome from never having
+// set one.
+func TestUpdateSubscription_PersistsSummarizeMode(t *testing.T) {
+	st := NewTest(t)
+	ctx := context.Background()
+	userID, feedID := seedUserAndFeed(t, st, "modewriter")
+	sub, err := st.GetSubscription(ctx, userID, feedID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sub.SummarizeMode != ModeInherit {
+		t.Fatalf("precondition: new subscriptions start at inherit, got %q", sub.SummarizeMode)
+	}
+
+	for _, mode := range []string{ModeOnDemand, ModeAll, ModeInherit} {
+		m := mode
+		if err := st.UpdateSubscription(ctx, userID, sub.ID, UpdateSubscriptionPatch{SummarizeMode: &m}); err != nil {
+			t.Fatalf("set %q: %v", mode, err)
+		}
+		got, err := st.GetSubscriptionByID(ctx, userID, sub.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.SummarizeMode != mode {
+			t.Errorf("summarize_mode = %q, want %q", got.SummarizeMode, mode)
+		}
+	}
+
+	// A patch that omits the field leaves the stored mode alone — the pointer
+	// is what distinguishes "set it to inherit" from "don't touch it".
+	onDemand := ModeOnDemand
+	if err := st.UpdateSubscription(ctx, userID, sub.ID, UpdateSubscriptionPatch{SummarizeMode: &onDemand}); err != nil {
+		t.Fatal(err)
+	}
+	muted := true
+	if err := st.UpdateSubscription(ctx, userID, sub.ID, UpdateSubscriptionPatch{Muted: &muted}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := st.GetSubscriptionByID(ctx, userID, sub.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.SummarizeMode != ModeOnDemand {
+		t.Errorf("an unrelated patch changed summarize_mode to %q", got.SummarizeMode)
+	}
+
+	// Cross-user scoping is the same as every other field's: another user's
+	// subscription id is not reachable.
+	otherID, otherFeed := seedUserAndFeed(t, st, "modereader")
+	otherSub, err := st.GetSubscription(ctx, otherID, otherFeed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	all := ModeAll
+	if err := st.UpdateSubscription(ctx, userID, otherSub.ID, UpdateSubscriptionPatch{SummarizeMode: &all}); !errors.Is(err, ErrNotFound) {
+		t.Errorf("cross-user UpdateSubscription = %v, want ErrNotFound", err)
+	}
+	if got, _ := st.GetSubscriptionByID(ctx, otherID, otherSub.ID); got.SummarizeMode != ModeInherit {
+		t.Errorf("cross-user patch mutated the target: summarize_mode = %q", got.SummarizeMode)
+	}
+}
+
+// Switching a feed to "summarize every article" has to reach back for the
+// articles on-demand mode already deferred, or the new setting looks inert
+// until the feed publishes something. 'excluded' (the per-feed opt-out) and
+// 'skipped' (a real failure) are deliberately left alone: neither means
+// "nobody has asked for this one yet".
+func TestResetDeferredByFeed(t *testing.T) {
+	st := NewTest(t)
+	ctx := context.Background()
+	_, feedID := seedUserAndFeed(t, st, "deferred")
+
+	seed := func(guid, marker string) int64 {
+		a, _, err := st.UpsertArticle(ctx, mkArticle(feedID, guid, guid, "h-"+guid, 1000))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if marker != "" {
+			if err := st.UpdateSummary(ctx, a.ID, "", marker); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return a.ID
+	}
+	deferredID := seed("g-deferred", "deferred")
+	excludedID := seed("g-excluded", "excluded")
+	skippedID := seed("g-skipped", "skipped")
+
+	ids, err := st.ResetDeferredByFeed(ctx, feedID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ids) != 1 || ids[0] != deferredID {
+		t.Fatalf("ResetDeferredByFeed = %v, want [%d]", ids, deferredID)
+	}
+	if got, _ := st.GetArticle(ctx, deferredID); got.SummaryModel != "" {
+		t.Errorf("deferred marker survived: %q", got.SummaryModel)
+	}
+	if got, _ := st.GetArticle(ctx, excludedID); got.SummaryModel != "excluded" {
+		t.Errorf("excluded article was disturbed: %q", got.SummaryModel)
+	}
+	if got, _ := st.GetArticle(ctx, skippedID); got.SummaryModel != "skipped" {
+		t.Errorf("skipped article was disturbed: %q", got.SummaryModel)
+	}
+
+	// Nothing left to reset: no ids, no error.
+	again, err := st.ResetDeferredByFeed(ctx, feedID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(again) != 0 {
+		t.Errorf("second call returned %v, want none", again)
+	}
+}
+
+// The server-wide twin of TestResetDeferredByFeed. An admin switching the
+// global mode back to "every article" is owed the same backfill a feed-level
+// switch gets — and the same narrowness: only 'deferred' means "nobody has
+// asked for this one yet", so only 'deferred' is answered by a change of mode.
+func TestResetAllDeferred(t *testing.T) {
+	st := NewTest(t)
+	ctx := context.Background()
+	_, feedA := seedUserAndFeed(t, st, "deferred-a")
+	_, feedB := seedUserAndFeed(t, st, "deferred-b")
+
+	seed := func(feedID int64, guid, marker string) int64 {
+		a, _, err := st.UpsertArticle(ctx, mkArticle(feedID, guid, guid, "h-"+guid, 1000))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if marker != "" {
+			if err := st.UpdateSummary(ctx, a.ID, "sum-"+guid, marker); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return a.ID
+	}
+	// Deferred articles in two different feeds: the reset is global, so both
+	// come back — that is the whole difference from ResetDeferredByFeed.
+	deferredA := seed(feedA, "g-def-a", "deferred")
+	deferredB := seed(feedB, "g-def-b", "deferred")
+	untouched := map[string]int64{
+		"skipped":   seed(feedA, "g-skipped", "skipped"),
+		"excluded":  seed(feedA, "g-excluded", "excluded"),
+		"disabled":  seed(feedA, "g-disabled", "disabled"),
+		"llama3:8b": seed(feedB, "g-done", "llama3:8b"),
+	}
+	pending := seed(feedB, "g-pending", "")
+
+	ids, err := st.ResetAllDeferred(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[int64]bool{}
+	for _, id := range ids {
+		got[id] = true
+	}
+	if len(ids) != 2 || !got[deferredA] || !got[deferredB] {
+		t.Fatalf("ResetAllDeferred = %v, want exactly [%d %d]", ids, deferredA, deferredB)
+	}
+	for _, id := range []int64{deferredA, deferredB} {
+		if a, _ := st.GetArticle(ctx, id); a.SummaryModel != "" {
+			t.Errorf("article %d: summary_model = %q, want cleared", id, a.SummaryModel)
+		}
+	}
+	// Every other state is left exactly as it was — asserted marker by marker,
+	// because a count would pass even if the reset had swapped one state for
+	// another.
+	for marker, id := range untouched {
+		a, err := st.GetArticle(ctx, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if a.SummaryModel != marker {
+			t.Errorf("article stamped %q became %q", marker, a.SummaryModel)
+		}
+		if marker == "llama3:8b" && a.Summary == "" {
+			t.Error("a finished summary's text was blanked")
+		}
+	}
+	if a, _ := st.GetArticle(ctx, pending); a.SummaryModel != "" {
+		t.Errorf("a pending article was stamped %q", a.SummaryModel)
+	}
+
+	// Nothing left to reset: no ids, no error.
+	again, err := st.ResetAllDeferred(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(again) != 0 {
+		t.Errorf("second call returned %v, want none", again)
 	}
 }

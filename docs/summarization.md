@@ -48,6 +48,67 @@ that is selected but not yet configured leaves summarization off: incoming artic
 stamped `disabled` — visible straight away, and reversible with **Requeue drained
 articles** once the configuration is finished — rather than `skipped`, which is terminal.
 
+## Choosing what gets summarized
+
+Summarizing everything is the right default only for a feed you read end to end. Most
+feeds are mixed: you skim most of the articles and read the rest, and which is which is
+only clear once you've seen the title. **On-demand mode** waits for you to say so —
+an article arrives readable, with no summary, and gets one the moment you star it, save it
+for later, or pin it to a board. Those are the same three signals that already keep an
+article past the retention window, so there is nothing new to learn.
+
+Three controls set it, at three scopes:
+
+- **Server-wide** — **Settings → Language model → Summaries → Summarize**: *Every article*
+  or *When I mark it*. This is the default every feed falls back to.
+- **Per feed** — the feed's **⋯** menu in the sidebar: *Summaries: default* (follow the
+  server), *every article*, *when I mark one*, or *never*.
+- **Per board** — the ✨ control on a board row: whether pinning an article there counts as
+  "I mean to read this". A board you file things in rather than read from should turn it
+  off.
+
+### Resolution order
+
+For one article, in order — the first rule that applies decides:
+
+1. **Per-feed "never"** wins outright. If every subscriber of the feed has turned
+   summaries off for it, the article is stamped `'excluded'` and nothing else is
+   consulted. It is an opt-*out*, and no mode overrides it.
+2. **The effective feed mode.** A feed's subscribers vote, and **any subscriber wanting
+   every article wins**: if even one of them has chosen *every article* — explicitly, or
+   by inheriting a server default of *every article* — the feed summarizes everything.
+   This is not a tie-break, it's the only safe rule: the summary lives on the shared
+   article row, so one reader choosing on-demand must not take away a summary another
+   reader asked for.
+3. **The server-wide mode**, for any subscriber with no opinion of their own.
+
+An article that on-demand mode declines to queue is stamped `'deferred'`, which satisfies
+the summary gate — so it is readable straight away rather than hidden waiting for a
+summary that isn't coming.
+
+### A worked example
+
+A shared feed, three subscribers, server-wide mode *When I mark it*:
+
+| Subscriber | Their setting | Wants every article? |
+| --- | --- | --- |
+| Ana | *Summaries: default* | No — inherits *When I mark it* |
+| Ben | *Summaries: every article* | **Yes** |
+| Cara | *Summaries: never* | No — opted out |
+
+Ben's choice decides it: the feed summarizes every article as it arrives. Cara still sees
+no summaries — her opt-out is per account and blanks the text for her — and Ana gets the
+summaries for free, because they were generated anyway. Had Ben switched to *default* or
+*when I mark one*, the feed would fall to on-demand and new articles would arrive
+`'deferred'` until someone starred, saved, or pinned one.
+
+Switching **to** *every article* backfills, at either scope: the articles already stamped
+`'deferred'` are cleared and re-queued, so the choice acts on the backlog and not only on
+what gets published next. A feed-level switch backfills that feed; the server-wide switch
+backfills everything still deferred. Switching the other way — to *when I mark one* —
+deliberately un-summarizes nothing and enqueues nothing; it only changes what happens to
+the next batch.
+
 ## The `summary_model` state table
 
 `summary_model` is the whole state machine. The `summary` text column holds output only —
@@ -63,7 +124,7 @@ nothing reads `summary` to decide whether an article is done.
 | `'skipped'` | Attempted and failed (backend down, empty output, persist error, timeout). | Yes | No |
 | `'excluded'` | Every subscriber of the feed opted out of summaries. | Yes | No |
 | `'disabled'` | Finalized while summaries were switched off. | Yes | No |
-| `'deferred'` | On-demand mode: not queued until a reader asks for it. Not yet available. | Yes | No |
+| `'deferred'` | On-demand mode: not queued until a reader stars, saves, or pins it. Cleared by any of those three, and by switching the feed to *every article*. | Yes | No |
 
 Every non-empty value satisfies the summary gate — that's why every give-up path writes a
 terminal marker instead of leaving the row `NULL`.
@@ -115,10 +176,16 @@ default — it takes effect immediately and survives a restart. Turning it off:
 Turning it back on **requeues exactly those articles** — the ones stamped `'disabled'` —
 without re-running anything that had already succeeded, been skipped, or been excluded.
 
+Switching the **mode** back to *Every article* works the same way one marker over: the
+articles stamped `'deferred'` are cleared and re-queued, and nothing else is touched. Both
+switches act on the backlog they created, so neither looks inert until the next poll.
+
 ## What each control does
 
 | Control | Scope | Where | Marker it produces |
 | --- | --- | --- | --- |
 | Global summaries switch | Server-wide | Settings → Language model | `'disabled'` on every pending article when turned off |
-| Per-feed opt-out ("Don't summarize") | Per account, per feed | Feed's **⋯** menu in the sidebar | `'excluded'` once every subscriber has opted out |
-| On-demand mode | Server-wide | Not yet available | `'deferred'` (planned) |
+| Per-feed opt-out ("Summaries: never") | Per account, per feed | Feed's **⋯** menu in the sidebar | `'excluded'` once every subscriber has opted out |
+| Summarize: every article / when I mark it | Server-wide | Settings → Language model → Summaries | `'deferred'` on articles nobody has asked for |
+| Summaries: default / every article / when I mark one | Per account, per feed | Feed's **⋯** menu in the sidebar | `'deferred'`, unless another subscriber wants every article |
+| Summarize what I pin here | Per account, per board | ✨ on the board row in the sidebar | None — it decides whether pinning *clears* `'deferred'` |

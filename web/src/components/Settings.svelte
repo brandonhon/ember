@@ -641,6 +641,10 @@
   // alongside the grace/timeout settings.
   let summariesEnabled = $state(true);
   let summariesBusy = $state(false);
+  // Server-wide summarization mode (#199): "all" or "on_demand". Never "" —
+  // that is the per-feed "no opinion" value, which resolves through to this.
+  let summarizeMode = $state("all");
+  let summarizeModeBusy = $state(false);
   let queueBusy = $state(""); // active queue action: "drain", "requeue", or ""
   async function loadSummaryGrace() {
     try {
@@ -652,6 +656,7 @@
       summaryTimeoutFloor = res.data.summary_timeout_seconds_floor;
       summaryTimeoutCeil = res.data.summary_timeout_seconds_ceil;
       summariesEnabled = res.data.summaries_enabled;
+      summarizeMode = res.data.summarize_mode;
     } catch (e) {
       llmErr = e instanceof ApiError ? e.message : String(e);
     }
@@ -705,6 +710,25 @@
       llmErr = e instanceof ApiError ? e.message : String(e);
     } finally {
       summariesBusy = false;
+    }
+  }
+
+  // Server-wide summarization mode (#199). Switching to on-demand leaves
+  // already-queued articles alone — it only changes what the poller does with
+  // the next batch — so there is nothing to drain or re-queue here; the
+  // per-feed switch to "every article" is the one that backfills.
+  async function setMode(mode: string) {
+    if (DEMO) { notifyDemoBlocked(); return; }
+    summarizeModeBusy = true;
+    llmMsg = "";
+    llmErr = "";
+    try {
+      const res = await api.setAdminSettings({ summarize_mode: mode });
+      summarizeMode = res.data.summarize_mode;
+    } catch (e) {
+      llmErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      summarizeModeBusy = false;
     }
   }
 
@@ -2121,6 +2145,16 @@
               <div class="seg">
                 <button class:on={summariesEnabled} on:click={() => setSummaries(true)} disabled={summariesBusy} data-testid="summaries-on">On</button>
                 <button class:on={!summariesEnabled} on:click={() => setSummaries(false)} disabled={summariesBusy} data-testid="summaries-off">Off</button>
+              </div>
+            </label>
+            <label class="pref-row">
+              <div>
+                <div class="pref-label">Summarize</div>
+                <div class="pref-hint">Every article, or only the ones you mark. On-demand summarizes an article when you star it, save it for later, or pin it to a board — the same signals that keep an article past the retention window. Most articles in a mixed feed are skimmed, and a summary of one you never open costs inference, tokens or quota for nothing. Individual feeds can override this in their <strong>⋯</strong> menu.</div>
+              </div>
+              <div class="seg">
+                <button class:on={summarizeMode === "all"} on:click={() => setMode("all")} disabled={summarizeModeBusy} data-testid="mode-all">Every article</button>
+                <button class:on={summarizeMode === "on_demand"} on:click={() => setMode("on_demand")} disabled={summarizeModeBusy} data-testid="mode-on-demand">When I mark it</button>
               </div>
             </label>
           </div>

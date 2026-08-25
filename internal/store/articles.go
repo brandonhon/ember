@@ -364,6 +364,95 @@ func (s *Store) ResetExcludedByFeed(ctx context.Context, feedID int64) ([]int64,
 	return ids, nil
 }
 
+// ResetAllDeferred clears the 'deferred' marker everywhere and returns the ids
+// so the caller can re-enqueue them. ResetDeferredByFeed without the feed
+// predicate: the server-wide twin, for an admin switching the global mode back
+// to "summarize every article".
+//
+// This is the mode-level counterpart of ResetDisabledSummaries, and exists for
+// the same reason: turning a switch back on has to act on the backlog the
+// switch created, not only on articles that arrive afterwards. Backfilling one
+// direction and not the other would leave an admin watching 300 existing
+// articles ignore a setting they just changed.
+//
+// Deliberately narrow, exactly like ResetDisabledSummaries. 'skipped' means a
+// real attempt failed, 'excluded' means a per-feed opt-out is in force,
+// 'disabled' means summaries were switched off entirely, and a model name means
+// the article is done. Only 'deferred' — "nobody has asked for this one yet" —
+// is answered by a change of mode.
+func (s *Store) ResetAllDeferred(ctx context.Context) ([]int64, error) {
+	rows, err := s.DB.QueryContext(ctx,
+		`SELECT id FROM articles WHERE summary_model = 'deferred'`)
+	if err != nil {
+		return nil, err
+	}
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	if _, err := s.DB.ExecContext(ctx,
+		`UPDATE articles SET summary_model = NULL, summary = '' WHERE summary_model = 'deferred'`); err != nil {
+		return nil, err
+	}
+	return ids, nil
+}
+
+// ResetDeferredByFeed clears the 'deferred' marker on a feed's articles and
+// returns their ids so the caller can re-enqueue them. The on-demand twin of
+// ResetExcludedByFeed: those articles were left unsummarized deliberately
+// while the feed resolved to on-demand, so switching the feed to "summarize
+// every article" has to reach back for them. Without this the new mode would
+// only affect articles that arrive later — the exact complaint the per-feed
+// opt-out already had to fix once (issue #163), and a worse surprise here,
+// since an on-demand feed can accumulate weeks of deferred articles before
+// someone decides they want all of them after all.
+//
+// Kept separate from ResetExcludedByFeed for the same reason that one is kept
+// separate from ResetSummariesByFeed: 'excluded' means "this user turned
+// summaries off for this feed", a stronger statement than "nobody has asked
+// for this one yet", and a mode change must not quietly undo it.
+func (s *Store) ResetDeferredByFeed(ctx context.Context, feedID int64) ([]int64, error) {
+	rows, err := s.DB.QueryContext(ctx,
+		`SELECT id FROM articles WHERE feed_id = ? AND summary_model = 'deferred'`, feedID)
+	if err != nil {
+		return nil, err
+	}
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	if _, err := s.DB.ExecContext(ctx,
+		`UPDATE articles SET summary_model = NULL, summary = '' WHERE feed_id = ? AND summary_model = 'deferred'`,
+		feedID); err != nil {
+		return nil, err
+	}
+	return ids, nil
+}
+
 // ResetSummariesByFeed clears summary_model on every article in the feed
 // where it currently equals 'skipped'. Returns the affected article IDs so
 // the poller can re-enqueue them for a fresh summarize attempt.

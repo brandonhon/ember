@@ -128,6 +128,10 @@ export const api = {
       clear_category?: boolean;
       muted?: boolean;
       summarize?: boolean;
+      // WHEN this feed's articles get summarized, as opposed to `summarize`'s
+      // WHETHER: "" follows the server-wide setting, "all" summarizes every
+      // article, "on_demand" waits for a star, read-later, or board pin.
+      summarize_mode?: string;
       url?: string;
     },
   ) => call<unknown>("PATCH", `/api/feeds/${id}`, req),
@@ -265,6 +269,11 @@ export const api = {
   // Boards ------------------------------------------------------------
   listBoards: () => call<Board[]>("GET", "/api/boards"),
   createBoard: (name: string) => call<Board>("POST", "/api/boards", { name }),
+  // `summarize` controls whether pinning an article here asks for a summary
+  // under on-demand mode — a board used for filing rather than reading should
+  // not spend inference just because something landed in it.
+  updateBoard: (id: number, patch: { summarize?: boolean }) =>
+    call<Board>("PATCH", `/api/boards/${id}`, patch),
   deleteBoard: (id: number) => call<unknown>("DELETE", `/api/boards/${id}`),
   addToBoard: (boardId: number, articleId: number) =>
     call<unknown>("POST", `/api/boards/${boardId}/articles`, { article_id: articleId }),
@@ -535,6 +544,10 @@ export interface AdminSettings {
   summary_timeout_seconds: number;
   summary_timeout_seconds_floor: number;
   summary_timeout_seconds_ceil: number;
+  // Server-wide default for WHEN articles get summarized: "all" as they
+  // arrive, "on_demand" only once a reader stars, saves, or pins one. Never
+  // "" — that is a per-feed "no opinion" which resolves through to this.
+  summarize_mode: string;
 }
 
 // AdminSettingsPatch mirrors the backend's pointer-bag: only fields included
@@ -558,6 +571,7 @@ export interface AdminSettingsPatch {
   summary_grace_seconds?: number;
   summary_timeout_seconds?: number;
   summaries_enabled?: boolean;
+  summarize_mode?: string;
 }
 
 export interface TopFeed {
