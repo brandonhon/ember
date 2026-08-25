@@ -237,11 +237,21 @@ function route(method: string, path: string, p: URLSearchParams, body: Json | un
 }
 
 // Minimal shapes so admin/settings panels render without crashing if opened.
+//
+// /api/admin/settings and /api/admin/llm are the two exceptions to "return {}
+// and let the panel render blank": Settings.svelte's Language model pane
+// (#198-#201) reads summaries_enabled, summarize_mode and the llm.* fields
+// directly with no fallback for most of them, so `{}` renders the flagship
+// feature of this release as an unselected toggle with the queue and article
+// visibility cards hidden entirely. These two need full, plausible payloads
+// so the demo showcases the feature instead of an empty shell.
 function adminStub(path: string): unknown {
   if (path === "/api/me/digest") return { user_id: 1, enabled: false, view_kind: "smart", view_value: "fresh", hour_utc: 7, minute_utc: 0, last_sent_at: 0, email_override: "" };
   if (path === "/api/me/inbox") return { handle: "", address: "", domain: "", enabled: false };
   if (path === "/api/me/passkeys") return [];
   if (path === "/api/me/push-subscriptions") return [];
+  if (path === "/api/admin/settings") return { smtp: { host: "", port: 587, username: "", password_set: false, from: "", starttls: true }, initial_backlog_hours: 24, poll_min_interval_seconds: 1800, poll_min_interval_floor_seconds: 300, poll_min_interval_ceil_seconds: 86400, reading_window_hours: 24, search_window_hours: 48, window_hours_floor: 24, window_hours_ceil: 168, update_check_enabled: true, passkey_require_uv: false, summary_grace_seconds: 120, summary_grace_seconds_floor: 0, summary_grace_seconds_ceil: 3600, summaries_enabled: true, summary_timeout_seconds: 90, summary_timeout_seconds_floor: 10, summary_timeout_seconds_ceil: 900, summarize_mode: "all" };
+  if (path === "/api/admin/llm") return { current_model: "qwen2.5:3b", enabled: true, backend: "ollama", base_url: "http://ollama:11434", api_key_set: false, model: "qwen2.5:3b", system: { ram_bytes: 17179869184, cpus: 8, gpu: "", os: "linux" }, recommended: { model: "qwen2.5:3b", reason: "16 GiB+ RAM, CPU-only — 3b model fits", disable_llm: false }, installed: [{ name: "qwen2.5:3b", size_bytes: 1929399296, modified_at: "2026-07-20T14:32:00Z" }, { name: "qwen2.5:1.5b", size_bytes: 986000000, modified_at: "2026-07-15T09:10:00Z" }], options: { temperature: 0.4, top_p: 0.9, num_ctx: 4096 } };
   return {};
 }
 
