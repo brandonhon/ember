@@ -337,3 +337,97 @@ func TestDefaults_SummaryTimeoutSeconds(t *testing.T) {
 		t.Fatalf("default should stay 90s (issue #201 keeps the current behaviour)")
 	}
 }
+
+// EMBER_SUMMARY_BACKEND picks the summarization transport at boot. A typo has
+// to fail loudly here alongside every other config error: the alternative is
+// falling through to the Ollama default and summarizing against whatever
+// endpoint that happens to be, which an operator would only notice from the
+// summaries themselves.
+func TestLoad_SummaryBackend(t *testing.T) {
+	for _, want := range []string{"ollama", "openai", "anthropic"} {
+		cfg, err := LoadFromMap(map[string]string{
+			"EMBER_TEST_MODE":       "1",
+			"EMBER_SUMMARY_BACKEND": want,
+		})
+		if err != nil {
+			t.Fatalf("%s: %v", want, err)
+		}
+		if cfg.SummaryBackend != want {
+			t.Errorf("SummaryBackend = %q, want %q", cfg.SummaryBackend, want)
+		}
+	}
+
+	_, err := LoadFromMap(map[string]string{
+		"EMBER_TEST_MODE":       "1",
+		"EMBER_SUMMARY_BACKEND": "gemini",
+	})
+	if err == nil {
+		t.Fatal("an unknown backend must fail at boot, not fall through to ollama")
+	}
+	if !strings.Contains(err.Error(), "EMBER_SUMMARY_BACKEND") {
+		t.Errorf("error should name the variable, got %q", err)
+	}
+
+	// Unset leaves the Defaults() value rather than an empty string, which is
+	// what makes every existing install keep talking to Ollama.
+	cfg, err := LoadFromMap(map[string]string{"EMBER_TEST_MODE": "1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.SummaryBackend != "ollama" {
+		t.Errorf("unset: SummaryBackend = %q, want the ollama default", cfg.SummaryBackend)
+	}
+}
+
+// EMBER_SUMMARY_BASE_URL is an outbound request target that Ember hands an API
+// key to, so it gets the same scheme check as EMBER_OLLAMA_URL plus a host
+// check. The host check exists purely so boot and the admin API agree: the API
+// boundary's httpScheme rejects a hostless URL, and without it a value would be
+// accepted at boot and then refused the moment an admin re-saved the very same
+// string in Settings.
+func TestLoad_SummaryBaseURL(t *testing.T) {
+	const good = "https://api.groq.com/openai/v1"
+	cfg, err := LoadFromMap(map[string]string{
+		"EMBER_TEST_MODE":        "1",
+		"EMBER_SUMMARY_BASE_URL": good,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.SummaryBaseURL != good {
+		t.Errorf("SummaryBaseURL = %q, want %q", cfg.SummaryBaseURL, good)
+	}
+
+	for _, tc := range []struct {
+		name  string
+		value string
+		why   string
+	}{
+		{"bad scheme", "file:///etc/passwd", "a non-http scheme is not a reachable endpoint"},
+		{"scheme only, no host", "https:", "boot must agree with the admin API, which rejects a hostless URL"},
+		{"unparseable", "://nope", "url.Parse rejects it outright (missing protocol scheme)"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := LoadFromMap(map[string]string{
+				"EMBER_TEST_MODE":        "1",
+				"EMBER_SUMMARY_BASE_URL": tc.value,
+			})
+			if err == nil {
+				t.Fatalf("%q was accepted at boot — %s", tc.value, tc.why)
+			}
+			if !strings.Contains(err.Error(), "EMBER_SUMMARY_BASE_URL") {
+				t.Errorf("error should name the variable, got %q", err)
+			}
+		})
+	}
+
+	// Unset stays empty: the hosted backends are opt-in, and an empty base URL
+	// is what makes BuildBackend report the openai backend unusable.
+	cfg, err = LoadFromMap(map[string]string{"EMBER_TEST_MODE": "1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.SummaryBaseURL != "" {
+		t.Errorf("unset: SummaryBaseURL = %q, want empty", cfg.SummaryBaseURL)
+	}
+}
