@@ -12,7 +12,7 @@
     summariesEnabled,
   } from "../lib/stores";
   import { api, ApiError } from "../lib/api";
-  import type { DiscoveredFeed, FeedWithCounts } from "../lib/types";
+  import type { Board, DiscoveredFeed, FeedWithCounts } from "../lib/types";
   import ConfirmDialog from "./ConfirmDialog.svelte";
   import FeedPickerModal from "./FeedPickerModal.svelte";
   import EditFeedModal from "./EditFeedModal.svelte";
@@ -142,6 +142,22 @@
       await loadArticles(get(activeView));
     } catch (err) {
       console.error("toggleSummarize", err);
+    }
+  }
+
+  // Picking a mode implies opting back in: choosing WHEN a feed gets
+  // summarized only makes sense if it gets summarized at all, and a menu that
+  // silently left the hard opt-out in place would look broken. Same refresh
+  // pair as toggleSummarize — the mode changes which articles carry summary
+  // text, so the loaded list has to be re-fetched too.
+  async function setFeedMode(f: FeedWithCounts, mode: string) {
+    menuFor = null;
+    try {
+      await api.updateFeed(f.subscription_id, { summarize_mode: mode, summarize: true });
+      await refreshSidebar();
+      await loadArticles(get(activeView));
+    } catch (err) {
+      console.error("setFeedMode", err);
     }
   }
 
@@ -700,6 +716,18 @@
     }
   }
 
+  // Pinning to a board is one of the three "I mean to read this" signals that
+  // trigger a summary in on-demand mode. A board used for filing rather than
+  // reading opts out of that here, so dropping something into it stays free.
+  async function toggleBoardSummarize(b: Board) {
+    try {
+      await api.updateBoard(b.id, { summarize: !b.summarize });
+      await refreshSidebar();
+    } catch (err) {
+      console.error("toggleBoardSummarize", err);
+    }
+  }
+
   async function deleteBoard(id: number, name: string) {
     confirmReq = {
       title: "Delete board?",
@@ -872,9 +900,24 @@
           <!-- Same guard as Resummarize: with summaries off nothing is
                summarized anyway, so the per-feed opt-out has nothing to act
                on. The stored flag is untouched and the entry returns when
-               summaries are re-enabled. -->
+               summaries are re-enabled.
+
+               Four states, not a toggle: the first three are WHEN (inherit the
+               server's mode, every article, or only what you mark) and the last
+               is the hard WHETHER. The tick needs f.summarize as well as the
+               mode, because an opted-out feed still has a stored mode that is
+               simply not in effect. -->
+          <button on:click={() => setFeedMode(f, "")} data-testid="feed-mode-inherit-{f.id}">
+            Summaries: default{f.summarize && f.summarize_mode === "" ? " ✓" : ""}
+          </button>
+          <button on:click={() => setFeedMode(f, "all")} data-testid="feed-mode-all-{f.id}">
+            Summaries: every article{f.summarize && f.summarize_mode === "all" ? " ✓" : ""}
+          </button>
+          <button on:click={() => setFeedMode(f, "on_demand")} data-testid="feed-mode-on-demand-{f.id}">
+            Summaries: when I mark one{f.summarize && f.summarize_mode === "on_demand" ? " ✓" : ""}
+          </button>
           <button on:click={() => toggleSummarize(f)} data-testid="feed-summarize-{f.id}">
-            {f.summarize ? "Don't summarize" : "Summarize"}
+            {f.summarize ? "Summaries: never" : "Summaries: turn back on"}
           </button>
           <button on:click={() => resummarize(f)} data-testid="feed-resummarize-{f.id}">
             Resummarize
@@ -1253,7 +1296,10 @@
     {/if}
 
     {#each $boards as b (b.id)}
-      <div class="feed-row board-row">
+      <!-- The extra right padding is conditional because .board-row is shared
+           with the saved-search rows, which have only the one trailing
+           control and would otherwise lose label width for nothing. -->
+      <div class="feed-row board-row" class:board-row-wide={$summariesEnabled}>
         <button
           class="nav-item board-item"
           class:active={isActiveBoard(b.id)}
@@ -1265,6 +1311,23 @@
           </span>
           <span class="ni-label">{b.name}</span>
         </button>
+        <!-- Only meaningful while summaries exist at all: with them off,
+             pinning triggers nothing to opt out of. Same guard as the per-feed
+             entries; the stored flag is untouched and the control comes back
+             when summaries are re-enabled. -->
+        {#if $summariesEnabled}
+          <button
+            class="board-summarize"
+            class:off={!b.summarize}
+            on:click={() => toggleBoardSummarize(b)}
+            aria-pressed={b.summarize}
+            aria-label="Summarize what I pin here"
+            title={b.summarize ? "Summarize what I pin here" : "Don't summarize what I pin here"}
+            data-testid="board-summarize-{b.id}"
+          >
+            ✨
+          </button>
+        {/if}
         <button
           class="board-delete"
           on:click={() => deleteBoard(b.id, b.name)}
@@ -1822,6 +1885,29 @@
   }
   .board-row:hover .board-delete { opacity: 1; }
   .board-delete:hover { background: var(--line); color: #b91c1c; }
+  .board-row-wide { padding-right: 48px; }
+  .board-summarize {
+    position: absolute;
+    right: 26px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    background: transparent;
+    border: none;
+    opacity: 0;
+    cursor: pointer;
+    line-height: 1;
+    font-size: 11px;
+  }
+  .board-row:hover .board-summarize { opacity: 0.75; }
+  .board-summarize:hover { background: var(--line); opacity: 1; }
+  /* An opted-out board shows its state without waiting for a hover: the
+     difference matters exactly when someone is wondering why pinning here
+     stopped producing summaries. */
+  .board-summarize.off { opacity: 0.45; filter: grayscale(1); }
+  .board-row:hover .board-summarize.off { opacity: 0.8; }
 
   /* Summarizer status footer. Sits OUTSIDE .rail-scroll so it stays
      pinned to the bottom of the rail viewport regardless of scroll

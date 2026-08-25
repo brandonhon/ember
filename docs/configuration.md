@@ -100,6 +100,7 @@ Stored in the `app_settings` KV. Edit via the admin UI in **Settings → ...**.
 | Require device verification for passkey sign-in (`passkey_require_uv`, overrides `EMBER_PASSKEY_REQUIRE_UV`) | Passkeys |
 | Summary grace window (`summary_grace_seconds`, default 120, range 0–3600; overrides `EMBER_SUMMARY_GRACE_SECONDS`) | Language model → Article visibility |
 | Summary request timeout (`summary_timeout_seconds`, default 90, range 10–900; overrides `EMBER_SUMMARY_TIMEOUT_SECONDS`) | Language model → Article visibility |
+| What gets summarized (`summarize_mode`, default `all`; `on_demand` waits for a star, read-later, or board pin). Individual feeds override it in their **⋯** menu — see [Summarization](summarization.md#choosing-what-gets-summarized) | Language model → Summaries |
 | App name, page title, favicon URL | Branding |
 | Backup schedule + retention (`db_backup_keep`, default 7) | Database |
 | Backup directory (`db_backup_dir`, default `/data/backups`) | Database → Backups → Directory ([setup](#custom-backup-directory)) |

@@ -61,6 +61,12 @@ type adminSettings struct {
 	SummaryTimeoutSeconds      int `json:"summary_timeout_seconds"`
 	SummaryTimeoutSecondsFloor int `json:"summary_timeout_seconds_floor"`
 	SummaryTimeoutSecondsCeil  int `json:"summary_timeout_seconds_ceil"`
+	// SummarizeMode is the server-wide WHEN: store.ModeAll summarizes every
+	// article as it arrives, store.ModeOnDemand waits for a reader to star,
+	// save, or pin one. Only ever one of those two — the third value,
+	// store.ModeInherit, is a per-subscription "no opinion" that resolves
+	// through to this one, so it can never be the answer here.
+	SummarizeMode string `json:"summarize_mode"`
 }
 
 func (d *Dependencies) handleGetAdminSettings(w http.ResponseWriter, r *http.Request) {
@@ -92,6 +98,7 @@ func (d *Dependencies) handleGetAdminSettings(w http.ResponseWriter, r *http.Req
 	out.SummaryTimeoutSeconds = d.Store.ResolveSummaryTimeoutSeconds(ctx, d.SummaryTimeoutSecondsFallback)
 	out.SummaryTimeoutSecondsFloor = store.SummaryTimeoutSecondsFloor
 	out.SummaryTimeoutSecondsCeil = store.SummaryTimeoutSecondsCeil
+	out.SummarizeMode = d.globalSummarizeMode(ctx)
 	writeData(w, http.StatusOK, out, nil)
 }
 
@@ -104,6 +111,26 @@ func checkIntBounds(w http.ResponseWriter, field string, n, lo, hi int) bool {
 		return false
 	}
 	return true
+}
+
+// checkEnum validates an admin-settings string against the values the setting
+// accepts, writing a 400 that names the field and lists them on failure. The
+// string counterpart to checkIntBounds, in the same shape and for the same
+// reason: the caller gets a message specific enough to show verbatim instead
+// of a bare "bad request", and the check reads identically at every call site.
+// Values are quoted because the empty string is a legitimate member of some of
+// these sets ("inherit"), and an unquoted list would render it as nothing.
+func checkEnum(w http.ResponseWriter, field, v string, allowed ...string) bool {
+	quoted := make([]string, 0, len(allowed))
+	for _, a := range allowed {
+		if v == a {
+			return true
+		}
+		quoted = append(quoted, strconv.Quote(a))
+	}
+	writeError(w, http.StatusBadRequest, "bad_request",
+		field+" must be one of: "+strings.Join(quoted, ", "))
+	return false
 }
 
 // setAdminSettingsReq is a pointer-bag so only fields the caller sends get
@@ -131,6 +158,12 @@ type setAdminSettingsReq struct {
 	// and a restart, and the switch users actually found in the UI was a
 	// per-user display preference that never touched the queue.
 	SummariesEnabled *bool `json:"summaries_enabled,omitempty"`
+	// SummarizeMode is the server-wide default for WHEN articles get
+	// summarized (issue #199). Only the two concrete modes are accepted;
+	// store.ModeInherit has no meaning server-wide, and letting it through
+	// would persist a row that ResolveSummarizeMode then has to treat as
+	// corrupt.
+	SummarizeMode *string `json:"summarize_mode,omitempty"`
 }
 
 func (d *Dependencies) handleSetAdminSettings(w http.ResponseWriter, r *http.Request) {
@@ -229,6 +262,34 @@ func (d *Dependencies) handleSetAdminSettings(w http.ResponseWriter, r *http.Req
 		if err := d.Store.PutSummaryTimeoutSeconds(ctx, n); err != nil {
 			internalError(w, "internal", err)
 			return
+		}
+	}
+	if req.SummarizeMode != nil {
+		if !checkEnum(w, "summarize_mode", *req.SummarizeMode, store.ModeAll, store.ModeOnDemand) {
+			return
+		}
+		// Read the current mode before overwriting it: the backfill below is
+		// owed to a real change, and a no-op save (already 'all', saving
+		// 'all') must not re-queue the world.
+		prior := d.globalSummarizeMode(ctx)
+		if err := d.Store.PutSummarizeMode(ctx, *req.SummarizeMode); err != nil {
+			internalError(w, "internal", err)
+			return
+		}
+		if *req.SummarizeMode == store.ModeAll && prior != store.ModeAll {
+			// Back to "every article": recover what on-demand deliberately
+			// left as 'deferred', the same way re-enabling summaries recovers
+			// what was stamped 'disabled'. Without this the switch does
+			// nothing to the existing backlog and only affects articles that
+			// arrive later — the complaint the per-feed opt-out already had to
+			// fix once. Best-effort: the setting write has already succeeded,
+			// and the poller's enqueuePendingSummaries picks up whatever the
+			// in-memory queue drops.
+			if ids, err := d.Store.ResetAllDeferred(ctx); err != nil {
+				slog.Default().Warn("settings: reset deferred summaries", "err", err)
+			} else if n := d.enqueueSummaries(ids); n > 0 {
+				slog.Default().Info("settings: re-enqueued summaries after switching to all", "count", n)
+			}
 		}
 	}
 	if req.SummariesEnabled != nil {

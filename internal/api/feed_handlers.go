@@ -29,6 +29,12 @@ type updateFeedReq struct {
 	Muted         *bool   `json:"muted,omitempty"`
 	// Summarize opts this subscription in/out of AI summaries (issue #163).
 	Summarize *bool `json:"summarize,omitempty"`
+	// SummarizeMode is the per-subscription WHEN, as opposed to Summarize's
+	// WHETHER (issue #199): "" inherits the server-wide mode, "all" summarizes
+	// every article from this feed, "on_demand" waits for a star, a
+	// read-later, or a board pin. "" is a real value, not "unset" — that is
+	// what the pointer is for.
+	SummarizeMode *string `json:"summarize_mode,omitempty"`
 	// URL, when set, re-points the subscription to a new source. Validated +
 	// SSRF-checked + discovered like add-feed; the shared feed row is never
 	// mutated in place (other subscribers keep theirs).
@@ -172,6 +178,14 @@ func (d *Dependencies) handleUpdateFeed(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusBadRequest, "bad_request", "category_id must be a positive category id; use clear_category to remove the folder")
 		return
 	}
+	// Unlike the server-wide setting, "" (inherit) is valid here — it is how a
+	// feed gives up its override and follows the server again. Validated
+	// before anything is written so a typo can't land an unrecognized value in
+	// the column that FeedSummarizeMode would then have to guess at.
+	if req.SummarizeMode != nil &&
+		!checkEnum(w, "summarize_mode", *req.SummarizeMode, store.ModeInherit, store.ModeAll, store.ModeOnDemand) {
+		return
+	}
 	// Source-URL change: resolve + validate the new URL, then re-point this
 	// subscription at it. Done before the metadata patch so a bad URL fails
 	// without half-applying.
@@ -199,13 +213,30 @@ func (d *Dependencies) handleUpdateFeed(w http.ResponseWriter, r *http.Request) 
 			}
 		}
 	}
-	// Capture the prior opt-out state before the patch: turning summaries back
-	// ON should backfill the articles that were stamped 'excluded' while off,
-	// otherwise the toggle appears to do nothing until new articles arrive.
+	// Capture what the patch is about to change, before it changes it. Two
+	// backfills hang off this:
+	//
+	//   wasOptedOut     turning summaries back ON should recover the articles
+	//                   stamped 'excluded' while off, otherwise the toggle
+	//                   appears to do nothing until new articles arrive.
+	//   priorFeedMode   moving the feed to "every article" should recover the
+	//                   articles on-demand mode left 'deferred', for exactly
+	//                   the same reason.
+	//
+	// The mode is read through FeedSummarizeMode rather than off the request
+	// because the effective mode is an any-subscriber-wins vote: clearing an
+	// override back to inherit can flip a feed to "all" just as an explicit
+	// "all" can, and an explicit "all" from a second subscriber may change
+	// nothing at all. Comparing the resolved before/after values is the only
+	// way to tell those apart.
 	var wasOptedOut bool
-	if req.Summarize != nil && *req.Summarize {
+	var priorFeedMode string
+	if (req.Summarize != nil && *req.Summarize) || req.SummarizeMode != nil {
 		if prior, err := d.Store.GetSubscriptionByID(r.Context(), u.ID, id); err == nil {
-			wasOptedOut = !prior.Summarize
+			wasOptedOut = req.Summarize != nil && *req.Summarize && !prior.Summarize
+			if req.SummarizeMode != nil {
+				priorFeedMode, _ = d.Store.FeedSummarizeMode(r.Context(), prior.FeedID, d.globalSummarizeMode(r.Context()))
+			}
 		}
 	}
 	patch := store.UpdateSubscriptionPatch{
@@ -214,19 +245,34 @@ func (d *Dependencies) handleUpdateFeed(w http.ResponseWriter, r *http.Request) 
 		ClearCategory: req.ClearCategory,
 		Muted:         req.Muted,
 		Summarize:     req.Summarize,
+		SummarizeMode: req.SummarizeMode,
 	}
 	if mapStoreError(w, d.Store.UpdateSubscription(r.Context(), u.ID, id, patch)) {
 		return
 	}
-	// Re-enqueue what was skipped while this feed was opted out. Best-effort:
-	// the subscription change already succeeded, and enqueuePendingSummaries
-	// picks up anything the queue drops.
-	if wasOptedOut {
+	// Re-enqueue what was skipped while this feed was opted out or deferred.
+	// Best-effort: the subscription change already succeeded, and
+	// enqueuePendingSummaries picks up anything the queue drops.
+	if wasOptedOut || req.SummarizeMode != nil {
 		if sub, err := d.Store.GetSubscriptionByID(r.Context(), u.ID, id); err == nil {
-			if ids, err := d.Store.ResetExcludedByFeed(r.Context(), sub.FeedID); err != nil {
-				slog.Default().Warn("feeds: reset excluded summaries", "feed_id", sub.FeedID, "err", err)
-			} else if n := d.enqueueSummaries(ids); n > 0 {
-				slog.Default().Info("feeds: re-enqueued summaries after opt-in", "feed_id", sub.FeedID, "count", n)
+			if wasOptedOut {
+				if ids, err := d.Store.ResetExcludedByFeed(r.Context(), sub.FeedID); err != nil {
+					slog.Default().Warn("feeds: reset excluded summaries", "feed_id", sub.FeedID, "err", err)
+				} else if n := d.enqueueSummaries(ids); n > 0 {
+					slog.Default().Info("feeds: re-enqueued summaries after opt-in", "feed_id", sub.FeedID, "count", n)
+				}
+			}
+			if req.SummarizeMode != nil && priorFeedMode != store.ModeAll {
+				mode, err := d.Store.FeedSummarizeMode(r.Context(), sub.FeedID, d.globalSummarizeMode(r.Context()))
+				if err != nil {
+					slog.Default().Warn("feeds: resolve summarize mode", "feed_id", sub.FeedID, "err", err)
+				} else if mode == store.ModeAll {
+					if ids, err := d.Store.ResetDeferredByFeed(r.Context(), sub.FeedID); err != nil {
+						slog.Default().Warn("feeds: reset deferred summaries", "feed_id", sub.FeedID, "err", err)
+					} else if n := d.enqueueSummaries(ids); n > 0 {
+						slog.Default().Info("feeds: re-enqueued deferred summaries", "feed_id", sub.FeedID, "count", n)
+					}
+				}
 			}
 		}
 	}

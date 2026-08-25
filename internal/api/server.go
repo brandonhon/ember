@@ -164,6 +164,16 @@ func (d *Dependencies) summariesOn(ctx context.Context) bool {
 		d.Store.ResolveSummariesEnabled(ctx, d.SummariesEnabledFallback)
 }
 
+// globalSummarizeMode returns the server-wide summarization mode a feed's own
+// mode resolves against. store.ModeAll is the fallback for the same reason
+// cmd/ember hands the poller that default: it is what every install did before
+// the setting existed, so an unset or unreadable row must not silently start
+// deferring summaries. Resolved per request, not at boot, so an admin's change
+// takes effect without a restart.
+func (d *Dependencies) globalSummarizeMode(ctx context.Context) string {
+	return d.Store.ResolveSummarizeMode(ctx, store.ModeAll)
+}
+
 // summaryGraceBefore returns the unix timestamp before which an unsummarized
 // article is shown anyway, or 0 when the gate is inactive. Resolved per
 // request so an admin's change takes effect without a restart. Every consumer
@@ -383,6 +393,7 @@ func NewRouter(d Dependencies) http.Handler {
 			// Boards
 			r.Get("/boards", d.handleListBoards)
 			r.Post("/boards", d.handleCreateBoard)
+			r.Patch("/boards/{id}", d.handleUpdateBoard)
 			r.Delete("/boards/{id}", d.handleDeleteBoard)
 			r.Post("/boards/{id}/articles", d.handleBoardAdd)
 			r.Delete("/boards/{id}/articles/{articleId}", d.handleBoardRemove)

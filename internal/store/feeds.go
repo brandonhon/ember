@@ -258,6 +258,14 @@ type UpdateSubscriptionPatch struct {
 	TitleOverride *string
 	Muted         *bool
 	Summarize     *bool
+	// SummarizeMode is the per-subscription WHEN, distinct from Summarize's
+	// WHETHER: ModeInherit (""), ModeAll, or ModeOnDemand. Empty is a real
+	// value here — "no opinion, follow the server" — so it cannot be
+	// expressed as a zero-means-skip string; the pointer carries the
+	// difference between "set it back to inherit" and "leave it alone".
+	// Validated by the caller (the API rejects anything else with a 400),
+	// matching how Summarize is trusted once it has been decoded.
+	SummarizeMode *string
 }
 
 // UpdateSubscription updates a subscription's category or title override.
@@ -297,6 +305,10 @@ func (s *Store) UpdateSubscription(ctx context.Context, userID, subID int64, p U
 	if p.Summarize != nil {
 		sets = append(sets, "summarize = ?")
 		args = append(args, boolToInt(*p.Summarize))
+	}
+	if p.SummarizeMode != nil {
+		sets = append(sets, "summarize_mode = ?")
+		args = append(args, *p.SummarizeMode)
 	}
 	if len(sets) == 0 {
 		return nil
