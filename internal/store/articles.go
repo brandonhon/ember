@@ -211,6 +211,13 @@ func (s *Store) GetArticleForUser(ctx context.Context, userID, articleID int64) 
 // ClearAllSummaries clears summary_model on every article (admin-only). Used
 // after a summarizer prompt change to force re-processing of existing rows.
 // Returns the affected article IDs so the caller can enqueue them.
+//
+// The predicate excludes only 'excluded', so this also clears 'deferred' and
+// 'disabled' — an undocumented fourth and fifth clearer alongside the two
+// documented ones above. That's harmless: the poller re-stamps 'deferred' the
+// next time it's queued, and stampPendingDisabled re-stamps 'disabled' the
+// next time summaries are switched off, so both converge back to where they
+// started rather than leaking a stuck row.
 func (s *Store) ClearAllSummaries(ctx context.Context) ([]int64, error) {
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {

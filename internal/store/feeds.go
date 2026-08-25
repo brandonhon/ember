@@ -202,8 +202,10 @@ func (s *Store) FeedSummariesSuppressed(ctx context.Context, feedID int64) (bool
 
 // FeedSummarizeMode returns the effective summarization mode for a feed: ModeAll
 // if ANY subscriber wants every article summarized, else ModeOnDemand. A
-// subscriber wants ModeAll when their summarize_mode is 'all', or is ” (inherit)
-// while the server-wide mode is 'all'.
+// subscriber wants ModeAll when their summarize_mode is 'all', or is "" (inherit)
+// while the server-wide mode is 'all'. An opted-out subscriber (summarize = 0)
+// never counts toward ModeAll, regardless of their summarize_mode — the hard
+// opt-out still wins, so their vote is excluded rather than merely outvoted.
 //
 // Any-wins, where FeedSummariesSuppressed is unanimity-wins, and for the same
 // underlying reason: the summary lives on the shared article row. One user
@@ -218,8 +220,9 @@ func (s *Store) FeedSummarizeMode(ctx context.Context, feedID int64, globalMode 
 	var total, wantAll int
 	err := s.reader().QueryRowContext(ctx, `
 		SELECT COUNT(*),
-		       COALESCE(SUM(CASE WHEN summarize_mode = 'all'
-		                          OR (summarize_mode = '' AND ? = 'all')
+		       COALESCE(SUM(CASE WHEN summarize = 1
+		                          AND (summarize_mode = 'all'
+		                               OR (summarize_mode = '' AND ? = 'all'))
 		                         THEN 1 ELSE 0 END), 0)
 		FROM subscriptions WHERE feed_id = ?`, globalMode, feedID).Scan(&total, &wantAll)
 	if err != nil {

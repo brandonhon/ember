@@ -2188,7 +2188,7 @@
                 <h4>Backend</h4>
                 <p>Where summaries are generated. Ollama runs on your own hardware; the other two send article text to whichever endpoint you point them at — a hosted provider, or a server you run yourself.</p>
               </div>
-              <div class="seg" role="radiogroup" aria-label="Summarization backend">
+              <div class="seg" aria-label="Summarization backend">
                 <button class:on={backend === "ollama"} on:click={() => pickBackend("ollama")} data-testid="backend-ollama">Ollama</button>
                 <button class:on={backend === "openai"} on:click={() => pickBackend("openai")} data-testid="backend-openai">OpenAI-compatible</button>
                 <button class:on={backend === "anthropic"} on:click={() => pickBackend("anthropic")} data-testid="backend-anthropic">Claude</button>

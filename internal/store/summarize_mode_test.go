@@ -99,6 +99,54 @@ func TestFeedSummarizeMode_AnySubscriberWantingAllWins(t *testing.T) {
 	}
 }
 
+// An opted-out subscriber (summarize = 0) must not vote for ModeAll even if
+// their stale summarize_mode is still 'all' — the hard opt-out wins, so their
+// row is excluded from the count entirely rather than merely outvoted. This
+// guards the two-click regression: a subscriber picks "every article", then
+// later picks "never" (which only flips summarize, not summarize_mode),
+// leaving summarize=0, summarize_mode='all' behind.
+func TestFeedSummarizeMode_OptedOutSubscriberDoesNotVoteAll(t *testing.T) {
+	st := NewTest(t)
+	ctx := context.Background()
+	feed, alice, bob := seedFeedWithTwoSubscribers(t, st)
+
+	// Alice: opted out entirely, but her summarize_mode is a stale 'all'.
+	setSubscriptionMode(t, st, alice, feed.ID, ModeAll)
+	off := false
+	subAlice, err := st.GetSubscription(ctx, alice, feed.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := st.UpdateSubscription(ctx, alice, subAlice.ID, UpdateSubscriptionPatch{Summarize: &off}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Bob: still summarizing, inheriting the server-wide mode.
+	_ = bob
+
+	// Global mode is on_demand, and Alice's opted-out 'all' vote must not
+	// override it — the feed stays on_demand.
+	if got, err := st.FeedSummarizeMode(ctx, feed.ID, ModeOnDemand); err != nil || got != ModeOnDemand {
+		t.Fatalf("got %q (err %v), want on_demand — opted-out subscriber must not vote", got, err)
+	}
+}
+
+// Two subscribers who are BOTH opted in still resolve to ModeAll when either
+// wants it — confirms the opt-out predicate above didn't silently break the
+// existing any-wins behaviour for subscribers who are actually voting.
+func TestFeedSummarizeMode_TwoOptedInSubscribers_AnyWinsStillHolds(t *testing.T) {
+	st := NewTest(t)
+	ctx := context.Background()
+	feed, alice, bob := seedFeedWithTwoSubscribers(t, st)
+
+	setSubscriptionMode(t, st, alice, feed.ID, ModeOnDemand)
+	setSubscriptionMode(t, st, bob, feed.ID, ModeAll)
+
+	if got, err := st.FeedSummarizeMode(ctx, feed.ID, ModeOnDemand); err != nil || got != ModeAll {
+		t.Fatalf("got %q (err %v), want all — Bob's opted-in vote for all must win", got, err)
+	}
+}
+
 // A subscriber who INHERITS while the global mode is 'all' also counts as
 // wanting 'all' — inherit is not a third opinion, it's "whatever the server
 // says", and the server says 'all' here.
