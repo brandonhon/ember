@@ -405,6 +405,7 @@ func run() error {
 		MinIntervalFallback:           cfg.PollMinInterval,
 		SummaryTimeoutSecondsFallback: cfg.SummaryTimeoutSeconds,
 		SummariesEnabledFallback:      !cfg.DisableSummaries,
+		SummarizeModeFallback:         store.ModeAll,
 		// The Switcher is never nil, so the poller's own nil-Summarizer checks
 		// can no longer tell "no backend" apart from "a working one". This is
 		// how it learns: an unconfigured backend stamps articles 'disabled'
