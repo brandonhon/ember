@@ -81,6 +81,8 @@ docker run --rm -p 8080:8080 \
 
 Visit `http://localhost:8080`. No TLS, no AI summaries — just the reader. Persist articles across container restarts via the `ember-data` named volume.
 
+> Want summaries without disabling AI entirely? Ollama isn't the only option — see [Summarization → Backends](/summarization#backends) for pointing Ember at an OpenAI-compatible endpoint or Claude instead.
+
 ### Full stack (Caddy + Ollama) with the released image
 
 Use the bundled `deploy/docker-compose.yml` but swap the `ember` service's local `build:` for an `image:` reference. The Caddy + Ollama sidecars stay unchanged.

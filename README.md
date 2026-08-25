@@ -51,13 +51,24 @@ You'll land on an onboarding panel that points to starter packs or OPML import. 
 
 ### AI summaries
 - Paragraph + bullet-point summary card in the reader.
+- Three backends, switchable live in Settings → Language model → Backend:
+  **Ollama** (default, local-only), any **OpenAI-compatible** endpoint
+  (OpenRouter, Groq, vLLM, LiteLLM, …), or **Claude**. The hosted backends
+  send article text off-host; model pull/delete stay Ollama-only.
+- **On-demand mode**: summarize every article, or only once you star it,
+  save it for later, or pin it to a board — set server-wide, per feed, or
+  per board.
 - Per-user toggle for the summary card, plus install-time
-  `EMBER_DISABLE_SUMMARIES` / `EMBER_DISABLE_IMAGES`.
+  `EMBER_DISABLE_SUMMARIES` / `EMBER_DISABLE_IMAGES`. The summaries switch
+  itself now lives in Settings → Language model as a persisted on/off that
+  overrides the env var at runtime and drains the pending queue when
+  turned off.
 - Admin-only LLM controls (Settings → Language model):
   - Auto-detected hardware recommendation (`ember probe`).
   - Switch active model live (no restart).
-  - Pull / delete models from Ollama's cache.
+  - Pull / delete models from Ollama's cache (Ollama backend only).
   - Tuning sliders for temperature / top_p / num_ctx (persisted).
+  - Drain / requeue the summarization queue to recover a stuck backlog.
 - AI ad-stripping: the model also returns a `CLEANED` body with newsletter
   signups, podcast/app promos, and social follow asks removed. Falls back to
   the original when the model can't produce a full body.

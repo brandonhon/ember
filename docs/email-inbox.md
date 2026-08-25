@@ -82,6 +82,6 @@ Each incoming message becomes one article row. The article uses:
 - **Published at:** the `Date:` header.
 
 The synthetic feed has `kind='email'` so the RSS poller skips it. The article
-participates in all the existing flows — read state, summaries (if Ollama is
-enabled), filters (you can auto-tag newsletters, route them to a board, etc.),
-search, digest emails.
+participates in all the existing flows — read state, summaries (if AI
+summaries are enabled), filters (you can auto-tag newsletters, route them to
+a board, etc.), search, digest emails.

@@ -23,6 +23,7 @@ For vulnerability reporting, see [SECURITY.md](https://github.com/brandonhon/emb
 | All other `/api/*` | session cookie |
 | `POST /api/users`, `PATCH /api/users/{id}`, admin LLM, branding, DB, settings | `is_admin = 1` |
 | `GET /api/admin/settings`, `PATCH /api/admin/settings`, `POST /api/admin/settings/email-test` | `is_admin = 1` |
+| `POST /api/admin/summaries/drain`, `POST /api/admin/summaries/requeue` | `is_admin = 1`, rate-limited (both rewrite `summary_model` across every user's article rows) |
 | `/metrics` | `is_admin = 1` |
 | `GET /api/users` | returns `{id, username}` projection for non-admins |
 
