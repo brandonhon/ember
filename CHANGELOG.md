@@ -99,6 +99,23 @@ them.
 
 ### Fixed
 
+- **Settings you put in `.env` were ignored by the Docker stack.** The bundled
+  `deploy/docker-compose.yml` listed the environment it handed to the
+  container explicitly, and a `.env` file only feeds Compose's variable
+  substitution — so anything the compose file didn't name never reached
+  Ember. Following the docs and setting `EMBER_EMAIL_DOMAIN`,
+  `EMBER_PUBLIC_URL` or `EMBER_SUMMARY_BACKEND` in `.env` changed nothing,
+  with no error to explain why, and the newsletter inbox and passkeys — which
+  have no admin-UI equivalent — were unreachable from the stack entirely.
+  Every operator-facing variable is now passed through, and
+  `deploy/.env.example` documents the ones it had grown out of date on
+  (`EMBER_OLLAMA_MODEL`, `EMBER_TRUSTED_PROXIES`, `EMBER_VERSION`) along with
+  the rest. An unset variable still arrives as "not set", so an existing
+  `.env` behaves exactly as it did. The documentation of the hosted
+  summarization backends was corrected while going through them: the
+  OpenAI-compatible backend needs a model id as well as a base URL, and
+  without one it isn't usable — which shows up as summaries quietly staying
+  off, not as an error at boot.
 - **A timed-out summary could be generated twice.** The 90-second summarization
   timeout (now a setting, see Added) used to live on the HTTP client rather
   than on the request itself, so hitting it left the request looking

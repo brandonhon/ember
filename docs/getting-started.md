@@ -36,6 +36,8 @@ EMBER_SESSION_KEY=$(openssl rand -base64 48)
 EMBER_ADMIN_PASSWORD=<your-strong-password>
 ```
 
+Everything else in [Configuration](/configuration) goes in this same file — the summarization backend, passkeys, the newsletter inbox, SMTP. `.env.example` lists each one commented out at its default, so a line you leave alone changes nothing.
+
 Bring the stack up:
 
 ```sh

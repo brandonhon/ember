@@ -35,7 +35,7 @@ persisted, so it survives a restart and applies to the next article without one.
 | Backend | Talks to | Needs | Article text leaves the host? |
 | --- | --- | --- | --- |
 | **Ollama** (default) | Ollama's native `/api/generate` | `EMBER_OLLAMA_URL` + a pulled model | No |
-| **OpenAI-compatible** | `/v1/chat/completions` on any compatible endpoint: OpenAI, OpenRouter, Groq, Mistral, Gemini's compatibility endpoint, vLLM, llama.cpp, LiteLLM | a base URL; an API key only if the server wants one | Yes, to that endpoint |
+| **OpenAI-compatible** | `/v1/chat/completions` on any compatible endpoint: OpenAI, OpenRouter, Groq, Mistral, Gemini's compatibility endpoint, vLLM, llama.cpp, LiteLLM | a base URL **and** a model id; an API key only if the server wants one | Yes, to that endpoint |
 | **Claude** | Anthropic's Messages API | an API key | Yes, to Anthropic |
 
 All three run the same prompt and the same parser, so summaries look the same whichever

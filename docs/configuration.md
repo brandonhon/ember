@@ -21,7 +21,7 @@ Ember reads configuration from environment variables at startup. A handful of se
 | `EMBER_SUMMARY_BACKEND` | `ollama` | Which summarization backend to start on: `ollama`, `openai`, or `anthropic`. Sets the boot-time default for the `summarize_backend` setting; an admin changes it at runtime in **Settings → Language model → Backend** and the choice wins from then on. An unrecognized value **fails at boot** rather than silently falling back. See [Summarization backends](#summarization-backends). |
 | `EMBER_SUMMARY_BASE_URL` | — | Endpoint root for the `openai` backend, e.g. `https://api.groq.com/openai/v1` or `http://vllm:8000`. The `/v1` segment is appended when absent. Must be `http` or `https`. Ignored by the other two backends (`ollama` uses `EMBER_OLLAMA_URL`; `anthropic` uses the SDK default). |
 | `EMBER_SUMMARY_API_KEY` | — | API key / bearer token for the `openai` and `anthropic` backends. Optional for self-hosted OpenAI-compatible servers that take no credential; **required** for `anthropic`. Rotatable at runtime in **Settings → Language model → Backend** — the stored key wins over this once set, and is never echoed back to the browser. |
-| `EMBER_SUMMARY_MODEL` | — | Model id for the `openai` and `anthropic` backends, e.g. `gpt-4o-mini` or `claude-opus-5`. The `ollama` backend keeps using `EMBER_OLLAMA_MODEL`. |
+| `EMBER_SUMMARY_MODEL` | — | Model id for the `openai` and `anthropic` backends, e.g. `gpt-4o-mini` or `claude-opus-5`. **Required for `openai`** — without it that backend is not usable and summaries stay off. Optional for `anthropic`, which falls back to `claude-opus-5`. The `ollama` backend keeps using `EMBER_OLLAMA_MODEL`. |
 | `EMBER_DISABLE_SUMMARIES` | `0` | Seeds the boot-time default for the persisted `summaries_enabled` setting; an admin can flip it at runtime in Settings. While off, articles still surface (poller stamps `summary_model='disabled'`). |
 | `EMBER_SUMMARY_GRACE_SECONDS` | `120` | How long a new article waits for its AI summary before being shown anyway. The wait stops a story appearing before the model has looked at it; the bound stops slow inference from leaving the reader empty. `0` shows articles as soon as they're fetched. Range **0–3600**. Ignored when summaries are disabled. Runtime-tunable in **Settings → Language model → Article visibility**. |
 | `EMBER_SUMMARY_TIMEOUT_SECONDS` | `90` | How long one summarization request may run before Ember abandons it and marks the article `skipped`. The deadline covers the backend client's internal retry, so a timed-out article is generated once, not twice. Raise it for CPU-only inference or a slow hosted model. Range **10–900**. Runtime-tunable in **Settings → Language model → Article visibility**. |
@@ -60,7 +60,7 @@ summarizer used to speak only Ollama's native `/api/generate` and never sent an
 | Backend | What it talks to | Needs | Model source |
 | --- | --- | --- | --- |
 | `ollama` (default) | Ollama's native `/api/generate` on `EMBER_OLLAMA_URL` | a reachable Ollama daemon and a model | `EMBER_OLLAMA_MODEL`, or the model picker in Settings |
-| `openai` | `/v1/chat/completions` on **any** compatible endpoint — OpenAI, OpenRouter, Groq, Mistral, Gemini's compatibility endpoint, vLLM, llama.cpp's server, LiteLLM | `EMBER_SUMMARY_BASE_URL`; an API key only if the server wants one | `EMBER_SUMMARY_MODEL` / the Model field |
+| `openai` | `/v1/chat/completions` on **any** compatible endpoint — OpenAI, OpenRouter, Groq, Mistral, Gemini's compatibility endpoint, vLLM, llama.cpp's server, LiteLLM | `EMBER_SUMMARY_BASE_URL` **and** `EMBER_SUMMARY_MODEL`; an API key only if the server wants one | `EMBER_SUMMARY_MODEL` / the Model field |
 | `anthropic` | Anthropic's Messages API | `EMBER_SUMMARY_API_KEY` | `EMBER_SUMMARY_MODEL` / the Model field, default `claude-opus-5` |
 
 Ollama-only features, because they have no equivalent on a hosted provider:
@@ -257,7 +257,7 @@ Run `ember probe` (or open the admin Language model page) to see a recommendatio
 
 ## Stack-level env vars (docker-compose)
 
-These configure the bundled `deploy/docker-compose.yml` stack rather than the Ember binary itself.
+These configure the bundled `deploy/docker-compose.yml` stack rather than the Ember binary itself. The variables in the tables above go in the same `deploy/.env` — the compose file passes each one through to the container, and a line you leave commented out keeps the default listed here. `EMBER_ADDR`, `EMBER_DB_PATH` and `EMBER_OLLAMA_URL` are the exceptions — the stack sets them itself to wire the containers together — as is `EMBER_TEST_MODE`, which the stack deliberately doesn't expose.
 
 | Var | Default | Notes |
 | --- | --- | --- |

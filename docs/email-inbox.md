@@ -17,8 +17,9 @@ You're terminating inbound SMTP for a domain. That requires:
 2. **Inbound port 25 reachable**, OR a fronting relay (Caddy layer4, haproxy,
    nginx stream, postfix) forwarding to Ember's listener port.
 3. **Set `EMBER_EMAIL_DOMAIN`** to the domain in the address (e.g.
-   `mail.example.com`). Without it, the SMTP listener doesn't start and the
-   inbox endpoints return `enabled: false`.
+   `mail.example.com`) — in `deploy/.env` if you run the bundled stack.
+   Without it, the SMTP listener doesn't start and the inbox endpoints
+   return `enabled: false`.
 
 ### Recommended setup: Caddy layer4 → Ember
 

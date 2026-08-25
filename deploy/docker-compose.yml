@@ -65,6 +65,57 @@ services:
       # rate limiting keys on the real client IP and HSTS is emitted for HTTPS.
       # Docker user-defined bridge subnets live in 172.16.0.0/12 by default.
       EMBER_TRUSTED_PROXIES: ${EMBER_TRUSTED_PROXIES:-172.16.0.0/12}
+
+      # Everything below is optional and passed straight through from .env.
+      # An unset (or commented-out) line arrives as an empty string, which
+      # every reader in internal/config treats as "not set" — so the binary's
+      # built-in default applies and behavior is unchanged. See
+      # docs/configuration.md for the full table.
+
+      # Canonical scheme://host users reach Ember on. Required for passkey /
+      # WebAuthn sign-in — without it the RP ID can't be derived and passkeys
+      # stay off.
+      EMBER_PUBLIC_URL: ${EMBER_PUBLIC_URL:-}
+      EMBER_PASSKEY_REQUIRE_UV: ${EMBER_PASSKEY_REQUIRE_UV:-}
+
+      # Summarization. These seed the boot-time defaults only; Settings →
+      # Language model overrides them at runtime and the stored value wins
+      # from then on.
+      EMBER_DISABLE_SUMMARIES: ${EMBER_DISABLE_SUMMARIES:-}
+      EMBER_SUMMARY_BACKEND: ${EMBER_SUMMARY_BACKEND:-}
+      EMBER_SUMMARY_BASE_URL: ${EMBER_SUMMARY_BASE_URL:-}
+      EMBER_SUMMARY_API_KEY: ${EMBER_SUMMARY_API_KEY:-}
+      EMBER_SUMMARY_MODEL: ${EMBER_SUMMARY_MODEL:-}
+      EMBER_SUMMARY_GRACE_SECONDS: ${EMBER_SUMMARY_GRACE_SECONDS:-}
+      EMBER_SUMMARY_TIMEOUT_SECONDS: ${EMBER_SUMMARY_TIMEOUT_SECONDS:-}
+
+      # Outbound SMTP for the daily digest. Also settable in Settings →
+      # Email / SMTP, which takes precedence once saved.
+      EMBER_SMTP_HOST: ${EMBER_SMTP_HOST:-}
+      EMBER_SMTP_PORT: ${EMBER_SMTP_PORT:-}
+      EMBER_SMTP_USER: ${EMBER_SMTP_USER:-}
+      EMBER_SMTP_PASSWORD: ${EMBER_SMTP_PASSWORD:-}
+      EMBER_SMTP_FROM: ${EMBER_SMTP_FROM:-}
+      EMBER_SMTP_STARTTLS: ${EMBER_SMTP_STARTTLS:-}
+
+      # Inbound newsletter inbox. Setting the domain starts the SMTP
+      # listener inside the container; mail still has to reach it — this
+      # stack publishes no port for it. See docs/email-inbox.md.
+      EMBER_EMAIL_DOMAIN: ${EMBER_EMAIL_DOMAIN:-}
+      EMBER_EMAIL_LISTEN_ADDR: ${EMBER_EMAIL_LISTEN_ADDR:-}
+      EMBER_EMAIL_MAX_BYTES: ${EMBER_EMAIL_MAX_BYTES:-}
+
+      # Remaining knobs.
+      EMBER_SESSION_TTL: ${EMBER_SESSION_TTL:-}
+      EMBER_POLL_MIN_INTERVAL: ${EMBER_POLL_MIN_INTERVAL:-}
+      EMBER_DISABLE_IMAGES: ${EMBER_DISABLE_IMAGES:-}
+      EMBER_DISABLE_UPDATE_CHECK: ${EMBER_DISABLE_UPDATE_CHECK:-}
+      EMBER_ALLOW_PRIVATE_URLS: ${EMBER_ALLOW_PRIVATE_URLS:-}
+      # Caddy terminates TLS in front, so leave these alone unless you have
+      # a deliberate plain-HTTP deployment (SECURE_COOKIES=0) or the domain
+      # is submitted to the HSTS preload list (HSTS_PRELOAD=1).
+      EMBER_SECURE_COOKIES: ${EMBER_SECURE_COOKIES:-}
+      EMBER_HSTS_PRELOAD: ${EMBER_HSTS_PRELOAD:-}
     volumes:
       - ember-data:/data
     networks:
