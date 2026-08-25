@@ -292,14 +292,72 @@ jobs:
             echo "No CHANGELOG section for $ver; release notes will be the generated commit list only." > release-body.md
           fi
 
+      # Created as a DRAFT so the tarballs and SHA256SUMS attach first, then
+      # published in the step below.
+      #
+      # Releases in this repo are immutable: once published, their assets are
+      # sealed and nothing further can be uploaded. Publishing first and
+      # uploading second — which is what this action does by default — worked
+      # for every full release up to v0.9.6, but v0.9.7-rc.1 (the repo's first
+      # ever prerelease) failed with "Cannot upload asset ... to an immutable
+      # release", producing a published release with zero binaries. Prereleases
+      # take a different path through publishing: they seal on the
+      # release.published event rather than release.prereleased, so the assets
+      # arrive too late.
+      #
+      # Drafting applies to full releases too, even though their old path
+      # worked. One code path means every release candidate is a real rehearsal
+      # for the release that follows it — the absence of exactly that is what
+      # let this sit undiscovered through seventeen releases, because no
+      # prerelease had ever been cut.
       - uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228  # v3.0.2
         with:
           tag_name: ${{ needs.prepare.outputs.version }}
           name: ${{ needs.prepare.outputs.version }}
           prerelease: ${{ needs.prepare.outputs.is_prerelease == 'true' }}
+          draft: true
           body_path: release-body.md
           generate_release_notes: true
           files: |
             dist/ember-*.tar.gz
             dist/SHA256SUMS
           fail_on_unmatched_files: true
+
+      # Publishing the draft seals the immutable snapshot with the assets
+      # already attached, and fires release.published — which is what the docs
+      # site deploy subscribes to (pages.yml filters prereleases back out).
+      #
+      # --latest is set explicitly rather than left to the API default so the
+      # floating "latest release" pointer is a decision: a prerelease must
+      # never claim it, a full release always should.
+      - name: Publish the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          IS_PRERELEASE: ${{ needs.prepare.outputs.is_prerelease }}
+        run: |
+          set -euo pipefail
+          latest=true
+          [ "$IS_PRERELEASE" = "true" ] && latest=false
+          gh release edit "$VERSION" \
+            --repo "$GITHUB_REPOSITORY" \
+            --draft=false \
+            --latest="$latest"
+          echo "Published $VERSION (prerelease=$IS_PRERELEASE, latest=$latest)"
+
+      # An immutable release cannot be repaired after the fact, so a silent
+      # asset-less publish must fail the run rather than look successful.
+      - name: Verify the published release carries its assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          count=$(gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" \
+                    --json assets --jq '.assets | length')
+          echo "$VERSION has $count asset(s)"
+          # 4 tarballs (linux/darwin x amd64/arm64) + SHA256SUMS
+          if [ "$count" -lt 5 ]; then
+            echo "::error::expected at least 5 assets, found $count"
+            exit 1
+          fi
