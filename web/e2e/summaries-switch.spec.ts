@@ -20,6 +20,13 @@ test.describe("summaries switch", () => {
     await page.getByTestId("settings-llm").click();
   }
 
+  test.afterEach(async ({ page }) => {
+    // The trailing click in the test body only runs if every assertion
+    // before it passes — a mid-test failure would otherwise leave summaries
+    // off for every later spec, since the server and database are shared.
+    await page.getByTestId("summaries-on").click().catch(() => {});
+  });
+
   test("switching summaries off persists across a reload (#198)", async ({ page }) => {
     await signIn(page);
     await openLLMSection(page);

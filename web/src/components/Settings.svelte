@@ -2250,6 +2250,11 @@
               </div>
             </div>
 
+            {#if summariesEnabled}
+            <!-- Also gated on summariesEnabled, not just a configured backend:
+                 both the grace window and the give-up timeout bound how long
+                 an article waits for a summary, which is meaningless once
+                 summaries are switched off — even with a backend configured. -->
             <div class="card">
               <div class="card-head"><h4>Article visibility</h4></div>
               <label class="pref-row">
@@ -2285,6 +2290,7 @@
                 </button>
               </div>
             </div>
+            {/if}
 
             <!-- Everything below is Ollama-only: the host recommendation, the
                  local model cache (pull/delete/switch) and /api/generate's
