@@ -180,7 +180,9 @@ func (s *Store) Subscribe(ctx context.Context, sub models.Subscription) (models.
 //
 // The summary lives on the shared article row, so one user opting out must not
 // remove it from another — hence "suppressed" means unanimous, not "anyone
-// opted out".
+// opted out". See FeedSummarizeMode for the on-demand/all resolution among
+// subscribers who DO want summaries, which deliberately inverts this to
+// any-wins for the same underlying reason.
 //
 // It deliberately FAILS OPEN on a feed with no subscribers. handleAddFeed does
 // UpsertFeed -> Subscribe -> RefreshFeed, and a feed with next_fetch NULL is
@@ -198,10 +200,44 @@ func (s *Store) FeedSummariesSuppressed(ctx context.Context, feedID int64) (bool
 	return total > 0 && wanting == 0, nil
 }
 
+// FeedSummarizeMode returns the effective summarization mode for a feed: ModeAll
+// if ANY subscriber wants every article summarized, else ModeOnDemand. A
+// subscriber wants ModeAll when their summarize_mode is 'all', or is ” (inherit)
+// while the server-wide mode is 'all'.
+//
+// Any-wins, where FeedSummariesSuppressed is unanimity-wins, and for the same
+// underlying reason: the summary lives on the shared article row. One user
+// choosing on-demand must not take away a summary another user asked for, just
+// as one user opting out must not.
+//
+// Fails open to globalMode on a feed with no subscribers, matching
+// FeedSummariesSuppressed — handleAddFeed's UpsertFeed → Subscribe → RefreshFeed
+// sequence leaves a window where the poller can ingest before the first
+// subscription exists.
+func (s *Store) FeedSummarizeMode(ctx context.Context, feedID int64, globalMode string) (string, error) {
+	var total, wantAll int
+	err := s.reader().QueryRowContext(ctx, `
+		SELECT COUNT(*),
+		       COALESCE(SUM(CASE WHEN summarize_mode = 'all'
+		                          OR (summarize_mode = '' AND ? = 'all')
+		                         THEN 1 ELSE 0 END), 0)
+		FROM subscriptions WHERE feed_id = ?`, globalMode, feedID).Scan(&total, &wantAll)
+	if err != nil {
+		return globalMode, err
+	}
+	if total == 0 {
+		return globalMode, nil
+	}
+	if wantAll > 0 {
+		return ModeAll, nil
+	}
+	return ModeOnDemand, nil
+}
+
 // GetSubscription returns the user's subscription to a feed.
 func (s *Store) GetSubscription(ctx context.Context, userID, feedID int64) (models.Subscription, error) {
 	row := s.DB.QueryRowContext(ctx, `
-		SELECT id, user_id, feed_id, category_id, IFNULL(title_override,''), muted, summarize, position, created_at
+		SELECT id, user_id, feed_id, category_id, IFNULL(title_override,''), muted, summarize, summarize_mode, position, created_at
 		FROM subscriptions WHERE user_id = ? AND feed_id = ?`, userID, feedID)
 	return scanSubscription(row)
 }
@@ -210,7 +246,7 @@ func (s *Store) GetSubscription(ctx context.Context, userID, feedID int64) (mode
 // the user (returns ErrNotFound on cross-user access).
 func (s *Store) GetSubscriptionByID(ctx context.Context, userID, subID int64) (models.Subscription, error) {
 	row := s.DB.QueryRowContext(ctx, `
-		SELECT id, user_id, feed_id, category_id, IFNULL(title_override,''), muted, summarize, position, created_at
+		SELECT id, user_id, feed_id, category_id, IFNULL(title_override,''), muted, summarize, summarize_mode, position, created_at
 		FROM subscriptions WHERE id = ? AND user_id = ?`, subID, userID)
 	return scanSubscription(row)
 }
@@ -434,7 +470,7 @@ func (s *Store) ListFeedsForUser(ctx context.Context, userID, unreadCutoff int64
 		       IFNULL(f.etag,''), IFNULL(f.last_modified,''),
 		       IFNULL(f.last_fetched,0), IFNULL(f.next_fetch,0),
 		       f.fetch_interval, f.error_count, IFNULL(f.last_error,''), f.created_at,
-		       s.id AS sub_id, s.category_id, IFNULL(s.title_override,''), s.muted, s.summarize, s.position,
+		       s.id AS sub_id, s.category_id, IFNULL(s.title_override,''), s.muted, s.summarize, s.summarize_mode, s.position,
 		       (SELECT COUNT(*)
 		          FROM articles a
 		          LEFT JOIN article_state st ON st.article_id = a.id AND st.user_id = s.user_id
@@ -463,7 +499,7 @@ func (s *Store) ListFeedsForUser(ctx context.Context, userID, unreadCutoff int64
 			&f.ID, &f.URL, &f.SiteURL, &f.Title, &f.FaviconURL,
 			&f.ETag, &f.LastModified, &f.LastFetched, &f.NextFetch,
 			&f.FetchInterval, &f.ErrorCount, &f.LastError, &f.CreatedAt,
-			&f.SubscriptionID, &catID, &f.TitleOverride, &muted, &summarize, &f.Position, &f.Unread,
+			&f.SubscriptionID, &catID, &f.TitleOverride, &muted, &summarize, &f.SummarizeMode, &f.Position, &f.Unread,
 		)
 		if err != nil {
 			return nil, err
@@ -495,7 +531,7 @@ func scanSubscription(row scannable) (models.Subscription, error) {
 	var s models.Subscription
 	var catID sql.NullInt64
 	var muted, summarize int
-	err := row.Scan(&s.ID, &s.UserID, &s.FeedID, &catID, &s.TitleOverride, &muted, &summarize, &s.Position, &s.CreatedAt)
+	err := row.Scan(&s.ID, &s.UserID, &s.FeedID, &catID, &s.TitleOverride, &muted, &summarize, &s.SummarizeMode, &s.Position, &s.CreatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return models.Subscription{}, ErrNotFound
 	}

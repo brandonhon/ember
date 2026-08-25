@@ -100,6 +100,20 @@ const (
 	// bounds how long one article can occupy the single summary worker.
 	SummaryTimeoutSecondsFloor = 10
 	SummaryTimeoutSecondsCeil  = 900
+
+	// Server-wide summarization mode (issue #199).
+	//
+	//   ModeAll      summarize every article as it arrives (the default, and
+	//                what every install did before this setting existed)
+	//   ModeOnDemand summarize only what a reader stars, saves for later, or
+	//                pins to a board
+	//
+	// ModeInherit is not valid here — it is the per-subscription "no opinion"
+	// value that falls through to this setting.
+	keySummarizeMode = "summarize_mode"
+	ModeAll          = "all"
+	ModeOnDemand     = "on_demand"
+	ModeInherit      = ""
 )
 
 // Bounds + default for the admin-configurable adaptive-fetch floor. Canonical
@@ -374,6 +388,33 @@ func (s *Store) PutSummariesEnabled(ctx context.Context, on bool) error {
 		v = "1"
 	}
 	return s.PutAppSetting(ctx, keySummariesEnabled, v)
+}
+
+// ResolveSummarizeMode returns the effective server-wide summarization mode:
+// the app_settings row if it names one of the two valid values, else fallback.
+//
+// A corrupt or pre-migration row (empty, or some stale/unrecognized value)
+// falls back to ModeAll rather than ModeOnDemand — ModeAll is what every
+// install did before this setting existed, so an unreadable row must not
+// silently start deferring summaries nobody asked to defer.
+func (s *Store) ResolveSummarizeMode(ctx context.Context, fallback string) string {
+	if v, _ := s.GetAppSetting(ctx, keySummarizeMode); v == ModeAll || v == ModeOnDemand {
+		return v
+	}
+	if fallback == ModeAll || fallback == ModeOnDemand {
+		return fallback
+	}
+	return ModeAll
+}
+
+// PutSummarizeMode persists the admin's explicit mode choice. Rejects anything
+// but the two valid values — ModeInherit has no meaning at the server-wide
+// level, it is only ever a per-subscription "no opinion".
+func (s *Store) PutSummarizeMode(ctx context.Context, mode string) error {
+	if mode != ModeAll && mode != ModeOnDemand {
+		return errors.New("store: invalid summarize mode")
+	}
+	return s.PutAppSetting(ctx, keySummarizeMode, mode)
 }
 
 // ResolvePasskeyRequireUV reports whether passkey sign-in must demand user
