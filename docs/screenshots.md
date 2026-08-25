@@ -1,6 +1,6 @@
 # Screenshots
 
-Captured against the test-mode binary via `web/scripts/screenshots-dual-theme.mjs`. Each scene is captured twice — once in the app's light theme, once in dark — at both desktop (1440×900 @ 2x) and mobile (390×844 @ 3x) viewports. The docs site shows the **opposite** variant — a light page displays the dark-theme capture and a dark page the light-theme capture (via the `.light-only` / `.dark-only` classes in the theme stylesheet) — so the screenshot contrasts the page background instead of blending into it.
+Captured against the test-mode binary via `web/scripts/screenshots-dual-theme.mjs`. Each scene is captured twice — once in the app's light theme, once in dark — at both desktop (1440×900 @ 2x) and mobile (390×844 @ 2x) viewports. Desktop settings panes are the exception: the modal's height cap is lifted at capture time and the viewport grown to fit, so each pane is shown whole instead of cut off at its first card. The docs site shows the **opposite** variant — a light page displays the dark-theme capture and a dark page the light-theme capture (via the `.light-only` / `.dark-only` classes in the theme stylesheet) — so the screenshot contrasts the page background instead of blending into it.
 
 ## Three-pane reader
 
@@ -25,7 +25,7 @@ Theme picker (8 presets + custom palette), density toggle, AI summary card on/of
 
 ## Settings — language model (admin)
 
-Host probe (RAM/CPU/GPU) with a model recommendation. Installed-model table with per-row switch + delete. Pull form for new models. Sliders for temperature, top_p, num_ctx.
+Summaries on/off and the summarize mode (every article, or only the ones you mark), the summarization queue with drain + requeue, and the backend picker — Ollama, OpenAI-compatible, or Claude. Below those: the article-visibility windows (grace period and summary timeout), host probe (RAM/CPU/GPU) with a model recommendation, installed-model table with per-row switch + delete, pull form for new models, and sliders for temperature, top_p, num_ctx.
 
 <img src="./public/screenshots/settings-llm-desktop-light.png" alt="Settings language model (light)" class="dark-only">
 <img src="./public/screenshots/settings-llm-desktop-dark.png"  alt="Settings language model (dark)"  class="light-only">

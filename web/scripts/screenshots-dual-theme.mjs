@@ -6,6 +6,10 @@
 //   docs/public/screenshots/<scene>-<viewport>-<theme>.png
 // e.g. reader-desktop-light.png / reader-desktop-dark.png.
 //
+// Desktop settings scenes are captured at full pane height: the modal's 640px
+// cap is lifted at capture time and the viewport grown to fit, so the entire
+// settings pane lands in one image instead of just its first card.
+//
 // The companion `.light-only` / `.dark-only` CSS classes in
 // docs/.vitepress/theme/style.css hide whichever variant doesn't match
 // the current docs site theme, so the screenshot always contrasts with
@@ -33,6 +37,23 @@ const VIEWPORTS = [
   { name: "mobile",  width: 390,  height: 844, mobile: true  },
 ];
 const THEMES = ["light", "dark"];
+
+// `.backdrop` pads the modal by 24px on every side.
+const BACKDROP_PAD = 24;
+
+// The settings modal is deliberately height-capped in the app
+// (`.modal { height: min(640px, 86vh) }`) with an internally scrolling
+// `.content`, so a viewport-sized shot catches only the first card or two --
+// the Language model pane alone is ~2450px of content. For the docs we want the
+// whole pane in one frame, so let the modal size to its content and grow the
+// viewport to match. Every pixel is still real app rendering, app chrome
+// included; only the scroll container is unclamped.
+const EXPAND_MODAL_CSS = `
+  [data-testid=settings] { place-items: start center !important; }
+  [data-testid=settings] .modal { height: auto !important; max-height: none !important; overflow: visible !important; }
+  [data-testid=settings] .layout { overflow: visible !important; }
+  [data-testid=settings] .content { overflow: visible !important; }
+`;
 
 fs.mkdirSync(OUT_DIR, { recursive: true });
 
@@ -105,6 +126,10 @@ async function captureScenes(page, vp, theme) {
   await page.getByTestId("open-settings").click();
   await page.waitForSelector("[data-testid=settings]");
 
+  // Mobile settings is a full-screen takeover with its own drill-down layout,
+  // so the unclamping only applies to desktop.
+  if (!vp.mobile) await page.addStyleTag({ content: EXPAND_MODAL_CSS });
+
   await capturePane(page, "Preferences",     "settings-preferences", vp, theme);
   await capturePane(page, "Language model",  "settings-llm",         vp, theme);
   await capturePane(page, "Email / SMTP",    "settings-email",       vp, theme);
@@ -128,10 +153,29 @@ async function capturePane(page, sceneTitle, testId, vp, theme) {
     await btn.scrollIntoViewIfNeeded({ timeout: 4000 }).catch(() => {});
     await btn.click({ timeout: 4000 });
     await page.waitForTimeout(400);
+    if (!vp.mobile) await fitViewportToModal(page, vp);
     await shoot(page, testId, vp, theme);
+    // Restore, so the next pane is measured from a known viewport.
+    if (!vp.mobile) await page.setViewportSize({ width: vp.width, height: vp.height });
   } catch (err) {
     console.log(`   (skipped: ${testId} — ${err.message.split("\n")[0]})`);
   }
+}
+
+// Grow the viewport so the content-sized modal fits without clipping. The modal
+// height is driven by its content (width is fixed at 880px), so it does not
+// depend on the viewport height we are setting here.
+async function fitViewportToModal(page, vp) {
+  const h = await page.evaluate(() => {
+    const m = document.querySelector("[data-testid=settings] .modal");
+    return m ? Math.ceil(m.getBoundingClientRect().height) : 0;
+  });
+  if (!h) return;
+  await page.setViewportSize({
+    width: vp.width,
+    height: Math.max(vp.height, h + BACKDROP_PAD * 2),
+  });
+  await page.waitForTimeout(300);
 }
 
 async function shoot(page, scene, vp, theme) {
