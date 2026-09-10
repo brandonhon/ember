@@ -187,15 +187,41 @@ them.
   Ember itself is unaffected, and deployments that don't use the bundled
   `deploy/docker-compose.yml` are too.
 - Bumped `modernc.org/sqlite` 1.55.0 → 1.58.0 (and its transitive
+  `modernc.org/libc` 1.74.3 → 1.75.6, `modernc.org/memory` 1.11.0 → 1.12.1 and
   `github.com/mattn/go-isatty` 0.0.23 → 0.0.24). This is the pure-Go SQLite
   driver Ember stores everything in; the full suite passes against it locally
   and in CI.
 - Bumped the remaining runtime dependencies: `go-webauthn/webauthn` 0.17.4 →
-  0.18.0, `pressly/goose/v3` 3.27.3 → 3.28.0, `golang.org/x/crypto` 0.55.0 →
+  0.18.0, `pressly/goose/v3` 3.27.3 → 3.28.0, `golang.org/x/crypto` 0.54.0 →
   0.56.0, and `anthropics/anthropic-sdk-go` 1.66.0 → 1.71.0 — the passkey
   library, the migration runner, the crypto behind session and password
   handling, and the Claude summarization backend. The passkey bump is the
   substantial one; see the entry below.
+- **Two kinds of feed that silently failed to parse now work.** The feed parser
+  (`mmcdole/gofeed`) went 1.4.0 → 1.4.2. A JSON feed larger than the 4 KB window
+  Ember reads to work out what format it is wasn't recognised as JSON at all, so
+  parsing it failed; it's now detected and read in full. An RSS document that
+  declares an unknown default namespace on its `<rss>` root — which some
+  generators emit — was parsed as something other than RSS, and now parses
+  natively while recognised extension namespaces keep their meaning. Atom `self`
+  and WebSub hub links embedded in an RSS feed also survive parsing now, even
+  when the feed uses a local default namespace or an unexpected prefix. Nothing
+  needs re-subscribing; the next poll reads an affected feed correctly.
+- Bumped the rest of the runtime libraries: `go-chi/chi/v5` 5.3.1 → 5.3.2 (the
+  HTTP router), `emersion/go-smtp` 0.24.0 → 0.25.0 (the email-inbox listener),
+  `fxamacker/cbor/v2` 2.9.2 → 2.9.3 (CBOR decoding in the passkey attestation
+  path), `golang.org/x/net` 0.57.0 → 0.58.0, `golang.org/x/mod` 0.38.0 → 0.40.0
+  (the semver comparison behind the update check), and the transitive
+  `golang.org/x/text` 0.40.0 → 0.41.0. Maintenance releases with no behaviour
+  change Ember relies on.
+- **The released binaries and container image are built with Go 1.26.7**, up
+  from the 1.26.5 that built 0.9.6. Ember's own code is unchanged; what moves is
+  the standard library compiled into it. Go 1.26.6 closed six advisories that
+  `govulncheck` reports as reachable from Ember's code — two in `net/http`, and
+  one each in `crypto/tls`, `net/url`, `encoding/xml` and `encoding/asn1` —
+  which between them cover TLS handshakes, request handling, URL parsing, and
+  the XML decoding every feed poll goes through. There's nothing to do beyond
+  taking the release; if you build Ember yourself, use 1.26.7 or newer.
 - **Ember now says so at startup when passkeys can't work on your URL.** The
   relying-party identifier passkeys are bound to is the hostname of
   `EMBER_PUBLIC_URL`, and WebAuthn requires that to be a real domain name. A
