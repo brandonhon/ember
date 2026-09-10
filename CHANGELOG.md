@@ -186,10 +186,31 @@ them.
   explains how to check and apply one yourself if you've vendored the file.
   Ember itself is unaffected, and deployments that don't use the bundled
   `deploy/docker-compose.yml` are too.
-- Bumped `modernc.org/sqlite` 1.55.0 → 1.56.0 (and its transitive
+- Bumped `modernc.org/sqlite` 1.55.0 → 1.58.0 (and its transitive
   `github.com/mattn/go-isatty` 0.0.23 → 0.0.24). This is the pure-Go SQLite
   driver Ember stores everything in; the full suite passes against it locally
   and in CI.
+- Bumped the remaining runtime dependencies: `go-webauthn/webauthn` 0.17.4 →
+  0.18.0, `pressly/goose/v3` 3.27.3 → 3.28.0, `golang.org/x/crypto` 0.55.0 →
+  0.56.0, and `anthropics/anthropic-sdk-go` 1.66.0 → 1.71.0 — the passkey
+  library, the migration runner, the crypto behind session and password
+  handling, and the Claude summarization backend. The passkey bump is the
+  substantial one; see the entry below.
+- **Ember now says so at startup when passkeys can't work on your URL.** The
+  relying-party identifier passkeys are bound to is the hostname of
+  `EMBER_PUBLIC_URL`, and WebAuthn requires that to be a real domain name. A
+  bare IP address (`https://192.168.1.50:8080`), a single-label host
+  (`https://ember:8080`, the usual Docker service name), or a fully-qualified
+  name written with a trailing dot was accepted at startup and then rejected by
+  the browser when someone actually tried to register a passkey — so the
+  feature looked available and simply never worked. Ember now logs
+  `webauthn disabled` with the reason on startup instead, and the passkey
+  endpoints return 503 rather than pretending. Nothing else changes: the rest
+  of Ember starts and runs exactly as before, passwords are unaffected, and any
+  deployment already reachable at a domain name — or at `localhost`, which
+  stays valid — sees no difference. If you were in that position, the fix is to
+  put a hostname in `EMBER_PUBLIC_URL`; the passkeys themselves were never
+  registered, so there is nothing to migrate.
 - Bumped SPA build/dev tooling: Vite 8.2.0 → 8.2.1,
   `@sveltejs/vite-plugin-svelte` 7.2.0 → 7.3.0, svelte-check 4.7.4 → 4.7.5,
   `@types/node` 26.1.2 → 26.5.1, and Playwright 1.62.1 → 1.63.0. Dev-only — none
