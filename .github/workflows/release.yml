@@ -193,7 +193,7 @@ jobs:
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
 
-      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4.2.0
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e  # v4.3.0
       # No QEMU needed — Dockerfile.release does pure COPY (no RUN on the
       # target platform) and the only build-stage RUN (busybox mkdir/chown)
       # is pinned to $BUILDPLATFORM. Multi-arch assembly is plain manifest
@@ -310,7 +310,7 @@ jobs:
       # for the release that follows it — the absence of exactly that is what
       # let this sit undiscovered through seventeen releases, because no
       # prerelease had ever been cut.
-      - uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228  # v3.0.2
+      - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64  # v3.0.3
         with:
           tag_name: ${{ needs.prepare.outputs.version }}
           name: ${{ needs.prepare.outputs.version }}

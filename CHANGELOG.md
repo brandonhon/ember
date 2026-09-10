@@ -169,6 +169,14 @@ them.
   Version 7 stops fork pull-request code being checked out under
   `pull_request_target` / `workflow_run`; Ember uses neither trigger, so the
   behaviour of every workflow is unchanged.
+- Bumped three more pinned actions: `github/codeql-action` 4.37.3 → 4.37.9,
+  `docker/setup-buildx-action` 4.2.0 → 4.3.0, and `softprops/action-gh-release`
+  3.0.2 → 3.0.3. Build infrastructure only — none of it reaches the released
+  binaries or container image. The CodeQL bump carries scanner bundle 2.26.2 →
+  2.26.4 plus a fix for `init` aborting rather than retrying when the bundle
+  download stalls mid-stream; the other two are maintenance releases. All three
+  CodeQL sub-actions (`init`, `autobuild`, `analyze`) move to the same commit,
+  which is what keeps a scan internally consistent.
 - **The bundled Caddy proxy is now pinned by digest** (`2.11.4-alpine`) instead
   of following the `caddy:2-alpine` tag. Which Caddy you run was previously
   decided by when your host last pulled, so two deployments on the same version
