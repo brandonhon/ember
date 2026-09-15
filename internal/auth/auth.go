@@ -555,6 +555,28 @@ func (a *Auth) Login(ctx context.Context, w http.ResponseWriter, r *http.Request
 	return u, nil
 }
 
+// Reauthenticate confirms the current password of an already signed-in user
+// before a sensitive self-service change (password or email). It shares the
+// login throttle: a wrong guess here counts against the same per-username
+// backoff as a wrong login, and a username in backoff is refused before any
+// argon2 work — otherwise a stolen session would be an unthrottled oracle for
+// brute-forcing the account password, the one thing that lets an attacker
+// lock the real owner out. Returns ErrTooManyAttempts (via
+// TooManyAttemptsError) while throttled and ErrInvalidCredentials on a miss.
+func (a *Auth) Reauthenticate(ctx context.Context, u models.User, password string) error {
+	if err := a.checkThrottle(ctx, u.Username); err != nil {
+		return err
+	}
+	if err := a.VerifyPassword(password, u.PasswordHash); err != nil {
+		a.recordFailure(ctx, u.Username)
+		return ErrInvalidCredentials
+	}
+	if err := a.Store.ClearLoginFailures(ctx, u.Username); err != nil {
+		slog.Default().Warn("clearing login failures failed", "err", err)
+	}
+	return nil
+}
+
 // recordFailure books one failed attempt against a username. Best-effort: a
 // storage failure must not convert a plain wrong-password into a 500, which
 // would itself distinguish the throttled path from the normal one.

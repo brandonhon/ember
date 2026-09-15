@@ -34,14 +34,7 @@ func (d *Dependencies) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	u, err := d.Auth.Login(r.Context(), w, r, req.Username, req.Password)
-	if wait, throttled := auth.AsTooManyAttempts(err); throttled {
-		// Retry-After lets a well-behaved client wait exactly long enough. The
-		// message stays generic: it reveals that this username has recent
-		// failures, which an attacker already knows they caused, and never
-		// whether the account exists.
-		w.Header().Set("Retry-After", strconv.Itoa(int(math.Ceil(wait.Seconds()))))
-		writeError(w, http.StatusTooManyRequests, "too_many_attempts",
-			"too many failed attempts, try again shortly")
+	if writeThrottled(w, err) {
 		return
 	}
 	if errors.Is(err, auth.ErrInvalidCredentials) {
@@ -61,6 +54,23 @@ func (d *Dependencies) handleLogin(w http.ResponseWriter, r *http.Request) {
 	writeData(w, http.StatusOK, loginResponse{
 		ID: u.ID, Username: u.Username, IsAdmin: u.IsAdmin, CreatedAt: u.CreatedAt,
 	}, nil)
+}
+
+// writeThrottled emits the 429 for a throttled credential check and reports
+// whether it did. Shared by login and the re-auth paths so all three answer a
+// backoff identically. Retry-After lets a well-behaved client wait exactly
+// long enough. The message stays generic: it reveals that this username has
+// recent failures, which an attacker already knows they caused, and never
+// whether the account exists.
+func writeThrottled(w http.ResponseWriter, err error) bool {
+	wait, throttled := auth.AsTooManyAttempts(err)
+	if !throttled {
+		return false
+	}
+	w.Header().Set("Retry-After", strconv.Itoa(int(math.Ceil(wait.Seconds()))))
+	writeError(w, http.StatusTooManyRequests, "too_many_attempts",
+		"too many failed attempts, try again shortly")
+	return true
 }
 
 // loginResponse is the login endpoint's allowlisted view of the user.
@@ -191,7 +201,13 @@ func (d *Dependencies) handleChangePassword(w http.ResponseWriter, r *http.Reque
 		writeError(w, http.StatusBadRequest, "weak_password", "new password must be at least 8 characters")
 		return
 	}
-	if err := d.Auth.VerifyPassword(req.OldPassword, u.PasswordHash); err != nil {
+	// Reauthenticate (not VerifyPassword) so a wrong guess here is throttled
+	// exactly like a wrong login — see Auth.Reauthenticate.
+	err := d.Auth.Reauthenticate(r.Context(), u, req.OldPassword)
+	if writeThrottled(w, err) {
+		return
+	}
+	if err != nil {
 		writeError(w, http.StatusUnauthorized, "invalid_credentials", "current password is wrong")
 		return
 	}
@@ -261,8 +277,12 @@ func (d *Dependencies) handleUpdateEmail(w http.ResponseWriter, r *http.Request)
 	}
 	// Re-authenticate with the current password: a stolen session shouldn't be
 	// able to silently redirect the account's digest email. Mirrors the
-	// password-change requirement.
-	if err := d.Auth.VerifyPassword(req.CurrentPassword, u.PasswordHash); err != nil {
+	// password-change requirement, throttle included.
+	err := d.Auth.Reauthenticate(r.Context(), u, req.CurrentPassword)
+	if writeThrottled(w, err) {
+		return
+	}
+	if err != nil {
 		writeError(w, http.StatusUnauthorized, "invalid_credentials", "current password is wrong")
 		return
 	}
@@ -277,7 +297,7 @@ func (d *Dependencies) handleUpdateEmail(w http.ResponseWriter, r *http.Request)
 			return
 		}
 	}
-	err := d.Store.UpdateUser(r.Context(), u.ID, store.UpdateUserPatch{Email: &email})
+	err = d.Store.UpdateUser(r.Context(), u.ID, store.UpdateUserPatch{Email: &email})
 	if errors.Is(err, store.ErrConflict) {
 		writeError(w, http.StatusConflict, "conflict", "that email address is already in use")
 		return

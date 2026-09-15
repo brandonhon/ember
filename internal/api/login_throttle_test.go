@@ -131,3 +131,81 @@ func TestLogin_ThrottledResponseIssuesNoSession(t *testing.T) {
 		}
 	}
 }
+
+// reauthAttempt sends one wrong-current-password request to a re-auth endpoint
+// on an already signed-in client and returns the status plus Retry-After.
+func reauthAttempt(t *testing.T, cl *http.Client, method, url string, body map[string]string) (int, string) {
+	t.Helper()
+	raw, _ := json.Marshal(body)
+	req, err := http.NewRequest(method, url, bytes.NewReader(raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	echoCSRF(cl, url, req)
+	resp, err := cl.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, resp.Body)
+	return resp.StatusCode, resp.Header.Get("Retry-After")
+}
+
+// The self-service password and email changes verify the current password.
+// Both must sit behind the same per-username backoff as login: otherwise a
+// stolen session is an unthrottled oracle for guessing the account password
+// (and the guess that lands lets the attacker change it and lock the owner
+// out). Misses on either endpoint count toward the shared backoff, the
+// backoff refuses even the correct password, and the 429 carries Retry-After
+// exactly as login's does.
+func TestReauth_SharesLoginThrottle(t *testing.T) {
+	h := newHarnessWith(t, frozenClock)
+	h.seedUser(t, "alice", "correct-horse", false)
+	cl := h.login(t, "alice", "correct-horse")
+
+	pwURL := h.srv.URL + "/api/me/password"
+	emailURL := h.srv.URL + "/api/me/email"
+	wrongPW := map[string]string{"old_password": "wrong", "new_password": "attacker-chosen"}
+	wrongEmail := map[string]string{"email": "x@example.com", "current_password": "wrong"}
+
+	// Spend the free allowance across BOTH endpoints: they share one counter.
+	for i := 0; i < auth.LoginFreeAttempts; i++ {
+		var code int
+		if i%2 == 0 {
+			code, _ = reauthAttempt(t, cl, http.MethodPost, pwURL, wrongPW)
+		} else {
+			code, _ = reauthAttempt(t, cl, http.MethodPatch, emailURL, wrongEmail)
+		}
+		if code != http.StatusUnauthorized {
+			t.Fatalf("re-auth miss %d: status %d, want 401", i+1, code)
+		}
+	}
+
+	// Next attempt on either endpoint is throttled, even with the right
+	// password — the check runs before the hash, as on login.
+	rightPW := map[string]string{"old_password": "correct-horse", "new_password": "attacker-chosen"}
+	code, retry := reauthAttempt(t, cl, http.MethodPost, pwURL, rightPW)
+	if code != http.StatusTooManyRequests {
+		t.Fatalf("password change after %d misses: status %d, want 429", auth.LoginFreeAttempts, code)
+	}
+	if n, err := strconv.Atoi(retry); err != nil || n < 1 || n > int(auth.LoginBackoffCap.Seconds()) {
+		t.Fatalf("Retry-After = %q, want 1..%d", retry, int(auth.LoginBackoffCap.Seconds()))
+	}
+	rightEmail := map[string]string{"email": "x@example.com", "current_password": "correct-horse"}
+	if code, _ := reauthAttempt(t, cl, http.MethodPatch, emailURL, rightEmail); code != http.StatusTooManyRequests {
+		t.Fatalf("email change during backoff: status %d, want 429", code)
+	}
+
+	// The backoff is the login backoff: a fresh login for the same username is
+	// refused too, so re-auth misses can't be laundered through one door and
+	// spent at the other.
+	if code, _ := postLogin(t, h, "alice", "correct-horse"); code != http.StatusTooManyRequests {
+		t.Fatalf("login during re-auth backoff: status %d, want 429", code)
+	}
+
+	// And the password was never changed by the throttled attempt.
+	if code, _ := postLogin(t, h, "alice", "attacker-chosen"); code != http.StatusTooManyRequests {
+		t.Fatalf("login with the attacker's password: status %d, want 429 (still throttled, never set)", code)
+	}
+}

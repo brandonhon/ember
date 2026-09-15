@@ -376,6 +376,18 @@ Found while adding the folder picker to the add-feed form, not by an audit: expo
 
 ---
 
+## Review #6 (2026-09-15) — RCE + login focus
+
+A targeted pass over everything that could execute, evaluate, deserialize, write files, or authenticate, on `develop` after the login hardening and the OpenAI/Claude summarizer backends landed. **No remote-code-execution path**: the only `os/exec` use is an argument-free `exec.LookPath("nvidia-smi")` probe; there are no templates or gob/yaml/archive decoders; the one interpolated SQL statement (`VACUUM INTO`) takes an admin-only, absolute, quote-rejected directory and a server-generated filename; both `{@html}` sinks in the reader are fed exclusively through the bluemonday sanitizer, including the LLM-produced cleaned body. One login finding, **mutation-verified** (against the pre-fix handlers the test reports `password change after 5 misses: status 200, want 429` — the attacker's password change went through).
+
+| ID | Severity | Status | File | Finding |
+| --- | --- | --- | --- | --- |
+| V7-1 | MEDIUM | `fixed` | `internal/api/auth_handlers.go`, `internal/api/server.go`, `internal/auth/auth.go` | **Re-auth endpoints bypassed both login throttles.** `POST /api/me/password` and `PATCH /api/me/email` verify the current password with a bare `VerifyPassword`: no per-IP login limiter on the route and no per-username backoff, and their misses never reached the `login_failures` counter. A stolen session could therefore guess the account password at argon2 speed (~20–40/s across the hash slots) and, on a hit, change it and lock the owner out. Probe: 30 wrong `old_password` → 30 × 401, zero 429, and a subsequent login still had its full free allowance. Both handlers now go through `Auth.Reauthenticate`, which runs the same `checkThrottle → VerifyPassword → recordFailure / ClearLoginFailures` sequence as `Login`, and both routes carry `loginLimiter`. Tests: `TestReauthenticate_SharesLoginThrottle` (auth) and `TestReauth_SharesLoginThrottle` (api). |
+
+**Verified sound, not changed:** the per-username throttle keys on the exact username (binary collation, so case variants don't dodge it); session cookies are HMAC-signed with the DB row as the validity gate; passkey ceremonies are atomic single-use with credential↔user binding and clone-counter rejection; CSRF is double-submit with a constant-time compare and an exact-match pre-session bypass list; the Fever token is compared in constant time; the test-mode session key is unreachable without `EMBER_TEST_MODE`.
+
+---
+
 ## Static Analysis Baseline (2026-06-10)
 
 - `go vet ./...` — clean

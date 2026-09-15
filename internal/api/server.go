@@ -305,8 +305,11 @@ func NewRouter(d Dependencies) http.Handler {
 			r.Post("/auth/logout", d.handleLogout)
 			r.Get("/me", d.handleMe)
 			r.Patch("/me/settings", d.handleUpdateSettings)
-			r.Patch("/me/email", d.handleUpdateEmail)
-			r.Post("/me/password", d.handleChangePassword)
+			// Re-auth endpoints take the login limiter as well as the session:
+			// they verify the current password, which makes them a second
+			// front door for password guessing if a session is ever stolen.
+			r.With(loginLimiter.limitMiddleware).Patch("/me/email", d.handleUpdateEmail)
+			r.With(loginLimiter.limitMiddleware).Post("/me/password", d.handleChangePassword)
 
 			// Passkeys (self-service registration + management).
 			r.Get("/me/passkeys", d.handleListPasskeys)

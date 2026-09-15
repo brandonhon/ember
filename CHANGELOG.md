@@ -96,6 +96,15 @@ them.
   subscription could be filed under another user's folder. The folder list and
   article views are filtered per user, so no other user's content was exposed;
   the affected subscription simply became invisible in its owner's sidebar.
+- **Changing your password or email now counts against the login throttle.**
+  Both forms ask for the current password, but a wrong answer there was neither
+  rate-limited nor counted toward the per-account backoff that protects the
+  login form — so anyone holding a stolen session cookie could guess the
+  account password as fast as the server would hash, and a correct guess let
+  them change it and lock the real owner out. The two endpoints now share the
+  login backoff (five free misses, then a doubling wait up to a minute,
+  returned as `429` with `Retry-After`) and the per-IP login limiter, and a
+  miss on one counts on all three. Nothing changes for a correct password.
 
 ### Fixed
 

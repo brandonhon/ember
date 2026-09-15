@@ -222,3 +222,50 @@ func TestCheckThrottle_FirstTierSurvivesSecondTruncation(t *testing.T) {
 		t.Error("throttle released 200ms into a 1s backoff window")
 	}
 }
+
+// Reauthenticate (the password/email change re-auth) must share the login
+// throttle: misses count against the same per-username backoff, the backoff
+// is checked before the hash so a correct guess during it is still refused,
+// and a success clears it. Without this a stolen session is an unthrottled
+// oracle for guessing the account password.
+func TestReauthenticate_SharesLoginThrottle(t *testing.T) {
+	a := newAuth(t)
+	ctx := context.Background()
+	hash, _ := a.HashPassword("hunter2")
+	u, err := a.Store.CreateUser(ctx, models.User{Username: "alice", PasswordHash: hash})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Free allowance is spent through re-auth misses alone.
+	for i := 1; i <= LoginFreeAttempts; i++ {
+		if err := a.Reauthenticate(ctx, u, "wrong-password"); !errors.Is(err, ErrInvalidCredentials) {
+			t.Fatalf("re-auth miss %d: got %v, want ErrInvalidCredentials", i, err)
+		}
+	}
+	// Next re-auth is throttled — even with the correct password (proves the
+	// check runs before VerifyPassword).
+	err = a.Reauthenticate(ctx, u, "hunter2")
+	if wait, throttled := AsTooManyAttempts(err); !throttled || wait <= 0 {
+		t.Fatalf("re-auth after %d misses: got %v, want ErrTooManyAttempts", LoginFreeAttempts, err)
+	}
+	// The same backoff is visible to Login: the counters are one table row.
+	r := httptest.NewRequest(http.MethodPost, "/login", nil)
+	if _, err := a.Login(ctx, httptest.NewRecorder(), r, "alice", "hunter2"); !errors.Is(err, ErrTooManyAttempts) {
+		t.Fatalf("login during re-auth backoff: got %v, want ErrTooManyAttempts", err)
+	}
+
+	// Once the wait elapses, a correct re-auth succeeds and clears the row.
+	a.Now = func() time.Time { return time.Now().Add(2 * LoginBackoffCap) }
+	a.Store.Now = a.Now
+	if err := a.Reauthenticate(ctx, u, "hunter2"); err != nil {
+		t.Fatalf("re-auth after backoff: %v", err)
+	}
+	lf, err := a.Store.GetLoginFailures(ctx, "alice")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if lf.Fails != 0 {
+		t.Fatalf("fails after successful re-auth = %d, want 0 (cleared)", lf.Fails)
+	}
+}
