@@ -50,7 +50,7 @@ SQLite. Migrations in `internal/db/migrations/*.sql`, applied at startup. Key ta
 
 - `users` — argon2id-hashed passwords; admin flag. `last_login_at` / `prev_login_at` track logins so the All-Unread window can extend back to the previous visit.
 - `sessions` — server-side rows backing cookies; pruned periodically.
-- `login_failures` — consecutive failed password logins per submitted username, driving the per-account login backoff. Keyed on the username as typed (whether or not the account exists, so the throttle can't be read as an enumeration oracle); cleared on the next successful login for that name and swept hourly once a row is older than 24h.
+- `login_failures` — consecutive failed password checks per submitted username, driving the per-account login backoff. Counts wrong logins and wrong *current* passwords on the self-service password/email changes alike (`auth.Login` and `auth.Reauthenticate` share the row). Keyed on the username as typed (whether or not the account exists, so the throttle can't be read as an enumeration oracle); cleared on the next successful check for that name and swept hourly once a row is older than 24h.
 - `feeds` — shared across users; URL-unique. Tracks etag/last-modified/error counters.
 - `subscriptions` — `(user_id, feed_id)` with category, title override, muted flag, `summarize` flag (per-user AI-summary opt-out, default 1), and `position` for drag-reorder.
 - `categories` — user-scoped folders with color + position.
@@ -102,7 +102,7 @@ HTTPS                Caddy
 
 Browsers store a server-side session cookie + a CSRF cookie. State-changing routes (`POST/PATCH/DELETE`) must echo the CSRF cookie in `X-Ember-CSRF`.
 
-`/api/auth/*` carries two independent throttles, because they answer different questions. The per-IP token bucket bounds one *source*; the per-username backoff in `internal/auth/throttle.go` bounds one *account*, which is what a credential-stuffing run spread across many addresses actually attacks. The username throttle is consulted before the user lookup and before any argon2 work, so rejected traffic costs a single indexed read rather than a 64 MiB key derivation.
+`/api/auth/*` carries two independent throttles, because they answer different questions. The per-IP token bucket bounds one *source*; the per-username backoff in `internal/auth/throttle.go` bounds one *account*, which is what a credential-stuffing run spread across many addresses actually attacks. The username throttle is consulted before the user lookup and before any argon2 work, so rejected traffic costs a single indexed read rather than a 64 MiB key derivation. The two signed-in endpoints that re-check the current password — `POST /api/me/password` and `PATCH /api/me/email` — sit behind both throttles as well, so a stolen session isn't a side door for guessing the password.
 
 ## Poller state machine
 

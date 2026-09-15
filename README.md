@@ -203,7 +203,7 @@ EMBER_TEST_MODE=1 ./bin/ember   # in another terminal
 
 ## Mobile clients
 
-Reeder, FeedMe, and other Fever-compatible apps can connect via `/fever`. The `api_key` is `md5("<username>:<user_id>")` — see `/api/me` for your user_id. (We can't use the canonical `md5("user:pass")` because passwords are stored only as argon2id hashes.)
+Reeder, FeedMe, and other Fever-compatible apps can connect via `/fever`. Ember issues each user a random per-user API key rather than the spec's `md5("user:pass")` (passwords are stored only as argon2id hashes, and a derived key would be guessable). Copy the **Fever URL** and **API key** from **Settings → Mobile clients** into the app; the same key is returned as `fever_api_key` by `GET /api/me`.
 
 ## E2E
 
