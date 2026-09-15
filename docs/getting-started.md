@@ -36,6 +36,8 @@ EMBER_SESSION_KEY=$(openssl rand -base64 48)
 EMBER_ADMIN_PASSWORD=<your-strong-password>
 ```
 
+Everything else in [Configuration](/configuration) goes in this same file — the summarization backend, passkeys, the newsletter inbox, SMTP. `.env.example` lists each one commented out at its default, so a line you leave alone changes nothing.
+
 Bring the stack up:
 
 ```sh
@@ -81,6 +83,8 @@ docker run --rm -p 8080:8080 \
 
 Visit `http://localhost:8080`. No TLS, no AI summaries — just the reader. Persist articles across container restarts via the `ember-data` named volume.
 
+> Want summaries without disabling AI entirely? Ollama isn't the only option — see [Summarization → Backends](/summarization#backends) for pointing Ember at an OpenAI-compatible endpoint or Claude instead.
+
 ### Full stack (Caddy + Ollama) with the released image
 
 Use the bundled `deploy/docker-compose.yml` but swap the `ember` service's local `build:` for an `image:` reference. The Caddy + Ollama sidecars stay unchanged.
@@ -118,6 +122,16 @@ Migrations are embedded in the binary and apply automatically on startup; no man
    - `https://www.youtube.com/@handle` — channel handle, resolved automatically
    - `https://www.youtube.com/playlist?list=PL...` — playlist video feed
    - `https://<instance>/@user` — Mastodon, Pleroma, or Akkoma profile feed
+
+   The add-feed form also has a **Folder** picker, so a new feed can be filed as
+   it's added rather than dragged in afterwards. It defaults to the folder you're
+   currently viewing, or "No folder" from any other view; when a site publishes
+   several feeds, every feed you pick lands in the folder you chose. You can move
+   a feed later by dragging it onto another folder, or from the feed's
+   **⋯ → Move to folder…** (**Edit feed → Folder** does the same alongside the
+   other feed settings). Dragging needs a mouse or trackpad — HTML5
+   drag-and-drop produces no events from touch — so the menu is the route on a
+   phone or tablet.
 6. (Optional) **Settings → Passkeys** to register a passkey for password-less sign-in. Requires `EMBER_PUBLIC_URL` to be set.
 7. (Optional) Configure SMTP env vars (see [Configuration](/configuration#optional-env-vars)) and enable a daily digest email from your profile.
 8. (Optional) Install Ember as a PWA — Chrome / Edge / Safari "Install app" menu. Once installed, new articles trigger an OS-level numeric badge on the app icon (taskbar / dock / launcher) in addition to the in-tab favicon dot.

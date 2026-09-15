@@ -1,10 +1,10 @@
 # Screenshots
 
-Captured against the test-mode binary via `web/scripts/screenshots-dual-theme.mjs`. Each scene is captured twice — once in the app's light theme, once in dark — at both desktop (1440×900 @ 2x) and mobile (390×844 @ 3x) viewports. The docs site shows the **opposite** variant — a light page displays the dark-theme capture and a dark page the light-theme capture (via the `.light-only` / `.dark-only` classes in the theme stylesheet) — so the screenshot contrasts the page background instead of blending into it.
+Captured against the test-mode binary via `web/scripts/screenshots-dual-theme.mjs`. Each scene is captured twice — once in the app's light theme, once in dark — at both desktop (1440×900 @ 2x) and mobile (390×844 @ 2x) viewports. Desktop settings panes are the exception: the modal's height cap is lifted at capture time and the viewport grown to fit, so each pane is shown whole instead of cut off at its first card. The docs site shows the **opposite** variant — a light page displays the dark-theme capture and a dark page the light-theme capture (via the `.light-only` / `.dark-only` classes in the theme stylesheet) — so the screenshot contrasts the page background instead of blending into it.
 
 ## Three-pane reader
 
-The default layout: sidebar of folders + feeds, the article list, and the reader. Keyboard navigation (`j` / `k` / `r` / `m` / `s` / `?`), drag-to-reorder folders and feeds within them.
+The default layout: sidebar of folders + feeds, the article list, and the reader. Keyboard navigation (`j` / `k` / `r` / `m` / `s` / `?`), drag to reorder folders and feeds, or to move a feed from one folder to another.
 
 <img src="./public/screenshots/reader-desktop-light.png" alt="Reader desktop (light)" class="dark-only">
 <img src="./public/screenshots/reader-desktop-dark.png"  alt="Reader desktop (dark)"  class="light-only">
@@ -25,7 +25,7 @@ Theme picker (8 presets + custom palette), density toggle, AI summary card on/of
 
 ## Settings — language model (admin)
 
-Host probe (RAM/CPU/GPU) with a model recommendation. Installed-model table with per-row switch + delete. Pull form for new models. Sliders for temperature, top_p, num_ctx.
+Summaries on/off and the summarize mode (every article, or only the ones you mark), the summarization queue with drain + requeue, and the backend picker — Ollama, OpenAI-compatible, or Claude. Below those: the article-visibility windows (grace period and summary timeout), host probe (RAM/CPU/GPU) with a model recommendation, installed-model table with per-row switch + delete, pull form for new models, and sliders for temperature, top_p, num_ctx.
 
 <img src="./public/screenshots/settings-llm-desktop-light.png" alt="Settings language model (light)" class="dark-only">
 <img src="./public/screenshots/settings-llm-desktop-dark.png"  alt="Settings language model (dark)"  class="light-only">
@@ -47,6 +47,8 @@ Paper-and-ink split layout. Branding (app name, page title, favicon) is admin-co
 ## Mobile
 
 ≤900px viewport: sidebar collapses into an off-canvas drawer. Article list and reader take turns at full width — selecting an article switches to the reader; a back arrow returns to the list. Below 520px, the brand text hides so the search bar has room.
+
+The drag gestures described above need a mouse or trackpad: HTML5 drag-and-drop produces no events from touch input, on any browser. Refile a feed from its **⋯ → Move to folder…** instead (or **Edit feed → Folder**), or choose the folder in the add-feed form when you subscribe.
 
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin: 24px 0;">
 

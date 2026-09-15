@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/brandonhon/ember/internal/models"
-	"github.com/brandonhon/ember/internal/summarize"
 )
 
 // Add-feed and edit-feed both resolve their URL through resolveFeedURL, so the
@@ -112,7 +111,7 @@ func TestLLM_EndpointsWithoutSummarizer(t *testing.T) {
 // reaches the Ollama daemon. Exercised with a summarizer wired so the 503 from
 // requireSummarizer can't mask the validation.
 func TestLLM_ModelNameValidation(t *testing.T) {
-	h := newHarnessWith(t, func(d *Dependencies) { d.Ollama = summarize.NewOllama("http://ollama.invalid", "llama3") })
+	h := newHarnessWith(t, func(d *Dependencies) { wireOllama(d, "http://ollama.invalid", "llama3") })
 	h.seedUser(t, "root", "hunter2", true)
 	c := h.login(t, "root", "hunter2")
 

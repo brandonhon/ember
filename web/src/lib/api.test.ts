@@ -108,4 +108,33 @@ describe("api client", () => {
       expect(a.code).toBe("http_500");
     }
   });
+
+  // Summarization queue admin (#198): the persisted on/off switch and the
+  // drain/requeue actions for clearing a stuck backlog.
+  it("PATCHes summaries_enabled through setAdminSettings", async () => {
+    fetchMock.mockResolvedValueOnce(ok({ summaries_enabled: false }));
+    await api.setAdminSettings({ summaries_enabled: false });
+    const [url, init] = fetchMock.mock.calls[0] as [string, FetchInit];
+    expect(url).toBe("/api/admin/settings");
+    expect(init.method).toBe("PATCH");
+    expect(init.body).toBe(JSON.stringify({ summaries_enabled: false }));
+  });
+
+  it("POSTs to /api/admin/summaries/drain and returns the drained count", async () => {
+    fetchMock.mockResolvedValueOnce(ok({ drained: 314 }));
+    const res = await api.drainSummaryQueue();
+    const [url, init] = fetchMock.mock.calls[0] as [string, FetchInit];
+    expect(url).toBe("/api/admin/summaries/drain");
+    expect(init.method).toBe("POST");
+    expect(res.data.drained).toBe(314);
+  });
+
+  it("POSTs to /api/admin/summaries/requeue and returns reset/enqueued counts", async () => {
+    fetchMock.mockResolvedValueOnce(ok({ reset: 314, enqueued: 314 }));
+    const res = await api.requeueSummaries();
+    const [url, init] = fetchMock.mock.calls[0] as [string, FetchInit];
+    expect(url).toBe("/api/admin/summaries/requeue");
+    expect(init.method).toBe("POST");
+    expect(res.data).toEqual({ reset: 314, enqueued: 314 });
+  });
 });

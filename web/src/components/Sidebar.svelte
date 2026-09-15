@@ -12,7 +12,7 @@
     summariesEnabled,
   } from "../lib/stores";
   import { api, ApiError } from "../lib/api";
-  import type { DiscoveredFeed, FeedWithCounts } from "../lib/types";
+  import type { Board, DiscoveredFeed, FeedWithCounts } from "../lib/types";
   import ConfirmDialog from "./ConfirmDialog.svelte";
   import FeedPickerModal from "./FeedPickerModal.svelte";
   import EditFeedModal from "./EditFeedModal.svelte";
@@ -80,6 +80,8 @@
   $effect(() => { if (addFormOpen) addFeedInputEl?.focus(); });
   let addingFeed = $state(false);
   let newFeedURL = $state("");
+  // Folder the new feed lands in. 0 = no folder, matching EditFeedModal.
+  let newFeedCategory = $state(0);
   let addError = $state("");
   // When a site advertises more than one feed, hold the candidates here to
   // open the picker modal instead of subscribing immediately.
@@ -94,6 +96,10 @@
   let renamingCategoryID = $state<number | null>(null);
   let renameValue = $state("");
   let colorPickerFor = $state<number | null>(null);
+  // Feed whose "Move to folder" panel is open. Dragging a feed does the same
+  // job, but that gesture needs a pointer — HTML5 drag-and-drop gets no events
+  // from touch — so this is the route on a phone or tablet.
+  let movingFeed = $state<FeedWithCounts | null>(null);
 
   const CAT_PALETTE = ["#3b82c4", "#4f7a3d", "#b07d1a", "#a93b16", "#7a3d8b", "#1d4ed8", "#7c4a2a", "#5b6770"];
 
@@ -101,6 +107,16 @@
     const t = e.target as HTMLElement;
     if (menuFor !== null && !t.closest(`[data-feed-menu-for]`) && !t.closest(`[data-feed-actions-trigger]`)) {
       menuFor = null;
+    }
+    if (
+      movingFeed !== null &&
+      !t.closest(`[data-feed-move-for]`) &&
+      // The click that opens the panel comes from inside the feed menu and
+      // bubbles to here; without this it would close the panel immediately.
+      !t.closest(`[data-feed-menu-for]`) &&
+      !t.closest(`[data-feed-actions-trigger]`)
+    ) {
+      movingFeed = null;
     }
     if (
       categoryMenuFor !== null &&
@@ -126,6 +142,22 @@
       await loadArticles(get(activeView));
     } catch (err) {
       console.error("toggleSummarize", err);
+    }
+  }
+
+  // Picking a mode implies opting back in: choosing WHEN a feed gets
+  // summarized only makes sense if it gets summarized at all, and a menu that
+  // silently left the hard opt-out in place would look broken. Same refresh
+  // pair as toggleSummarize — the mode changes which articles carry summary
+  // text, so the loaded list has to be re-fetched too.
+  async function setFeedMode(f: FeedWithCounts, mode: string) {
+    menuFor = null;
+    try {
+      await api.updateFeed(f.subscription_id, { summarize_mode: mode, summarize: true });
+      await refreshSidebar();
+      await loadArticles(get(activeView));
+    } catch (err) {
+      console.error("setFeedMode", err);
     }
   }
 
@@ -222,30 +254,77 @@
   let drag = $state<DragRef | null>(null);
   let dropTarget = $state<DragRef | null>(null);
 
+  // The kind is encoded in the MIME type because `getData` is blocked during
+  // dragover (drag-data protection mode) while `types` is always readable — so
+  // a hover can tell a feed drag from a folder drag without the module state.
+  const DRAG_FEED_MIME = "text/x-ember-feed";
+  const DRAG_FOLDER_MIME = "text/x-ember-folder";
+
   function dragKey(r: DragRef): string {
     return r.kind === "folder" ? `folder:${r.id}` : `feed:${r.id}:${r.cat}`;
+  }
+  function parseDragKey(key: string): DragRef | null {
+    const p = key.split(":");
+    if (p[0] === "folder" && p.length === 2) {
+      const id = Number(p[1]);
+      return Number.isFinite(id) ? { kind: "folder", id } : null;
+    }
+    if (p[0] === "feed" && p.length === 3) {
+      const id = Number(p[1]);
+      const cat = Number(p[2]);
+      return Number.isFinite(id) && Number.isFinite(cat) ? { kind: "feed", id, cat } : null;
+    }
+    return null;
+  }
+  // `drag` is only a convenience for the hover highlight: the browser may clear
+  // it (via dragend) before the drop lands, and a drop handler that returns
+  // without preventDefault() REJECTS the drop — the row snaps back and nothing
+  // happens. dataTransfer carries the payload for the whole drag, so the drop
+  // path trusts that first and falls back to the module state.
+  function dragKindFrom(e: DragEvent): "feed" | "folder" | null {
+    const types = e.dataTransfer?.types;
+    if (types?.includes(DRAG_FEED_MIME)) return "feed";
+    if (types?.includes(DRAG_FOLDER_MIME)) return "folder";
+    return drag?.kind ?? null;
+  }
+  function dragRefFrom(e: DragEvent): DragRef | null {
+    const raw =
+      e.dataTransfer?.getData(DRAG_FEED_MIME) ||
+      e.dataTransfer?.getData(DRAG_FOLDER_MIME) ||
+      "";
+    return (raw ? parseDragKey(raw) : null) ?? drag;
   }
   function sameDrag(a: DragRef | null, b: DragRef | null): boolean {
     if (!a || !b) return false;
     return dragKey(a) === dragKey(b);
   }
 
+  // Category patch for a drop target. catID 0 means "Uncategorized", which the
+  // server only accepts as clear_category — category_id 0 is not a real row and
+  // trips the subscriptions FK.
+  function categoryPatch(catID: number): { category_id?: number; clear_category?: boolean } {
+    return catID > 0 ? { category_id: catID } : { clear_category: true };
+  }
+
   function onFolderDragStart(e: DragEvent, catID: number) {
     drag = { kind: "folder", id: catID };
-    e.dataTransfer?.setData("text/x-ember", dragKey(drag));
+    e.dataTransfer?.setData(DRAG_FOLDER_MIME, dragKey(drag));
     if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
   }
   function onFeedDragStart(e: DragEvent, f: FeedWithCounts) {
     drag = { kind: "feed", id: f.subscription_id, cat: f.category_id ?? 0 };
-    e.dataTransfer?.setData("text/x-ember", dragKey(drag));
+    e.dataTransfer?.setData(DRAG_FEED_MIME, dragKey(drag));
     if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
   }
   function onDragOver(e: DragEvent, target: DragRef) {
-    if (!drag || drag.kind !== target.kind) return;
+    if (dragKindFrom(e) !== target.kind) return;
     // Feeds: cross-category drops are allowed — onFeedDrop updates the
     // subscription's category_id alongside the position. Folders drag only
     // within the folder list.
     e.preventDefault();
+    // Claim it: the enclosing folder is a drop target too, and it would
+    // otherwise also highlight and move the feed without a position.
+    e.stopPropagation();
     if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
     dropTarget = target;
   }
@@ -253,14 +332,15 @@
     drag = null;
     dropTarget = null;
   }
-  async function onFolderDrop(e: DragEvent, targetID: number) {
+  async function onFolderDrop(e: DragEvent, targetID: number, ref?: DragRef | null) {
     e.preventDefault();
-    if (!drag || drag.kind !== "folder" || drag.id === targetID) {
+    const d = ref ?? dragRefFrom(e);
+    if (!d || d.kind !== "folder" || d.id === targetID) {
       onDragEnd();
       return;
     }
     const ids = $categories.map((c) => c.id);
-    const from = ids.indexOf(drag.id);
+    const from = ids.indexOf(d.id);
     const to = ids.indexOf(targetID);
     if (from < 0 || to < 0) {
       onDragEnd();
@@ -281,26 +361,28 @@
     }
   }
   async function onFeedDrop(e: DragEvent, target: FeedWithCounts) {
+    // Snapshot the drag ref: the browser fires dragend (which clears `drag`)
+    // as soon as this handler returns, so every read after the first await
+    // below must go through the local copy.
+    const d = dragRefFrom(e);
+    // A folder dropped on a feed row means "put it where this row's folder is";
+    // leave the event alone so it reaches the enclosing folder's handler.
+    if (!d || d.kind !== "feed") return;
     e.preventDefault();
-    if (!drag || drag.kind !== "feed") {
-      onDragEnd();
-      return;
-    }
-    if (drag.id === target.subscription_id) {
+    e.stopPropagation(); // this row handles it, not the enclosing folder
+    if (d.id === target.subscription_id) {
       onDragEnd();
       return;
     }
     const targetCat = target.category_id ?? 0;
-    const crossCat = drag.cat !== targetCat;
+    const crossCat = d.cat !== targetCat;
 
     // For cross-category drops, first move the subscription into the target
     // category (or out of any category when targetCat === 0). The reorder
     // call below then slots it at the target's position in the new list.
     if (crossCat) {
       try {
-        // Pointer-to-pointer: CategoryID *int64 — *p=0 sets NULL on the
-        // server (matches "no category"), *p>0 sets the new category.
-        await api.updateFeed(drag.id, { category_id: targetCat });
+        await api.updateFeed(d.id, categoryPatch(targetCat));
       } catch (err) {
         console.error("updateFeed category", err);
         await refreshSidebar();
@@ -313,7 +395,7 @@
     // lives in the target category before the server roundtrip finishes.
     if (crossCat) {
       feeds.update((fs) => fs.map((f) =>
-        f.subscription_id === drag!.id
+        f.subscription_id === d.id
           ? { ...f, category_id: targetCat > 0 ? targetCat : undefined }
           : f
       ));
@@ -335,7 +417,7 @@
     );
     const ids = targetList.map((f) => f.subscription_id);
     // The dragged feed is in targetList now (we updated category_id above).
-    const from = ids.indexOf(drag.id);
+    const from = ids.indexOf(d.id);
     const to = ids.indexOf(target.subscription_id);
     if (from < 0 || to < 0) {
       onDragEnd();
@@ -491,27 +573,46 @@
   // --- Feed → folder drag/drop. Every folder header (named + Uncategorized) is
   // a drop target, so a feed can be moved into a folder that has no rows to
   // land on. catID 0 = Uncategorized (clears the feed's category). ---
-  function onFolderHeadOver(e: DragEvent, catID: number) {
-    if (!drag) return;
-    if (drag.kind === "folder") {
-      onDragOver(e, { kind: "folder", id: catID });
-    } else if (drag.kind === "feed") {
-      e.preventDefault();
-      if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
-      feedDropCat = catID;
+  // Anything released anywhere inside a folder — the header, a row, or the
+  // empty space around them — is aimed at that folder: a feed moves into it, a
+  // folder takes its position. The header and the rows claim the drops they
+  // handle themselves (those also set a position within the folder), so these
+  // wrapper handlers cover the gaps, which is where an ordinary drop-it-here
+  // gesture actually lands.
+  //
+  // catID 0 is the Uncategorized zone: it isn't a real category and can't take
+  // part in folder ordering, so it accepts feeds only.
+  function onFolderBodyOver(e: DragEvent, catID: number) {
+    const kind = dragKindFrom(e);
+    if (!kind) return;
+    if (kind === "folder" && catID === 0) return;
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+    if (kind === "feed") feedDropCat = catID;
+    else dropTarget = { kind: "folder", id: catID };
+  }
+  // dragleave fires when the pointer crosses onto a child too, which would
+  // strobe the highlight; ignore those by checking the element we moved to.
+  function onFolderBodyLeave(e: DragEvent, catID: number) {
+    const to = e.relatedTarget;
+    const self = e.currentTarget;
+    if (to instanceof Node && self instanceof Node && self.contains(to)) return;
+    if (feedDropCat === catID) feedDropCat = null;
+    if (sameDrag(dropTarget, { kind: "folder", id: catID })) dropTarget = null;
+  }
+  function onFolderBodyDrop(e: DragEvent, catID: number) {
+    const d = dragRefFrom(e);
+    if (!d) return;
+    if (d.kind === "feed") {
+      void onFolderFeedDrop(e, catID, d);
+    } else if (catID !== 0) {
+      void onFolderDrop(e, catID, d);
     }
   }
-  function onFolderHeadDrop(e: DragEvent, catID: number) {
-    if (drag?.kind === "folder") {
-      void onFolderDrop(e, catID);
-    } else if (drag?.kind === "feed") {
-      void onFolderFeedDrop(e, catID);
-    }
-  }
-  async function onFolderFeedDrop(e: DragEvent, catID: number) {
+  async function onFolderFeedDrop(e: DragEvent, catID: number, ref?: DragRef | null) {
     e.preventDefault();
     feedDropCat = null;
-    const d = drag;
+    const d = ref ?? dragRefFrom(e);
     if (!d || d.kind !== "feed") {
       onDragEnd();
       return;
@@ -521,13 +622,26 @@
       return; // already in this folder
     }
     try {
-      await api.updateFeed(d.id, { category_id: catID }); // 0 → NULL (Uncategorized)
+      await api.updateFeed(d.id, categoryPatch(catID));
       await refreshSidebar();
     } catch (err) {
       console.error("move feed to folder", err);
       await refreshSidebar();
     }
     onDragEnd();
+  }
+
+  // Refile a feed from the ⋯ menu. Same server call the drag path makes, so the
+  // two stay consistent — including catID 0 meaning "no folder".
+  async function moveFeedToFolder(f: FeedWithCounts, catID: number) {
+    movingFeed = null;
+    if ((f.category_id ?? 0) === catID) return;
+    try {
+      await api.updateFeed(f.subscription_id, categoryPatch(catID));
+    } catch (err) {
+      console.error("move feed to folder", err);
+    }
+    await refreshSidebar();
   }
 
   function startRenameCategory(catID: number, current: string) {
@@ -602,6 +716,18 @@
     }
   }
 
+  // Pinning to a board is one of the three "I mean to read this" signals that
+  // trigger a summary in on-demand mode. A board used for filing rather than
+  // reading opts out of that here, so dropping something into it stays free.
+  async function toggleBoardSummarize(b: Board) {
+    try {
+      await api.updateBoard(b.id, { summarize: !b.summarize });
+      await refreshSidebar();
+    } catch (err) {
+      console.error("toggleBoardSummarize", err);
+    }
+  }
+
   async function deleteBoard(id: number, name: string) {
     confirmReq = {
       title: "Delete board?",
@@ -629,6 +755,20 @@
     return $activeView.kind === "board" && $activeView.id === id;
   }
 
+  // Opening the form pre-selects the folder the user is currently looking at —
+  // "add a feed to this folder" is the usual intent when a folder is the active
+  // view. Any other view starts at "No folder".
+  function openAddFeed() {
+    newFeedCategory = $activeView.kind === "category" ? $activeView.id : 0;
+    addFormOpen = true;
+  }
+
+  // The API takes category_id only for a real folder; 0 is not a category row
+  // and would trip the subscriptions FK, so omit it for "No folder".
+  function newFeedCategoryArg(): number | undefined {
+    return newFeedCategory > 0 ? newFeedCategory : undefined;
+  }
+
   async function submitAddFeed(e: Event) {
     e.preventDefault();
     const url = newFeedURL.trim();
@@ -649,7 +789,7 @@
         pickerFeeds = feedsFound;
         return; // picker drives the rest; keep the form populated until done
       }
-      await api.addFeed(feedsFound.length === 1 ? feedsFound[0].url : url);
+      await api.addFeed(feedsFound.length === 1 ? feedsFound[0].url : url, newFeedCategoryArg());
       await afterFeedsAdded();
     } catch (err) {
       addError = err instanceof ApiError ? err.message : String(err);
@@ -658,10 +798,12 @@
     }
   }
 
-  // Add the feeds the user picked from the multi-feed modal, in sequence.
+  // Add the feeds the user picked from the multi-feed modal, in sequence. They
+  // all land in the folder chosen on the add form that opened the picker.
   async function addPickedFeeds(urls: string[]) {
+    const cat = newFeedCategoryArg();
     for (const u of urls) {
-      await api.addFeed(u);
+      await api.addFeed(u, cat);
     }
     await afterFeedsAdded();
   }
@@ -672,6 +814,7 @@
   // summarizer pending count once Ollama starts chewing the new feed(s).
   async function afterFeedsAdded() {
     newFeedURL = "";
+    newFeedCategory = 0;
     addFormOpen = false;
     await refreshSidebar();
     await loadArticles($activeView);
@@ -681,6 +824,7 @@
   function cancelAdd() {
     addFormOpen = false;
     newFeedURL = "";
+    newFeedCategory = 0;
     addError = "";
   }
 
@@ -743,6 +887,9 @@
         <button on:click={() => { editingFeed = f; menuFor = null; }} data-testid="feed-edit-{f.id}">
           Edit feed
         </button>
+        <button on:click={() => { movingFeed = f; menuFor = null; }} data-testid="feed-move-{f.id}">
+          Move to folder…
+        </button>
         <button on:click={() => markFeedRead(f)} data-testid="feed-mark-read-{f.id}">
           Mark feed read
         </button>
@@ -753,9 +900,24 @@
           <!-- Same guard as Resummarize: with summaries off nothing is
                summarized anyway, so the per-feed opt-out has nothing to act
                on. The stored flag is untouched and the entry returns when
-               summaries are re-enabled. -->
+               summaries are re-enabled.
+
+               Four states, not a toggle: the first three are WHEN (inherit the
+               server's mode, every article, or only what you mark) and the last
+               is the hard WHETHER. The tick needs f.summarize as well as the
+               mode, because an opted-out feed still has a stored mode that is
+               simply not in effect. -->
+          <button on:click={() => setFeedMode(f, "")} data-testid="feed-mode-inherit-{f.id}">
+            Summaries: default{f.summarize && f.summarize_mode === "" ? " ✓" : ""}
+          </button>
+          <button on:click={() => setFeedMode(f, "all")} data-testid="feed-mode-all-{f.id}">
+            Summaries: every article{f.summarize && f.summarize_mode === "all" ? " ✓" : ""}
+          </button>
+          <button on:click={() => setFeedMode(f, "on_demand")} data-testid="feed-mode-on-demand-{f.id}">
+            Summaries: when I mark one{f.summarize && f.summarize_mode === "on_demand" ? " ✓" : ""}
+          </button>
           <button on:click={() => toggleSummarize(f)} data-testid="feed-summarize-{f.id}">
-            {f.summarize ? "Don't summarize" : "Summarize"}
+            {f.summarize ? "Summaries: never" : "Summaries: turn back on"}
           </button>
           <button on:click={() => resummarize(f)} data-testid="feed-resummarize-{f.id}">
             Resummarize
@@ -764,6 +926,28 @@
         <button class="danger" on:click={() => deleteFeed(f)} data-testid="feed-delete-{f.id}">
           Delete
         </button>
+      </div>
+    {/if}
+    {#if movingFeed?.id === f.id}
+      <div class="feed-move-menu" data-feed-move-for={f.id}>
+        <button
+          class:current={(f.category_id ?? 0) === 0}
+          aria-current={(f.category_id ?? 0) === 0}
+          on:click={() => moveFeedToFolder(f, 0)}
+          data-testid="feed-move-target-{f.id}-0"
+        >
+          <span class="tick">{(f.category_id ?? 0) === 0 ? "✓" : ""}</span>No folder
+        </button>
+        {#each $categories as c (c.id)}
+          <button
+            class:current={(f.category_id ?? 0) === c.id}
+            aria-current={(f.category_id ?? 0) === c.id}
+            on:click={() => moveFeedToFolder(f, c.id)}
+            data-testid="feed-move-target-{f.id}-{c.id}"
+          >
+            <span class="tick">{(f.category_id ?? 0) === c.id ? "✓" : ""}</span>{c.name}
+          </button>
+        {/each}
       </div>
     {/if}
   </div>
@@ -863,15 +1047,15 @@
         class="folder"
         class:collapsed={collapsedCategories[cat.id]}
         class:drop-target={sameDrag(dropTarget, { kind: "folder", id: cat.id })}
+        on:dragover={(e) => onFolderBodyOver(e, cat.id)}
+        on:dragleave={(e) => onFolderBodyLeave(e, cat.id)}
+        on:drop={(e) => onFolderBodyDrop(e, cat.id)}
       >
         <div
           class="folder-head"
           class:feed-drop={feedDropCat === cat.id}
           draggable="true"
           on:dragstart={(e) => onFolderDragStart(e, cat.id)}
-          on:dragover={(e) => onFolderHeadOver(e, cat.id)}
-          on:dragleave={() => { dropTarget = null; feedDropCat = null; }}
-          on:drop={(e) => onFolderHeadDrop(e, cat.id)}
           on:dragend={onDragEnd}
         >
           <button class="chev-btn" on:click={() => toggleCategory(cat.id)} aria-label="Toggle folder">
@@ -947,14 +1131,19 @@
       </div>
     {/each}
 
-    {#if grouped.uncat.length > 0}
-      <div class="folder" class:collapsed={collapsedUncategorized}>
+    <!-- Shown while a feed is being dragged even when empty: it's the only way
+         to take a feed back out of a folder. -->
+    {#if grouped.uncat.length > 0 || drag?.kind === "feed"}
+      <div
+        class="folder"
+        class:collapsed={collapsedUncategorized}
+        on:dragover={(e) => onFolderBodyOver(e, 0)}
+        on:dragleave={(e) => onFolderBodyLeave(e, 0)}
+        on:drop={(e) => onFolderBodyDrop(e, 0)}
+      >
         <div
           class="folder-head"
           class:feed-drop={feedDropCat === 0}
-          on:dragover={(e) => onFolderHeadOver(e, 0)}
-          on:dragleave={() => (feedDropCat = null)}
-          on:drop={(e) => onFolderHeadDrop(e, 0)}
         >
           <button class="chev-btn" on:click={() => (collapsedUncategorized = !collapsedUncategorized)} aria-label="Toggle folder">
             <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6" /></svg>
@@ -972,7 +1161,7 @@
 
     <div class="add-row">
       {#if !addFormOpen}
-        <button class="add-btn" on:click={() => (addFormOpen = true)} data-testid="open-add-feed">
+        <button class="add-btn" on:click={openAddFeed} data-testid="open-add-feed">
           <svg viewBox="0 0 24 24" width="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" /></svg>
           Add feed
         </button>
@@ -986,6 +1175,15 @@
             disabled={addingFeed}
             data-testid="add-feed-input"
           />
+          <label class="add-form-folder">
+            <span>Folder</span>
+            <select bind:value={newFeedCategory} disabled={addingFeed} data-testid="add-feed-folder">
+              <option value={0}>No folder</option>
+              {#each $categories as c (c.id)}
+                <option value={c.id}>{c.name}</option>
+              {/each}
+            </select>
+          </label>
           <div class="add-form-actions">
             <button type="button" class="ghost" on:click={cancelAdd}>Cancel</button>
             <button type="submit" disabled={addingFeed || !newFeedURL.trim()} data-testid="add-feed-submit">
@@ -1098,7 +1296,10 @@
     {/if}
 
     {#each $boards as b (b.id)}
-      <div class="feed-row board-row">
+      <!-- The extra right padding is conditional because .board-row is shared
+           with the saved-search rows, which have only the one trailing
+           control and would otherwise lose label width for nothing. -->
+      <div class="feed-row board-row" class:board-row-wide={$summariesEnabled}>
         <button
           class="nav-item board-item"
           class:active={isActiveBoard(b.id)}
@@ -1110,6 +1311,23 @@
           </span>
           <span class="ni-label">{b.name}</span>
         </button>
+        <!-- Only meaningful while summaries exist at all: with them off,
+             pinning triggers nothing to opt out of. Same guard as the per-feed
+             entries; the stored flag is untouched and the control comes back
+             when summaries are re-enabled. -->
+        {#if $summariesEnabled}
+          <button
+            class="board-summarize"
+            class:off={!b.summarize}
+            on:click={() => toggleBoardSummarize(b)}
+            aria-pressed={b.summarize}
+            aria-label="Summarize what I pin here"
+            title={b.summarize ? "Summarize what I pin here" : "Don't summarize what I pin here"}
+            data-testid="board-summarize-{b.id}"
+          >
+            ✨
+          </button>
+        {/if}
         <button
           class="board-delete"
           on:click={() => deleteBoard(b.id, b.name)}
@@ -1128,8 +1346,11 @@
        .rail-scroll) so it stays visible regardless of scroll position.
        Shown only while the poller's summary worker has articles to chew
        through. Updates piggyback on refreshSidebar() (login, polling tick,
-       navigation refresh) so the count stays roughly live. -->
-  {#if $smartCounts.pending_summary > 0}
+       navigation refresh) so the count stays roughly live. Gated on
+       summariesEnabled like the Resummarize action above: with no summarizer
+       wired up the pending tally is just "articles nothing ever stamped" and
+       no worker exists to drain it, so the indicator would never clear. -->
+  {#if $summariesEnabled && $smartCounts.pending_summary > 0}
     <div class="summarizing" data-testid="sidebar-summarizing">
       <span class="summarizing-dot" aria-hidden="true"></span>
       <span class="summarizing-label">
@@ -1515,6 +1736,43 @@
   .feed-menu button:hover { background: var(--line-soft); }
   .feed-menu button.danger { color: #b91c1c; }
   .feed-menu button.danger:hover { background: #fef2f2; }
+  /* Folder list swapped in for the menu, same anchor — mirrors the folder
+     colour picker. Capped so a long folder list scrolls instead of running off
+     the bottom of the rail. */
+  .feed-move-menu {
+    position: absolute;
+    right: 4px;
+    top: calc(100% + 2px);
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: var(--shadow-pane);
+    padding: 4px;
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 150px;
+    max-height: 244px;
+    overflow-y: auto;
+  }
+  .feed-move-menu button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--ink);
+    text-align: left;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .feed-move-menu button:hover { background: var(--line-soft); }
+  .feed-move-menu button.current { color: var(--ember); font-weight: 600; }
+  .feed-move-menu .tick { width: 10px; flex: none; font-size: 10px; }
   .favicon {
     width: 18px;
     height: 18px;
@@ -1558,6 +1816,24 @@
     color: var(--ink);
   }
   .add-form input:focus { outline: none; border-color: var(--ember); }
+  .add-form-folder { display: flex; align-items: center; gap: 8px; }
+  .add-form-folder span {
+    color: var(--ink-faint);
+    font-size: 11.5px;
+    font-weight: 600;
+  }
+  .add-form-folder select {
+    flex: 1;
+    min-width: 0;
+    padding: 6px 8px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-family: var(--font-ui);
+    font-size: 12.5px;
+    background: var(--card);
+    color: var(--ink);
+  }
+  .add-form-folder select:focus { outline: none; border-color: var(--ember); }
   .add-form-actions { display: flex; gap: 6px; justify-content: flex-end; }
   .add-form-actions button {
     padding: 5px 11px;
@@ -1609,6 +1885,29 @@
   }
   .board-row:hover .board-delete { opacity: 1; }
   .board-delete:hover { background: var(--line); color: #b91c1c; }
+  .board-row-wide { padding-right: 48px; }
+  .board-summarize {
+    position: absolute;
+    right: 26px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    background: transparent;
+    border: none;
+    opacity: 0;
+    cursor: pointer;
+    line-height: 1;
+    font-size: 11px;
+  }
+  .board-row:hover .board-summarize { opacity: 0.75; }
+  .board-summarize:hover { background: var(--line); opacity: 1; }
+  /* An opted-out board shows its state without waiting for a hover: the
+     difference matters exactly when someone is wondering why pinning here
+     stopped producing summaries. */
+  .board-summarize.off { opacity: 0.45; filter: grayscale(1); }
+  .board-row:hover .board-summarize.off { opacity: 0.8; }
 
   /* Summarizer status footer. Sits OUTSIDE .rail-scroll so it stays
      pinned to the bottom of the rail viewport regardless of scroll

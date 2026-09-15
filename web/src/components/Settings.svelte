@@ -13,12 +13,18 @@
     branding,
     refreshBranding,
   } from "../lib/stores";
-  import { api, ApiError, type StarterPack, type StarterImportResult, type LLMStatus, type DBStatus, type UserStats, type UserDigest, type PasskeySummary } from "../lib/api";
+  import { api, ApiError, type StarterPack, type StarterImportResult, type LLMStatus, type LLMBackend, type DBStatus, type UserStats, type UserDigest, type PasskeySummary } from "../lib/api";
   import type { PushSubscriptionSummary, EmailInbox } from "../lib/types";
   import { createPasskey, passkeySupported } from "../lib/passkey";
-  import { enablePush, pushSupported } from "../lib/push";
+  import {
+    enablePush,
+    disablePush,
+    pushSupported,
+    pushSubscribedHere,
+    storedPushSubID,
+  } from "../lib/push";
   import { onMount } from "svelte";
-  import { refreshSidebar, loadArticles, activeView } from "../lib/stores";
+  import { refreshSidebar, loadArticles, activeView, smartCounts, refreshSmartCounts } from "../lib/stores";
   import { DEMO, notifyDemoBlocked } from "../demo/demo";
   import FilterManager from "./FilterManager.svelte";
   import ConfirmDialog from "./ConfirmDialog.svelte";
@@ -557,18 +563,100 @@
   let llmBusy = $state<string>(""); // active action: "switch:<model>", "pull:<model>", etc.
   let pullInput = $state<string>("");
 
+  // Backend selection (#200). backendKey is write-only in both directions: the
+  // server answers with api_key_set and never the value, so this field starts
+  // empty on every load and an empty value on save means "keep the stored key".
+  // Anything else would round-trip a paid credential through the browser.
+  let backend = $state<LLMBackend>("ollama");
+  let backendBaseURL = $state<string>("");
+  let backendKey = $state<string>("");
+  let backendModel = $state<string>("");
+  let apiKeySet = $state(false);
+  let backendBusy = $state(false);
+
+  // syncBackendFromLLM pulls the saved backend into the form. Called after
+  // every load so a save from another admin's session is reflected.
+  function syncBackendFromLLM() {
+    if (!llm) return;
+    backend = llm.backend ?? "ollama";
+    backendBaseURL = llm.base_url ?? "";
+    backendModel = llm.model ?? "";
+    apiKeySet = llm.api_key_set ?? false;
+    backendKey = "";
+  }
+
+  // pickBackend changes the selection and drops the endpoint and model with it.
+  // Those two inputs are hidden on the Ollama backend, so carrying a hosted
+  // provider's values across the switch would submit values the admin cannot
+  // see or correct. The server blanks them for Ollama regardless — this only
+  // keeps the form honest about what Save will send.
+  function pickBackend(next: LLMBackend) {
+    if (next === backend) return;
+    backend = next;
+    backendBaseURL = "";
+    backendModel = "";
+  }
+
+  async function saveBackend(clearKey = false) {
+    if (DEMO) { notifyDemoBlocked(); return; }
+    backendBusy = true;
+    llmMsg = "";
+    llmErr = "";
+    try {
+      await api.setLLMBackend({
+        backend,
+        base_url: backendBaseURL,
+        api_key: backendKey,
+        clear_api_key: clearKey,
+        model: backendModel,
+      });
+      // Not "key removed": clearing erases the stored override, and
+      // ResolveBackendSettings then falls back to EMBER_SUMMARY_API_KEY. When
+      // one is set in the environment a key is still in force afterwards, and
+      // api_key_set correctly stays true — the message must not claim otherwise.
+      llmMsg = clearKey ? "Stored key cleared — any EMBER_SUMMARY_API_KEY still applies" : "Saved";
+      await loadLLM();
+      // summaries_enabled reads back false while no usable backend is wired
+      // up, so the Summaries card has to be refreshed alongside this one.
+      await loadSummaryGrace();
+    } catch (e) {
+      llmErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      backendBusy = false;
+      setTimeout(() => (llmMsg = ""), 3000);
+    }
+  }
+
   // Summary grace window (admin). Lives in app_settings, not the LLM status
   // endpoint, so it is fetched alongside it.
   let summaryGrace = $state(120);
   let summaryGraceFloor = $state(0);
   let summaryGraceCeil = $state(3600);
   let summaryGraceBusy = $state(false);
+  let summaryTimeout = $state(90);
+  let summaryTimeoutFloor = $state(10);
+  let summaryTimeoutCeil = $state(900);
+  let summaryTimeoutBusy = $state(false);
+  // Server-wide summaries on/off (#198). Also lives in app_settings, fetched
+  // alongside the grace/timeout settings.
+  let summariesEnabled = $state(true);
+  let summariesBusy = $state(false);
+  // Server-wide summarization mode (#199): "all" or "on_demand". Never "" —
+  // that is the per-feed "no opinion" value, which resolves through to this.
+  let summarizeMode = $state("all");
+  let summarizeModeBusy = $state(false);
+  let queueBusy = $state(""); // active queue action: "drain", "requeue", or ""
   async function loadSummaryGrace() {
     try {
       const res = await api.getAdminSettings();
       summaryGrace = res.data.summary_grace_seconds;
       summaryGraceFloor = res.data.summary_grace_seconds_floor;
       summaryGraceCeil = res.data.summary_grace_seconds_ceil;
+      summaryTimeout = res.data.summary_timeout_seconds;
+      summaryTimeoutFloor = res.data.summary_timeout_seconds_floor;
+      summaryTimeoutCeil = res.data.summary_timeout_seconds_ceil;
+      summariesEnabled = res.data.summaries_enabled;
+      summarizeMode = res.data.summarize_mode;
     } catch (e) {
       llmErr = e instanceof ApiError ? e.message : String(e);
     }
@@ -589,12 +677,101 @@
       setTimeout(() => (llmMsg = ""), 3000);
     }
   }
+  async function saveSummaryTimeout() {
+    if (DEMO) { notifyDemoBlocked(); return; }
+    summaryTimeoutBusy = true;
+    llmMsg = "";
+    llmErr = "";
+    try {
+      const res = await api.setAdminSettings({ summary_timeout_seconds: Number(summaryTimeout) });
+      summaryTimeout = res.data.summary_timeout_seconds;
+      llmMsg = "Saved";
+    } catch (e) {
+      llmErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      summaryTimeoutBusy = false;
+      setTimeout(() => (llmMsg = ""), 3000);
+    }
+  }
+
+  // Summaries on/off (#198). Turning it off drains the pending queue
+  // server-side; turning it back on re-queues exactly those articles. Refresh
+  // smartCounts after so the sidebar's "Summarizing N…" indicator moves.
+  async function setSummaries(on: boolean) {
+    if (DEMO) { notifyDemoBlocked(); return; }
+    summariesBusy = true;
+    llmMsg = "";
+    llmErr = "";
+    try {
+      const res = await api.setAdminSettings({ summaries_enabled: on });
+      summariesEnabled = res.data.summaries_enabled;
+      await refreshSmartCounts();
+    } catch (e) {
+      llmErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      summariesBusy = false;
+    }
+  }
+
+  // Server-wide summarization mode (#199). Switching to on-demand leaves
+  // already-queued articles alone — it only changes what the poller does with
+  // the next batch — so there is nothing to drain or re-queue here; the
+  // per-feed switch to "every article" is the one that backfills.
+  async function setMode(mode: string) {
+    if (DEMO) { notifyDemoBlocked(); return; }
+    summarizeModeBusy = true;
+    llmMsg = "";
+    llmErr = "";
+    try {
+      const res = await api.setAdminSettings({ summarize_mode: mode });
+      summarizeMode = res.data.summarize_mode;
+    } catch (e) {
+      llmErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      summarizeModeBusy = false;
+    }
+  }
+
+  async function drainQueue() {
+    if (DEMO) { notifyDemoBlocked(); return; }
+    queueBusy = "drain";
+    llmMsg = "";
+    llmErr = "";
+    try {
+      const res = await api.drainSummaryQueue();
+      llmMsg = `Drained ${res.data.drained}`;
+      await refreshSmartCounts();
+    } catch (e) {
+      llmErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      queueBusy = "";
+      setTimeout(() => (llmMsg = ""), 3000);
+    }
+  }
+
+  async function requeue() {
+    if (DEMO) { notifyDemoBlocked(); return; }
+    queueBusy = "requeue";
+    llmMsg = "";
+    llmErr = "";
+    try {
+      const res = await api.requeueSummaries();
+      llmMsg = `Requeued ${res.data.enqueued}`;
+      await refreshSmartCounts();
+    } catch (e) {
+      llmErr = e instanceof ApiError ? e.message : String(e);
+    } finally {
+      queueBusy = "";
+      setTimeout(() => (llmMsg = ""), 3000);
+    }
+  }
 
   async function loadLLM() {
     llmErr = "";
     try {
       const res = await api.getLLMStatus();
       llm = res.data;
+      syncBackendFromLLM();
       if (!pullInput && llm?.recommended?.model) {
         pullInput = llm.recommended.model;
       }
@@ -750,6 +927,9 @@
   let pushErr = $state("");
   let pushMsg = $state("");
   let pushBusy = $state(false);
+  // Whether THIS browser is subscribed, which is separate from the account
+  // having registered devices — those may all be other browsers.
+  let pushHere = $state(false);
   async function loadPushSubs() {
     pushErr = "";
     try {
@@ -758,6 +938,7 @@
     } catch (e) {
       pushErr = e instanceof ApiError ? e.message : String(e);
     }
+    pushHere = await pushSubscribedHere();
   }
   async function onEnablePush() {
     if (DEMO) { notifyDemoBlocked(); return; }
@@ -775,9 +956,30 @@
       setTimeout(() => (pushMsg = ""), 3500);
     }
   }
+  async function onDisablePush() {
+    if (DEMO) { notifyDemoBlocked(); return; }
+    pushErr = "";
+    pushMsg = "";
+    pushBusy = true;
+    try {
+      const serverCleared = await disablePush();
+      pushMsg = serverCleared
+        ? "Notifications turned off on this device."
+        : "This device is unsubscribed. Its entry below was registered before, so revoke it by hand.";
+    } catch (e) {
+      pushErr = e instanceof Error ? e.message : String(e);
+    } finally {
+      pushBusy = false;
+      await loadPushSubs();
+      setTimeout(() => (pushMsg = ""), 5000);
+    }
+  }
   async function onDeletePushSub(id: number) {
     try {
       await api.pushUnsubscribe(id);
+      // Revoking this browser's own row should also stop it holding a live
+      // subscription, otherwise the device stays subscribed to nothing.
+      if (pushHere && id === storedPushSubID()) await disablePush();
       await loadPushSubs();
     } catch (e) {
       pushErr = e instanceof ApiError ? e.message : String(e);
@@ -1543,11 +1745,21 @@
               <div class="pref-row">
                 <div>
                   <div class="pref-label">This device</div>
-                  <div class="pref-hint">Enable push so new-article reminders reach you here.</div>
+                  <div class="pref-hint">
+                    {pushHere
+                      ? "Push is on here. Turning it off unsubscribes this browser and removes it from the list below."
+                      : "Enable push so new-article reminders reach you here."}
+                  </div>
                 </div>
-                <button class="pack-btn" on:click={onEnablePush} disabled={pushBusy} data-testid="push-enable">
-                  {pushBusy ? "Enabling…" : "Enable"}
-                </button>
+                {#if pushHere}
+                  <button class="ghost" on:click={onDisablePush} disabled={pushBusy} data-testid="push-disable">
+                    {pushBusy ? "Turning off…" : "Turn off"}
+                  </button>
+                {:else}
+                  <button class="pack-btn" on:click={onEnablePush} disabled={pushBusy} data-testid="push-enable">
+                    {pushBusy ? "Enabling…" : "Enable"}
+                  </button>
+                {/if}
               </div>
               <div class="pref-row">
                 <div>
@@ -1657,7 +1869,7 @@
           <div class="pref-row">
             <div>
               <div class="pref-label">AI summary card</div>
-              <div class="pref-hint">When off, the article body is shown directly with no summary card.</div>
+              <div class="pref-hint">When off, the article body is shown directly with no summary card. This only changes what you see — summaries keep being generated. To stop generating them for everyone, use <strong>Language model → Summaries</strong>.</div>
             </div>
             <div class="seg">
               <button class:on={$showSummary} on:click={() => showSummary.set(true)} data-testid="pref-summary-on">On</button>
@@ -1922,16 +2134,127 @@
           <p class="hint">Switch models or pull new ones from Ollama. The recommendation matches your host.</p>
           {#if llmErr}<p class="error" data-testid="llm-error">{llmErr}</p>{/if}
           {#if llmMsg}<p class="ok" data-testid="llm-msg">{llmMsg}</p>{/if}
+
+          <div class="card">
+            <div class="card-head"><h4>Summaries</h4></div>
+            <label class="pref-row">
+              <div>
+                <div class="pref-label">Summarize articles</div>
+                <div class="pref-hint">Off stops all inference and makes every article waiting on a summary readable straight away. Turning it back on re-queues exactly those articles. This is a server-wide setting and it survives a restart — it is not the same as <strong>Reading → AI summary card</strong>, which only hides the card for you.</div>
+              </div>
+              <div class="seg">
+                <button class:on={summariesEnabled} on:click={() => setSummaries(true)} disabled={summariesBusy} data-testid="summaries-on">On</button>
+                <button class:on={!summariesEnabled} on:click={() => setSummaries(false)} disabled={summariesBusy} data-testid="summaries-off">Off</button>
+              </div>
+            </label>
+            <label class="pref-row">
+              <div>
+                <div class="pref-label">Summarize</div>
+                <div class="pref-hint">Every article, or only the ones you mark. On-demand summarizes an article when you star it, save it for later, or pin it to a board — the same signals that keep an article past the retention window. Most articles in a mixed feed are skimmed, and a summary of one you never open costs inference, tokens or quota for nothing. Individual feeds can override this in their <strong>⋯</strong> menu.</div>
+              </div>
+              <div class="seg">
+                <button class:on={summarizeMode === "all"} on:click={() => setMode("all")} disabled={summarizeModeBusy} data-testid="mode-all">Every article</button>
+                <button class:on={summarizeMode === "on_demand"} on:click={() => setMode("on_demand")} disabled={summarizeModeBusy} data-testid="mode-on-demand">When I mark it</button>
+              </div>
+            </label>
+          </div>
+
+          {#if summariesEnabled}
+          <div class="card">
+            <div class="card-head">
+              <h4>Summarization queue</h4>
+              <p>{$smartCounts.pending_summary} article{$smartCounts.pending_summary === 1 ? "" : "s"} waiting.</p>
+            </div>
+            <div class="actions" style="justify-content:flex-start">
+              <button class="ghost-btn" on:click={drainQueue} disabled={queueBusy !== ""} data-testid="summaries-drain">
+                {queueBusy === "drain" ? "Draining…" : "Drain queue"}
+              </button>
+              <button class="ghost-btn" on:click={requeue} disabled={queueBusy !== ""} data-testid="summaries-requeue">
+                {queueBusy === "requeue" ? "Requeueing…" : "Requeue drained articles"}
+              </button>
+            </div>
+            <p class="pref-hint">Draining marks every waiting article as finished-without-a-summary, so it appears in your lists now. Nothing is deleted — requeueing puts those same articles back in line.</p>
+          </div>
+          {/if}
+
           {#if !llm}
             <p class="muted">Loading…</p>
-          {:else if !llm.enabled}
-            <p class="muted">Summaries are disabled on this server (EMBER_DISABLE_SUMMARIES=1).</p>
           {:else}
-            <div class="callout ember">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9h6v6H9z"/></svg>
-              <div>Admin-only. Summaries run locally — nothing leaves your server.</div>
+            <!-- The Backend card sits outside the `enabled` gate on purpose:
+                 when no usable backend is configured it is the only way out of
+                 that state, so hiding it would strand the admin. -->
+            <div class="card">
+              <div class="card-head">
+                <h4>Backend</h4>
+                <p>Where summaries are generated. Ollama runs on your own hardware; the other two send article text to whichever endpoint you point them at — a hosted provider, or a server you run yourself.</p>
+              </div>
+              <div class="seg" aria-label="Summarization backend">
+                <button class:on={backend === "ollama"} on:click={() => pickBackend("ollama")} data-testid="backend-ollama">Ollama</button>
+                <button class:on={backend === "openai"} on:click={() => pickBackend("openai")} data-testid="backend-openai">OpenAI-compatible</button>
+                <button class:on={backend === "anthropic"} on:click={() => pickBackend("anthropic")} data-testid="backend-anthropic">Claude</button>
+              </div>
+
+              {#if backend !== "ollama"}
+                <div class="callout">
+                  Article text is sent to this provider. Summaries stop being a local-only feature.
+                </div>
+              {/if}
+
+              {#if backend === "openai"}
+                <label class="pref-row">
+                  <div><div class="pref-label">Base URL</div>
+                  <div class="pref-hint">The endpoint root, with or without the <code>/v1</code> segment — e.g. <code>https://api.groq.com/openai/v1</code>, <code>https://openrouter.ai/api/v1</code>, or a local <code>http://vllm:8000</code>.</div></div>
+                  <input class="row-input" type="url" bind:value={backendBaseURL} data-testid="backend-base-url" />
+                </label>
+              {/if}
+
+              {#if backend !== "ollama"}
+                <label class="pref-row">
+                  <div><div class="pref-label">API key</div>
+                  <div class="pref-hint">{apiKeySet ? "A key is stored. Leave blank to keep it." : "Required."} Self-hosted servers that take no key can leave this empty.</div></div>
+                  <input class="row-input" type="password" autocomplete="off" bind:value={backendKey} data-testid="backend-api-key" />
+                </label>
+                <label class="pref-row">
+                  <div><div class="pref-label">Model</div>
+                  <div class="pref-hint">{backend === "anthropic" ? "e.g. claude-opus-5." : "The provider's model id."} Free text — providers add models faster than Ember ships releases.</div></div>
+                  <input class="row-input" type="text" bind:value={backendModel} data-testid="backend-model" />
+                </label>
+              {/if}
+
+              <div class="actions">
+                {#if apiKeySet}
+                  <button class="ghost-btn" on:click={() => saveBackend(true)} disabled={backendBusy} data-testid="backend-forget-key">
+                    Clear stored key
+                  </button>
+                {/if}
+                <button on:click={() => saveBackend()} disabled={backendBusy} data-testid="backend-save">
+                  {backendBusy ? "Saving…" : "Save"}
+                </button>
+              </div>
             </div>
 
+            {#if !llm.enabled}
+              <p class="muted" data-testid="llm-unconfigured">
+                No summarization backend is configured yet — finish filling in the card above.
+                {#if backend === "ollama"}Ollama needs <code>EMBER_OLLAMA_URL</code> and a model.{/if}
+              </p>
+            {:else}
+            <div class="callout ember">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9h6v6H9z"/></svg>
+              <div>
+                {#if llm.backend === "ollama"}
+                  Admin-only. Summaries run locally — nothing leaves your server.
+                {:else}
+                  Admin-only. Article text is sent to your chosen provider — summaries are no longer local-only.
+                {/if}
+              </div>
+            </div>
+
+            {#if summariesEnabled}
+            <!-- Also gated on summariesEnabled, not just a configured backend:
+                 both the grace window and the give-up timeout bound how long
+                 an article waits for a summary, which is meaningless once
+                 summaries are switched off — even with a backend configured. -->
             <div class="card">
               <div class="card-head"><h4>Article visibility</h4></div>
               <label class="pref-row">
@@ -1950,8 +2273,29 @@
                   {summaryGraceBusy ? "Saving…" : "Save"}
                 </button>
               </div>
+              <label class="pref-row">
+                <div>
+                  <div class="pref-label">Give up on a summary after</div>
+                  <div class="pref-hint">How long one article's summary may take before Ember abandons it and shows the article without one. Raise it for CPU-only inference or a slow hosted model; the request is abandoned once, not retried, so a long limit costs waiting rather than repeated work. Range {summaryTimeoutFloor}–{summaryTimeoutCeil}.</div>
+                </div>
+                <div class="row-ctl">
+                  <input class="row-input num" type="number" min={summaryTimeoutFloor} max={summaryTimeoutCeil}
+                    bind:value={summaryTimeout} data-testid="summary-timeout" />
+                  <span class="pref-hint">seconds</span>
+                </div>
+              </label>
+              <div class="actions">
+                <button on:click={saveSummaryTimeout} disabled={summaryTimeoutBusy} data-testid="summary-timeout-save">
+                  {summaryTimeoutBusy ? "Saving…" : "Save"}
+                </button>
+              </div>
             </div>
+            {/if}
 
+            <!-- Everything below is Ollama-only: the host recommendation, the
+                 local model cache (pull/delete/switch) and /api/generate's
+                 tuning options have no equivalent on a hosted provider. -->
+            {#if llm.backend === "ollama"}
             <div class="card">
               <div class="card-head"><h4>This host</h4></div>
               <dl class="kv" style="padding: 14px 0;">
@@ -2076,6 +2420,8 @@
                 </button>
               </div>
             </div>
+            {/if}
+            {/if}
           {/if}
         {/if}
 
@@ -3031,6 +3377,9 @@
     font-size: 12.5px;
     font-weight: 600;
     cursor: pointer;
+    /* These sit at the end of a flex row opposite a long hint, so without
+       this a two-word label ("Turn off") breaks across lines. */
+    white-space: nowrap;
   }
   .ghost:hover:not(:disabled) { background: var(--line-soft); }
   .ghost:disabled { opacity: 0.5; cursor: not-allowed; }

@@ -7,7 +7,7 @@ export default defineConfig({
   base: '/',
   lang: 'en-US',
   title: 'Ember',
-  description: 'Self-hosted RSS reader with on-device AI summaries.',
+  description: 'Self-hosted RSS reader with local-first AI summaries.',
   head: [
     // Self-adaptive favicon: the SVG contains its own
     // prefers-color-scheme <style> rules so a single <link> tag works in
@@ -17,7 +17,7 @@ export default defineConfig({
     ['meta', { name: 'theme-color', content: '#a93b16' }],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:title', content: 'Ember' }],
-    ['meta', { property: 'og:description', content: 'Self-hosted RSS reader with on-device AI summaries.' }],
+    ['meta', { property: 'og:description', content: 'Self-hosted RSS reader with local-first AI summaries.' }],
     // og:image/twitter:image must be ABSOLUTE URLs — social scrapers don't
     // resolve relative paths. social-preview.png lives in docs/public/ and is
     // copied to the site root on build.
@@ -26,7 +26,7 @@ export default defineConfig({
     ['meta', { property: 'og:site_name', content: 'Ember' }],
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
     ['meta', { name: 'twitter:title', content: 'Ember' }],
-    ['meta', { name: 'twitter:description', content: 'Self-hosted RSS reader with on-device AI summaries.' }],
+    ['meta', { name: 'twitter:description', content: 'Self-hosted RSS reader with local-first AI summaries.' }],
     ['meta', { name: 'twitter:image', content: 'https://ember-rss.com/social-preview.png' }],
   ],
   cleanUrls: true,
@@ -54,21 +54,22 @@ export default defineConfig({
           { text: 'Introduction', link: '/' },
           { text: 'Getting started', link: '/getting-started' },
           { text: 'Configuration', link: '/configuration' },
+          { text: 'Summarization', link: '/summarization' },
           { text: 'Hardening Caddy', link: '/caddy-hardening' },
           { text: 'Upgrading', link: '/upgrading' },
         ],
       },
-      // Features section hidden until these ship in a release — Web Push
-      // and the email newsletter inbox are still in development. The
-      // notifications.md / email-inbox.md pages stay in the repo, just
-      // unlinked from the sidebar. Re-enable when they land in a tagged release.
-      // {
-      //   text: 'Features',
-      //   items: [
-      //     { text: 'Notifications', link: '/notifications' },
-      //     { text: 'Email inbox', link: '/email-inbox' },
-      //   ],
-      // },
+      // Both shipped, so both are linked. Every docs/*.md is published
+      // regardless (there is no srcExclude), so leaving a page unlinked hides
+      // it from the sidebar without hiding it from search — which is how the
+      // notifications page sat stale and reachable for several releases.
+      {
+        text: 'Features',
+        items: [
+          { text: 'Notifications', link: '/notifications' },
+          { text: 'Email inbox', link: '/email-inbox' },
+        ],
+      },
       {
         text: 'Reference',
         items: [

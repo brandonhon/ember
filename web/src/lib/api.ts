@@ -128,6 +128,10 @@ export const api = {
       clear_category?: boolean;
       muted?: boolean;
       summarize?: boolean;
+      // WHEN this feed's articles get summarized, as opposed to `summarize`'s
+      // WHETHER: "" follows the server-wide setting, "all" summarizes every
+      // article, "on_demand" waits for a star, read-later, or board pin.
+      summarize_mode?: string;
       url?: string;
     },
   ) => call<unknown>("PATCH", `/api/feeds/${id}`, req),
@@ -265,6 +269,11 @@ export const api = {
   // Boards ------------------------------------------------------------
   listBoards: () => call<Board[]>("GET", "/api/boards"),
   createBoard: (name: string) => call<Board>("POST", "/api/boards", { name }),
+  // `summarize` controls whether pinning an article here asks for a summary
+  // under on-demand mode — a board used for filing rather than reading should
+  // not spend inference just because something landed in it.
+  updateBoard: (id: number, patch: { summarize?: boolean }) =>
+    call<Board>("PATCH", `/api/boards/${id}`, patch),
   deleteBoard: (id: number) => call<unknown>("DELETE", `/api/boards/${id}`),
   addToBoard: (boardId: number, articleId: number) =>
     call<unknown>("POST", `/api/boards/${boardId}/articles`, { article_id: articleId }),
@@ -327,6 +336,18 @@ export const api = {
     call<{ model: string }>("POST", "/api/admin/llm/delete", { model }),
   setLLMOptions: (opts: LLMOptions) =>
     call<LLMOptions>("POST", "/api/admin/llm/options", opts),
+  // Backend, endpoint, credential and model change together — they are only
+  // meaningful as a set. The key is write-only: the server answers with
+  // api_key_set, never the value, so there is nothing to send back on a
+  // subsequent save unless the admin types a new one.
+  setLLMBackend: (req: LLMBackendUpdate) =>
+    call<LLMBackendResult>("POST", "/api/admin/llm/backend", req),
+
+  // Summarization queue admin ---------------------------------------
+  drainSummaryQueue: () =>
+    call<{ drained: number }>("POST", "/api/admin/summaries/drain"),
+  requeueSummaries: () =>
+    call<{ reset: number; enqueued: number }>("POST", "/api/admin/summaries/requeue"),
 
   // Branding ---------------------------------------------------------
   getBranding: () => call<BrandingDTO>("GET", "/api/branding"),
@@ -518,6 +539,15 @@ export interface AdminSettings {
   summary_grace_seconds_floor: number;
   summary_grace_seconds_ceil: number;
   summaries_enabled: boolean;
+  // How long one summarization request may run before it's abandoned, with the
+  // bounds the UI constrains its input to.
+  summary_timeout_seconds: number;
+  summary_timeout_seconds_floor: number;
+  summary_timeout_seconds_ceil: number;
+  // Server-wide default for WHEN articles get summarized: "all" as they
+  // arrive, "on_demand" only once a reader stars, saves, or pins one. Never
+  // "" — that is a per-feed "no opinion" which resolves through to this.
+  summarize_mode: string;
 }
 
 // AdminSettingsPatch mirrors the backend's pointer-bag: only fields included
@@ -539,6 +569,9 @@ export interface AdminSettingsPatch {
   update_check_enabled?: boolean;
   passkey_require_uv?: boolean;
   summary_grace_seconds?: number;
+  summary_timeout_seconds?: number;
+  summaries_enabled?: boolean;
+  summarize_mode?: string;
 }
 
 export interface TopFeed {
@@ -622,14 +655,38 @@ export interface LLMOptions {
   top_p: number;
   num_ctx: number;
 }
+// The three summarization transports. "openai" is any endpoint speaking
+// /v1/chat/completions — OpenAI, OpenRouter, Groq, Mistral, vLLM, llama.cpp,
+// LiteLLM — not OpenAI specifically.
+export type LLMBackend = "ollama" | "openai" | "anthropic";
 export interface LLMStatus {
   current_model: string;
   enabled: boolean;
+  backend: LLMBackend;
+  base_url: string;
+  // Whether a key is stored. The key itself is never sent to the browser.
+  api_key_set: boolean;
+  model: string;
   system: LLMSystemInfo;
   recommended: LLMRecommendation;
   installed?: LLMInstalledModel[];
   installed_err?: string;
   options: LLMOptions;
+}
+export interface LLMBackendUpdate {
+  backend: LLMBackend;
+  base_url?: string;
+  // Omit or leave empty to keep the stored key; clear_api_key erases it.
+  api_key?: string;
+  clear_api_key?: boolean;
+  model?: string;
+}
+export interface LLMBackendResult {
+  backend: LLMBackend;
+  base_url: string;
+  api_key_set: boolean;
+  model: string;
+  enabled: boolean;
 }
 
 export interface StarterPack {

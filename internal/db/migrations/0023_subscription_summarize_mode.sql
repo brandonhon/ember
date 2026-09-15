@@ -1,0 +1,25 @@
+-- +goose Up
+-- +goose StatementBegin
+-- Per-subscription summarization mode (issue #199). Complements `summarize`
+-- (0022), which is the hard opt-out and still wins:
+--
+--   summarize = 0            never summarize this feed
+--   summarize_mode = ''      inherit the server-wide summarize_mode setting
+--   summarize_mode = 'all'   summarize every article from this feed
+--   summarize_mode = 'on_demand'
+--                            summarize only articles the reader stars, saves
+--                            for later, or pins to a board
+--
+-- DEFAULT '' (inherit) so every existing subscription keeps today's behaviour
+-- and a later change to the server-wide default reaches them.
+--
+-- No index: subscriptions already has UNIQUE(user_id, feed_id) and idx_subs_feed
+-- from 0001_init.sql, which serve the only lookup this column needs — "what mode
+-- do this feed's subscribers want".
+ALTER TABLE subscriptions ADD COLUMN summarize_mode TEXT NOT NULL DEFAULT '';
+-- +goose StatementEnd
+
+-- +goose Down
+-- +goose StatementBegin
+-- SQLite < 3.35 cannot DROP COLUMN; no-op the down, same as 0022.
+-- +goose StatementEnd

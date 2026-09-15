@@ -53,6 +53,8 @@ func mkPoller(t *testing.T, ff Fetcher) *Poller {
 	return New(st, ff, summarize.Noop{}, Config{
 		Tick:        time.Millisecond,
 		Concurrency: 2,
+		// Production default: EMBER_DISABLE_SUMMARIES unset, no admin override.
+		SummariesEnabledFallback: true,
 	}, lg)
 }
 
@@ -582,5 +584,51 @@ func TestPoller_SummaryWorkerPersistsSummary(t *testing.T) {
 	if rowCount == 0 {
 		t.Fatalf("no summary rows persisted; SummariesTotal=%d Errored=%d",
 			p.Metrics.SummariesTotal.Load(), p.Metrics.SummariesErrored.Load())
+	}
+}
+
+// With no summarizer, ingest stamps each new article 'disabled' using the poll
+// context — so a SIGTERM between the INSERT and the stamp strands the row at
+// NULL, and nothing retries it. Run must heal those rows at startup, the same
+// way the summary-queue backfill does when a summarizer IS configured.
+func TestPoller_RunHealsStrandedArticlesWhenSummariesDisabled(t *testing.T) {
+	st := store.NewTest(t)
+	lg := slog.New(slog.NewTextHandler(io.Discard, nil))
+	p := New(st, &fakeFetcher{notModified: true}, nil, Config{
+		Tick: time.Hour, Concurrency: 1,
+	}, lg)
+	f := seedFeed(t, st)
+	stranded, _, err := st.UpsertArticle(context.Background(), models.Article{
+		FeedID: f.ID, GUID: "stranded", Title: "stranded",
+		URL: "https://x.test/stranded", ContentText: "body", ContentHash: "h1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan struct{})
+	go func() {
+		p.Run(ctx)
+		close(done)
+	}()
+
+	var got string
+	for deadline := time.Now().Add(3 * time.Second); time.Now().Before(deadline); {
+		a, err := st.GetArticle(context.Background(), stranded.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got = a.SummaryModel; got != "" {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	cancel()
+	<-done
+
+	if got != "disabled" {
+		t.Errorf("summary_model = %q, want %q", got, "disabled")
 	}
 }

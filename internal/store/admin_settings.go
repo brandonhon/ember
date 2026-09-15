@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"strings"
 	"time"
@@ -49,19 +50,70 @@ const (
 	// override it at runtime via Settings.
 	keyUpdateCheckEnabled = "update_check_enabled"
 
+	// Whether AI summarization runs at all. EMBER_DISABLE_SUMMARIES sets the
+	// boot-time default (negated); an admin can override it at runtime in
+	// Settings and the choice survives a restart (issue #198).
+	keySummariesEnabled = "summaries_enabled"
+
+	// Which summarization backend is active and how to reach it. The API key
+	// is stored here rather than only in an env var so it can be rotated from
+	// the UI; it is NEVER echoed back to the SPA (the API sends api_key_set
+	// instead), matching how the SMTP password is handled.
+	keySummarizeBackend = "summarize_backend"
+	keySummarizeBaseURL = "summarize_base_url"
+	keySummarizeAPIKey  = "summarize_api_key"
+	keySummarizeModel   = "summarize_model"
+
+	// BackendOllama talks Ollama's native /api/generate and is the default: it
+	// is what every existing install already uses, and it keeps model pull and
+	// delete, which have no equivalent elsewhere.
+	BackendOllama = "ollama"
+	// BackendOpenAI talks /v1/chat/completions to any compatible endpoint.
+	BackendOpenAI = "openai"
+	// BackendAnthropic talks Anthropic's Messages API.
+	BackendAnthropic = "anthropic"
+
 	// Whether passkey sign-in demands user verification (PIN/biometric) rather
 	// than merely preferring it. EMBER_PASSKEY_REQUIRE_UV sets the boot-time
 	// default; an admin can override it at runtime via Settings.
 	keyPasskeyRequireUV = "passkey_require_uv"
 
 	// How long an article may stay hidden waiting for its AI summary before it
-	// is shown anyway. EMBER_SUMMARY_GRACE sets the boot-time default; admins
+	// is shown anyway. EMBER_SUMMARY_GRACE_SECONDS sets the boot-time default; admins
 	// tune it live in Settings. 0 disables the wait (articles appear as soon as
 	// they are fetched); the ceiling stops a typo from hiding a feed for a day.
 	keySummaryGraceSeconds     = "summary_grace_seconds"
 	DefaultSummaryGraceSeconds = 120
 	SummaryGraceSecondsFloor   = 0
 	SummaryGraceSecondsCeil    = 3600
+
+	// How long one summarization request may run before it is abandoned.
+	// EMBER_SUMMARY_TIMEOUT_SECONDS sets the boot-time default; admins tune it
+	// live in Settings. The deadline is applied by the poller as a context
+	// deadline covering the backend call AND its internal retry, so a slow
+	// backend costs at most this much wall-clock per article and is never asked
+	// to generate the same article twice.
+	keySummaryTimeoutSeconds     = "summary_timeout_seconds"
+	DefaultSummaryTimeoutSeconds = 90
+	// Floor: below ~10s even a hosted model cannot answer, so a lower value
+	// would just disable summaries in a confusing way. Ceiling: 15 minutes
+	// bounds how long one article can occupy the single summary worker.
+	SummaryTimeoutSecondsFloor = 10
+	SummaryTimeoutSecondsCeil  = 900
+
+	// Server-wide summarization mode (issue #199).
+	//
+	//   ModeAll      summarize every article as it arrives (the default, and
+	//                what every install did before this setting existed)
+	//   ModeOnDemand summarize only what a reader stars, saves for later, or
+	//                pins to a board
+	//
+	// ModeInherit is not valid here — it is the per-subscription "no opinion"
+	// value that falls through to this setting.
+	keySummarizeMode = "summarize_mode"
+	ModeAll          = "all"
+	ModeOnDemand     = "on_demand"
+	ModeInherit      = ""
 )
 
 // Bounds + default for the admin-configurable adaptive-fetch floor. Canonical
@@ -314,6 +366,57 @@ func (s *Store) PutUpdateCheckEnabled(ctx context.Context, on bool) error {
 	return s.PutAppSetting(ctx, keyUpdateCheckEnabled, v)
 }
 
+// ResolveSummariesEnabled reports whether AI summarization should run. The
+// fallback (derived from EMBER_DISABLE_SUMMARIES) applies until an admin sets
+// an explicit value via Settings.
+func (s *Store) ResolveSummariesEnabled(ctx context.Context, fallback bool) bool {
+	if v, _ := s.GetAppSetting(ctx, keySummariesEnabled); v != "" {
+		switch strings.ToLower(v) {
+		case "1", "true", "yes", "on":
+			return true
+		case "0", "false", "no", "off":
+			return false
+		}
+	}
+	return fallback
+}
+
+// PutSummariesEnabled persists the admin's explicit on/off choice.
+func (s *Store) PutSummariesEnabled(ctx context.Context, on bool) error {
+	v := "0"
+	if on {
+		v = "1"
+	}
+	return s.PutAppSetting(ctx, keySummariesEnabled, v)
+}
+
+// ResolveSummarizeMode returns the effective server-wide summarization mode:
+// the app_settings row if it names one of the two valid values, else fallback.
+//
+// A corrupt or pre-migration row (empty, or some stale/unrecognized value)
+// falls back to ModeAll rather than ModeOnDemand — ModeAll is what every
+// install did before this setting existed, so an unreadable row must not
+// silently start deferring summaries nobody asked to defer.
+func (s *Store) ResolveSummarizeMode(ctx context.Context, fallback string) string {
+	if v, _ := s.GetAppSetting(ctx, keySummarizeMode); v == ModeAll || v == ModeOnDemand {
+		return v
+	}
+	if fallback == ModeAll || fallback == ModeOnDemand {
+		return fallback
+	}
+	return ModeAll
+}
+
+// PutSummarizeMode persists the admin's explicit mode choice. Rejects anything
+// but the two valid values — ModeInherit has no meaning at the server-wide
+// level, it is only ever a per-subscription "no opinion".
+func (s *Store) PutSummarizeMode(ctx context.Context, mode string) error {
+	if mode != ModeAll && mode != ModeOnDemand {
+		return errors.New("store: invalid summarize mode")
+	}
+	return s.PutAppSetting(ctx, keySummarizeMode, mode)
+}
+
 // ResolvePasskeyRequireUV reports whether passkey sign-in must demand user
 // verification (a PIN, biometric, or equivalent) rather than merely preferring
 // it. Off by default: with it on, a credential enrolled on an authenticator
@@ -357,4 +460,177 @@ func (s *Store) ResolveSummaryGraceSeconds(ctx context.Context, fallback int) in
 func (s *Store) PutSummaryGraceSeconds(ctx context.Context, n int) error {
 	n = clampInt(n, SummaryGraceSecondsFloor, SummaryGraceSecondsCeil)
 	return s.PutAppSetting(ctx, keySummaryGraceSeconds, strconv.Itoa(n))
+}
+
+// ResolveSummaryTimeoutSeconds returns how many seconds one summarization
+// request may run before it is abandoned. DB row wins, clamped to
+// [floor, ceil]; otherwise the env-derived fallback (also clamped).
+func (s *Store) ResolveSummaryTimeoutSeconds(ctx context.Context, fallback int) int {
+	if v, _ := s.GetAppSetting(ctx, keySummaryTimeoutSeconds); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return clampInt(n, SummaryTimeoutSecondsFloor, SummaryTimeoutSecondsCeil)
+		}
+	}
+	return clampInt(fallback, SummaryTimeoutSecondsFloor, SummaryTimeoutSecondsCeil)
+}
+
+// PutSummaryTimeoutSeconds persists the request timeout (clamped).
+func (s *Store) PutSummaryTimeoutSeconds(ctx context.Context, n int) error {
+	n = clampInt(n, SummaryTimeoutSecondsFloor, SummaryTimeoutSecondsCeil)
+	return s.PutAppSetting(ctx, keySummaryTimeoutSeconds, strconv.Itoa(n))
+}
+
+// BackendSettings is the resolved summarization backend configuration: which
+// transport is active and everything needed to reach it. The APIKey field is
+// for the process's own use only — it must never be serialized back to the
+// SPA (the API sends api_key_set instead), exactly like the SMTP password.
+type BackendSettings struct {
+	Backend string
+	BaseURL string
+	APIKey  string
+	Model   string
+}
+
+// ValidBackend reports whether s names a backend Ember can build. Callers
+// reject anything else at the API boundary with a 400 rather than storing it,
+// because an unrecognized value would silently fall through to Ollama at the
+// next restart and summarize against the wrong endpoint.
+func ValidBackend(s string) bool {
+	switch s {
+	case BackendOllama, BackendOpenAI, BackendAnthropic:
+		return true
+	}
+	return false
+}
+
+// ResolveBackendChoice returns just the selected backend. It exists separately
+// from ResolveBackendSettings because the caller has to know which backend is
+// active before it can decide which env vars supply the fallback URL and model
+// — the Ollama backend has always taken those from EMBER_OLLAMA_URL /
+// EMBER_OLLAMA_MODEL, the hosted ones from EMBER_SUMMARY_BASE_URL /
+// EMBER_SUMMARY_MODEL. A row naming a backend we can't build is ignored rather
+// than honored: it is the same as none at all.
+func (s *Store) ResolveBackendChoice(ctx context.Context, fallback string) string {
+	if v, _ := s.GetAppSetting(ctx, keySummarizeBackend); ValidBackend(v) {
+		return v
+	}
+	if ValidBackend(fallback) {
+		return fallback
+	}
+	return BackendOllama
+}
+
+// ResolveBackendSettings returns the effective backend configuration:
+// app_settings rows override the fields of the env-derived fallback, an empty
+// row meaning "inherit". Mirrors ResolveSMTPSettings so an admin can change one
+// field in the UI and leave the rest coming from .env.
+func (s *Store) ResolveBackendSettings(ctx context.Context, fallback BackendSettings) BackendSettings {
+	out := fallback
+	out.Backend = s.ResolveBackendChoice(ctx, fallback.Backend)
+	if v, _ := s.GetAppSetting(ctx, keySummarizeBaseURL); v != "" {
+		out.BaseURL = v
+	}
+	if v, _ := s.GetAppSetting(ctx, keySummarizeAPIKey); v != "" {
+		out.APIKey = v
+	}
+	if v, _ := s.GetAppSetting(ctx, keySummarizeModel); v != "" {
+		out.Model = v
+	}
+	return out
+}
+
+// BackendUpdate is the pointer-bag the admin UI sends in. Nil = no change; an
+// empty string clears the override (the field falls back to the env default).
+// APIKey has the extra flag for the same reason SMTPUpdate.Password does: the
+// key is never round-tripped to the SPA, so an empty string arriving from it
+// means "leave the stored key alone", not "erase it". Without ClearAPIKey
+// there would be no way to express an erase at all.
+type BackendUpdate struct {
+	Backend     *string
+	BaseURL     *string
+	APIKey      *string
+	ClearAPIKey bool
+	Model       *string
+}
+
+// PutBackendSettings persists the supplied updates. Nil pointers are skipped.
+// An invalid backend name is never written — callers validate with ValidBackend
+// and 400 first; this is the last line of defence.
+//
+// It also refuses to store a base URL or model for the Ollama backend. That
+// invariant lives here, at the layer that owns these rows, rather than only at
+// the caller, because enforcing it at one call site has already failed once:
+// the fallback selection was fixed and the same bug re-entered through a
+// different writer.
+func (s *Store) PutBackendSettings(ctx context.Context, u BackendUpdate) error {
+	// Everything is validated BEFORE the first write, so a rejected update
+	// persists nothing at all rather than half of itself.
+	backend := ""
+	if u.Backend != nil {
+		backend = strings.TrimSpace(*u.Backend)
+		if !ValidBackend(backend) {
+			return errors.New("store: unknown summarization backend")
+		}
+	} else if v, _ := s.GetAppSetting(ctx, keySummarizeBackend); ValidBackend(v) {
+		// A caller changing only the URL or the model must still be checked
+		// against the backend that will actually be in force afterwards.
+		//
+		// An absent or unreadable row deliberately leaves backend "" and the
+		// guard below stands down. The store cannot see EMBER_SUMMARY_BACKEND,
+		// so on an install that has never saved a backend the in-force one may
+		// well be hosted — assuming Ollama here would reject a legitimate write.
+		backend = v
+	}
+	// The Ollama backend does not own these two rows: its endpoint is
+	// EMBER_OLLAMA_URL and its model is the ollama_model row the model picker
+	// writes. Anything stored here for Ollama resurfaces through
+	// ResolveBackendSettings, which overlays these rows AFTER the caller has
+	// chosen the Ollama fallback pair, and builds
+	// NewOllama("<hosted url>", "<hosted model>") — a non-nil client, so
+	// Configured() is true, the poller's readiness gate never fires, every
+	// article fails, and each is stamped 'skipped', which is terminal.
+	//
+	// This is an error rather than a silent blanking on purpose, and the
+	// asymmetry with the API handler is deliberate. The handler blanks because
+	// a segment change in the UI legitimately carries the previous backend's
+	// values — expected input, not a mistake. The only way to reach this layer
+	// with non-empty values is a caller that forgot the rule, and a backstop
+	// that quietly swallows a programming error teaches nobody.
+	if backend == BackendOllama {
+		if u.BaseURL != nil && strings.TrimSpace(*u.BaseURL) != "" {
+			return errors.New("store: the ollama backend takes its endpoint from EMBER_OLLAMA_URL; summarize_base_url must be empty")
+		}
+		if u.Model != nil && strings.TrimSpace(*u.Model) != "" {
+			return errors.New("store: the ollama backend takes its model from ollama_model; summarize_model must be empty")
+		}
+	}
+	if u.Backend != nil {
+		if err := s.PutAppSetting(ctx, keySummarizeBackend, backend); err != nil {
+			return err
+		}
+	}
+	if u.BaseURL != nil {
+		if err := s.PutAppSetting(ctx, keySummarizeBaseURL, strings.TrimSpace(*u.BaseURL)); err != nil {
+			return err
+		}
+	}
+	// API-key write rules, identical to the SMTP password's:
+	//   - ClearAPIKey=true          → explicit erase (write empty string).
+	//   - APIKey != nil and != ""   → store the new value.
+	//   - APIKey nil or "", no flag → no change.
+	if u.ClearAPIKey {
+		if err := s.PutAppSetting(ctx, keySummarizeAPIKey, ""); err != nil {
+			return err
+		}
+	} else if u.APIKey != nil && *u.APIKey != "" {
+		if err := s.PutAppSetting(ctx, keySummarizeAPIKey, *u.APIKey); err != nil {
+			return err
+		}
+	}
+	if u.Model != nil {
+		if err := s.PutAppSetting(ctx, keySummarizeModel, strings.TrimSpace(*u.Model)); err != nil {
+			return err
+		}
+	}
+	return nil
 }

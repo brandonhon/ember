@@ -9,6 +9,10 @@
 # For local source builds (`make docker`, `deploy/docker-compose.yml`),
 # the top-level `Dockerfile` (which does the full source-build) is still
 # the right entrypoint.
+#
+# Base images are pinned by digest for the reasons in `Dockerfile`. Both
+# digests below are multi-arch indexes — this file is built for linux/amd64
+# and linux/arm64, so a per-platform digest would break the release.
 
 # Stage 1: seed /data with nonroot (65532) ownership. Distroless has no
 # shell, so we can't `RUN mkdir` in the final stage — but we also don't
@@ -16,13 +20,13 @@
 # pins this stage to the build host's native arch, then the final stage
 # COPYs the prepared directory across as plain data. Multi-arch assembly
 # becomes near-instant.
-FROM --platform=$BUILDPLATFORM busybox:1-musl AS dataprep
+FROM --platform=$BUILDPLATFORM busybox:1-musl@sha256:32b5cdad7cce41dfd53d0ae06baebcf8357a147ee7694dc706911c373bc30c37 AS dataprep
 RUN mkdir -p /out/data && chown 65532:65532 /out/data
 
 # Stage 2: runtime. Pre-built binaries are dropped into dist/ by the CI
 # step `Stage binaries for Dockerfile.release`. TARGETARCH expands to
 # amd64 or arm64 depending on which platform buildx is currently building.
-FROM gcr.io/distroless/static-debian12:nonroot
+FROM gcr.io/distroless/static-debian12:nonroot@sha256:1b7b9f0f0e0a1d2155f531db587cc48ec26aaf97ab64364225f5bf18a054e66a
 ARG TARGETARCH
 ARG VERSION=docker
 

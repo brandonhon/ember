@@ -51,9 +51,23 @@ type Dependencies struct {
 	OPML    *opml.Service
 	TTRSS   *ttrss.Service // Tiny Tiny RSS starred/archived import; nil disables the endpoint
 	StaticH http.Handler   // SPA / embed.FS handler; may be nil in tests
-	// Ollama exposes the live summarizer so the admin LLM endpoints can list
-	// installed models, pull new ones, and swap the active model. Optional —
-	// nil when the summarizer is disabled or the noop (tests) is in use.
+	// Backend holds the active summarizer behind an atomic pointer, shared with
+	// the poller. The backend-change endpoint swaps it, so an admin's choice
+	// applies to the next article without a restart. Nil in tests that don't
+	// exercise summarization; Configured() is false until a usable backend is
+	// built, which is what keeps the summary gate off while a hosted backend is
+	// selected but not yet credentialed.
+	Backend *summarize.Switcher
+	// BackendFallbacks are the env-derived boot defaults the persisted
+	// summarize_* rows overlay. Set from cfg at boot; never mutated after.
+	BackendFallbacks BackendFallbacks
+	// Ollama is the INITIAL Ollama client — the live one is held in the
+	// ollamaLive holder installed by NewRouter, because the backend-change
+	// handler reassigns it while other handlers read it. Read it through
+	// d.ollama(), never directly. It exists only for model management (the
+	// installed list, pull, delete, the model switch and the tunables) and is
+	// nil unless the Ollama backend is active: those operations have no
+	// equivalent on a hosted provider (issue #200).
 	Ollama *summarize.Ollama
 	// WebAuthn drives passkey registration + assertion. Nil when EMBER_PUBLIC_URL
 	// is not configured; the passkey endpoints then return 503.
@@ -115,6 +129,13 @@ type Dependencies struct {
 	// SummaryGraceSecondsFallback is the env-derived default
 	// (EMBER_SUMMARY_GRACE_SECONDS) for the summary_grace_seconds setting.
 	SummaryGraceSecondsFallback int
+	// SummaryTimeoutSecondsFallback is the env-derived default
+	// (EMBER_SUMMARY_TIMEOUT_SECONDS) for the summary_timeout_seconds setting.
+	SummaryTimeoutSecondsFallback int
+	// SummariesEnabledFallback is the env-derived default (the negation of
+	// EMBER_DISABLE_SUMMARIES) for the summaries_enabled admin setting. It
+	// only applies until an admin sets the switch explicitly in Settings.
+	SummariesEnabledFallback bool
 
 	// img signs + serves the same-origin image proxy. Built in NewRouter
 	// from SessionKey; never set by callers.
@@ -123,14 +144,35 @@ type Dependencies struct {
 	// attribute a request to a real client IP for security logging without
 	// re-parsing CIDRs per request. Never set by callers.
 	trustedNets []*net.IPNet
+	// ollamaLive is the race-safe cell holding the current Ollama client, seeded
+	// from Ollama in NewRouter. A pointer so every by-value copy of
+	// Dependencies shares one cell. Never set by callers.
+	ollamaLive *ollamaHolder
 }
 
-// summariesOn reports whether AI summarization is wired up (an Ollama backend
-// is configured). It is the single switch for the article summary gate: when
-// on, every reading view + every count hides articles the summarizer hasn't
-// stamped yet; when off, the gate is bypassed everywhere. Mirrors the
-// summaries_enabled flag surfaced to the SPA via /api/me.
-func (d *Dependencies) summariesOn() bool { return d.Ollama != nil }
+// summariesOn reports whether AI summarization is active: a backend must be
+// wired up AND the admin must not have switched it off. It is the single
+// switch for the article summary gate: when on, every reading view + every
+// count hides articles the summarizer hasn't stamped yet; when off, the gate
+// is bypassed everywhere. Mirrors the summaries_enabled flag surfaced to the
+// SPA via /api/me.
+//
+// Resolved per request rather than at boot so an admin's toggle takes effect
+// without a restart (issue #198) — which is why it takes a ctx.
+func (d *Dependencies) summariesOn(ctx context.Context) bool {
+	return d.Backend != nil && d.Backend.Configured() &&
+		d.Store.ResolveSummariesEnabled(ctx, d.SummariesEnabledFallback)
+}
+
+// globalSummarizeMode returns the server-wide summarization mode a feed's own
+// mode resolves against. store.ModeAll is the fallback for the same reason
+// cmd/ember hands the poller that default: it is what every install did before
+// the setting existed, so an unset or unreadable row must not silently start
+// deferring summaries. Resolved per request, not at boot, so an admin's change
+// takes effect without a restart.
+func (d *Dependencies) globalSummarizeMode(ctx context.Context) string {
+	return d.Store.ResolveSummarizeMode(ctx, store.ModeAll)
+}
 
 // summaryGraceBefore returns the unix timestamp before which an unsummarized
 // article is shown anyway, or 0 when the gate is inactive. Resolved per
@@ -138,7 +180,7 @@ func (d *Dependencies) summariesOn() bool { return d.Ollama != nil }
 // of the summary gate (article list, smart counts, per-feed unread) must pass
 // the SAME value or a badge will disagree with the column it summarizes.
 func (d *Dependencies) summaryGraceBefore(ctx context.Context) int64 {
-	if !d.summariesOn() {
+	if !d.summariesOn(ctx) {
 		return 0
 	}
 	secs := d.Store.ResolveSummaryGraceSeconds(ctx, d.SummaryGraceSecondsFallback)
@@ -177,6 +219,12 @@ func (d *Dependencies) backgroundCtx() context.Context {
 func NewRouter(d Dependencies) http.Handler {
 	trusted := parseTrustedProxies(d.TrustedProxies)
 	d.trustedNets = trusted
+
+	// Install the race-safe cell for the Ollama client before any handler is
+	// bound: the backend-change endpoint stores into it while the other admin
+	// LLM handlers load from it.
+	d.ollamaLive = &ollamaHolder{}
+	d.ollamaLive.p.Store(d.Ollama)
 
 	// Same-origin image proxy. Article responses rewrite image_url to a signed
 	// /api/img path so content blockers don't strip publisher-CDN lead images.
@@ -257,8 +305,11 @@ func NewRouter(d Dependencies) http.Handler {
 			r.Post("/auth/logout", d.handleLogout)
 			r.Get("/me", d.handleMe)
 			r.Patch("/me/settings", d.handleUpdateSettings)
-			r.Patch("/me/email", d.handleUpdateEmail)
-			r.Post("/me/password", d.handleChangePassword)
+			// Re-auth endpoints take the login limiter as well as the session:
+			// they verify the current password, which makes them a second
+			// front door for password guessing if a session is ever stolen.
+			r.With(loginLimiter.limitMiddleware).Patch("/me/email", d.handleUpdateEmail)
+			r.With(loginLimiter.limitMiddleware).Post("/me/password", d.handleChangePassword)
 
 			// Passkeys (self-service registration + management).
 			r.Get("/me/passkeys", d.handleListPasskeys)
@@ -345,6 +396,7 @@ func NewRouter(d Dependencies) http.Handler {
 			// Boards
 			r.Get("/boards", d.handleListBoards)
 			r.Post("/boards", d.handleCreateBoard)
+			r.Patch("/boards/{id}", d.handleUpdateBoard)
 			r.Delete("/boards/{id}", d.handleDeleteBoard)
 			r.Post("/boards/{id}/articles", d.handleBoardAdd)
 			r.Delete("/boards/{id}/articles/{articleId}", d.handleBoardRemove)
@@ -392,6 +444,16 @@ func NewRouter(d Dependencies) http.Handler {
 			r.Post("/admin/llm/pull", d.handlePullLLMModel)
 			r.Post("/admin/llm/delete", d.handleDeleteLLMModel)
 			r.Post("/admin/llm/options", d.handleSetLLMOptions)
+			// Backend selection (#200): which transport summarizes, where it
+			// lives, and the credential for it. Admin-only for the obvious
+			// reason — it decides where every user's article text is sent.
+			r.Post("/admin/llm/backend", d.handleSetLLMBackend)
+
+			// Summarization queue recovery (#198). Both rewrite summary_model
+			// across every user's article rows, so they get the same
+			// admin+rate-limit treatment as resummarize-all above.
+			r.With(expensiveLimiter.limitMiddleware).Post("/admin/summaries/drain", d.handleDrainSummaryQueue)
+			r.With(expensiveLimiter.limitMiddleware).Post("/admin/summaries/requeue", d.handleRequeueSummaries)
 
 			// DB maintenance
 			r.Get("/admin/db", d.handleGetDB)

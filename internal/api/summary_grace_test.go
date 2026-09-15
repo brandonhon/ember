@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/brandonhon/ember/internal/store"
-	"github.com/brandonhon/ember/internal/summarize"
 )
 
 // The grace window bounds how long an article stays hidden waiting for its AI
@@ -84,7 +83,7 @@ func TestAdminSettings_SummaryGraceRoundTrip(t *testing.T) {
 func TestSummaryGraceBefore_TranslatesSettingToCutoff(t *testing.T) {
 	ctx := context.Background()
 	withSummarizer := func(d *Dependencies) {
-		d.Ollama = summarize.NewOllama("http://ollama.invalid", "llama3")
+		wireOllama(d, "http://ollama.invalid", "llama3")
 	}
 
 	// No summarizer wired up: the gate is inactive everywhere, signalled by 0.

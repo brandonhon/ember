@@ -4,7 +4,7 @@ Self-hosted RSS/Atom reader. A single Go binary serving an embedded Svelte SPA, 
 
 _Primary repo on [GitHub](https://github.com/brandonhon/ember) (Releases + CI); mirrored to [Tangled](https://tangled.org/nodnarb.tngl.sh/ember)._
 
-> **AI is fully optional.** Ember can summarize articles with a small local LLM via Ollama, but it's an opt-out feature, not a dependency. Set `EMBER_DISABLE_SUMMARIES=1` (or run the stack without the `ollama` sidecar) and the reader works exactly the same — no summary card, no model download, no inference, no LLM-related code paths. Even when enabled, everything runs on your own box; no article content leaves the host. Pick the deployment that matches your stance.
+> **AI is fully optional.** Ember can summarize articles with a small local LLM via Ollama, but it's an opt-out feature, not a dependency. Set `EMBER_DISABLE_SUMMARIES=1` (or run the stack without the `ollama` sidecar) and the reader works exactly the same — no summary card, no model download, no inference. `EMBER_DISABLE_SUMMARIES` sets the boot-time default for the summaries switch, which an admin can flip at runtime in Settings → nothing is summarized while it's off. With the default **Ollama** backend everything runs on your own box and no article content leaves the host. Ember can also summarize via any OpenAI-compatible endpoint or via Claude — those backends **do** send article text to the provider you choose, which is the trade you make by picking one; the Settings UI says so at the point of choice. Pick the deployment that matches your stance.
 
 ## Install
 
@@ -51,13 +51,24 @@ You'll land on an onboarding panel that points to starter packs or OPML import. 
 
 ### AI summaries
 - Paragraph + bullet-point summary card in the reader.
+- Three backends, switchable live in Settings → Language model → Backend:
+  **Ollama** (default, local-only), any **OpenAI-compatible** endpoint
+  (OpenRouter, Groq, vLLM, LiteLLM, …), or **Claude**. The hosted backends
+  send article text off-host; model pull/delete stay Ollama-only.
+- **On-demand mode**: summarize every article, or only once you star it,
+  save it for later, or pin it to a board — set server-wide, per feed, or
+  per board.
 - Per-user toggle for the summary card, plus install-time
-  `EMBER_DISABLE_SUMMARIES` / `EMBER_DISABLE_IMAGES`.
+  `EMBER_DISABLE_SUMMARIES` / `EMBER_DISABLE_IMAGES`. The summaries switch
+  itself now lives in Settings → Language model as a persisted on/off that
+  overrides the env var at runtime and drains the pending queue when
+  turned off.
 - Admin-only LLM controls (Settings → Language model):
   - Auto-detected hardware recommendation (`ember probe`).
   - Switch active model live (no restart).
-  - Pull / delete models from Ollama's cache.
+  - Pull / delete models from Ollama's cache (Ollama backend only).
   - Tuning sliders for temperature / top_p / num_ctx (persisted).
+  - Drain / requeue the summarization queue to recover a stuck backlog.
 - AI ad-stripping: the model also returns a `CLEANED` body with newsletter
   signups, podcast/app promos, and social follow asks removed. Falls back to
   the original when the model can't produce a full body.
@@ -74,7 +85,7 @@ You'll land on an onboarding panel that points to starter packs or OPML import. 
 - OPML import/export. Optional scheduled OPML export to `/data/exports/`.
 - **Tiny Tiny RSS migration**: pull your subscriptions (recreating TT-RSS categories as folders) plus starred/archived articles from a running instance via its API, or upload an article export file. Already-subscribed feeds are skipped, so it's safe to re-run.
 - **Subscribe by URL**: paste either a feed URL or just the homepage. Ember follows `<link rel=alternate>` and probes common feed paths (`/feed`, `/rss`, `/atom.xml`, `/feed.xml`, `/index.xml`).
-- Drag-to-reorder feeds and folders.
+- Drag to reorder feeds and folders, or to move a feed into another folder — a pointer-only gesture, since HTML5 drag-and-drop produces no events from touch input. Without a pointer, use the feed's **⋯ → Move to folder…** (or **Edit feed → Folder**). New feeds can be filed straight from the add-feed form on either.
 - Mark-all-read at view / feed / category scope.
 
 ### Sign-in
@@ -127,9 +138,14 @@ You'll land on an onboarding panel that points to starter packs or OPML import. 
 | `EMBER_ADDR` | `:8080` | listen address |
 | `EMBER_DB_PATH` | `/data/ember.db` | SQLite file |
 | `EMBER_ADMIN_USER` | `admin` | first-run admin username |
-| `EMBER_OLLAMA_URL` | `http://ollama:11434` | summarizer endpoint |
+| `EMBER_OLLAMA_URL` | `http://ollama:11434` | summarizer endpoint (Ollama backend) |
 | `EMBER_OLLAMA_MODEL` | `qwen2.5:0.5b` | initial model (admin can swap later) |
-| `EMBER_DISABLE_SUMMARIES` | `0` | skip LLM summarization entirely |
+| `EMBER_SUMMARY_BACKEND` | `ollama` | `ollama`, `openai`, or `anthropic`; admin can switch at runtime in Settings → Language model → Backend |
+| `EMBER_SUMMARY_BASE_URL` | — | endpoint root for the `openai` backend (OpenRouter, Groq, vLLM, LiteLLM, …) |
+| `EMBER_SUMMARY_API_KEY` | — | API key for the `openai` / `anthropic` backends; rotatable in Settings, never echoed back |
+| `EMBER_SUMMARY_MODEL` | — | model id for the `openai` / `anthropic` backends |
+| `EMBER_DISABLE_SUMMARIES` | `0` | default AI summaries to off (no inference); Settings → Language model → Summaries overrides at runtime |
+| `EMBER_SUMMARY_TIMEOUT_SECONDS` | `90` | give up on one summary after N seconds |
 | `EMBER_DISABLE_IMAGES` | `0` | drop article hero images at ingest |
 | `EMBER_DISABLE_UPDATE_CHECK` | `0` | skip the daily GitHub-releases update check (admin-only hint); Settings → Check for updates overrides at runtime |
 | `EMBER_FRESH_WINDOW` | `6h` | "Fresh" cutoff |
@@ -187,7 +203,7 @@ EMBER_TEST_MODE=1 ./bin/ember   # in another terminal
 
 ## Mobile clients
 
-Reeder, FeedMe, and other Fever-compatible apps can connect via `/fever`. The `api_key` is `md5("<username>:<user_id>")` — see `/api/me` for your user_id. (We can't use the canonical `md5("user:pass")` because passwords are stored only as argon2id hashes.)
+Reeder, FeedMe, and other Fever-compatible apps can connect via `/fever`. Ember issues each user a random per-user API key rather than the spec's `md5("user:pass")` (passwords are stored only as argon2id hashes, and a derived key would be guessable). Copy the **Fever URL** and **API key** from **Settings → Mobile clients** into the app; the same key is returned as `fever_api_key` by `GET /api/me`.
 
 ## E2E
 
@@ -197,11 +213,11 @@ cd web && npx playwright install chromium
 npx playwright test           # spawns the binary in test mode against a temp DB
 ```
 
-In test mode (`EMBER_TEST_MODE=1`) the binary seeds a deterministic admin (`admin` / `admintest`) plus 12 fixture articles and a single feed, so every spec has known data to assert against.
+In test mode (`EMBER_TEST_MODE=1`) the binary seeds a deterministic admin (`admin` / `admintest`) plus two layers of fixtures: the e2e contract (feed 1, "Example Tech Blog", with three articles whose exact titles/ids/freshness the Playwright suite asserts) and a realistic library on top — 6 feeds across 3 folders, with summaries, thumbnails, and cross-feed duplicates — which is also what the documentation screenshots capture.
 
 ## Database
 
-SQLite with WAL mode, 64 MiB cache, 256 MiB mmap, busy_timeout=5s, synchronous=NORMAL. Single connection — SQLite serializes writes, and the workload is small enough that the connection pool isn't a bottleneck. `PRAGMA optimize` runs after every startup migrate. Backups via `VACUUM INTO` are safe to run live.
+SQLite with WAL mode, 256 MiB mmap, busy_timeout=5s, synchronous=NORMAL. **Two handles over the same file**: a write handle capped at one connection (SQLite has a single writer, and more than one hits `SQLITE_BUSY` in a form `busy_timeout` doesn't cover) with a 64 MiB page cache, plus a read-only pool of four `query_only` connections at 16 MiB each that serves the heavy list/count/search queries. WAL lets those run alongside the writer, so the UI no longer queues behind whatever the poller is writing — worst-case read latency during a fetch drops from ~166ms to ~23ms. Total page-cache budget is therefore ~128 MiB, not 64; size container memory limits accordingly. If the read pool can't be opened, Ember logs a warning and serves reads from the write handle exactly as before. `PRAGMA optimize` runs after every startup migrate. Backups via `VACUUM INTO` are safe to run live.
 
 Migration files live under `internal/db/migrations/` and are embedded into the binary.
 

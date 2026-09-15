@@ -11,6 +11,46 @@
 
 import { api, ApiError } from "./api";
 
+// The server deliberately has no delete-by-endpoint route — that would let
+// anyone purge a subscription by guessing endpoints — and the list response
+// omits endpoints for the same reason. So the browser can't work out which of
+// the listed rows is its own. It doesn't need to: enablePush already gets the
+// id back, so remember it here and delete by id when switching off.
+const SUB_ID_KEY = "ember:push-sub-id";
+
+function rememberSubID(id: number): void {
+  try {
+    if (id > 0) localStorage.setItem(SUB_ID_KEY, String(id));
+  } catch {
+    // Private mode / storage disabled: disabling still unsubscribes this
+    // browser, the row just has to be revoked from the device list instead.
+  }
+}
+export function storedPushSubID(): number {
+  try {
+    return Number(localStorage.getItem(SUB_ID_KEY)) || 0;
+  } catch {
+    return 0;
+  }
+}
+export function forgetPushSubID(): void {
+  try {
+    localStorage.removeItem(SUB_ID_KEY);
+  } catch {
+    /* nothing to forget */
+  }
+}
+
+// Whether THIS browser currently holds a push subscription, which is what
+// decides between offering Enable and Disable. Distinct from "this account has
+// registered devices" — those may all be other browsers.
+export async function pushSubscribedHere(): Promise<boolean> {
+  if (!pushSupported()) return false;
+  const reg = await navigator.serviceWorker.getRegistration();
+  if (!reg) return false;
+  return (await reg.pushManager.getSubscription()) !== null;
+}
+
 export function pushSupported(): boolean {
   return (
     typeof window !== "undefined" &&
@@ -74,29 +114,37 @@ export async function enablePush(): Promise<number> {
     auth,
     user_agent: navigator.userAgent || "",
   });
-  return res.data?.id ?? 0;
+  const id = res.data?.id ?? 0;
+  rememberSubID(id);
+  return id;
 }
 
-export async function disablePush(): Promise<void> {
-  const reg = await navigator.serviceWorker.getRegistration();
-  if (!reg) return;
-  const sub = await reg.pushManager.getSubscription();
-  if (!sub) return;
-  try {
-    // The server's by-endpoint cleanup endpoint isn't exposed (we don't
-    // want a public endpoint that lets anyone purge a subscription by
-    // guessing endpoints). Use the list-then-delete-by-id path: list our
-    // subs, find the one with our endpoint, delete it.
-    const list = await api.pushSubscriptions();
-    // We don't expose endpoint on list responses for security — so
-    // instead, just unsubscribe locally and let the server clean up on
-    // the next 410 / on user logout. This means the row may linger
-    // server-side until next-push-fails, which is fine.
-    void list;
-  } catch (err) {
-    if (!(err instanceof ApiError)) throw err;
+// Turn push off for this browser: drop the server row so nothing is sent, and
+// unsubscribe locally so the browser stops holding a live subscription.
+//
+// The local unsubscribe runs even if the server call fails — a device the user
+// asked to switch off must stop being subscribed regardless, and a row left
+// behind is reaped by the server on the next 410. Returns false when the row
+// couldn't be identified, so the caller can point the user at the device list.
+export async function disablePush(): Promise<boolean> {
+  const id = storedPushSubID();
+  let serverCleared = id > 0;
+  if (id > 0) {
+    try {
+      await api.pushUnsubscribe(id);
+    } catch (err) {
+      // Already gone (revoked from another device, or pruned) is a success
+      // for our purposes; anything else the caller should hear about.
+      if (!(err instanceof ApiError)) throw err;
+      if (err.status !== 404) serverCleared = false;
+    }
   }
-  await sub.unsubscribe();
+  forgetPushSubID();
+
+  const reg = await navigator.serviceWorker.getRegistration();
+  const sub = reg ? await reg.pushManager.getSubscription() : null;
+  if (sub) await sub.unsubscribe();
+  return serverCleared;
 }
 
 // Web Push wants the VAPID public key as a Uint8Array of the URL-safe
