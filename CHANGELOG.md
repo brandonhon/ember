@@ -214,6 +214,13 @@ them.
   (the semver comparison behind the update check), and the transitive
   `golang.org/x/text` 0.40.0 → 0.41.0. Maintenance releases with no behaviour
   change Ember relies on.
+- Bumped `go-webauthn/webauthn` 0.18.0 → 0.18.1, `anthropics/anthropic-sdk-go`
+  1.71.0 → 1.72.0, `golang.org/x/crypto` 0.56.0 → 0.57.0, `golang.org/x/net`
+  0.58.0 → 0.59.0 and `golang.org/x/mod` 0.40.0 → 0.41.0 (with the transitive
+  `x/sys`, `x/sync` and `x/text`). Patch and minor maintenance releases of the
+  passkey library, the Claude backend, and the crypto, HTTP and semver libraries
+  underneath sessions, feed fetching and the update check; no behaviour change
+  Ember relies on, and the full suite passes against them.
 - **The released binaries and container image are built with Go 1.26.7**, up
   from the 1.26.5 that built 0.9.6. Ember's own code is unchanged; what moves is
   the standard library compiled into it. Go 1.26.6 closed six advisories that
@@ -244,6 +251,9 @@ them.
   the reason given under 0.9.6. Vitest stays on 4.x as well: 4.1.11 carries the
   fix for GHSA-82fw-gwwq-j7x9, and the 5.0 major is being evaluated on its own
   rather than folded into a routine bump.
+- Bumped Vite 8.2.2 → 8.3.0 (and its bundler `rolldown` 1.2.5 → 1.2.8). Dev-only
+  build tooling, not shipped in the binary; Vitest stays on 4.x for the reason
+  above.
 - Bumped Svelte 5.56.10 → 5.57.0. Unlike the tooling above this one does reach
   the released binary — the framework runtime is compiled into the bundled SPA —
   so it is listed separately. A minor release within the 5.x line with no
