@@ -185,9 +185,39 @@ func (s *Store) GetArticleForUser(ctx context.Context, userID, articleID int64) 
 	return v, nil
 }
 
+// summary_model is the summarization state machine for an article. The `summary`
+// TEXT column holds output only; it is NEVER the state, and an empty summary is
+// not by itself terminal — that ambiguity is what made issue #198 hard to
+// diagnose from the database.
+//
+//	NULL or ''      pending: the summarizer has not finished with this article.
+//	                Hidden behind the summary gate until the grace window lapses,
+//	                counted in pending_summary, re-enqueued on every poller tick.
+//	'<model name>'  summarized successfully; `summary` holds the text.
+//	'skipped'       attempted and failed (backend down, empty output, persist
+//	                error, or the request timeout). Terminal — never retried
+//	                automatically; the per-feed Resummarize action clears it.
+//	'excluded'      every subscriber of the feed opted out of summaries.
+//	                Cleared by ResetExcludedByFeed when someone opts back in.
+//	'disabled'      finalized while summaries were switched off. Cleared by
+//	                ResetDisabledSummaries when they are switched back on.
+//	'deferred'      on-demand mode: not queued until a reader stars, saves, or
+//	                pins the article. Cleared by RequestSummary.
+//
+// Every non-empty value satisfies the summary gate, so the article is visible
+// and drops out of the "Summarizing N articles" count. That is why a terminal
+// marker — not a NULL — is written on every give-up path.
+
 // ClearAllSummaries clears summary_model on every article (admin-only). Used
 // after a summarizer prompt change to force re-processing of existing rows.
 // Returns the affected article IDs so the caller can enqueue them.
+//
+// The predicate excludes only 'excluded', so this also clears 'deferred' and
+// 'disabled' — an undocumented fourth and fifth clearer alongside the two
+// documented ones above. That's harmless: the poller re-stamps 'deferred' the
+// next time it's queued, and stampPendingDisabled re-stamps 'disabled' the
+// next time summaries are switched off, so both converge back to where they
+// started rather than leaking a stuck row.
 func (s *Store) ClearAllSummaries(ctx context.Context) ([]int64, error) {
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
@@ -247,6 +277,61 @@ func (s *Store) ListUnsummarizedIDs(ctx context.Context, limit int) ([]int64, er
 	return ids, rows.Err()
 }
 
+// MarkUnsummarizedDisabled stamps summary_model='disabled' on every article the
+// summarizer never finalized. It is the startup counterpart of the poller's
+// ingest-time stamp: that write shares the poll context, so a SIGTERM landing
+// between the article INSERT and the stamp leaves the row NULL forever, where
+// it inflates the sidebar's pending-summary count with work nothing will ever
+// do. Only NULL/empty markers are touched — a real model name, 'skipped' and
+// 'excluded' all mean the article was already finalized. Returns rows healed.
+func (s *Store) MarkUnsummarizedDisabled(ctx context.Context) (int64, error) {
+	res, err := s.DB.ExecContext(ctx,
+		`UPDATE articles SET summary_model = 'disabled' WHERE IFNULL(summary_model,'') = ''`)
+	if err != nil {
+		return 0, err
+	}
+	n, _ := res.RowsAffected()
+	return n, nil
+}
+
+// ResetDisabledSummaries clears the 'disabled' marker on every article that was
+// finalized while summaries were switched off, returning their ids so the
+// caller can re-enqueue them. Used when an admin turns summaries back ON: those
+// articles were never offered to a model, so without this the toggle would only
+// affect articles that arrive later.
+//
+// Deliberately narrow. 'skipped' means a real attempt failed, 'excluded' means a
+// per-feed opt-out was in force, and a model name means the article is done —
+// re-running any of those would burn inference the admin did not ask for.
+func (s *Store) ResetDisabledSummaries(ctx context.Context) ([]int64, error) {
+	rows, err := s.DB.QueryContext(ctx,
+		`SELECT id FROM articles WHERE summary_model = 'disabled'`)
+	if err != nil {
+		return nil, err
+	}
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	if _, err := s.DB.ExecContext(ctx,
+		`UPDATE articles SET summary_model = NULL, summary = '' WHERE summary_model = 'disabled'`); err != nil {
+		return nil, err
+	}
+	return ids, nil
+}
+
 // ResetExcludedByFeed clears the 'excluded' marker on a feed's articles and
 // returns their ids so the caller can re-enqueue them. Used when a user turns
 // AI summaries back ON for a feed (issue #163): those articles were skipped
@@ -280,6 +365,95 @@ func (s *Store) ResetExcludedByFeed(ctx context.Context, feedID int64) ([]int64,
 	}
 	if _, err := s.DB.ExecContext(ctx,
 		`UPDATE articles SET summary_model = NULL, summary = '' WHERE feed_id = ? AND summary_model = 'excluded'`,
+		feedID); err != nil {
+		return nil, err
+	}
+	return ids, nil
+}
+
+// ResetAllDeferred clears the 'deferred' marker everywhere and returns the ids
+// so the caller can re-enqueue them. ResetDeferredByFeed without the feed
+// predicate: the server-wide twin, for an admin switching the global mode back
+// to "summarize every article".
+//
+// This is the mode-level counterpart of ResetDisabledSummaries, and exists for
+// the same reason: turning a switch back on has to act on the backlog the
+// switch created, not only on articles that arrive afterwards. Backfilling one
+// direction and not the other would leave an admin watching 300 existing
+// articles ignore a setting they just changed.
+//
+// Deliberately narrow, exactly like ResetDisabledSummaries. 'skipped' means a
+// real attempt failed, 'excluded' means a per-feed opt-out is in force,
+// 'disabled' means summaries were switched off entirely, and a model name means
+// the article is done. Only 'deferred' — "nobody has asked for this one yet" —
+// is answered by a change of mode.
+func (s *Store) ResetAllDeferred(ctx context.Context) ([]int64, error) {
+	rows, err := s.DB.QueryContext(ctx,
+		`SELECT id FROM articles WHERE summary_model = 'deferred'`)
+	if err != nil {
+		return nil, err
+	}
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	if _, err := s.DB.ExecContext(ctx,
+		`UPDATE articles SET summary_model = NULL, summary = '' WHERE summary_model = 'deferred'`); err != nil {
+		return nil, err
+	}
+	return ids, nil
+}
+
+// ResetDeferredByFeed clears the 'deferred' marker on a feed's articles and
+// returns their ids so the caller can re-enqueue them. The on-demand twin of
+// ResetExcludedByFeed: those articles were left unsummarized deliberately
+// while the feed resolved to on-demand, so switching the feed to "summarize
+// every article" has to reach back for them. Without this the new mode would
+// only affect articles that arrive later — the exact complaint the per-feed
+// opt-out already had to fix once (issue #163), and a worse surprise here,
+// since an on-demand feed can accumulate weeks of deferred articles before
+// someone decides they want all of them after all.
+//
+// Kept separate from ResetExcludedByFeed for the same reason that one is kept
+// separate from ResetSummariesByFeed: 'excluded' means "this user turned
+// summaries off for this feed", a stronger statement than "nobody has asked
+// for this one yet", and a mode change must not quietly undo it.
+func (s *Store) ResetDeferredByFeed(ctx context.Context, feedID int64) ([]int64, error) {
+	rows, err := s.DB.QueryContext(ctx,
+		`SELECT id FROM articles WHERE feed_id = ? AND summary_model = 'deferred'`, feedID)
+	if err != nil {
+		return nil, err
+	}
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	if _, err := s.DB.ExecContext(ctx,
+		`UPDATE articles SET summary_model = NULL, summary = '' WHERE feed_id = ? AND summary_model = 'deferred'`,
 		feedID); err != nil {
 		return nil, err
 	}
@@ -332,6 +506,66 @@ func (s *Store) UpdateSummary(ctx context.Context, articleID int64, summary, mod
 		return ErrNotFound
 	}
 	return nil
+}
+
+// RequestSummary clears the 'deferred' marker on one article so the summary
+// worker will pick it up on its next pass, reporting whether it actually
+// changed anything.
+//
+// Deliberately narrow: only 'deferred' is cleared. Starring an article whose
+// summary genuinely failed ('skipped') or whose feed is opted out ('excluded')
+// must not quietly spend inference the reader didn't ask for — Resummarize is
+// the explicit action for those.
+//
+// This is a convenience, not the gate: the on-demand poller gate consults
+// ArticleSummaryRequested (whether the article is actually starred, saved, or
+// pinned), not whether the marker has been cleared, so clearing it here only
+// gets the article picked up promptly instead of waiting for the marker to be
+// re-evaluated on the next tick — it is never load-bearing for whether the
+// article gets summarized at all.
+func (s *Store) RequestSummary(ctx context.Context, articleID int64) (bool, error) {
+	res, err := s.DB.ExecContext(ctx,
+		`UPDATE articles SET summary_model = NULL, summary = ''
+		 WHERE id = ? AND summary_model = 'deferred'`, articleID)
+	if err != nil {
+		return false, err
+	}
+	n, _ := res.RowsAffected()
+	return n > 0, nil
+}
+
+// ArticleSummaryRequested reports whether ANY user has starred the article,
+// saved it for later, or pinned it to a board whose summarize flag is set —
+// i.e. whether a reader has actually asked for this article, as opposed to
+// merely having a 'deferred' marker cleared.
+//
+// The on-demand poller gate (Task 12) consults THIS, not the marker, because
+// the in-memory summary queue drops ids routinely under load — a dropped id
+// would leave 'deferred' cleared with nobody re-enqueuing the article, and a
+// marker-only gate would then never re-defer it, so the article would sit
+// forever in a state that looks "requested" but isn't backed by any mark. Since
+// the gate re-derives its answer from the marks on every pass instead, a
+// dropped id just means the gate tries again next tick and gets the same
+// (correct) answer.
+//
+// The board half requires summarize = 1 on the board: a board a user files
+// things in rather than reads from (a link dump, an archive) must not trigger
+// inference just because an article landed there.
+func (s *Store) ArticleSummaryRequested(ctx context.Context, articleID int64) (bool, error) {
+	var requested int
+	err := s.reader().QueryRowContext(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM article_state
+			WHERE article_id = ? AND (is_starred = 1 OR is_later = 1)
+		) OR EXISTS (
+			SELECT 1 FROM board_articles ba
+			JOIN boards b ON b.id = ba.board_id
+			WHERE ba.article_id = ? AND b.summarize = 1
+		)`, articleID, articleID).Scan(&requested)
+	if err != nil {
+		return false, err
+	}
+	return requested != 0, nil
 }
 
 // UpdateCleanedHTML stores the LLM-produced ad-stripped article body.

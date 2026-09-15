@@ -7,10 +7,10 @@ For vulnerability reporting, see [SECURITY.md](https://github.com/brandonhon/emb
 ## Authentication
 
 - **Passwords**: argon2id (`time=3`, `memory=64 MiB`, `parallelism=2`, salt=16 bytes). Meets OWASP 2024 recommendations. Concurrent derivations are capped process-wide (4 at a time) so a login flood queues instead of multiplying 64 MiB allocations into an out-of-memory kill; excess requests wait on a slot rather than each reserving memory.
-- **Login throttling**: in addition to the per-IP bucket below, each *username* gets an escalating backoff — the first 5 consecutive failures are free, then each further attempt doubles a mandatory wait (1s, 2s, 4s…) capped at 60 seconds, returned as `429` with a `Retry-After` header. This is what bounds a distributed credential-stuffing run, which a per-IP limit alone does not: the attacker can rotate source addresses but not the account being attacked. The counter keys on the submitted username whether or not the account exists, so the throttle can't be used to enumerate accounts, and a successful login clears it immediately. Deliberately a delay and not a lockout — a hard lock would let anyone who knows a username deny that account service indefinitely. Failures past the free allowance are logged with the username and client IP for alerting.
+- **Login throttling**: in addition to the per-IP bucket below, each *username* gets an escalating backoff — the first 5 consecutive failures are free, then each further attempt doubles a mandatory wait (1s, 2s, 4s…) capped at 60 seconds, returned as `429` with a `Retry-After` header. This is what bounds a distributed credential-stuffing run, which a per-IP limit alone does not: the attacker can rotate source addresses but not the account being attacked. The counter keys on the submitted username whether or not the account exists, so the throttle can't be used to enumerate accounts, and a successful login clears it immediately. The self-service password and email changes, which re-check the current password, draw on the **same** counter — a wrong current password there is a login miss, so a stolen session can't be used to guess the password around the throttle. Deliberately a delay and not a lockout — a hard lock would let anyone who knows a username deny that account service indefinitely. Failures past the free allowance are logged with the username and client IP for alerting.
 - **Sessions**: 64-hex-char random IDs signed via `gorilla/securecookie`. Server-side row in `sessions` table backs every cookie. Default **idle timeout** 24 hours (max gap between requests); active sessions slide forward on each request, capped at **30 days from login** before re-authentication is required. Override the idle timeout via `EMBER_SESSION_TTL` env var or **Settings → Sessions** (bounded 5 min – 90 days). Session cookies are persistent, so they survive a browser restart but a private/incognito window discards them when its last window closes. Destroyed on logout, login (fixation defense), and on password change (both self-service and admin).
 - **Cookies**: `HttpOnly`, `Secure`, `SameSite=Strict`, scoped to `/`.
-- **Rate limiting**: per-IP token bucket on `POST /api/auth/login` and `POST /api/auth/passkey/*` (burst 10/min). A second, higher-burst bucket (30/min) guards the expensive authenticated endpoints — add-feed, feed discovery, edit-feed (URL repoint), refresh-feed, refresh-all-feeds, resummarize(-all), OPML import, TT-RSS import (file + live API), starter-pack import, article extract, the image proxy (`GET /api/img`), and search — which spawn outbound fetches / goroutines / FTS work. "Refresh all" additionally bounds its detached refresh goroutines with a global semaphore so concurrent requests can't pile work onto the single SQLite writer. Buckets key on the real client IP (see Transport / proxy expectations for how that's resolved). The bucket table is capped (10,000 keys) with idle entries swept on demand, so a host spraying an entire IPv6 range can't grow it without bound; the sweep itself is rate-limited to once a second so the cap can't be turned into a source of quadratic work.
+- **Rate limiting**: per-IP token bucket on `POST /api/auth/login`, `POST /api/auth/passkey/*`, and the two signed-in re-auth endpoints `POST /api/me/password` and `PATCH /api/me/email`, plus the token-authenticated `/fever` shim (burst 10/min). A second, higher-burst bucket (30/min) guards the expensive authenticated endpoints — add-feed, feed discovery, edit-feed (URL repoint), refresh-feed, refresh-all-feeds, resummarize(-all), OPML import, TT-RSS import (file + live API), starter-pack import, article extract, the image proxy (`GET /api/img`), and search — which spawn outbound fetches / goroutines / FTS work. "Refresh all" additionally bounds its detached refresh goroutines with a global semaphore so concurrent requests can't pile work onto the single SQLite writer. Buckets key on the real client IP (see Transport / proxy expectations for how that's resolved). The bucket table is capped (10,000 keys) with idle entries swept on demand, so a host spraying an entire IPv6 range can't grow it without bound; the sweep itself is rate-limited to once a second so the cap can't be turned into a source of quadratic work.
 - **Passkeys / WebAuthn**: optional second sign-in method (FIDO2). Credentials are bound to a relying-party ID derived from `EMBER_PUBLIC_URL`; ceremonies expire after 5 minutes; a stale `webauthn_sessions` row is reaped on a 15-minute cadence. Credentials never leave the device — only the public key is stored. The passkey login-begin path runs a throwaway credential lookup on an unknown username so its response timing matches the found-user path (no username enumeration). An assertion whose signature counter fails to advance past the stored value is **rejected**, not merely noted — that is the spec's cloned-authenticator signal — and the stored high-water mark is left untouched so a replay can't launder itself into looking like an advance. Authenticators that never implement a counter (they report `0` every time) are exempt, as the spec requires. User verification is `preferred` by default and can be raised to `required` per instance via `EMBER_PASSKEY_REQUIRE_UV` or **Settings → Passkeys**; the requirement is recorded in the server-side ceremony row, so a browser can't negotiate it away between begin and finish.
 - **Account email**: the self-service email change (`PATCH /api/me/email`) requires the current password (re-auth), so a stolen session can't silently redirect the account's digest mail. Email addresses are unique (case-insensitive) so two accounts can't converge on one address.
 
@@ -23,10 +23,13 @@ For vulnerability reporting, see [SECURITY.md](https://github.com/brandonhon/emb
 | All other `/api/*` | session cookie |
 | `POST /api/users`, `PATCH /api/users/{id}`, admin LLM, branding, DB, settings | `is_admin = 1` |
 | `GET /api/admin/settings`, `PATCH /api/admin/settings`, `POST /api/admin/settings/email-test` | `is_admin = 1` |
+| `POST /api/admin/summaries/drain`, `POST /api/admin/summaries/requeue` | `is_admin = 1`, rate-limited (both rewrite `summary_model` across every user's article rows) |
 | `/metrics` | `is_admin = 1` |
 | `GET /api/users` | returns `{id, username}` projection for non-admins |
 
 Every user-scoped store query carries `WHERE user_id = ?` so users can't read each other's feeds, shares, tags, or saved searches. Article tag endpoints additionally call `requireArticleAccess`, which confirms the user is subscribed to the article's feed before allowing tag mutations.
+
+Scoping reads isn't sufficient where a request body carries a **reference to another row** — a foreign key the caller chooses. Those are checked for ownership on the way in, not just filtered on the way out: `category_id` on `POST /api/feeds` and `PATCH /api/feeds/{id}`, and `board_id` / `category_id` on `POST /api/articles/mark-all-read`, all resolve the id against the caller's own rows first and 404 on anything else. A database foreign key proves only that the row exists, never whose it is.
 
 The admin file-management endpoints that take a filename — `DELETE /api/admin/db/backups/{name}` and `…/exports/{name}` — reject any `{name}` that isn't a bare basename with the expected extension (`.db` / `.opml`), so a crafted value can't traverse out of the configured backup/export directory. Per-user filter import (`POST /api/filters/import`) validates each rule through the same `ParseMatch` / `ValidateActionWithValue` path as a manual create and silently skips anything invalid or beyond the per-user cap, so a hand-edited bundle can't inject malformed rules.
 
@@ -134,17 +137,26 @@ The card thumbnail and the reader's lead image are served from Ember's own origi
 ## Database
 
 - SQLite WAL with single-writer semantics. The write handle is capped at `MaxOpenConns=1` to avoid `SQLITE_BUSY` storms; a second, read-only handle (`query_only`, 4 connections) serves heavy read queries alongside it, and SQLite itself rejects any write attempted on that handle.
-- `synchronous=NORMAL` (safe with WAL), `busy_timeout=5s`, 64 MiB cache, 256 MiB mmap.
+- `synchronous=NORMAL` (safe with WAL), `busy_timeout=5s`, 256 MiB mmap, and a 64 MiB page cache on the write handle plus 16 MiB on each of the four read connections — a total page-cache budget of roughly 128 MiB, which is the figure to size a container memory limit against.
 - Backups via `VACUUM INTO` are safe to run live and produce a compacted snapshot.
 
 ## Secrets at rest
 
-Admin-editable secrets — currently the SMTP password (`smtp_password` key in `app_settings`) — are stored **as plaintext** in the SQLite database. This matches the storage model when the same value is supplied via `EMBER_SMTP_PASSWORD` (env vars are also plaintext, just in `.env` rather than `ember.db`).
+Admin-editable secrets are stored **as plaintext** in the SQLite database. There are currently two:
+
+| `app_settings` key | What it is | Env equivalent |
+| --- | --- | --- |
+| `smtp_password` | SMTP auth password for digest email | `EMBER_SMTP_PASSWORD` |
+| `summarize_api_key` | API key for the `openai` / `anthropic` summarization backends — a **paid third-party credential** | `EMBER_SUMMARY_API_KEY` |
+
+This matches the storage model when the same values are supplied via the environment (env vars are also plaintext, just in `.env` rather than `ember.db`).
+
+Both are **write-only over the API**: `GET` returns a `password_set` / `api_key_set` boolean and never the value, an empty string on update means "no change", and only an explicit `clear_password` / `clear_api_key` flag erases one. Neither is ever logged. That protects them in transit and in logs — it does **not** protect them in the database file or in a backup taken from it.
 
 Protect the SQLite file at the filesystem layer:
 
 - Docker compose mounts `ember-data:/data` (root-owned inside the container).
-- Backups produced by `/api/admin/db/backup` inherit those permissions. Don't ship them to anywhere less trustworthy than the host.
+- Backups produced by `/api/admin/db/backup` are a copy of the whole database, so they contain both secrets above in plaintext. They inherit those permissions. Don't ship them to anywhere less trustworthy than the host.
 - Database-encryption-at-rest (SQLCipher) is not currently wired; if you need it, a future change would belong here.
 
 ## Fever shim
@@ -155,6 +167,22 @@ The Fever-compatible endpoint (`/fever`) uses a per-user random 32-byte token st
 
 ## CVE posture
 
-- Go stdlib pinned to **1.26.4**.
+- Go stdlib pinned to **1.26.5**.
 - CI runs `go vet`, `golangci-lint`, and `govulncheck` on every push.
-- Dependabot opens PRs weekly for `gomod` + `npm` updates.
+- Every container image Ember builds or ships is pinned by digest — the `node`,
+  `golang`, `busybox`, and `distroless` bases in `Dockerfile` /
+  `Dockerfile.release`, and the Caddy proxy in `deploy/docker-compose.yml`. So
+  the toolchain that compiled a given release and the proxy that fronts it are
+  both readable from the repo at that commit, rather than depending on when the
+  build host last pulled. Each pin is the multi-arch index digest, since
+  releases are built for `linux/amd64` and `linux/arm64`.
+- Dependabot opens PRs against `develop`: Go modules and the SPA's npm packages
+  weekly, base images and the compose stack weekly, the docs site's npm packages
+  and pinned GitHub Actions monthly.
+- `make check-pins` fails the build if any of those images loses its digest. It
+  runs locally as part of `make security` and in CI as the `Image pins` job.
+- Digest pinning means image updates are proposed rather than picked up
+  silently, so those PRs are the mechanism — a stale queue is a stale base
+  image. Note that Dependabot does version updates but *not* security updates
+  for Docker and Docker Compose, so an advisory against a base image raises no
+  alert here; the scheduled PR is the signal.

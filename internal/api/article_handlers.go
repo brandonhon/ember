@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
@@ -81,7 +82,7 @@ func (d *Dependencies) handleListArticles(w http.ResponseWriter, r *http.Request
 	// summarizer hasn't stamped yet — uniformly across every view (including
 	// Fresh) so badges match lists. When off (no Ollama), nothing is gated and
 	// everything shows everywhere. ?all=1 force-bypasses for admin/debug.
-	onlySummarized := d.summariesOn() && !atoB("all")
+	onlySummarized := d.summariesOn(r.Context()) && !atoB("all")
 	query := store.ListArticlesQuery{
 		View:               view,
 		FeedID:             feedID,
@@ -202,6 +203,20 @@ func (d *Dependencies) setArticleFlag(w http.ResponseWriter, r *http.Request, se
 	}
 	if mapStoreError(w, set(r.Context(), u.ID, req.ID, req.Value)) {
 		return
+	}
+	// Marking an article — starring it or saving it for later — is the reader
+	// saying they mean to read it, which is what requests a summary in
+	// on-demand mode (issue #199). Only on the way ON: un-starring is a
+	// removal signal, not "I mean to read this". Best-effort — the flag write
+	// already succeeded, and a deferred article that misses the queue is
+	// picked up by the next tick now that the poller's gate consults the
+	// marks directly rather than the (best-effort) queue.
+	if req.Value {
+		if changed, err := d.Store.RequestSummary(r.Context(), req.ID); err != nil {
+			slog.Default().Warn("articles: request summary", "article_id", req.ID, "err", err)
+		} else if changed {
+			d.enqueueSummaries([]int64{req.ID})
+		}
 	}
 	writeOK(w)
 }

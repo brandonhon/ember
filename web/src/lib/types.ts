@@ -78,6 +78,13 @@ export interface FeedWithCounts extends Feed {
   muted: boolean;
   /** This user's opt-in to AI summaries for the feed (issue #163). */
   summarize: boolean;
+  /**
+   * This user's choice of WHEN the feed's articles get summarized (issue
+   * #199): "" inherits the server-wide mode, "all" summarizes every article,
+   * "on_demand" waits for a star, a read-later, or a board pin. Orthogonal to
+   * `summarize`, which is the hard opt-out and still wins when false.
+   */
+  summarize_mode: string;
   position: number;
   unread: number;
 }
@@ -166,6 +173,12 @@ export interface Board {
   id: number;
   user_id: number;
   name: string;
+  /**
+   * Whether pinning an article here counts as "I mean to read this" and asks
+   * for a summary under on-demand mode (issue #199). On by default; a board
+   * used for filing rather than reading can turn it off.
+   */
+  summarize: boolean;
   created_at: number;
 }
 

@@ -28,4 +28,185 @@ test.describe("folders", () => {
     await page.getByTestId("toggle-collapse-all").click();
     await expect(page.getByTestId("feed-1")).toBeVisible();
   });
+
+  test("dragging a feed onto a feed row in another folder moves it", async ({ page }) => {
+    await signIn(page);
+    const folder = (name: string) =>
+      page.locator("div.folder").filter({
+        has: page.locator('[data-testid^="folder-name-"]', { hasText: name }),
+      });
+    const design = folder("Design");
+    const tech = folder("Technology");
+
+    const dragged = design.locator("[data-testid^='feed-']").first();
+    const id = await dragged.getAttribute("data-testid");
+    await dragged.dragTo(tech.locator("[data-testid^='feed-']").first());
+
+    // No reload: the optimistic store update must already show the move. This
+    // regressed once because the drop handler read the drag ref after an await,
+    // by which point dragend had cleared it.
+    await expect(tech.locator(`[data-testid='${id}']`)).toBeVisible();
+    await expect(design.locator(`[data-testid='${id}']`)).toHaveCount(0);
+
+    // ...and the server persisted it.
+    await page.reload();
+    await expect(page.getByTestId("article-list")).toBeVisible();
+    await expect(tech.locator(`[data-testid='${id}']`)).toBeVisible();
+  });
+
+  test("dropping a feed in a folder's empty space moves it into that folder", async ({ page }) => {
+    await signIn(page);
+    const folder = (name: string) =>
+      page.locator("div.folder").filter({
+        has: page.locator('[data-testid^="folder-name-"]', { hasText: name }),
+      });
+    // Explicit ids: the whole file shares one database serially, so an earlier
+    // test has already emptied Design. feed-1 is seeded into Technology and
+    // nothing before this moves it; World is untouched.
+    const id = "feed-1";
+    const dragged = page.getByTestId(id);
+
+    // Not the header and not a row — the gutter beside the rows, which is where
+    // a natural "drop it in the folder" gesture lands. This used to do nothing.
+    const list = folder("World").locator(".feed-list");
+    const to = (await list.boundingBox())!;
+    const from = (await dragged.boundingBox())!;
+    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(from.x + from.width / 2, from.y - 10, { steps: 5 });
+    await page.mouse.move(to.x + 4, to.y + to.height - 3, { steps: 20 });
+    await page.mouse.up();
+
+    await expect(folder("World").locator(`[data-testid='${id}']`)).toBeVisible();
+    await page.reload();
+    await expect(page.getByTestId("article-list")).toBeVisible();
+    await expect(folder("World").locator(`[data-testid='${id}']`)).toBeVisible();
+  });
+
+  test("a folder dropped in another folder's body reorders it", async ({ page }) => {
+    await signIn(page);
+    const order = () =>
+      page.evaluate(() =>
+        Array.from(document.querySelectorAll(".folder .folder-name"))
+          .map((e) => e.textContent?.trim())
+          .filter(Boolean) as string[],
+      );
+    const folder = (name: string) =>
+      page.locator("div.folder").filter({
+        has: page.locator('[data-testid^="folder-name-"]', { hasText: name }),
+      });
+
+    // Compute the expectation from the live order — other specs in the shared
+    // database add folders, so nothing here may assume a fixed arrangement.
+    // Dropping A onto B puts A at B's index. Wait for the rail to render first:
+    // reading the order too early yields [] and a nonsense expectation.
+    await expect(folder("Technology").locator(".folder-head")).toBeVisible();
+    const before = await order();
+    expect(before).toContain("Design");
+    const ids = [...before];
+    const [moved] = ids.splice(ids.indexOf("Design"), 1);
+    ids.splice(before.indexOf("Technology"), 0, moved);
+
+    // The body, not the header: this whole region used to ignore folder drops.
+    const src = (await folder("Design").locator(".folder-head").boundingBox())!;
+    const dst = (await folder("Technology").locator(".feed-list").boundingBox())!;
+    await page.mouse.move(src.x + src.width / 2, src.y + src.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(src.x + src.width / 2, src.y + 8, { steps: 5 });
+    await page.mouse.move(dst.x + 4, dst.y + dst.height - 3, { steps: 20 });
+    await page.mouse.up();
+
+    await expect.poll(order).toEqual(ids);
+    await page.reload();
+    await expect(page.getByTestId("article-list")).toBeVisible();
+    await expect.poll(order).toEqual(ids);
+  });
+
+  // Firefox symptom reported from a live deployment: the folder highlights on
+  // hover, then the row snaps back and nothing moves. That is a REJECTED drop —
+  // the handler returned without preventDefault() because the module-scope drag
+  // ref had already been cleared by dragend. The drop path reads the payload
+  // from dataTransfer now, so the ordering no longer matters.
+  test("a drop still lands after dragend has cleared the drag state", async ({ page }) => {
+    await signIn(page);
+    // Park feed-5 somewhere that is definitely NOT the drop target, so the
+    // assertion can't be satisfied by whatever an earlier test left behind.
+    await page.evaluate(async () => {
+      const m = document.cookie.match(/(?:^|;\s*)ember_csrf=([^;]+)/);
+      const csrf = m ? decodeURIComponent(m[1]) : "";
+      const cats = (await (await fetch("/api/categories", { credentials: "include" })).json()).data;
+      const design = cats.find((c: any) => c.name === "Design");
+      const feeds = (await (await fetch("/api/feeds", { credentials: "include" })).json()).data;
+      const f = feeds.find((x: any) => (x.title_override || x.title || "").includes("Smashing"));
+      await fetch(`/api/feeds/${f.subscription_id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", "X-Ember-CSRF": csrf },
+        body: JSON.stringify({ category_id: design.id }),
+      });
+    });
+    await page.reload();
+    await expect(page.getByTestId("article-list")).toBeVisible();
+
+    const where = () =>
+      page.evaluate(() =>
+        document.querySelector('[data-testid="feed-5"]')?.closest(".folder")
+          ?.querySelector(".folder-name")?.textContent?.trim());
+
+    const result = await page.evaluate(() => {
+      const row = document.querySelector('[data-testid="feed-5"]')!.closest(".feed-row") as HTMLElement;
+      const head = Array.from(document.querySelectorAll(".folder-head"))
+        .find((h) => h.querySelector(".folder-name")?.textContent?.includes("Technology")) as HTMLElement;
+      const dt = new DataTransfer();
+      row.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer: dt }));
+      head.dispatchEvent(new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer: dt }));
+      // The browser clears the module state here, before delivering the drop.
+      row.dispatchEvent(new DragEvent("dragend", { bubbles: true, dataTransfer: dt }));
+      const drop = new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: dt });
+      head.dispatchEvent(drop);
+      return { dropAccepted: drop.defaultPrevented };
+    });
+
+    // false here means the browser rejects the drop and animates the row back.
+    expect(result.dropAccepted, "drop was rejected \u2192 the row snaps back").toBe(true);
+    await expect.poll(where).toBe("Technology");
+  });
+
+  test("a feed can be dragged out of a folder onto Uncategorized", async ({ page }) => {
+    await signIn(page);
+    const uncatHead = page.locator(".folder-head").filter({ hasText: "Uncategorized" });
+    // When nothing is uncategorized the zone doesn't exist at rest — it appears
+    // for the duration of a feed drag, which is the only way out of a folder.
+    // Running the whole suite, feeds.spec.ts has already added an uncategorized
+    // feed, so don't assume either starting state; assert it's there once the
+    // drag is under way.
+    const dragged = page.getByTestId("feed-5");
+    const from = (await dragged.boundingBox())!;
+    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(from.x + from.width / 2, from.y - 12, { steps: 6 });
+    await expect(uncatHead).toBeVisible();
+    // toBeVisible() is satisfied by an off-screen element, and once other specs
+    // have added feeds the zone renders below the fold — the pointer could
+    // never reach it. Scroll it in (the drag survives) before taking its box.
+    await uncatHead.scrollIntoViewIfNeeded();
+
+    const to = (await uncatHead.boundingBox())!;
+    await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 20 });
+    await page.mouse.move(to.x + to.width / 2 + 2, to.y + to.height / 2, { steps: 4 });
+    await page.mouse.up();
+
+    const folderOf = () =>
+      page.evaluate(() =>
+        document
+          .querySelector('[data-testid="feed-5"]')
+          ?.closest(".folder")
+          ?.querySelector(".folder-name")
+          ?.textContent?.trim(),
+      );
+    await expect.poll(folderOf).toBe("Uncategorized");
+    await page.reload();
+    await expect(page.getByTestId("article-list")).toBeVisible();
+    await expect.poll(folderOf).toBe("Uncategorized");
+  });
 });
