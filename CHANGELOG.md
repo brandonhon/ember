@@ -248,12 +248,13 @@ them.
   `@sveltejs/vite-plugin-svelte` 7.2.0 → 7.3.0, svelte-check 4.7.4 → 4.7.5,
   `@types/node` 26.1.2 → 26.5.1, and Playwright 1.62.1 → 1.63.0. Dev-only — none
   of it is bundled into the Ember binary, and TypeScript stays held at 6.x for
-  the reason given under 0.9.6. Vitest stays on 4.x as well: 4.1.11 carries the
-  fix for GHSA-82fw-gwwq-j7x9, and the 5.0 major is being evaluated on its own
-  rather than folded into a routine bump.
+  the reason given under 0.9.6.
 - Bumped Vite 8.2.2 → 8.3.0 (and its bundler `rolldown` 1.2.5 → 1.2.8). Dev-only
-  build tooling, not shipped in the binary; Vitest stays on 4.x for the reason
-  above.
+  build tooling, not shipped in the binary.
+- Bumped Vitest 4.1.11 → 5.0.1, the unit-test runner for the SPA. A major
+  release taken on its own rather than inside a grouped bump so any fallout
+  would be attributable; in the event none was needed — the 63-test suite passes
+  unchanged and no configuration moved. Dev-only, not shipped in the binary.
 - Bumped Svelte 5.56.10 → 5.57.0. Unlike the tooling above this one does reach
   the released binary — the framework runtime is compiled into the bundled SPA —
   so it is listed separately. A minor release within the 5.x line with no
