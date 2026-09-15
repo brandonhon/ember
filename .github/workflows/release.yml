@@ -30,6 +30,7 @@ on:
 permissions:
   contents: write   # create GitHub Releases + upload binaries
   packages: write   # push to ghcr.io
+  actions: write    # dispatch pages.yml after a full release (see the last step)
 
 concurrency:
   group: release-${{ github.event.inputs.tag || github.ref }}
@@ -361,3 +362,15 @@ jobs:
             echo "::error::expected at least 5 assets, found $count"
             exit 1
           fi
+
+      # pages.yml declares `release: published` so the demo SPA's About version
+      # picks up the new tag, but that event never reaches it: the release is
+      # published above with GITHUB_TOKEN, and GitHub does not create workflow
+      # runs for events that token causes. workflow_dispatch is the exception,
+      # so ask for the rebuild explicitly. Full releases only — pages.yml skips
+      # prereleases on the release event, and this keeps the same rule.
+      - name: Rebuild the docs site with the released version
+        if: needs.prepare.outputs.is_prerelease != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --repo "$GITHUB_REPOSITORY" --ref main

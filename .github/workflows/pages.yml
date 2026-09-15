@@ -8,7 +8,9 @@ on:
       - 'web/**'
       - '.github/workflows/pages.yml'
   # Rebuild after a release is published so the demo SPA's About version picks up
-  # the new tag (release.yml runs on the tag; this redeploys with that version).
+  # the new tag. Only a release published by a person reaches this trigger:
+  # release.yml publishes with GITHUB_TOKEN, whose events don't start workflow
+  # runs, so it dispatches this workflow explicitly instead (its last step).
   # Prereleases are filtered out by the job-level `if:` below.
   release:
     types: [published]

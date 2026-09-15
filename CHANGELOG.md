@@ -13,6 +13,20 @@ don't reach the released binaries or container image — they're listed so the
 provenance of the build is auditable from one file. Releases before 0.9.6 omit
 them.
 
+## [Unreleased]
+
+### Changed
+
+- The documentation site is rebuilt after every full release, so the live
+  demo's **About** version now matches the release just published. Build
+  infrastructure only. The rebuild was meant to run on the *release published*
+  event, but a release published by the release workflow itself never triggers
+  it — GitHub doesn't start workflows for events caused by the workflow token —
+  so the site was only ever rebuilt by the merge to `main`, which happens
+  before the tag exists; the demo kept reporting the previous version until
+  someone redeployed by hand (0.9.7 shipped showing 0.9.6). The release
+  workflow now asks for the rebuild explicitly once the release is public.
+
 ## [0.9.7] - 2026-09-15
 
 ### Added
