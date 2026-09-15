@@ -13,8 +13,10 @@ import (
 )
 
 // handleFever dispatches Fever API requests. Authentication is via the
-// `api_key` form value, which is md5("username:password") — same as the spec.
-// We compute that on demand for each user instead of storing it.
+// `api_key` form value. The Fever spec defines it as md5("username:password");
+// Ember instead issues each user a random 256-bit token (users.fever_token,
+// shown in Settings → Mobile clients) and the client sends that verbatim, so
+// the key is unguessable and never derived from the password.
 func (d *Dependencies) handleFever(w http.ResponseWriter, r *http.Request) {
 	// Cap the form body — ParseForm reads it fully into memory. The Fever shim
 	// only needs a handful of small fields; 64 KiB is generous. Without a
