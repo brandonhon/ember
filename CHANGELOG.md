@@ -105,6 +105,15 @@ them.
   login backoff (five free misses, then a doubling wait up to a minute,
   returned as `429` with `Retry-After`) and the per-IP login limiter, and a
   miss on one counts on all three. Nothing changes for a correct password.
+- **The login backoff's first tier could be skipped.** Failure times are
+  stored in whole seconds, and the throttle measured the wait from that
+  rounded-down value, so a failure at the end of a second looked older than
+  it was. The first tier is only one second, so in the worst case it vanished
+  entirely: a sixth attempt 100 ms after the fifth failure went through
+  unthrottled. The wait is now measured from the end of the stored second,
+  which can only ever hold an attempt slightly longer, never release it early;
+  `Retry-After` is derived from the same figure so it still matches what is
+  enforced.
 
 ### Fixed
 
@@ -131,6 +140,14 @@ them.
   retryable and the backend regenerated the same article before Ember gave
   up. It's now enforced as a single deadline that covers that retry too, so
   a timed-out article is generated once, not twice.
+- **The sidebar no longer claims to be "Summarizing N articles…" on a server
+  that isn't summarizing anything.** With summaries off (`EMBER_DISABLE_SUMMARIES`
+  or the Settings switch) the footer could sit at a fixed count forever — a
+  shutdown landing mid-poll left articles marked as awaiting a summary that no
+  worker would ever write, and nothing healed them on restart — and the
+  15-second refresh kept re-requesting that unchanging number every tick.
+  Startup now marks those stranded articles as not needing a summary, and the
+  footer and its refresh are both gated on summaries actually being enabled.
 - **Drag-and-drop no longer silently refuses the drop in Firefox.** The folder
   would highlight as you dragged over it, then the feed sprang back and nothing
   moved. The sidebar was reading the details of the drag from a variable the
@@ -172,6 +189,14 @@ them.
   documentation for unreleased behaviour in front of readers running the last
   stable version. The site now tracks the latest full release. Pushes to `main`,
   full releases and manual workflow dispatches deploy exactly as before.
+- Release binaries and checksums are now attached to a draft release, which
+  is then published, instead of being uploaded to an already-published one.
+  Build infrastructure only. Releases in this repository are immutable — their
+  assets seal at publish time — and prereleases seal on the same event, so
+  `v0.9.7-rc.1`, the first prerelease ever cut, was published with no binaries
+  attached (`Cannot upload asset … to an immutable release`). Full releases
+  had always uploaded in time, but they now take the same path so every
+  release candidate rehearses exactly what the release that follows it does.
 - Bumped the pinned `actions/checkout` from 6.0.2 to 7.0.1 across all five
   workflows. This is build infrastructure only: it changes how CI checks the
   repository out, not anything in the released binaries or container image.
