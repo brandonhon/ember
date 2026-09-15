@@ -13,7 +13,7 @@ don't reach the released binaries or container image — they're listed so the
 provenance of the build is auditable from one file. Releases before 0.9.6 omit
 them.
 
-## [Unreleased]
+## [0.9.7] - 2026-09-15
 
 ### Added
 
@@ -808,7 +808,8 @@ TT-RSS full migration (subscriptions, folders, starred/archived) and fail-fast
 admin bootstrap. See the
 [v0.8.7 release](https://github.com/brandonhon/ember/releases/tag/v0.8.7).
 
-[Unreleased]: https://github.com/brandonhon/ember/compare/v0.9.6...develop
+[Unreleased]: https://github.com/brandonhon/ember/compare/v0.9.7...develop
+[0.9.7]: https://github.com/brandonhon/ember/compare/v0.9.6...v0.9.7
 [0.9.6]: https://github.com/brandonhon/ember/compare/v0.9.5...v0.9.6
 [0.9.5]: https://github.com/brandonhon/ember/compare/v0.9.4...v0.9.5
 [0.9.4]: https://github.com/brandonhon/ember/compare/v0.9.3...v0.9.4
