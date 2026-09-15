@@ -26,6 +26,19 @@ them.
   before the tag exists; the demo kept reporting the previous version until
   someone redeployed by hand (0.9.7 shipped showing 0.9.6). The release
   workflow now asks for the rebuild explicitly once the release is public.
+- Bumped two pinned actions: `github/codeql-action` 4.37.9 → 4.38.0 (all
+  three of `init`, `autobuild` and `analyze` to the same commit, as they must
+  be) and `dorny/paths-filter` 4.0.2 → 4.0.3. Build infrastructure only —
+  neither reaches the released binaries or container image.
+- **The container's SPA build stage moved from Node 20 to Node 26**
+  (`node:26-alpine`, Node 20 having reached end of life in April 2026), and
+  the distroless runtime base moved to its current digest. The Go builder
+  stays on `golang:1.26-alpine` — its current tag is still the 1.26.7 that
+  `go.mod` and the release tarballs are compiled with, and Dependabot is now
+  told not to propose a new Go minor for the image on its own: that is a
+  deliberate bump of `go.mod` and the image together, so one release can't
+  ship two toolchains. Nothing in the published image's contents or behaviour
+  changes; the multi-arch build was verified against the new digests.
 
 ## [0.9.7] - 2026-09-15
 

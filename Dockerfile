@@ -9,7 +9,7 @@
 # it. Dependabot moves both together (.github/dependabot.yml).
 
 # Build the Svelte SPA.
-FROM node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 AS web
+FROM node:26-alpine@sha256:ef24c5053d50fdc3e4e56eb4e7ddb7861874ab0fdc797046ba897581deb8e868 AS web
 WORKDIR /src/web
 COPY web/package.json web/package-lock.json ./
 RUN npm ci --no-audit --no-fund
@@ -43,7 +43,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
 RUN mkdir -p /out/data && chown 65532:65532 /out/data
 
 # Final image: distroless (no shell, no package manager).
-FROM gcr.io/distroless/static-debian12:nonroot@sha256:1b7b9f0f0e0a1d2155f531db587cc48ec26aaf97ab64364225f5bf18a054e66a AS final
+FROM gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab AS final
 COPY --from=build /out/ember /ember
 COPY --from=build --chown=nonroot:nonroot /out/data /data
 EXPOSE 8080

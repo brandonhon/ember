@@ -111,6 +111,14 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 3
+    ignore:
+      # The golang image's Go version must match go.mod: the release tarballs
+      # are compiled by setup-go from go.mod, the container by this image, and
+      # one release must not ship two toolchains. A new Go minor is therefore
+      # a deliberate bump of go.mod and this digest together, not a Dependabot
+      # merge. Patch digests within the pinned minor still flow.
+      - dependency-name: golang
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
     groups:
       base-images:
         patterns: ["*"]
