@@ -20,7 +20,7 @@
 # pins this stage to the build host's native arch, then the final stage
 # COPYs the prepared directory across as plain data. Multi-arch assembly
 # becomes near-instant.
-FROM --platform=$BUILDPLATFORM busybox:1-musl@sha256:32b5cdad7cce41dfd53d0ae06baebcf8357a147ee7694dc706911c373bc30c37 AS dataprep
+FROM --platform=$BUILDPLATFORM busybox:1-musl@sha256:ea2b9914a16a4ac1981994af97b318f7c7d4db76b580c56177f08bf76f4a0be8 AS dataprep
 RUN mkdir -p /out/data && chown 65532:65532 /out/data
 
 # Stage 2: runtime. Pre-built binaries are dropped into dist/ by the CI
