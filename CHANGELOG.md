@@ -39,6 +39,36 @@ them.
   deliberate bump of `go.mod` and the image together, so one release can't
   ship two toolchains. Nothing in the published image's contents or behaviour
   changes; the multi-arch build was verified against the new digests.
+- **Go toolchain 1.26.7 → 1.26.8** (`go.mod` and the `golang:1.26-alpine`
+  builder digest together, so the release tarballs and the container are still
+  compiled by the same toolchain). A bug-fix patch — compiler, runtime, cgo,
+  `os`. Dependabot proposed `golang:1.27` again; that minor stays held for a
+  deliberate `go.mod` + image bump. The `node:26-alpine` and `busybox` base
+  digests moved to their current builds; the multi-arch build was verified.
+- Bumped runtime dependencies: `modernc.org/sqlite` 1.58.0 → 1.59.0,
+  `go-webauthn/webauthn` 0.18.1 → 0.18.2 (stricter attestation and session
+  challenge validation), `mmcdole/gofeed` 1.4.2 → 1.5.0 (author parsing fixes,
+  response size limit enforced through the end of the body, no panic on null
+  JSON Feed items), `anthropic-sdk-go` 1.72.0 → 1.75.0 and
+  `fxamacker/cbor` 2.9.3 → 2.9.4. Web tooling moved to Vite 8.3.1, Vitest
+  5.0.2, Svelte 5.57.1 and jsdom 30.1.1 (dev-only, not bundled into the Ember
+  binary).
+- Bumped pinned actions: `github/codeql-action` 4.38.0 → 4.38.2 (all three
+  sub-actions to the same commit), `docker/build-push-action` 7.3.0 → 7.4.0,
+  `docker/setup-buildx-action` 4.3.0 → 4.4.1, and the deploy example's Caddy
+  2.11.4 image to its current digest. Build infrastructure only.
+
+### Security
+
+- `undici` 8.9.0 → 8.11.2 in the web test toolchain (pulled in by jsdom),
+  fixing six advisories (GHSA-w293-vg96-wgc3, GHSA-2jfj-6hjv-fm6j,
+  GHSA-pmjh-fq2x-6v4x, GHSA-8436-99hf-9mmv, GHSA-r53p-7pc4-xj5r,
+  GHSA-2gqq-gqf2-x968). Dev-only: undici is used by the test runner and never
+  ships in the Ember binary or the web bundle.
+- `source-map-js` 1.2.1 → 1.2.2 (GHSA-68fv-2mgg-jv7q, denial of service via
+  crafted source maps) in the web and documentation build toolchains, and
+  Vue 3.5.34 → 3.5.43 in the documentation site's toolchain. Build-time only;
+  neither is shipped in the Ember binary.
 
 ## [0.9.7] - 2026-09-15
 
