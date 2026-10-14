@@ -9,7 +9,7 @@
 # it. Dependabot moves both together (.github/dependabot.yml).
 
 # Build the Svelte SPA.
-FROM node:26-alpine@sha256:0b36e8c136b94cd4fcf02188228e76c31ad5872eef3fec8cbd2eee500cfd9e80 AS web
+FROM node:26-alpine@sha256:143494b1da2945f061539253adc65e4f1569ddf07da2d384c022c791a9d90a4a AS web
 WORKDIR /src/web
 COPY web/package.json web/package-lock.json ./
 RUN npm ci --no-audit --no-fund
@@ -21,7 +21,7 @@ RUN npm run build
 # freezes it at an exact patch (1.26.8 as pinned, which is what go.mod asks
 # for). Raising the `go` directive past the pinned toolchain therefore breaks
 # this build until the digest moves too — bump them in the same change.
-FROM golang:1.26-alpine@sha256:8ac98ca534ac3f51e1f420a1dd2c15e74c75cfa0f23f3ad27eb5d7236c349a0c AS build
+FROM golang:1.27-alpine@sha256:f92b6ef800e499660581efdabdf25d9d817a9d124eaf900924f0504e7e27e12d AS build
 WORKDIR /src
 RUN apk add --no-cache git ca-certificates
 COPY go.mod go.sum ./
