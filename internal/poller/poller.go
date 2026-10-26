@@ -799,12 +799,15 @@ func (p *Poller) stampPendingDisabled(ctx context.Context) {
 // the article becomes visible in the list — better to show a story without a
 // summary card than to hide it forever.
 func (p *Poller) summarizeOne(ctx context.Context, articleID int64) {
-	p.Metrics.SummariesTotal.Add(1)
 	art, err := p.Store.GetArticle(ctx, articleID)
 	if err != nil {
 		p.Metrics.SummariesErrored.Add(1)
 		return
 	}
+	if art.SummaryModel != "" {
+		return // A stale duplicate queue entry must not spend another LLM call.
+	}
+	p.Metrics.SummariesTotal.Add(1)
 	if p.Summarizer == nil {
 		// No summarizer configured — mark skipped so the article still shows.
 		p.markSkipped(ctx, articleID)
