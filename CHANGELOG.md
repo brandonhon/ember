@@ -15,6 +15,8 @@ them.
 
 ## [Unreleased]
 
+## [0.9.8] - 2026-10-27
+
 ### Added
 
 - **Filters accept a comma-separated list of values.** A rule using
@@ -905,7 +907,8 @@ TT-RSS full migration (subscriptions, folders, starred/archived) and fail-fast
 admin bootstrap. See the
 [v0.8.7 release](https://github.com/brandonhon/ember/releases/tag/v0.8.7).
 
-[Unreleased]: https://github.com/brandonhon/ember/compare/v0.9.7...develop
+[Unreleased]: https://github.com/brandonhon/ember/compare/v0.9.8...develop
+[0.9.8]: https://github.com/brandonhon/ember/compare/v0.9.7...v0.9.8
 [0.9.7]: https://github.com/brandonhon/ember/compare/v0.9.6...v0.9.7
 [0.9.6]: https://github.com/brandonhon/ember/compare/v0.9.5...v0.9.6
 [0.9.5]: https://github.com/brandonhon/ember/compare/v0.9.4...v0.9.5
