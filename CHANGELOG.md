@@ -39,27 +39,42 @@ them.
   deliberate bump of `go.mod` and the image together, so one release can't
   ship two toolchains. Nothing in the published image's contents or behaviour
   changes; the multi-arch build was verified against the new digests.
-- **Go toolchain 1.26.7 → 1.26.8** (`go.mod` and the `golang:1.26-alpine`
+- **Go toolchain 1.26.7 → 1.26.10** (`go.mod` and the `golang:1.26-alpine`
   builder digest together, so the release tarballs and the container are still
-  compiled by the same toolchain). A bug-fix patch — compiler, runtime, cgo,
-  `os`. Dependabot proposed `golang:1.27` again; that minor stays held for a
-  deliberate `go.mod` + image bump. The `node:26-alpine` and `busybox` base
-  digests moved to their current builds; the multi-arch build was verified.
-- Bumped runtime dependencies: `modernc.org/sqlite` 1.58.0 → 1.59.0,
+  compiled by the same toolchain). Bug-fix and security patches — see
+  Security below for the HTTP/2 fix. Dependabot proposed `golang:1.27` again;
+  that minor stays held for a deliberate `go.mod` + image bump. The
+  `node:26-alpine` and `busybox` base digests moved to their current builds;
+  the multi-arch build was verified.
+- Bumped runtime dependencies: `modernc.org/sqlite` 1.58.0 → 1.60.1,
   `go-webauthn/webauthn` 0.18.1 → 0.18.2 (stricter attestation and session
   challenge validation), `mmcdole/gofeed` 1.4.2 → 1.5.0 (author parsing fixes,
   response size limit enforced through the end of the body, no panic on null
-  JSON Feed items), `anthropic-sdk-go` 1.72.0 → 1.75.0 and
-  `fxamacker/cbor` 2.9.3 → 2.9.4. Web tooling moved to Vite 8.3.1, Vitest
-  5.0.2, Svelte 5.57.1 and jsdom 30.1.1 (dev-only, not bundled into the Ember
-  binary).
+  JSON Feed items), `anthropic-sdk-go` 1.72.0 → 1.82.0,
+  `fxamacker/cbor` 2.9.3 → 2.9.6, `go-chi/chi` 5.3.2 → 5.5.0,
+  `pressly/goose` 3.28.0 → 3.29.0, and `golang.org/x/crypto` 0.58.0,
+  `x/mod` 0.42.0, `x/net` 0.61.0. Web tooling moved to Vite 8.3.4, Vitest
+  5.0.5, Svelte 5.57.2, svelte-check 4.7.7, jsdom 30.1.3 and Playwright
+  1.64.1 (dev-only, not bundled into the Ember binary).
 - Bumped pinned actions: `github/codeql-action` 4.38.0 → 4.38.2 (all three
   sub-actions to the same commit), `docker/build-push-action` 7.3.0 → 7.4.0,
   `docker/setup-buildx-action` 4.3.0 → 4.4.1, and the deploy example's Caddy
-  2.11.4 image to its current digest. Build infrastructure only.
+  image 2.11.4 → 2.11.7. Build infrastructure only.
 
 ### Security
 
+- **Go 1.26.10 and `golang.org/x/net` 0.61.0** fix GO-2026-6617
+  (CVE-2026-97032), an HPACK encoder race that can crash an HTTP/2 server.
+  Ember's server and its outbound HTTP clients both reach the affected code,
+  so this one does ship in the binary and the container image.
+- Vite 8.3.0 → 8.3.4 (GHSA-rq7h-c2jc-7f22, GHSA-vfpm-58rq-9qcg,
+  GHSA-r825-w8mm-5pxw, GHSA-587h-7wmj-h5pm, GHSA-698v-4r3x-3vcv — dev-server
+  file exposure and `launch-editor` command handling), `@vitest/mocker`
+  → 5.0.5 (GHSA-qxg6-89mg-rqv8, GHSA-xp26-3454-mjgp) and `devalue`
+  5.8.1 → 5.9.4 (GHSA-j22f-vq7h-c4qm, GHSA-r9w8-h9r3-54w4, GHSA-4q55-j62x-fr9h,
+  GHSA-hx4r-w6wj-j8fg, GHSA-wf3x-273g-mvxv) in the web build and test
+  toolchain. Dev-only: none of them is shipped in the Ember binary or the web
+  bundle.
 - `undici` 8.9.0 → 8.11.2 in the web test toolchain (pulled in by jsdom),
   fixing six advisories (GHSA-w293-vg96-wgc3, GHSA-2jfj-6hjv-fm6j,
   GHSA-pmjh-fq2x-6v4x, GHSA-8436-99hf-9mmv, GHSA-r53p-7pc4-xj5r,
