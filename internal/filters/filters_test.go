@@ -172,3 +172,43 @@ func TestMatches_RegexCaseSensitive(t *testing.T) {
 		t.Error("expected no match (case sensitive)")
 	}
 }
+
+func TestMatches_CommaSeparatedTerms(t *testing.T) {
+	a := art("Rust 1.80 announced", "Borrow checker improvements", "Alice", "https://blog.test/rust")
+	cases := []struct {
+		name string
+		m    Match
+		want bool
+	}{
+		{"contains any term", Match{Field: FieldTitle, Op: OpContains, Value: "python, rust, go"}, true},
+		{"contains no term", Match{Field: FieldTitle, Op: OpContains, Value: "python,java"}, false},
+		{"equals any term", Match{Field: FieldAuthor, Op: OpEquals, Value: "bob, alice"}, true},
+		{"starts_with any term", Match{Field: FieldTitle, Op: OpStartsWith, Value: "go,rust"}, true},
+		{"terms are trimmed", Match{Field: FieldAuthor, Op: OpEquals, Value: "bob ,  alice  "}, true},
+		{"empty terms ignored", Match{Field: FieldTitle, Op: OpContains, Value: ",,python,,"}, false},
+		{"case sensitive per term", Match{Field: FieldTitle, Op: OpContains, Value: "python,rust", CaseSensitive: true}, false},
+		// Without a comma the value is used verbatim, spaces included, so an
+		// existing " ai " word-ish match keeps working.
+		{"single value keeps spaces", Match{Field: FieldTitle, Op: OpContains, Value: " announced"}, true},
+		{"single value keeps spaces miss", Match{Field: FieldTitle, Op: OpContains, Value: " rust"}, false},
+		// Regex values are never split: the comma is regex syntax.
+		{"regex not split", Match{Field: FieldTitle, Op: OpMatches, Value: `\d{1,2}\.\d+`}, true},
+		{"regex comma literal", Match{Field: FieldTitle, Op: OpMatches, Value: "python,rust"}, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := Matches(c.m, a, frozenNow); got != c.want {
+				t.Errorf("Matches(%+v) = %v, want %v", c.m, got, c.want)
+			}
+		})
+	}
+}
+
+func TestValidate_CommaSeparatedNeedsATerm(t *testing.T) {
+	for _, v := range []string{",", " , ,", " ,\t, "} {
+		m := Match{Field: FieldTitle, Op: OpContains, Value: v}
+		if err := m.Validate(); err == nil {
+			t.Errorf("Validate(%q) = nil, want error: no non-empty term", v)
+		}
+	}
+}

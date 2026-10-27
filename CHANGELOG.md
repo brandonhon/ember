@@ -15,6 +15,17 @@ them.
 
 ## [Unreleased]
 
+### Added
+
+- **Filters accept a comma-separated list of values.** A rule using
+  *contains*, *equals* or *starts with* can now list several keywords —
+  `crypto, nft, web3` — and matches when any one of them does, so muting a
+  topic no longer takes a rule per word. Each listed term is trimmed. A value
+  without a comma is still used exactly as typed (spaces included), so
+  existing rules behave as before unless their value already contained a
+  comma. Regex rules are unchanged: a comma there is part of the pattern, and
+  `|` already means "any of". Preview counts use the same matching.
+
 ### Changed
 
 - The documentation site is rebuilt after every full release, so the live

@@ -136,6 +136,9 @@ func (m Match) Validate() error {
 	if m.Value == "" {
 		return fmt.Errorf("filters: value required")
 	}
+	if m.Op != OpMatches && strings.Contains(m.Value, ",") && len(terms(m.Value)) == 0 {
+		return fmt.Errorf("filters: value required (only commas given)")
+	}
 	if m.Op == OpMatches {
 		// Bound the pattern length: each distinct pattern is compiled and
 		// cached forever (reCache), so unbounded patterns are a memory-DoS
@@ -157,6 +160,26 @@ func (m Match) Validate() error {
 
 // maxPatternLen caps a single match regex; see Match.Validate.
 const maxPatternLen = 512
+
+// terms splits a contains/equals/starts_with value into the keywords it lists,
+// so one rule can cover several ("crypto, nft, web3"); the rule matches when
+// any term does. A value without a comma is one term used verbatim — leading
+// or trailing spaces included — so rules written before lists existed behave
+// exactly as they did. In a list, terms are trimmed and empty ones dropped.
+// Regex values never come through here: a comma is regex syntax ({2,3}) and
+// "|" already expresses "any of".
+func terms(v string) []string {
+	if !strings.Contains(v, ",") {
+		return []string{v}
+	}
+	var out []string
+	for t := range strings.SplitSeq(v, ",") {
+		if t = strings.TrimSpace(t); t != "" {
+			out = append(out, t)
+		}
+	}
+	return out
+}
 
 // parseDuration extends time.ParseDuration with a day unit ("7d"), which
 // the stdlib doesn't support but our docs and UI advertise for the
@@ -236,18 +259,29 @@ func Matches(m Match, a models.Article, now time.Time) bool {
 	}
 
 	subject := fieldValue(m.Field, a)
-	value := m.Value
 	if !m.CaseSensitive {
 		subject = strings.ToLower(subject)
-		value = strings.ToLower(value)
 	}
 	switch m.Op {
-	case OpContains:
-		return strings.Contains(subject, value)
-	case OpEquals:
-		return subject == value
-	case OpStartsWith:
-		return strings.HasPrefix(subject, value)
+	case OpContains, OpEquals, OpStartsWith:
+		// Only a list pays for splitting; a plain value stays allocation-free
+		// on this per-article, per-rule path.
+		values := []string{m.Value}
+		if strings.Contains(m.Value, ",") {
+			values = terms(m.Value)
+		}
+		for _, value := range values {
+			if !m.CaseSensitive {
+				value = strings.ToLower(value)
+			}
+			switch {
+			case m.Op == OpContains && strings.Contains(subject, value),
+				m.Op == OpEquals && subject == value,
+				m.Op == OpStartsWith && strings.HasPrefix(subject, value):
+				return true
+			}
+		}
+		return false
 	case OpMatches:
 		// Validate guarantees this compiles. The "(?i)" prefix applies the
 		// case-insensitive flag; compiled forms are cached (see reCache).
