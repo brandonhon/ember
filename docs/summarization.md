@@ -18,6 +18,10 @@ how to recover a backlog that's stuck.
    set to the model name. On failure — backend down, empty output, a persist error, or the
    request exceeding `EMBER_SUMMARY_TIMEOUT_SECONDS` — Ember writes `summary_model =
    'skipped'` rather than leaving the row pending, so the article still surfaces.
+4. Articles are summarized one at a time. While a backlog drains, the poller re-queues
+   every still-pending article on each tick, so the queue can hold the same article more
+   than once; the summarizer skips any article that already has a `summary_model`, so only
+   the first copy reaches the model.
 
 `summary_timeout_seconds` accepts 10–900, but on the **Claude** backend only 10–600 is
 reachable: the Anthropic SDK's non-streaming timeout calculation returns a flat 10-minute

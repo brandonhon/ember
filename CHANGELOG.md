@@ -37,40 +37,36 @@ them.
   before the tag exists; the demo kept reporting the previous version until
   someone redeployed by hand (0.9.7 shipped showing 0.9.6). The release
   workflow now asks for the rebuild explicitly once the release is public.
-- Bumped two pinned actions: `github/codeql-action` 4.37.9 → 4.38.0 (all
-  three of `init`, `autobuild` and `analyze` to the same commit, as they must
-  be) and `dorny/paths-filter` 4.0.2 → 4.0.3. Build infrastructure only —
-  neither reaches the released binaries or container image.
 - **The container's SPA build stage moved from Node 20 to Node 26**
   (`node:26-alpine`, Node 20 having reached end of life in April 2026), and
-  the distroless runtime base moved to its current digest. The Go builder
-  stays on `golang:1.26-alpine` — its current tag is still the 1.26.7 that
-  `go.mod` and the release tarballs are compiled with, and Dependabot is now
-  told not to propose a new Go minor for the image on its own: that is a
-  deliberate bump of `go.mod` and the image together, so one release can't
-  ship two toolchains. Nothing in the published image's contents or behaviour
-  changes; the multi-arch build was verified against the new digests.
+  the distroless runtime base moved to its current digest. Nothing in the
+  published image's contents or behaviour changes; the multi-arch build was
+  verified against the new digests.
 - **Go toolchain 1.26.7 → 1.26.10** (`go.mod` and the `golang:1.26-alpine`
   builder digest together, so the release tarballs and the container are still
   compiled by the same toolchain). Bug-fix and security patches — see
-  Security below for the HTTP/2 fix. Dependabot proposed `golang:1.27` again;
-  that minor stays held for a deliberate `go.mod` + image bump. The
-  `node:26-alpine` and `busybox` base digests moved to their current builds;
-  the multi-arch build was verified.
+  Security below for the HTTP/2 fix. Dependabot is now told not to propose a
+  new Go minor for the image on its own (it offered `golang:1.27`): that is a
+  deliberate bump of `go.mod` and the image together, so one release can't
+  ship two toolchains. The `busybox` base digest moved to its current build.
 - Bumped runtime dependencies: `modernc.org/sqlite` 1.58.0 → 1.60.1,
   `go-webauthn/webauthn` 0.18.1 → 0.18.2 (stricter attestation and session
   challenge validation), `mmcdole/gofeed` 1.4.2 → 1.5.0 (author parsing fixes,
   response size limit enforced through the end of the body, no panic on null
   JSON Feed items), `anthropic-sdk-go` 1.72.0 → 1.82.0,
   `fxamacker/cbor` 2.9.3 → 2.9.6, `go-chi/chi` 5.3.2 → 5.5.0,
-  `pressly/goose` 3.28.0 → 3.29.0, and `golang.org/x/crypto` 0.58.0,
-  `x/mod` 0.42.0, `x/net` 0.61.0. Web tooling moved to Vite 8.3.4, Vitest
+  `pressly/goose` 3.28.0 → 3.29.0, and `golang.org/x/crypto` 0.57.0 → 0.58.0,
+  `x/mod` 0.41.0 → 0.42.0, `x/net` 0.59.0 → 0.61.0. Web tooling moved to Vite 8.3.4, Vitest
   5.0.5, Svelte 5.57.2, svelte-check 4.7.7, jsdom 30.1.3 and Playwright
   1.64.1 (dev-only, not bundled into the Ember binary).
-- Bumped pinned actions: `github/codeql-action` 4.38.0 → 4.38.2 (all three
-  sub-actions to the same commit), `docker/build-push-action` 7.3.0 → 7.4.0,
-  `docker/setup-buildx-action` 4.3.0 → 4.4.1, and the deploy example's Caddy
-  image 2.11.4 → 2.11.7. Build infrastructure only.
+- Bumped pinned actions: `github/codeql-action` 4.37.9 → 4.38.2 (all three of
+  `init`, `autobuild` and `analyze` to the same commit, as they must be),
+  `docker/build-push-action` 7.3.0 → 7.4.0, `docker/setup-buildx-action`
+  4.3.0 → 4.4.1 and `dorny/paths-filter` 4.0.2 → 4.0.3. Build infrastructure
+  only — none of them reaches the released binaries or container image.
+- The bundled `deploy/docker-compose.yml` now runs **Caddy 2.11.7** (from
+  2.11.4), pinned by digest like before. Only affects you if you deploy with
+  that compose file; pull and recreate the `caddy` service to pick it up.
 
 ### Fixed
 
@@ -99,12 +95,12 @@ them.
 - Vite 8.3.0 → 8.3.4 (GHSA-rq7h-c2jc-7f22, GHSA-vfpm-58rq-9qcg,
   GHSA-r825-w8mm-5pxw, GHSA-587h-7wmj-h5pm, GHSA-698v-4r3x-3vcv — dev-server
   file exposure and `launch-editor` command handling), `@vitest/mocker`
-  → 5.0.5 (GHSA-qxg6-89mg-rqv8, GHSA-xp26-3454-mjgp) and `devalue`
+  5.0.1 → 5.0.5 (GHSA-qxg6-89mg-rqv8, GHSA-xp26-3454-mjgp) and `devalue`
   5.8.1 → 5.9.4 (GHSA-j22f-vq7h-c4qm, GHSA-r9w8-h9r3-54w4, GHSA-4q55-j62x-fr9h,
   GHSA-hx4r-w6wj-j8fg, GHSA-wf3x-273g-mvxv) in the web build and test
   toolchain. Dev-only: none of them is shipped in the Ember binary or the web
   bundle.
-- `undici` 8.9.0 → 8.11.2 in the web test toolchain (pulled in by jsdom),
+- `undici` 8.9.0 → 8.12.2 in the web test toolchain (pulled in by jsdom),
   fixing six advisories (GHSA-w293-vg96-wgc3, GHSA-2jfj-6hjv-fm6j,
   GHSA-pmjh-fq2x-6v4x, GHSA-8436-99hf-9mmv, GHSA-r53p-7pc4-xj5r,
   GHSA-2gqq-gqf2-x968). Dev-only: undici is used by the test runner and never
