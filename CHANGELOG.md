@@ -61,6 +61,16 @@ them.
   `docker/setup-buildx-action` 4.3.0 → 4.4.1, and the deploy example's Caddy
   image 2.11.4 → 2.11.7. Build infrastructure only.
 
+### Fixed
+
+- **A backed-up summary queue no longer summarizes the same article several
+  times** (#260). The backfill re-queues every still-pending article on each
+  tick, so with slow inference one article could sit in the queue many times
+  over, and each copy made a full LLM call and overwrote the summary just
+  saved. The worker now skips an article that already has a summary, so a
+  stale duplicate costs a database lookup instead of a model call, and
+  `summaries_total` no longer counts them.
+
 ### Security
 
 - **Go 1.26.10 and `golang.org/x/net` 0.61.0** fix GO-2026-6617

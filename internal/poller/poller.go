@@ -801,6 +801,8 @@ func (p *Poller) stampPendingDisabled(ctx context.Context) {
 func (p *Poller) summarizeOne(ctx context.Context, articleID int64) {
 	art, err := p.Store.GetArticle(ctx, articleID)
 	if err != nil {
+		// Counted in both, so summaries_errored stays a subset of summaries_total.
+		p.Metrics.SummariesTotal.Add(1)
 		p.Metrics.SummariesErrored.Add(1)
 		return
 	}

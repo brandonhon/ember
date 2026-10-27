@@ -59,8 +59,9 @@ func TestSummarizeOne_SkipsStaleDuplicate(t *testing.T) {
 	if n := sum.calls.Load(); n != 1 {
 		t.Fatalf("summarizer called %d times for one article, want 1", n)
 	}
-	if n := p.Metrics.SummariesTotal.Load(); n != 1 {
-		t.Fatalf("summaries_total = %d for one article, want 1", n)
+	// The article once plus the barrier's failed lookup; the duplicate is not counted.
+	if n := p.Metrics.SummariesTotal.Load(); n != 2 {
+		t.Fatalf("summaries_total = %d, want 2", n)
 	}
 	got, err := st.GetArticle(ctx, art.ID)
 	if err != nil {
