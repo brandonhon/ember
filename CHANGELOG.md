@@ -70,6 +70,14 @@ them.
   saved. The worker now skips an article that already has a summary, so a
   stale duplicate costs a database lookup instead of a model call, and
   `summaries_total` no longer counts them.
+- **Article cards announce just their headline to assistive technology.** The
+  button that opens an article was labelled "Open article: <title>" while
+  also wrapping the source, time, tags, thumbnail and excerpt, so the name a
+  voice-control user would speak didn't match the text on screen (WCAG
+  2.5.3). The button now wraps only the title and takes its name from it;
+  clicking anywhere on the card still opens the article, and keyboard focus
+  still outlines the whole card. This let the accessibility test tooling move
+  to axe-core 4.14, which enforces that rule.
 
 ### Security
 
