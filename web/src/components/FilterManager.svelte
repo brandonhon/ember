@@ -281,7 +281,8 @@
           {#if draft.field === "feed_id"}Feed
           {:else if draft.field === "has_image"}Image present
           {:else if draft.field === "published_at"}Within (e.g. 24h, 7d)
-          {:else}Value{/if}
+          {:else if draft.op === "matches"}Pattern
+          {:else}Value — separate several with commas; any one matches{/if}
         </span>
         {#if draft.field === "feed_id"}
           <select bind:value={draft.value} data-testid="filter-value">
@@ -296,7 +297,7 @@
             <option value="false">false</option>
           </select>
         {:else}
-          <input bind:value={draft.value} placeholder={draft.field === "published_at" ? "24h" : "crypto"} data-testid="filter-value" />
+          <input bind:value={draft.value} placeholder={draft.field === "published_at" ? "24h" : draft.op === "matches" ? "crypto|nft" : "crypto, nft, web3"} data-testid="filter-value" />
         {/if}
       </label>
       {#if draft.field !== "feed_id" && draft.field !== "has_image" && draft.field !== "published_at"}
