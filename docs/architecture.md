@@ -8,7 +8,7 @@ A reference for contributors. Covers process layout, request lifecycle, and how 
 caddy ─┬─> ember (Go binary)
        │     ├─ HTTP API + Fever shim + SPA serve
        │     ├─ Background poller (per-feed adaptive ticker)
-       │     ├─ Summary worker pool (Ollama / OpenAI-compatible / Claude client)
+       │     ├─ Summary worker (one goroutine; Ollama / OpenAI-compatible / Claude client)
        │     ├─ DB maintenance goroutine (retention prune / backup / cleanup / OPML / hourly)
        │     ├─ Update-check goroutine (daily GitHub-releases poll; release builds only)
        │     └─ Cluster backfill goroutine (one-time at startup; idempotent)
@@ -118,9 +118,9 @@ Each feed has `next_fetch` (unix seconds) and an `error_count`. The poller:
 5. Newly-inserted articles enqueue on `summaryCh` (best-effort, drops on full).
 6. Filters apply per-subscriber as articles land.
 
-The summary worker is a separate goroutine that drains `summaryCh`, calls Ollama, writes `summary` + `summary_model` + `cleaned_html`. Failures stamp `summary_model = 'skipped'` so the article still surfaces in the UI.
+The summary worker is a single goroutine that drains `summaryCh`, calls the configured backend, writes `summary` + `summary_model` + `cleaned_html`. Failures stamp `summary_model = 'skipped'` so the article still surfaces in the UI.
 
-`summaryCh` is bounded, and `EnqueueSummary` drops on a full queue rather than blocking the poller. A dropped article keeps an empty `summary_model`, so `enqueuePendingSummaries` re-queues stragglers **every tick** — it used to run only at startup, which left a dropped article hidden behind the summary gate until the process restarted.
+`summaryCh` is bounded, and `EnqueueSummary` drops on a full queue rather than blocking the poller. A dropped article keeps an empty `summary_model`, so `enqueuePendingSummaries` re-queues stragglers **every tick** — it used to run only at startup, which left a dropped article hidden behind the summary gate until the process restarted. The flip side is that on slow inference the sweep re-queues an article already sitting in the channel, so one id can be queued many times over; `summarizeOne` therefore returns early for an article whose `summary_model` is already set (every legitimate re-queue path — ingest, resummarize, requeue, `RequestSummary`, the deferred/excluded resets — clears it to `NULL` first). With a single worker the check can't race, and a stale duplicate costs one `GetArticle` instead of a model call (#260).
 
 The summary gate itself is time-boxed rather than absolute: `store.summaryGate` passes an article that is summarized **or** was fetched before `SummaryGraceBefore` (now − `summary_grace_seconds`, default 120s). All three gate sites — the list/count filter, the cross-feed dedup sibling subquery, and `ListFeedsForUser` — must use that helper, or a badge disagrees with its column.
 

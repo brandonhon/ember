@@ -22,6 +22,59 @@ func (c *countingSummarizer) Summarize(_ context.Context, _, title string) (summ
 	return summarize.Result{Paragraph: "s: " + title}, "counting", nil
 }
 
+func TestSummarizeOne_SkipsStaleDuplicate(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewTest(t)
+	sum := &countingSummarizer{}
+	p := newSummaryTestPoller(t, st, sum)
+	art := insertSummaryTestArticle(t, st)
+
+	if !p.EnqueueSummary(art.ID) {
+		t.Fatal("failed to enqueue first article")
+	}
+	if !p.EnqueueSummary(art.ID) {
+		t.Fatal("failed to enqueue duplicate article")
+	}
+	if !p.EnqueueSummary(art.ID + 1) {
+		t.Fatal("failed to enqueue worker barrier")
+	}
+	workerCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	done := make(chan struct{})
+	go func() {
+		p.summaryWorker(workerCtx)
+		close(done)
+	}()
+
+	deadline := time.Now().Add(5 * time.Second)
+	for p.Metrics.SummariesErrored.Load() == 0 && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	cancel()
+	<-done
+	if n := p.Metrics.SummariesErrored.Load(); n != 1 {
+		t.Fatalf("worker barrier errors = %d, want 1", n)
+	}
+
+	if n := sum.calls.Load(); n != 1 {
+		t.Fatalf("summarizer called %d times for one article, want 1", n)
+	}
+	// The article once plus the barrier's failed lookup; the duplicate is not counted.
+	if n := p.Metrics.SummariesTotal.Load(); n != 2 {
+		t.Fatalf("summaries_total = %d, want 2", n)
+	}
+	got, err := st.GetArticle(ctx, art.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.SummaryModel != "counting" {
+		t.Fatalf("summary_model = %q, want %q", got.SummaryModel, "counting")
+	}
+	if got.Summary != "s: body" {
+		t.Fatalf("summary = %q, want %q", got.Summary, "s: body")
+	}
+}
+
 // The runtime switch is enforced at the consumer, which is the only place that
 // sees every enqueue path (poller ingest, the email inbox, ClearAllSummaries,
 // ResetSummariesByFeed, the manual re-enqueue behind Resummarize). With the

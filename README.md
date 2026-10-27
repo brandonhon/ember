@@ -76,7 +76,7 @@ You'll land on an onboarding panel that points to starter packs or OPML import. 
 ### Search + filters
 - FTS5 full-text search; submitting from the topbar opens a dedicated results view.
 - Saved searches: persist a query as a sidebar entry.
-- Filter rules with `mark_read`, `star`, `hide`, `tag`, or `add_to_board` actions; eight match fields including feed, tags, `published_at`, and `has_image`; per-rule priority; Preview button counts last-7-day matches before save.
+- Filter rules with `mark_read`, `star`, `hide`, `tag`, or `add_to_board` actions; eight match fields including feed, tags, `published_at`, and `has_image`; text values can list several comma-separated keywords (any one matches); per-rule priority; Preview button counts last-7-day matches before save.
 - "Mute" popover in the reader actions adds a hide-by-keyword rule in one click.
 - Per-article user tags, with a `?tag=…` filter on the list endpoint.
 

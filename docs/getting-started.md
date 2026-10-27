@@ -15,7 +15,7 @@ The default `deploy/docker-compose.yml` still builds locally from the `Dockerfil
 ## Prerequisites
 
 - Docker + docker-compose (or Podman) for the stack flow.
-- Go 1.26+ if building from source.
+- Go 1.26.10+ if building from source — the version `go.mod` requires. An older Go (1.21 or later) fetches it automatically unless `GOTOOLCHAIN=local` is set.
 - A domain or localhost host pointing at your machine.
 
 ## Stack install (recommended)

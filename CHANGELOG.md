@@ -13,6 +13,105 @@ don't reach the released binaries or container image — they're listed so the
 provenance of the build is auditable from one file. Releases before 0.9.6 omit
 them.
 
+## [Unreleased]
+
+## [0.9.8] - 2026-10-27
+
+### Added
+
+- **Filters accept a comma-separated list of values.** A rule using
+  *contains*, *equals* or *starts with* can now list several keywords —
+  `crypto, nft, web3` — and matches when any one of them does, so muting a
+  topic no longer takes a rule per word. Each listed term is trimmed. A value
+  without a comma is still used exactly as typed (spaces included), so
+  existing rules behave as before unless their value already contained a
+  comma. Regex rules are unchanged: a comma there is part of the pattern, and
+  `|` already means "any of". Preview counts use the same matching.
+
+### Changed
+
+- The documentation site is rebuilt after every full release, so the live
+  demo's **About** version now matches the release just published. Build
+  infrastructure only. The rebuild was meant to run on the *release published*
+  event, but a release published by the release workflow itself never triggers
+  it — GitHub doesn't start workflows for events caused by the workflow token —
+  so the site was only ever rebuilt by the merge to `main`, which happens
+  before the tag exists; the demo kept reporting the previous version until
+  someone redeployed by hand (0.9.7 shipped showing 0.9.6). The release
+  workflow now asks for the rebuild explicitly once the release is public.
+- **The container's SPA build stage moved from Node 20 to Node 26**
+  (`node:26-alpine`, Node 20 having reached end of life in April 2026), and
+  the distroless runtime base moved to its current digest. Nothing in the
+  published image's contents or behaviour changes; the multi-arch build was
+  verified against the new digests.
+- **Go toolchain 1.26.7 → 1.26.10** (`go.mod` and the `golang:1.26-alpine`
+  builder digest together, so the release tarballs and the container are still
+  compiled by the same toolchain). Bug-fix and security patches — see
+  Security below for the HTTP/2 fix. Dependabot is now told not to propose a
+  new Go minor for the image on its own (it offered `golang:1.27`): that is a
+  deliberate bump of `go.mod` and the image together, so one release can't
+  ship two toolchains. The `busybox` base digest moved to its current build.
+- Bumped runtime dependencies: `modernc.org/sqlite` 1.58.0 → 1.60.1,
+  `go-webauthn/webauthn` 0.18.1 → 0.18.2 (stricter attestation and session
+  challenge validation), `mmcdole/gofeed` 1.4.2 → 1.5.0 (author parsing fixes,
+  response size limit enforced through the end of the body, no panic on null
+  JSON Feed items), `anthropic-sdk-go` 1.72.0 → 1.82.0,
+  `fxamacker/cbor` 2.9.3 → 2.9.6, `go-chi/chi` 5.3.2 → 5.5.0,
+  `pressly/goose` 3.28.0 → 3.29.0, and `golang.org/x/crypto` 0.57.0 → 0.58.0,
+  `x/mod` 0.41.0 → 0.42.0, `x/net` 0.59.0 → 0.61.0. Web tooling moved to Vite 8.3.4, Vitest
+  5.0.5, Svelte 5.57.2, svelte-check 4.7.7, jsdom 30.1.3 and Playwright
+  1.64.1 (dev-only, not bundled into the Ember binary).
+- Bumped pinned actions: `github/codeql-action` 4.37.9 → 4.38.2 (all three of
+  `init`, `autobuild` and `analyze` to the same commit, as they must be),
+  `docker/build-push-action` 7.3.0 → 7.4.0, `docker/setup-buildx-action`
+  4.3.0 → 4.4.1 and `dorny/paths-filter` 4.0.2 → 4.0.3. Build infrastructure
+  only — none of them reaches the released binaries or container image.
+- The bundled `deploy/docker-compose.yml` now runs **Caddy 2.11.7** (from
+  2.11.4), pinned by digest like before. Only affects you if you deploy with
+  that compose file; pull and recreate the `caddy` service to pick it up.
+
+### Fixed
+
+- **A backed-up summary queue no longer summarizes the same article several
+  times** (#260). The backfill re-queues every still-pending article on each
+  tick, so with slow inference one article could sit in the queue many times
+  over, and each copy made a full LLM call and overwrote the summary just
+  saved. The worker now skips an article that already has a summary, so a
+  stale duplicate costs a database lookup instead of a model call, and
+  `summaries_total` no longer counts them.
+- **Article cards announce just their headline to assistive technology.** The
+  button that opens an article was labelled "Open article: <title>" while
+  also wrapping the source, time, tags, thumbnail and excerpt, so the name a
+  voice-control user would speak didn't match the text on screen (WCAG
+  2.5.3). The button now wraps only the title and takes its name from it;
+  clicking anywhere on the card still opens the article, and keyboard focus
+  still outlines the whole card. This let the accessibility test tooling move
+  to axe-core 4.14, which enforces that rule.
+
+### Security
+
+- **Go 1.26.10 and `golang.org/x/net` 0.61.0** fix GO-2026-6617
+  (CVE-2026-97032), an HPACK encoder race that can crash an HTTP/2 server.
+  Ember's server and its outbound HTTP clients both reach the affected code,
+  so this one does ship in the binary and the container image.
+- Vite 8.3.0 → 8.3.4 (GHSA-rq7h-c2jc-7f22, GHSA-vfpm-58rq-9qcg,
+  GHSA-r825-w8mm-5pxw, GHSA-587h-7wmj-h5pm, GHSA-698v-4r3x-3vcv — dev-server
+  file exposure and `launch-editor` command handling), `@vitest/mocker`
+  5.0.1 → 5.0.5 (GHSA-qxg6-89mg-rqv8, GHSA-xp26-3454-mjgp) and `devalue`
+  5.8.1 → 5.9.4 (GHSA-j22f-vq7h-c4qm, GHSA-r9w8-h9r3-54w4, GHSA-4q55-j62x-fr9h,
+  GHSA-hx4r-w6wj-j8fg, GHSA-wf3x-273g-mvxv) in the web build and test
+  toolchain. Dev-only: none of them is shipped in the Ember binary or the web
+  bundle.
+- `undici` 8.9.0 → 8.12.2 in the web test toolchain (pulled in by jsdom),
+  fixing six advisories (GHSA-w293-vg96-wgc3, GHSA-2jfj-6hjv-fm6j,
+  GHSA-pmjh-fq2x-6v4x, GHSA-8436-99hf-9mmv, GHSA-r53p-7pc4-xj5r,
+  GHSA-2gqq-gqf2-x968). Dev-only: undici is used by the test runner and never
+  ships in the Ember binary or the web bundle.
+- `source-map-js` 1.2.1 → 1.2.2 (GHSA-68fv-2mgg-jv7q, denial of service via
+  crafted source maps) in the web and documentation build toolchains, and
+  Vue 3.5.34 → 3.5.43 in the documentation site's toolchain. Build-time only;
+  neither is shipped in the Ember binary.
+
 ## [0.9.7] - 2026-09-15
 
 ### Added
@@ -808,7 +907,8 @@ TT-RSS full migration (subscriptions, folders, starred/archived) and fail-fast
 admin bootstrap. See the
 [v0.8.7 release](https://github.com/brandonhon/ember/releases/tag/v0.8.7).
 
-[Unreleased]: https://github.com/brandonhon/ember/compare/v0.9.7...develop
+[Unreleased]: https://github.com/brandonhon/ember/compare/v0.9.8...develop
+[0.9.8]: https://github.com/brandonhon/ember/compare/v0.9.7...v0.9.8
 [0.9.7]: https://github.com/brandonhon/ember/compare/v0.9.6...v0.9.7
 [0.9.6]: https://github.com/brandonhon/ember/compare/v0.9.5...v0.9.6
 [0.9.5]: https://github.com/brandonhon/ember/compare/v0.9.4...v0.9.5

@@ -345,46 +345,43 @@
         data-testid="story-{a.id}"
       >
         <span class="unread-dot" aria-hidden="true"></span>
-        <!-- Primary action: clicking the title/thumb/excerpt area opens the
-             story. A real <button> here keeps keyboard activation working
-             while avoiding the nested-interactive a11y violation. Foot
-             buttons are siblings below. -->
-        <button
-          class="story-link"
-          on:click={() => select(a.id)}
-          aria-label={`Open article: ${a.title}`}
-        >
-          <span class="story-top">
-            <span class="src">
-              <span class="favicon" style="background:{favColor(a.feed_id)}" aria-hidden="true">{srcInitial(a)}</span>
-              {srcName(a)}
-            </span>
-            <span class="src-meta">· {timeAgo(a.published_at)}</span>
-            {#if readingMinutes(a) > 0}
-              <span class="src-meta">· {readingMinutes(a)} min read</span>
-            {/if}
-            {#if a.tags}
-              <span class="tag-badge">{a.tags.split(",")[0].trim()}</span>
-            {/if}
-            {#if isFresh(a.published_at) && !a.is_read}<span class="fresh-tag">Fresh</span>{/if}
-            {#if searchDatePill(a)}<span class="date-pill" title="Polled {searchDatePill(a)} — older than 24h">{searchDatePill(a)}</span>{/if}
-            {#if a.dup_count > 0}
-              <!-- Visual label inside the story-link button. The interactive
-                   trigger sits in story-foot below as a sibling — nested
-                   buttons inside a button would be invalid HTML / a11y. -->
-              <span class="dup-tag" title="Also published in other feeds you subscribe to" data-testid="dup-tag-{a.id}">
-                Also in {a.dup_count + 1}
-              </span>
-            {/if}
+        <!-- Only the title lives inside the "open" button, so its accessible
+             name is exactly the visible headline (WCAG 2.5.3 — voice-control
+             users can say what they see). The source row, thumb and excerpt
+             are plain siblings; the button's ::after overlay stretches over
+             the whole card, so clicking any of them still opens the story.
+             Foot buttons sit above the overlay. -->
+        <span class="story-top">
+          <span class="src">
+            <span class="favicon" style="background:{favColor(a.feed_id)}" aria-hidden="true">{srcInitial(a)}</span>
+            {srcName(a)}
           </span>
+          <span class="src-meta">· {timeAgo(a.published_at)}</span>
+          {#if readingMinutes(a) > 0}
+            <span class="src-meta">· {readingMinutes(a)} min read</span>
+          {/if}
+          {#if a.tags}
+            <span class="tag-badge">{a.tags.split(",")[0].trim()}</span>
+          {/if}
+          {#if isFresh(a.published_at) && !a.is_read}<span class="fresh-tag">Fresh</span>{/if}
+          {#if searchDatePill(a)}<span class="date-pill" title="Polled {searchDatePill(a)} — older than 24h">{searchDatePill(a)}</span>{/if}
+          {#if a.dup_count > 0}
+            <!-- Visual label only. The interactive trigger sits in
+                 story-foot below, above the card overlay. -->
+            <span class="dup-tag" title="Also published in other feeds you subscribe to" data-testid="dup-tag-{a.id}">
+              Also in {a.dup_count + 1}
+            </span>
+          {/if}
+        </span>
+        <button class="story-link" on:click={() => select(a.id)}>
           <span class="story-title">{a.title}</span>
-          {#if a.image_url}
-            <img class="story-thumb" src={a.image_url} alt="" loading="lazy" on:error={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} />
-          {/if}
-          {#if a.content_text}
-            <span class="story-excerpt">{a.content_text}</span>
-          {/if}
         </button>
+        {#if a.image_url}
+          <img class="story-thumb" src={a.image_url} alt="" loading="lazy" on:error={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} />
+        {/if}
+        {#if a.content_text}
+          <span class="story-excerpt">{a.content_text}</span>
+        {/if}
         <div class="story-foot">
           <button
             class:starred={a.is_starred}
@@ -653,10 +650,12 @@
     color: inherit;
     font: inherit;
   }
-  .story-link:focus-visible {
+  /* The button now wraps only the title; ring the card-wide overlay
+     instead so keyboard focus still outlines the whole card. */
+  .story-link:focus-visible { outline: none; }
+  .story-link:focus-visible::after {
     outline: 2px solid var(--ember);
-    outline-offset: 4px;
-    border-radius: 6px;
+    outline-offset: 2px;
   }
   /* Stretch the primary "open article" button across the whole card so a
      click anywhere on the card (padding, gaps, around the foot) opens it —
