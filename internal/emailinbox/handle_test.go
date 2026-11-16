@@ -45,6 +45,10 @@ func TestExtractHandle(t *testing.T) {
 	}{
 		{"01234ABCDEFG@mail.example.com", "mail.example.com", "01234ABCDEFG", true},
 		{"01234ABCDEFG@MAIL.example.com", "mail.example.com", "01234ABCDEFG", true},
+		// Some providers lowercase the local part in transit; the handle is
+		// normalized back to the generated (uppercase) form.
+		{"01234abcdefg@mail.example.com", "mail.example.com", "01234ABCDEFG", true},
+		{"01234AbCdEfG@mail.example.com", "mail.example.com", "01234ABCDEFG", true},
 		{"01234ABCDEFG@other.example.com", "mail.example.com", "", false},
 		{"badhandle@mail.example.com", "mail.example.com", "", false},
 		{"no-at-sign", "mail.example.com", "", false},

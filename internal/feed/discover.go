@@ -83,7 +83,42 @@ func fetchDiscoveryPage(ctx context.Context, c *http.Client, target string, vali
 	if err != nil {
 		return fetchedPage{}, err
 	}
+	// Many origins serve feeds as generic application/xml or text/xml. Without
+	// sniffing, the target falls through to HTML scraping and the site-root
+	// fallbacks, which can return a DIFFERENT feed (/tags/go/index.xml ->
+	// /index.xml).
+	if hasFeedRoot(body) {
+		return fetchedPage{parsed: parsed, contentType: ct, isFeed: true}, nil
+	}
 	return fetchedPage{parsed: parsed, contentType: ct, body: body}, nil
+}
+
+// hasFeedRoot reports whether body's root element is <rss>, <feed> or
+// <rdf:RDF> (case-insensitive), skipping a BOM, whitespace and the XML prolog
+// (declaration, processing instructions, comments, doctype). Only the root is
+// checked so an (X)HTML page that merely mentions "<feed" isn't a match.
+func hasFeedRoot(body []byte) bool {
+	s := strings.TrimPrefix(string(body), "\ufeff")
+	for {
+		s = strings.TrimLeft(s, " \t\r\n")
+		var end string
+		switch {
+		case strings.HasPrefix(s, "<?"):
+			end = "?>"
+		case strings.HasPrefix(s, "<!--"):
+			end = "-->"
+		case strings.HasPrefix(s, "<!"):
+			end = ">"
+		default:
+			s = strings.ToLower(s)
+			return strings.HasPrefix(s, "<rss") || strings.HasPrefix(s, "<feed") || strings.HasPrefix(s, "<rdf:rdf")
+		}
+		i := strings.Index(s, end)
+		if i < 0 {
+			return false
+		}
+		s = s[i+len(end):]
+	}
 }
 
 // maxDiscoveryBodyBytes bounds the HTML scraped for <link rel="alternate">.
@@ -91,7 +126,8 @@ const maxDiscoveryBodyBytes = 1 << 20
 
 // Discover attempts to find a feed URL given an HTTP client and a starting
 // URL. It does the following, in order:
-//  1. GET the URL. If the response Content-Type indicates feed, return the URL.
+//  1. GET the URL. If the response Content-Type indicates feed, or the body
+//     is rooted at <rss>/<feed>/<rdf:RDF>, return the URL.
 //  2. Parse the HTML body for <link rel="alternate" type="application/(rss|atom)+xml">.
 //  3. Probe each entry in DiscoveryFallbacks at the same origin and return the
 //     first that responds 2xx with a feed-shaped content type.

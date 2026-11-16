@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/brandonhon/ember/internal/models"
+	"github.com/brandonhon/ember/internal/store"
 )
 
 // Add-feed and edit-feed both resolve their URL through resolveFeedURL, so the
@@ -75,6 +76,74 @@ func TestMarkAllRead_HonorsViewWindow(t *testing.T) {
 	get(t, c, h.srv.URL+"/api/articles?unread=1", &list)
 	if len(list.Data) != 1 || list.Data[0].GUID != "old" {
 		t.Errorf("unread after mark-all-read view=fresh: %+v, want just \"old\"", list.Data)
+	}
+}
+
+// Mark-all-read must clear exactly what the list it sits under shows. With the
+// summary gate on, a still-summarizing article is hidden from view=unread, and
+// a muted feed's articles are excluded from smart views; marking either read
+// would mean the user never sees it unread.
+func TestMarkAllRead_SkipsGatedAndMutedArticles(t *testing.T) {
+	h := newHarnessWith(t, func(d *Dependencies) {
+		wireOllama(d, "http://ollama.invalid", "llama3")
+		d.SummaryGraceSecondsFallback = 3600
+	})
+	u := h.seedUser(t, "alice", "p", false)
+	c := h.login(t, "alice", "p")
+	ctx := context.Background()
+
+	loud, _ := h.store.UpsertFeed(ctx, models.Feed{URL: "https://loud.test/feed", Title: "Loud"})
+	quiet, _ := h.store.UpsertFeed(ctx, models.Feed{URL: "https://quiet.test/feed", Title: "Quiet"})
+	_, _ = h.store.Subscribe(ctx, models.Subscription{UserID: u.ID, FeedID: loud.ID})
+	quietSub, _ := h.store.Subscribe(ctx, models.Subscription{UserID: u.ID, FeedID: quiet.ID})
+	muted := true
+	if err := h.store.UpdateSubscription(ctx, u.ID, quietSub.ID, store.UpdateSubscriptionPatch{Muted: &muted}); err != nil {
+		t.Fatal(err)
+	}
+
+	now := time.Now().Unix()
+	for _, a := range []struct {
+		feed  int64
+		guid  string
+		model string
+	}{
+		{loud.ID, "visible", "llama3"},
+		{loud.ID, "summarizing", ""}, // fetched just now: inside the grace window, so hidden
+		{quiet.ID, "muted", "llama3"},
+	} {
+		if _, _, err := h.store.UpsertArticle(ctx, models.Article{
+			FeedID: a.feed, GUID: a.guid, Title: a.guid, ContentHash: a.guid,
+			PublishedAt: now, SummaryModel: a.model,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	var marked struct {
+		Data struct {
+			Count int64 `json:"count"`
+		} `json:"data"`
+	}
+	if code := post(t, c, h.srv.URL+"/api/articles/mark-all-read",
+		map[string]any{"view": "unread"}, &marked); code != http.StatusOK {
+		t.Fatalf("mark-all-read view=unread = %d, want 200", code)
+	}
+	if marked.Data.Count != 1 {
+		t.Errorf("marked %d articles, want 1 (only the visible one)", marked.Data.Count)
+	}
+
+	// ?all=1 bypasses the gate and a muted feed is still listed by feed_id, so
+	// both hidden articles must show up here as still unread.
+	var list struct {
+		Data []models.ArticleView `json:"data"`
+	}
+	get(t, c, fmt.Sprintf("%s/api/articles?unread=1&all=1&feed_id=%d", h.srv.URL, loud.ID), &list)
+	if len(list.Data) != 1 || list.Data[0].GUID != "summarizing" {
+		t.Errorf("loud unread after mark-all-read: %+v, want just \"summarizing\"", list.Data)
+	}
+	get(t, c, fmt.Sprintf("%s/api/articles?unread=1&feed_id=%d", h.srv.URL, quiet.ID), &list)
+	if len(list.Data) != 1 || list.Data[0].GUID != "muted" {
+		t.Errorf("muted feed unread after mark-all-read: %+v, want just \"muted\"", list.Data)
 	}
 }
 

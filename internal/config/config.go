@@ -399,8 +399,10 @@ func parseProxyList(v string) ([]string, error) {
 		if ip == nil {
 			return nil, fmt.Errorf("invalid IP %q", f)
 		}
-		if ip.To4() != nil {
-			out = append(out, f+"/32")
+		if v4 := ip.To4(); v4 != nil {
+			// Use the 4-byte form, not the input text: an IPv4-mapped literal
+			// like "::ffff:10.0.0.5" plus "/32" parses as the IPv6 prefix ::/32.
+			out = append(out, v4.String()+"/32")
 		} else {
 			out = append(out, f+"/128")
 		}

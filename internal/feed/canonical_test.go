@@ -1,6 +1,7 @@
 package feed
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -98,6 +99,24 @@ func TestCanonicalURL_ClustersTrackingVariants(t *testing.T) {
 		}
 		if cid != first {
 			t.Errorf("expected same cluster for %q, got %q (canon=%q) vs %q", u, cid, canon, first)
+		}
+	}
+}
+
+// isTrackingParam lowercases the query key before the lookup, so a mixed-case
+// map key can never match.
+func TestTrackingParamExact_KeysAreLowercase(t *testing.T) {
+	for k := range trackingParamExact {
+		if k != strings.ToLower(k) {
+			t.Errorf("trackingParamExact key %q is not lowercase; it can never match", k)
+		}
+	}
+	for _, in := range []string{
+		"https://example.com/a?trkCampaign=x&id=1",
+		"https://example.com/a?hsCtaTracking=abc&id=1",
+	} {
+		if got, want := CanonicalURL(in), "https://example.com/a?id=1"; got != want {
+			t.Errorf("CanonicalURL(%q) = %q, want %q", in, got, want)
 		}
 	}
 }

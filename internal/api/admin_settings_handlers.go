@@ -171,6 +171,46 @@ func (d *Dependencies) handleSetAdminSettings(w http.ResponseWriter, r *http.Req
 	if !decodeJSON(w, r, &req) {
 		return
 	}
+	// Validate every field before writing any: a 400 must mean nothing was
+	// saved, not that the fields ahead of the bad one already were.
+	if req.InitialBacklogHours != nil && *req.InitialBacklogHours < 0 {
+		writeError(w, http.StatusBadRequest, "bad_request", "initial_backlog_hours must be >= 0")
+		return
+	}
+	if req.PollMinIntervalSeconds != nil {
+		floor, ceil := int(store.PollMinIntervalFloor.Seconds()), int(store.PollMinIntervalCeil.Seconds())
+		if !checkIntBounds(w, "poll_min_interval_seconds", *req.PollMinIntervalSeconds, floor, ceil) {
+			return
+		}
+	}
+	// The reading and search windows share one bounds pair: neither can reach
+	// past what retention keeps.
+	if req.ReadingWindowHours != nil &&
+		!checkIntBounds(w, "reading_window_hours", *req.ReadingWindowHours, store.WindowHoursFloor, store.WindowHoursCeil) {
+		return
+	}
+	if req.SearchWindowHours != nil &&
+		!checkIntBounds(w, "search_window_hours", *req.SearchWindowHours, store.WindowHoursFloor, store.WindowHoursCeil) {
+		return
+	}
+	if req.SummaryGraceSeconds != nil {
+		n := *req.SummaryGraceSeconds
+		if n < store.SummaryGraceSecondsFloor || n > store.SummaryGraceSecondsCeil {
+			writeError(w, http.StatusBadRequest, "bad_request",
+				"summary_grace_seconds must be between "+strconv.Itoa(store.SummaryGraceSecondsFloor)+
+					" and "+strconv.Itoa(store.SummaryGraceSecondsCeil))
+			return
+		}
+	}
+	if req.SummaryTimeoutSeconds != nil &&
+		!checkIntBounds(w, "summary_timeout_seconds", *req.SummaryTimeoutSeconds,
+			store.SummaryTimeoutSecondsFloor, store.SummaryTimeoutSecondsCeil) {
+		return
+	}
+	if req.SummarizeMode != nil &&
+		!checkEnum(w, "summarize_mode", *req.SummarizeMode, store.ModeAll, store.ModeOnDemand) {
+		return
+	}
 	ctx := r.Context()
 	if req.SMTP != nil {
 		u := store.SMTPUpdate{
@@ -188,41 +228,24 @@ func (d *Dependencies) handleSetAdminSettings(w http.ResponseWriter, r *http.Req
 		}
 	}
 	if req.InitialBacklogHours != nil {
-		n := *req.InitialBacklogHours
-		if n < 0 {
-			writeError(w, http.StatusBadRequest, "bad_request", "initial_backlog_hours must be >= 0")
-			return
-		}
-		if err := d.Store.PutBacklogHours(ctx, n); err != nil {
+		if err := d.Store.PutBacklogHours(ctx, *req.InitialBacklogHours); err != nil {
 			internalError(w, "internal", err)
 			return
 		}
 	}
 	if req.PollMinIntervalSeconds != nil {
-		floor, ceil := int(store.PollMinIntervalFloor.Seconds()), int(store.PollMinIntervalCeil.Seconds())
-		if !checkIntBounds(w, "poll_min_interval_seconds", *req.PollMinIntervalSeconds, floor, ceil) {
-			return
-		}
 		if err := d.Store.PutPollMinInterval(ctx, time.Duration(*req.PollMinIntervalSeconds)*time.Second); err != nil {
 			internalError(w, "internal", err)
 			return
 		}
 	}
-	// The reading and search windows share one bounds pair: neither can reach
-	// past what retention keeps.
 	if req.ReadingWindowHours != nil {
-		if !checkIntBounds(w, "reading_window_hours", *req.ReadingWindowHours, store.WindowHoursFloor, store.WindowHoursCeil) {
-			return
-		}
 		if err := d.Store.PutReadingWindowHours(ctx, *req.ReadingWindowHours); err != nil {
 			internalError(w, "internal", err)
 			return
 		}
 	}
 	if req.SearchWindowHours != nil {
-		if !checkIntBounds(w, "search_window_hours", *req.SearchWindowHours, store.WindowHoursFloor, store.WindowHoursCeil) {
-			return
-		}
 		if err := d.Store.PutSearchWindowHours(ctx, *req.SearchWindowHours); err != nil {
 			internalError(w, "internal", err)
 			return
@@ -241,33 +264,18 @@ func (d *Dependencies) handleSetAdminSettings(w http.ResponseWriter, r *http.Req
 		}
 	}
 	if req.SummaryGraceSeconds != nil {
-		n := *req.SummaryGraceSeconds
-		if n < store.SummaryGraceSecondsFloor || n > store.SummaryGraceSecondsCeil {
-			writeError(w, http.StatusBadRequest, "bad_request",
-				"summary_grace_seconds must be between "+strconv.Itoa(store.SummaryGraceSecondsFloor)+
-					" and "+strconv.Itoa(store.SummaryGraceSecondsCeil))
-			return
-		}
-		if err := d.Store.PutSummaryGraceSeconds(ctx, n); err != nil {
+		if err := d.Store.PutSummaryGraceSeconds(ctx, *req.SummaryGraceSeconds); err != nil {
 			internalError(w, "internal", err)
 			return
 		}
 	}
 	if req.SummaryTimeoutSeconds != nil {
-		n := *req.SummaryTimeoutSeconds
-		if !checkIntBounds(w, "summary_timeout_seconds", n,
-			store.SummaryTimeoutSecondsFloor, store.SummaryTimeoutSecondsCeil) {
-			return
-		}
-		if err := d.Store.PutSummaryTimeoutSeconds(ctx, n); err != nil {
+		if err := d.Store.PutSummaryTimeoutSeconds(ctx, *req.SummaryTimeoutSeconds); err != nil {
 			internalError(w, "internal", err)
 			return
 		}
 	}
 	if req.SummarizeMode != nil {
-		if !checkEnum(w, "summarize_mode", *req.SummarizeMode, store.ModeAll, store.ModeOnDemand) {
-			return
-		}
 		// Read the current mode before overwriting it: the backfill below is
 		// owed to a real change, and a no-op save (already 'all', saving
 		// 'all') must not re-queue the world.

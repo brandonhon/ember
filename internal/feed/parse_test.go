@@ -170,6 +170,33 @@ func TestParse_DecodesTitleEntities(t *testing.T) {
 	}
 }
 
+// gofeed hands back entity-decoded titles, so re-parsing them as HTML turned
+// literal angle brackets ("Vec&lt;T&gt;") into tags and dropped them. Real
+// markup in titles (<b>, <code>, <em>) must still be stripped.
+func TestParse_TitleKeepsLiteralAngleBrackets(t *testing.T) {
+	cases := []struct{ raw, want string }{
+		{`Why Vec&lt;T&gt; beats  &lt;bool&gt; flags`, "Why Vec<T> beats <bool> flags"},
+		{`Option&lt;String&gt; in Rust`, "Option<String> in Rust"},
+		{`&lt;b&gt;Bold&lt;/b&gt; and &lt;code&gt;go vet&lt;/code&gt;`, "Bold and go vet"},
+		{`<![CDATA[Use <em>slices</em> &amp; maps]]>`, "Use slices & maps"},
+	}
+	for _, c := range cases {
+		body := []byte(`<?xml version="1.0"?><rss version="2.0"><channel><title>` + c.raw + `</title><link>https://example.com/</link><description>x</description>
+<item><title>` + c.raw + `</title><link>https://example.com/a</link><guid>g1</guid><description>b</description></item>
+</channel></rss>`)
+		res, err := Parse(context.Background(), 1, body, "https://example.com/feed.xml")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if res.Title != c.want {
+			t.Errorf("feed title from %q = %q, want %q", c.raw, res.Title, c.want)
+		}
+		if len(res.Articles) != 1 || res.Articles[0].Title != c.want {
+			t.Errorf("article title from %q = %+v, want %q", c.raw, res.Articles, c.want)
+		}
+	}
+}
+
 func TestContentHash_Deterministic(t *testing.T) {
 	a := ContentHash("https://x", "t", "body")
 	b := ContentHash("https://x", "t", "body")

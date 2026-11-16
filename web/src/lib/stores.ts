@@ -336,12 +336,17 @@ export async function pollForNewArticles(opts: { immediate?: boolean } = {}): Pr
   // Search is a one-shot FTS lookup, not a stream — auto-refresh is
   // meaningless here and would clobber the user's results.
   if (view.kind === "search") return 0;
-  const current = get(articles);
-  if (current.loading) return 0;
+  if (get(articles).loading) return 0;
+  const seq = articlesLoadSeq;
   try {
     const q = queryForView(view);
     const res = await api.listArticles({ ...q });
+    // A view switch or any list load (incl. Load more) that started while this
+    // request was in flight owns the list now — merging this stale top page
+    // would replace another view's items or drop an appended page.
+    if (seq !== articlesLoadSeq || get(activeView) !== view) return 0;
     const fresh = res.data ?? [];
+    const current = get(articles);
     if (fresh.length === 0 && current.items.length === 0) return 0;
 
     const have = new Set(current.items.map((a) => a.id));
@@ -354,8 +359,12 @@ export async function pollForNewArticles(opts: { immediate?: boolean } = {}): Pr
     // `opts.immediate` (explicit "Refresh feeds now") opts out and merges now.
     if (!opts.immediate && isBacklogView(view)) {
       const freshById = new Map(fresh.map((a) => [a.id, a]));
-      const items = current.items.map((a) => freshById.get(a.id) ?? a);
-      articles.update((s) => ({ ...s, items, loading: false, err: undefined }));
+      articles.update((s) => ({
+        ...s,
+        items: s.items.map((a) => freshById.get(a.id) ?? a),
+        loading: false,
+        err: undefined,
+      }));
       let added = 0;
       for (const a of fresh) {
         if (!have.has(a.id) && !pendingNewIds.has(a.id)) {
@@ -379,14 +388,16 @@ export async function pollForNewArticles(opts: { immediate?: boolean } = {}): Pr
     // Sort matches the server's ORDER BY IFNULL(published_at,0) DESC, id DESC.
     const newCount = fresh.reduce((n, a) => (have.has(a.id) ? n : n + 1), 0);
     const freshIds = new Set(fresh.map((a) => a.id));
-    const kept = current.items.filter((a) => !freshIds.has(a.id));
-    const merged = [...fresh, ...kept].sort((a, b) => {
-      const aPub = a.published_at ?? 0;
-      const bPub = b.published_at ?? 0;
-      if (bPub !== aPub) return bPub - aPub;
-      return b.id - a.id;
+    articles.update((s) => {
+      const kept = s.items.filter((a) => !freshIds.has(a.id));
+      const merged = [...fresh, ...kept].sort((a, b) => {
+        const aPub = a.published_at ?? 0;
+        const bPub = b.published_at ?? 0;
+        if (bPub !== aPub) return bPub - aPub;
+        return b.id - a.id;
+      });
+      return { ...s, items: merged, loading: false, err: undefined };
     });
-    articles.update((s) => ({ ...s, items: merged, loading: false, err: undefined }));
     if (newCount > 0) {
       newArticleCount.update((n) => n + newCount);
       void refreshSidebar();
@@ -397,7 +408,15 @@ export async function pollForNewArticles(opts: { immediate?: boolean } = {}): Pr
   }
 }
 
+// Monotonic guard for the article list, like smartCountsSeq: every
+// loadArticles call (full load or Load-more append) stamps a sequence number
+// and only the newest one may write the list, so a slow response for a view
+// the user already left can't overwrite the current one. pollForNewArticles
+// also checks it to drop a top page that a load overtook.
+let articlesLoadSeq = 0;
+
 export async function loadArticles(view: ActiveView, append = false): Promise<void> {
+  const seq = ++articlesLoadSeq;
   articles.update((s) => ({ ...s, loading: true, err: undefined }));
   // Search view: hit /api/search and treat the results as the article list.
   // Paged 25 at a time by offset (append=true loads the next page).
@@ -405,6 +424,7 @@ export async function loadArticles(view: ActiveView, append = false): Promise<vo
     try {
       const offset = append ? get(articles).searchOffset ?? 0 : 0;
       const res = await api.search(view.query, SEARCH_PAGE_SIZE, offset);
+      if (seq !== articlesLoadSeq) return;
       const page = (res.data ?? []) as ArticleView[];
       articles.update((s) => ({
         items: append ? [...s.items, ...page] : page,
@@ -415,6 +435,7 @@ export async function loadArticles(view: ActiveView, append = false): Promise<vo
       }));
       if (!append) clearNewArticleBacklog();
     } catch (err) {
+      if (seq !== articlesLoadSeq) return;
       articles.update((s) => ({ ...s, loading: false, err: String(err) }));
     }
     return;
@@ -429,6 +450,7 @@ export async function loadArticles(view: ActiveView, append = false): Promise<vo
       }
     }
     const res = await api.listArticles(q);
+    if (seq !== articlesLoadSeq) return;
     const meta = res.meta ?? {};
     // The server emits a cursor only when the page came back full, so a present
     // cursor means "Load more has something." Absent/zero → last page.
@@ -449,6 +471,7 @@ export async function loadArticles(view: ActiveView, append = false): Promise<vo
       clearNewArticleBacklog();
     }
   } catch (err) {
+    if (seq !== articlesLoadSeq) return;
     articles.update((s) => ({ ...s, loading: false, err: String(err) }));
   }
 }
@@ -471,11 +494,21 @@ export async function loadMore(): Promise<void> {
 // and the poll loop only reconciles when new articles arrive or a summary is
 // pending — so a quiet session never heals. This debounced reconcile pulls the
 // authoritative deduped/windowed counts back without firing a request per read.
+//
+// includeFeeds also re-pulls the per-feed sidebar counts: an include_siblings
+// read marks cross-feed dedup copies read server-side, and those copies (often
+// in other feeds, not in the loaded list) can't be counted client-side.
 let countReconcileTimer: ReturnType<typeof setTimeout> | null = null;
-function scheduleCountReconcile(): void {
+let reconcileFeeds = false;
+function scheduleCountReconcile(includeFeeds: boolean): void {
   if (countReconcileTimer) clearTimeout(countReconcileTimer);
+  reconcileFeeds ||= includeFeeds;
   countReconcileTimer = setTimeout(() => {
     countReconcileTimer = null;
+    if (reconcileFeeds) {
+      reconcileFeeds = false;
+      api.listFeeds().then((f) => feeds.set(f.data ?? []), () => {});
+    }
     void refreshSmartCounts();
   }, 1000);
 }
@@ -512,14 +545,23 @@ export async function setRead(
   // the debounced reconcile catches up — and that debounce keeps resetting
   // while the reader scrolls, so the wrong value can persist for as long as
   // they keep reading.
+  //
+  // The server's per-feed badge is windowed the same way (ListFeedsForUser), so
+  // feedDelta splits the same flipped set by feed. prevRead keeps each item's
+  // original state for the rollback if the request fails.
   const unreadWindowSec = get(unreadWindowSeconds);
-  const flipped = get(articles).items.reduce((n, a) => {
-    if (!idSet.has(a.id)) return n;
-    if (!!a.is_read === read) return n;
-    if (!a.published_at) return n;
-    if (nowSec - a.published_at >= unreadWindowSec) return n;
-    return n + 1;
-  }, 0);
+  let flipped = 0;
+  const feedDelta = new Map<number, number>();
+  const prevRead = new Map<number, boolean>();
+  for (const a of get(articles).items) {
+    if (!idSet.has(a.id)) continue;
+    prevRead.set(a.id, a.is_read);
+    if (!!a.is_read === read) continue;
+    if (!a.published_at) continue;
+    if (nowSec - a.published_at >= unreadWindowSec) continue;
+    flipped++;
+    feedDelta.set(a.feed_id, (feedDelta.get(a.feed_id) ?? 0) + 1);
+  }
 
   articles.update((s) => ({
     ...s,
@@ -534,7 +576,15 @@ export async function setRead(
   try {
     await api.setRead(ids, read, includeSiblings);
   } catch (err) {
-    // Roll back the fresh-count bump; the feed-unread update below never ran.
+    // Roll back the optimistic read flip and the fresh-count bump; the
+    // feed-unread / All-Unread updates below never ran.
+    articles.update((s) => ({
+      ...s,
+      items: s.items.map((a) => {
+        const was = prevRead.get(a.id);
+        return was === undefined ? a : { ...a, is_read: was };
+      }),
+    }));
     if (freshDelta !== 0) {
       smartCounts.update((c) => ({
         ...c,
@@ -543,27 +593,30 @@ export async function setRead(
     }
     throw err;
   }
-  feeds.update((fs) =>
-    fs.map((f) => {
-      const delta = ids.filter((id) => {
-        const item = get(articles).items.find((a) => a.id === id);
-        return item?.feed_id === f.id;
-      }).length;
-      if (delta === 0) return f;
-      return { ...f, unread: Math.max(0, f.unread + (read ? -delta : delta)) };
-    }),
-  );
+  if (feedDelta.size > 0) {
+    feeds.update((fs) =>
+      fs.map((f) => {
+        const delta = feedDelta.get(f.id);
+        if (!delta) return f;
+        return { ...f, unread: Math.max(0, f.unread + (read ? -delta : delta)) };
+      }),
+    );
+  }
   // Keep the global All-Unread badge (server-computed smartCounts.unread) in
-  // sync optimistically.
+  // sync optimistically. Skip when the server omitted it (older builds, the
+  // demo): totalUnread then falls back to the per-feed sum, and arithmetic on
+  // undefined would yield NaN and hide the badge.
   if (flipped !== 0) {
-    smartCounts.update((c) => ({
-      ...c,
-      unread: Math.max(0, c.unread + (read ? -flipped : flipped)),
-    }));
+    smartCounts.update((c) =>
+      typeof c.unread === "number"
+        ? { ...c, unread: Math.max(0, c.unread + (read ? -flipped : flipped)) }
+        : c,
+    );
   }
   // Heal any drift between the optimistic bump and the server's deduped/windowed
-  // counts (All-Unread + Fresh + per-folder badges).
-  scheduleCountReconcile();
+  // counts (All-Unread + Fresh + per-folder badges, and per-feed badges when
+  // dedup siblings were swept server-side).
+  scheduleCountReconcile(includeSiblings);
 }
 
 // toggleStar / toggleLater do two optimistic updates so the UI feels

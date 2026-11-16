@@ -84,7 +84,9 @@ func (s *Store) UpdateCategory(ctx context.Context, userID, id int64, patch Upda
 		args = append(args, *patch.Position)
 	}
 	if len(sets) == 0 {
-		return nil
+		// Nothing to write, but an unknown or foreign id is still not found.
+		_, err := s.GetCategory(ctx, userID, id)
+		return err
 	}
 	args = append(args, id, userID)
 	res, err := s.DB.ExecContext(ctx,

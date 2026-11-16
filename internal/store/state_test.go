@@ -108,7 +108,7 @@ func TestState_MarkAllReadScoped(t *testing.T) {
 	_, _, _ = s.UpsertArticle(ctx, models.Article{FeedID: f2.ID, GUID: "g2", Title: "B1", ContentHash: "h2", PublishedAt: 2000})
 
 	// Mark f1 only.
-	n, err := s.MarkAllRead(ctx, u.ID, f1.ID, 0, 0)
+	n, err := s.MarkAllRead(ctx, u.ID, f1.ID, 0, 0, false, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"sync"
 	"time"
 )
 
@@ -106,4 +107,52 @@ func (a *Auth) checkThrottle(ctx context.Context, username string) error {
 		remaining = time.Second
 	}
 	return &TooManyAttemptsError{RetryAfter: remaining.Round(time.Second)}
+}
+
+// accountLocks serializes login attempts per username so the throttle's
+// check → password verify → record-failure sequence is atomic for an account.
+// Without it, every request that arrives while a backoff window has just
+// lapsed reads the same stale failure count, passes checkThrottle, and gets a
+// full password check before any of them records its miss — a burst of N
+// parallel guesses where the policy allows one. Ember is a single process, so
+// an in-process lock is enough; different usernames never contend.
+//
+// Entries are reference-counted and deleted once no attempt for that username
+// is in flight, so a spray of distinct usernames can't grow the map without
+// bound. The zero value is ready to use.
+type accountLocks struct {
+	mu sync.Mutex
+	m  map[string]*accountLock
+}
+
+type accountLock struct {
+	sync.Mutex
+	refs int // attempts holding or waiting on this lock; guarded by accountLocks.mu
+}
+
+// lock blocks until the caller holds username's lock and returns the release
+// func.
+func (l *accountLocks) lock(username string) (unlock func()) {
+	l.mu.Lock()
+	if l.m == nil {
+		l.m = make(map[string]*accountLock)
+	}
+	e := l.m[username]
+	if e == nil {
+		e = &accountLock{}
+		l.m[username] = e
+	}
+	e.refs++
+	l.mu.Unlock()
+
+	e.Lock()
+	return func() {
+		e.Unlock()
+		l.mu.Lock()
+		e.refs--
+		if e.refs == 0 {
+			delete(l.m, username)
+		}
+		l.mu.Unlock()
+	}
 }

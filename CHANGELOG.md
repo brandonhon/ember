@@ -15,6 +15,123 @@ them.
 
 ## [Unreleased]
 
+## [0.9.9] - 2026-11-16
+
+### Changed
+
+- Bumped runtime dependencies: `modernc.org/sqlite` 1.60.1 → 1.61.1,
+  `anthropic-sdk-go` 1.82.0 → 1.84.0, `emersion/go-smtp` 0.25.0 → 0.25.1 and
+  `fxamacker/cbor` 2.9.6 → 2.10.0. Web tooling moved to Vite 8.3.6, Vitest
+  5.1.0, Svelte 5.57.3, svelte-check 4.7.8, jsdom 31.0.0 and Playwright
+  1.65.0 (dev-only, not bundled into the Ember binary).
+- **Go toolchain 1.26.10 → 1.26.11** (`go.mod` and the `golang:1.26-alpine`
+  builder digest together) — see Security below. The `node:26-alpine` and
+  `busybox` base images moved to their current digests.
+- Bumped pinned actions: `github/codeql-action` 4.38.2 → 4.39.1 (all three of
+  `init`, `autobuild` and `analyze` to the same commit), `actions/setup-node`
+  7.0.0 → 7.1.0 and `docker/login-action` 4.6.0 → 4.7.0. Build
+  infrastructure only — none of them reaches the released binaries or
+  container image.
+- **Share → Copy link copies straight away.** Choosing the *Copy link* tab
+  now puts the article link on the clipboard in the same click; the second
+  *Copy link* button is gone. The link is still shown, so it can be copied
+  by hand if the browser blocks clipboard access.
+- The bundled `deploy/docker-compose.yml` now runs **Caddy 2.11.9** (from
+  2.11.7), pinned by digest like before. Only affects you if you deploy with
+  that compose file; pull and recreate the `caddy` service to pick it up.
+
+### Fixed
+
+- **Feeds now really poll adaptively.** The per-feed check interval was
+  computed every fetch but never saved, so every feed was checked about every
+  45 minutes regardless of activity. Busy feeds now settle near the configured
+  floor and quiet ones back off toward 6 hours, as documented. Errors still
+  back off separately and don't disturb the learned interval.
+- **A new feed whose first fetch fails no longer dumps its whole history.**
+  The first-ingest backlog limit used to switch off after any fetch attempt,
+  successful or not.
+- **Old items still listed in a feed are no longer re-added every day.** An
+  entry older than the 7-day retention window was pruned, then re-ingested as
+  new on the next poll (re-summarized, filters re-run, read state lost).
+  Entries past retention are now skipped at ingest.
+- **TT-RSS migration imports every subscription.** With many feeds, a few at
+  each page boundary were skipped.
+- **Adding a feed URL served as `application/xml` or `text/xml` subscribes to
+  that feed**, instead of falling back to a different feed found at the site
+  root.
+- **Article titles keep literal angle brackets** such as `Vec<T>` or
+  `<bool>` instead of losing them as if they were HTML.
+- **OPML export/import round-trips empty folders and renamed feeds.**
+- Two tracking parameters (`trkCampaign`, `hsCtaTracking`) are now stripped
+  for duplicate detection; a case mismatch meant they never were.
+- **Mark all read only marks what the list shows.** It no longer marks
+  articles from muted feeds or articles still hidden while their summary is
+  being written, which the user would otherwise never have seen unread.
+- **Articles shared with you from feeds you don't follow** can now be
+  opened, starred and marked read; those actions used to report success and
+  do nothing.
+- Tag views no longer hide a tagged article behind an untagged duplicate, and
+  muting a feed no longer removes its articles from your boards.
+- **Admin database cleanup rejects an `older_days` value above 3650.** A very
+  large value overflowed and deleted every unprotected article, including
+  ones fetched minutes earlier. The store also refuses a non-positive age now.
+- Editing a feed with an invalid folder no longer changes its URL before
+  failing, and an admin settings save that fails validation no longer saves
+  the fields listed before the bad one.
+- Editing a nonexistent feed or folder with an empty change returns 404
+  instead of 200.
+- An admin changing their own password from the Users screen stays signed in
+  (other sessions are still revoked).
+- **Digests scheduled late in the day are no longer skipped**, nor are days
+  missed across a restart. Articles that were still being summarized at send
+  time, or that had old publish dates, are no longer dropped from every
+  digest: each digest now covers articles fetched up to an hour before it is
+  sent, so the newest hour rolls into the next one.
+- **A digest that fails to send is retried instead of skipped.** A failed
+  send (SMTP down, bad credentials) used to be recorded as sent, so its
+  articles never reached any digest. It is now retried every 30 minutes until
+  it goes through, and that digest covers everything since the last one that
+  was delivered.
+- Daily and weekly maintenance jobs (backup, prune, export) no longer drift an
+  hour later on every run.
+- **Email-inbox addresses are case-insensitive**, so newsletters sent to a
+  lower-cased address are delivered instead of bounced.
+- In the reader: a background refresh during *Load more* or a view switch no
+  longer drops a page or shows another feed's articles; a slow response for a
+  view you already left no longer replaces the current one; feed unread badges
+  no longer drift low after reading older or already-read articles; a failed
+  mark-as-read is undone instead of showing the article as read; and the
+  search dropdown, article tags and filter preview no longer show stale
+  results.
+
+### Security
+
+- **A summary containing certain non-ASCII letters could crash the server.**
+  Label parsing assumed upper-casing never changes a string's byte length;
+  some characters (e.g. `ȿ`) do, and the resulting panic in the summary worker
+  took the process down, repeatedly, since the article was re-queued on
+  restart.
+- **Concurrent login attempts could bypass the per-account throttle.** Parallel
+  attempts sent once a backoff expired were each given a password check; they
+  are now serialized per account, so the throttle holds.
+- **The outbound URL guard's blocked-port list could be bypassed with leading
+  zeros** (`:025`). Ports are now compared numerically, and also checked at
+  dial time.
+- **A trusted proxy written as an IPv4-mapped IPv6 address** (`::ffff:10.0.0.5`)
+  trusted the wrong range (`::/32`, including `::1`) to set client-IP headers.
+- Starring or saving an article you can't access now returns 404. Before, it
+  returned 200 and could clear another user's deferred-summary marker and
+  queue summary work.
+- **Go 1.26.11** fixes GO-2026-6859 (CVE-2026-97054), a race in
+  `http.MaxBytesReader` header handling that can crash an HTTP/1 server.
+  Ember's server reaches the affected code, so the fix ships in the binary
+  and the container image.
+- **`golang.org/x/net` 0.61.0 → 0.62.0** fixes GO-2026-6866 (CVE-2026-97045,
+  raw-text namespace handling when rendering HTML) and GO-2026-6860
+  (CVE-2026-78661, quadratic time when parsing HTML with many adjacent text
+  nodes). Ember parses and re-renders feed HTML with this package, so both
+  reach the binary and the container image.
+
 ## [0.9.8] - 2026-10-27
 
 ### Added
@@ -907,7 +1024,8 @@ TT-RSS full migration (subscriptions, folders, starred/archived) and fail-fast
 admin bootstrap. See the
 [v0.8.7 release](https://github.com/brandonhon/ember/releases/tag/v0.8.7).
 
-[Unreleased]: https://github.com/brandonhon/ember/compare/v0.9.8...develop
+[Unreleased]: https://github.com/brandonhon/ember/compare/v0.9.9...develop
+[0.9.9]: https://github.com/brandonhon/ember/compare/v0.9.8...v0.9.9
 [0.9.8]: https://github.com/brandonhon/ember/compare/v0.9.7...v0.9.8
 [0.9.7]: https://github.com/brandonhon/ember/compare/v0.9.6...v0.9.7
 [0.9.6]: https://github.com/brandonhon/ember/compare/v0.9.5...v0.9.6

@@ -186,3 +186,29 @@ func TestCleanup_FTSOptimize(t *testing.T) {
 		t.Errorf("ArticlesDeleted = %d, want 5", stats.ArticlesDeleted)
 	}
 }
+
+// A non-positive olderThan puts the cutoff at or past "now", which would
+// delete every unprotected article. An overflowed day count reaches here as
+// exactly that, so Cleanup has to refuse it rather than trust its callers.
+func TestCleanup_RejectsNonPositiveOlderThan(t *testing.T) {
+	s := NewTest(t)
+	ctx := context.Background()
+	_, feedID := seedUserAndFeed(t, s, "alice")
+	if _, _, err := s.UpsertArticle(ctx, mkArticle(feedID, "fresh", "title", "h-fresh", 0)); err != nil {
+		t.Fatal(err)
+	}
+	days := 106752 // a variable, so the wrap happens at run time as in the handler
+	overflowed := time.Duration(days) * 24 * time.Hour
+	for _, d := range []time.Duration{0, -time.Hour, overflowed} {
+		if _, err := s.Cleanup(ctx, d); err == nil {
+			t.Errorf("Cleanup(%v) = nil error, want refusal", d)
+		}
+	}
+	var n int
+	if err := s.DB.QueryRowContext(ctx, `SELECT COUNT(*) FROM articles`).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Errorf("articles after refused cleanups = %d, want 1", n)
+	}
+}

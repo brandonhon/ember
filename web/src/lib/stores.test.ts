@@ -148,8 +148,13 @@ describe("loadArticles", () => {
 describe("setRead", () => {
   it("optimistically updates items and decrements unread", async () => {
     feeds.set([feedRow({ id: 1, unread: 5 })]);
+    // In-window: the per-feed badge only counts articles inside the unread window.
+    const recent = Math.floor(Date.now() / 1000) - 60;
     articles.set({
-      items: [article({ id: 10, feed_id: 1 }), article({ id: 11, feed_id: 1 })],
+      items: [
+        article({ id: 10, feed_id: 1, published_at: recent }),
+        article({ id: 11, feed_id: 1, published_at: recent }),
+      ],
       loading: false,
       hasMore: false,
     });
@@ -369,5 +374,167 @@ describe("refreshSmartCounts", () => {
     resolveStale(counts(53));
     await p1;
     expect(get(smartCounts).unread).toBe(0); // stale 53 ignored
+  });
+});
+
+// Concurrency: list loads and the background poll race each other. Each
+// in-flight request is a deferred promise so the test controls landing order.
+describe("article list request ordering", () => {
+  function deferred() {
+    let resolve!: (r: Response) => void;
+    const promise = new Promise<Response>((r) => (resolve = r));
+    return { promise, resolve };
+  }
+  beforeEach(() => {
+    // Default for anything not explicitly queued (e.g. a sidebar refresh).
+    fetchMock.mockImplementation(() => Promise.resolve(envelope([])));
+  });
+
+  it("a slower older loadArticles response cannot overwrite a newer view", async () => {
+    const slowA = deferred();
+    fetchMock
+      .mockReturnValueOnce(slowA.promise)
+      .mockResolvedValueOnce(envelope([article({ id: 20, feed_id: 2 })]));
+    const pA = loadArticles({ kind: "feed", id: 1 });
+    const pB = loadArticles({ kind: "feed", id: 2 });
+    await pB;
+    slowA.resolve(envelope([article({ id: 10, feed_id: 1 })]));
+    await pA;
+    const s = get(articles);
+    expect(s.items.map((a) => a.id)).toEqual([20]);
+    expect(s.loading).toBe(false);
+  });
+
+  it("a poll in flight during Load more does not drop the appended page", async () => {
+    activeView.set({ kind: "feed", id: 1 });
+    articles.set({
+      items: [article({ id: 4, published_at: 400 }), article({ id: 3, published_at: 300 })],
+      loading: false,
+      hasMore: true,
+      cursor: { pub: 300, id: 3 },
+    });
+    const poll = deferred();
+    fetchMock.mockReturnValueOnce(poll.promise).mockResolvedValueOnce(
+      envelope([article({ id: 2, published_at: 200 }), article({ id: 1, published_at: 100 })], {
+        next_cursor_pub: 100,
+        next_cursor_id: 1,
+      }),
+    );
+    const pPoll = pollForNewArticles();
+    await loadMore();
+    poll.resolve(
+      envelope([
+        article({ id: 5, published_at: 500 }),
+        article({ id: 4, published_at: 400 }),
+        article({ id: 3, published_at: 300 }),
+      ]),
+    );
+    await pPoll;
+    const s = get(articles);
+    // Page 2 (ids 2, 1) must still be there, matching the advanced cursor.
+    expect(s.items.map((a) => a.id)).toEqual(expect.arrayContaining([4, 3, 2, 1]));
+    expect(s.cursor).toEqual({ pub: 100, id: 1 });
+  });
+
+  it("a poll in flight across a view switch does not replace the new view's list", async () => {
+    activeView.set({ kind: "feed", id: 1 });
+    articles.set({
+      items: [article({ id: 10, feed_id: 1, published_at: 100 })],
+      loading: false,
+      hasMore: false,
+    });
+    const poll = deferred();
+    fetchMock
+      .mockReturnValueOnce(poll.promise)
+      .mockResolvedValueOnce(envelope([article({ id: 20, feed_id: 2, published_at: 50 })]));
+    const pPoll = pollForNewArticles();
+    const feed2 = { kind: "feed" as const, id: 2 };
+    activeView.set(feed2);
+    await loadArticles(feed2);
+    poll.resolve(
+      envelope([article({ id: 11, feed_id: 1, published_at: 200 }), article({ id: 10, feed_id: 1, published_at: 100 })]),
+    );
+    expect(await pPoll).toBe(0);
+    expect(get(articles).items.map((a) => a.id)).toEqual([20]);
+  });
+});
+
+describe("setRead count accuracy", () => {
+  const nowSec = () => Math.floor(Date.now() / 1000);
+  const counts = (over: Record<string, unknown> = {}) =>
+    ({ fresh: 0, starred: 0, later: 0, shared: 0, pending_summary: 0, unread: 4, unread_by_category: {}, ...over }) as never;
+
+  it("does not decrement a feed badge for an article outside the unread window", async () => {
+    unreadWindowSeconds.set(24 * 3600);
+    feeds.set([feedRow({ id: 1, unread: 5 })]);
+    articles.set({
+      items: [article({ id: 10, feed_id: 1, is_starred: true, published_at: nowSec() - 3 * 24 * 3600 })],
+      loading: false,
+      hasMore: false,
+    });
+    fetchMock.mockResolvedValueOnce(envelope({ count: 1 }));
+    await setRead([10], true);
+    expect(get(feeds)[0].unread).toBe(5);
+  });
+
+  it("does not decrement a feed badge for an article that was already read", async () => {
+    unreadWindowSeconds.set(24 * 3600);
+    feeds.set([feedRow({ id: 1, unread: 5 })]);
+    articles.set({
+      items: [article({ id: 10, feed_id: 1, is_read: true, published_at: nowSec() - 3600 })],
+      loading: false,
+      hasMore: false,
+    });
+    fetchMock.mockResolvedValueOnce(envelope({ count: 1 }));
+    await setRead([10], true);
+    expect(get(feeds)[0].unread).toBe(5);
+  });
+
+  it("reconciles sidebar feed counts after an include_siblings read", async () => {
+    vi.useFakeTimers();
+    try {
+      articles.set({ items: [article({ id: 10, published_at: nowSec() - 3600 })], loading: false, hasMore: false });
+      fetchMock.mockImplementation(() => Promise.resolve(envelope([])));
+      await setRead([10], true, true);
+      await vi.advanceTimersByTimeAsync(1000);
+      const urls = fetchMock.mock.calls.map(([u]) => String(u));
+      expect(urls.some((u) => u.endsWith("/api/feeds"))).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("rolls back the optimistic read state and counts when the request fails", async () => {
+    unreadWindowSeconds.set(24 * 3600);
+    feeds.set([feedRow({ id: 1, unread: 5 })]);
+    smartCounts.set(counts({ fresh: 3, unread: 4 }));
+    articles.set({
+      items: [article({ id: 10, feed_id: 1, published_at: nowSec() - 60 })],
+      loading: false,
+      hasMore: false,
+    });
+    fetchMock.mockResolvedValueOnce(
+      new Response('{"error":{"code":"boom","message":"x"}}', { status: 500 }),
+    );
+    await expect(setRead([10], true)).rejects.toBeDefined();
+    expect(get(articles).items[0].is_read).toBe(false);
+    expect(get(smartCounts).fresh).toBe(3);
+    expect(get(smartCounts).unread).toBe(4);
+    expect(get(feeds)[0].unread).toBe(5);
+  });
+
+  it("leaves an absent All-Unread count alone instead of producing NaN (demo)", async () => {
+    unreadWindowSeconds.set(24 * 3600);
+    feeds.set([feedRow({ id: 1, unread: 5 })]);
+    smartCounts.set(counts({ unread: undefined, unread_by_category: undefined }));
+    articles.set({
+      items: [article({ id: 10, feed_id: 1, published_at: nowSec() - 60 })],
+      loading: false,
+      hasMore: false,
+    });
+    fetchMock.mockResolvedValueOnce(envelope({ count: 1 }));
+    await setRead([10], true);
+    expect(get(smartCounts).unread).toBeUndefined();
+    expect(get(totalUnread)).toBe(4);
   });
 });

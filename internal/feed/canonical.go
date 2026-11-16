@@ -39,8 +39,8 @@ var trackingParamExact = map[string]struct{}{
 	"ref_source":       {}, // Substack
 	"ref_url":          {}, // various
 	"trk":              {}, // LinkedIn
-	"trkCampaign":      {}, // LinkedIn
-	"hsCtaTracking":    {}, // HubSpot
+	"trkcampaign":      {}, // LinkedIn (keys lowercase: lookup lowercases)
+	"hsctatracking":    {}, // HubSpot
 }
 
 // CanonicalURL returns a normalized form of the input URL with tracking

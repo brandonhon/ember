@@ -183,8 +183,10 @@ func (s *session) Reset()        { s.rcpts = nil }
 func (s *session) Logout() error { return nil }
 
 // extractHandle returns the handle from an envelope-To address that
-// matches <handle>@<domain>. Case-insensitive on the domain, exact on
-// the handle (handle alphabet is case-preserving).
+// matches <handle>@<domain>, normalized to the canonical uppercase form
+// handles are generated and stored in. Case-insensitive on both parts:
+// some providers lowercase the local part in transit, and the handle
+// alphabet has no case-only distinctions to lose.
 func extractHandle(addr, domain string) (string, bool) {
 	at := strings.LastIndexByte(addr, '@')
 	if at < 1 {
@@ -193,7 +195,7 @@ func extractHandle(addr, domain string) (string, bool) {
 	if !strings.EqualFold(addr[at+1:], domain) {
 		return "", false
 	}
-	h := addr[:at]
+	h := strings.ToUpper(addr[:at])
 	if !ValidHandle(h) {
 		return "", false
 	}

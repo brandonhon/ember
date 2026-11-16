@@ -108,7 +108,7 @@ Stored in the `app_settings` KV. Edit via the admin UI in **Settings → ...**.
 | Cleanup schedule + window (`db_cleanup_older_days`, default 90) | Database |
 | OPML export directory + schedule + retention (`opml_export_dir` default `/data/exports`, `opml_keep` default 12) | Database → OPML export ([setup](#custom-backup-directory)) |
 | SMTP host / port / username / password / from / STARTTLS | Email / SMTP |
-| Initial feed-backlog window (default **24 hours**; 0 = no gate) | Email / SMTP → Initial backlog window |
+| Initial feed-backlog window (default **24 hours**; 0 = no gate, still capped at the 1-week retention) | Email / SMTP → Initial backlog window |
 | Reading window (default 24h; range 24–168h) | Feeds → Reading window |
 | Search window (default 48h; range 24–168h) | Feeds → Search window |
 
@@ -197,7 +197,8 @@ what's already been pruned.
 
 - **Ingest** — a brand-new feed pulls only the last 24h on its first fetch (the *initial
   backlog window*). Existing feeds only add genuinely new items (GUID + content-hash dedup),
-  so reposts don't reappear.
+  so reposts don't reappear. Entries published before the retention window are skipped on
+  every poll, so an old item a feed keeps listing isn't re-added after it was pruned.
 - **Reading window** (default 24h, extendable to 168h) — the *floor* for how far back the
   unread views and counts reach. *Today* always shows exactly this window, newest first.
   A feed, a category, and *All Unread* show at least this window but **extend back to your

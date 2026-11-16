@@ -58,6 +58,7 @@
 
   async function onSearch(e: Event) {
     e.preventDefault();
+    cancelTypeahead();
     const q = searchQ.trim();
     if (!q) {
       searchResults = [];
@@ -75,6 +76,7 @@
   // Clear the search input, the dropdown, and the search view in one click.
   // Snaps back to Fresh so the user always lands somewhere sensible.
   function clearSearch() {
+    cancelTypeahead();
     searchQ = "";
     searchResults = [];
     showResults = false;
@@ -91,25 +93,35 @@
   // user submits.
   let searchTimer: ReturnType<typeof setTimeout> | undefined;
   function onSearchInput() {
-    if (searchTimer) clearTimeout(searchTimer);
+    cancelTypeahead();
     const q = searchQ.trim();
     if (!q) {
       searchResults = [];
       showResults = false;
       return;
     }
-    searchTimer = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       try {
         const res = await api.search(q, 6, 0);
+        // Superseded by newer input, Enter, or Escape while in flight.
+        if (searchTimer !== timer) return;
         searchResults = (res.data ?? []).map((r) => ({ id: r.id, title: r.title, url: r.url }));
         searchHasMore = (res.data?.length ?? 0) === 6;
         selectedIndex = -1;
         showResults = searchResults.length > 0;
       } catch {
+        if (searchTimer !== timer) return;
         searchResults = [];
         searchHasMore = false;
       }
     }, 220);
+    searchTimer = timer;
+  }
+  // Drop a pending (or in-flight) typeahead so it can't reopen the dropdown
+  // after the user submitted or cleared the search.
+  function cancelTypeahead() {
+    if (searchTimer) clearTimeout(searchTimer);
+    searchTimer = undefined;
   }
 
   // Append the next 6 typeahead hits (offset = current count). Hides the

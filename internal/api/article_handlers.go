@@ -201,6 +201,12 @@ func (d *Dependencies) setArticleFlag(w http.ResponseWriter, r *http.Request, se
 	if !decodeJSON(w, r, &req) {
 		return
 	}
+	// The setter silently skips articles the caller can't see, but the
+	// summary request below acts on the bare id — so check access first, or
+	// any user could clear another's 'deferred' marker and queue LLM work.
+	if _, err := d.Store.GetArticleForUser(r.Context(), u.ID, req.ID); mapStoreError(w, err) {
+		return
+	}
 	if mapStoreError(w, set(r.Context(), u.ID, req.ID, req.Value)) {
 		return
 	}
@@ -263,7 +269,10 @@ func (d *Dependencies) handleMarkAllRead(w http.ResponseWriter, r *http.Request)
 		}
 	}
 	freshAfter := d.viewFreshAfter(r.Context(), u.ID, req.View)
-	n, err := d.Store.MarkAllRead(r.Context(), u.ID, req.FeedID, req.CategoryID, freshAfter)
+	// Same summary gate as handleListArticles (minus its ?all=1 debug bypass),
+	// so a still-summarizing article hidden from the list isn't marked read.
+	n, err := d.Store.MarkAllRead(r.Context(), u.ID, req.FeedID, req.CategoryID, freshAfter,
+		d.summariesOn(r.Context()), d.summaryGraceBefore(r.Context()))
 	if mapStoreError(w, err) {
 		return
 	}

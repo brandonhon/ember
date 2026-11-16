@@ -154,7 +154,10 @@ func (s *Store) GetArticle(ctx context.Context, id int64) (models.Article, error
 }
 
 // GetArticleForUser returns an article only if the user is subscribed to its
-// feed (cross-user privacy).
+// feed or it was shared to them (cross-user privacy). A share can come from a
+// feed the recipient doesn't follow — the Shared view lists it — so the
+// subscription join is LEFT, exactly as in that view: summaryProjection reads
+// `s.summarize`, and a non-subscriber's NULL falls through to the summary.
 func (s *Store) GetArticleForUser(ctx context.Context, userID, articleID int64) (models.ArticleView, error) {
 	row := s.DB.QueryRowContext(ctx, `
 		SELECT a.id, a.feed_id, a.guid, IFNULL(a.url,''), a.title, IFNULL(a.author,''),
@@ -164,9 +167,11 @@ func (s *Store) GetArticleForUser(ctx context.Context, userID, articleID int64) 
 		       a.fetched_at, a.content_hash, IFNULL(a.tags,''),
 		       IFNULL(st.is_read,0), IFNULL(st.is_starred,0), IFNULL(st.is_later,0)
 		FROM articles a
-		JOIN subscriptions s ON s.feed_id = a.feed_id AND s.user_id = ?
+		LEFT JOIN subscriptions s ON s.feed_id = a.feed_id AND s.user_id = ?
 		LEFT JOIN article_state st ON st.article_id = a.id AND st.user_id = ?
-		WHERE a.id = ?`, userID, userID, articleID)
+		WHERE a.id = ? AND (s.id IS NOT NULL OR EXISTS (
+			SELECT 1 FROM shares sh WHERE sh.article_id = a.id AND sh.to_user = ?
+		))`, userID, userID, articleID, userID)
 	var v models.ArticleView
 	var ir, is, il int
 	err := row.Scan(&v.ID, &v.FeedID, &v.GUID, &v.URL, &v.Title, &v.Author,
@@ -642,6 +647,11 @@ type ListArticlesQuery struct {
 	// unread cards shown always equal the badge (no phantom count). The "unread"
 	// and "fresh" views set it implicitly via buildArticleFilter.
 	DedupUnread bool
+	// FetchedFrom / FetchedBefore bound fetched_at to [FetchedFrom,
+	// FetchedBefore) in unix seconds; zero leaves that side open. Applied in
+	// SQL so the window is cut before LIMIT, not after. Used by the digest.
+	FetchedFrom   int64
+	FetchedBefore int64
 }
 
 // summaryProjection is the per-user view of the shared summary columns.
@@ -778,6 +788,17 @@ JOIN article_tags atg ON atg.article_id = a.id AND atg.user_id = ? AND atg.tag =
 		conds = append(conds, "IFNULL(a.published_at,0) >= ?")
 		args = append(args, q.FreshAfter)
 	}
+	// Deliberately not mirrored into the dedup sibling below: a lower-id copy
+	// fetched before the window was already eligible for an earlier digest,
+	// so its later duplicate should stay suppressed rather than be re-sent.
+	if q.FetchedFrom > 0 {
+		conds = append(conds, "a.fetched_at >= ?")
+		args = append(args, q.FetchedFrom)
+	}
+	if q.FetchedBefore > 0 {
+		conds = append(conds, "a.fetched_at < ?")
+		args = append(args, q.FetchedBefore)
+	}
 	if withCursor && (q.PublishedBefore > 0 || q.IDBefore > 0) {
 		conds = append(conds, "(IFNULL(a.published_at,0) < ? OR (IFNULL(a.published_at,0) = ? AND a.id < ?))")
 		args = append(args, q.PublishedBefore, q.PublishedBefore, q.IDBefore)
@@ -790,8 +811,9 @@ JOIN article_tags atg ON atg.article_id = a.id AND atg.user_id = ? AND atg.tag =
 	// Muted feeds: excluded from smart views (fresh/today/unread/starred/later)
 	// and category views; still visible when the user explicitly clicks the
 	// feed (FeedID > 0). The 'shared' view is also unaffected since it uses
-	// a different join.
-	if q.View != "shared" && q.FeedID == 0 {
+	// a different join. Boards are explicit curation: muting a feed must not
+	// pull an article off a board the user pinned it to.
+	if q.View != "shared" && q.FeedID == 0 && q.BoardID == 0 {
 		conds = append(conds, "s.muted = 0")
 	}
 
@@ -805,7 +827,9 @@ JOIN article_tags atg ON atg.article_id = a.id AND atg.user_id = ? AND atg.tag =
 	//       ("Apple Q3 earnings") from collapsing across time.
 	// Applied to feed/category/smart views alike (a duplicate story isn't
 	// counted or shown anywhere twice); skipped only for shared (explicit
-	// one-off share) and board views (explicit curation). Empty cluster_id AND
+	// one-off share), board views (explicit curation), and tag views (an
+	// explicit per-article label — the sibling isn't tag-filtered, so an
+	// untagged lower-id copy would hide the tagged one). Empty cluster_id AND
 	// empty title_fingerprint rows always pass (no signal in either dimension).
 	//
 	// The suppressor sibling (a3) must satisfy the SAME predicate — window,
@@ -814,7 +838,7 @@ JOIN article_tags atg ON atg.article_id = a.id AND atg.user_id = ? AND atg.tag =
 	// unsummarized) silently removes its visible copies, collapsing the count to
 	// 0. Matching the predicate means a row is only deduped against a copy that
 	// is actually present in the same view.
-	if q.View != "shared" && q.BoardID == 0 {
+	if q.View != "shared" && q.BoardID == 0 && q.Tag == "" {
 		var sib strings.Builder
 		var sibArgs []any
 		sib.WriteString(`

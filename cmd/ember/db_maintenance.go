@@ -38,6 +38,10 @@ func runDBMaintenance(ctx context.Context, st *store.Store, op *opml.Service, lg
 }
 
 func tickMaintenance(ctx context.Context, st *store.Store, op *opml.Service, lg *slog.Logger) {
+	// Each job stamps its *_last with this tick time, not its finish time:
+	// dueSince compares the next tick's start against the stamp with >=, and
+	// on an exactly-hourly ticker a stamp even a second late makes daily jobs
+	// slip to every 25h and weekly ones to 169h.
 	now := time.Now()
 	// Fixed retention: always-on, prunes articles older than the rolling
 	// 1-week window (except starred / read-later / pinned / shared). Runs at
@@ -45,39 +49,39 @@ func tickMaintenance(ctx context.Context, st *store.Store, op *opml.Service, lg 
 	// you can't search what's been pruned. Distinct from the optional admin
 	// "cleanup" below, which is operator-tunable and also VACUUMs.
 	if dueSince(ctx, st, "retention_prune_last", 24*time.Hour, now) {
-		runRetentionPrune(ctx, st, lg)
+		runRetentionPrune(ctx, st, lg, now)
 	}
 	// Backups
 	switch readSetting(ctx, st, "db_backup_schedule", "off") {
 	case "daily":
 		if dueSince(ctx, st, "db_backup_last", 24*time.Hour, now) {
-			runBackup(ctx, st, lg)
+			runBackup(ctx, st, lg, now)
 		}
 	case "weekly":
 		if dueSince(ctx, st, "db_backup_last", 7*24*time.Hour, now) {
-			runBackup(ctx, st, lg)
+			runBackup(ctx, st, lg, now)
 		}
 	}
 	// Cleanup
 	switch readSetting(ctx, st, "db_cleanup_schedule", "off") {
 	case "weekly":
 		if dueSince(ctx, st, "db_cleanup_last", 7*24*time.Hour, now) {
-			runCleanup(ctx, st, lg)
+			runCleanup(ctx, st, lg, now)
 		}
 	case "monthly":
 		if dueSince(ctx, st, "db_cleanup_last", 30*24*time.Hour, now) {
-			runCleanup(ctx, st, lg)
+			runCleanup(ctx, st, lg, now)
 		}
 	}
 	// OPML export
 	switch readSetting(ctx, st, "opml_schedule", "off") {
 	case "weekly":
 		if dueSince(ctx, st, "opml_last", 7*24*time.Hour, now) {
-			runOPMLExport(ctx, st, op, lg)
+			runOPMLExport(ctx, st, op, lg, now)
 		}
 	case "monthly":
 		if dueSince(ctx, st, "opml_last", 30*24*time.Hour, now) {
-			runOPMLExport(ctx, st, op, lg)
+			runOPMLExport(ctx, st, op, lg, now)
 		}
 	}
 }
@@ -86,7 +90,7 @@ func tickMaintenance(ctx context.Context, st *store.Store, op *opml.Service, lg 
 // first admin since OPML is per-user and a server-wide cron has no other
 // natural choice. Multi-tenant deployments can disable this and trigger
 // exports per-user via the manual endpoint instead.
-func runOPMLExport(ctx context.Context, st *store.Store, op *opml.Service, lg *slog.Logger) {
+func runOPMLExport(ctx context.Context, st *store.Store, op *opml.Service, lg *slog.Logger, now time.Time) {
 	if op == nil {
 		lg.Warn("opml export scheduled but service not initialized")
 		return
@@ -105,10 +109,10 @@ func runOPMLExport(ctx context.Context, st *store.Store, op *opml.Service, lg *s
 	keep := readIntSetting(ctx, st, "opml_keep", 12)
 	pruned, _ := st.PruneExports(dir, keep)
 	lg.Info("scheduled OPML export complete", "path", out, "size_bytes", size, "user_id", adminID, "pruned", pruned)
-	_ = st.PutAppSetting(ctx, "opml_last", strconv.FormatInt(time.Now().Unix(), 10))
+	_ = st.PutAppSetting(ctx, "opml_last", strconv.FormatInt(now.Unix(), 10))
 }
 
-func runBackup(ctx context.Context, st *store.Store, lg *slog.Logger) {
+func runBackup(ctx context.Context, st *store.Store, lg *slog.Logger, now time.Time) {
 	dir := readSetting(ctx, st, "db_backup_dir", defaultBackupDir)
 	info, err := st.Backup(ctx, dir)
 	if err != nil {
@@ -118,13 +122,13 @@ func runBackup(ctx context.Context, st *store.Store, lg *slog.Logger) {
 	keep := readIntSetting(ctx, st, "db_backup_keep", 7)
 	pruned, _ := st.PruneBackups(dir, keep)
 	lg.Info("scheduled backup complete", "path", info.Path, "size_bytes", info.SizeBytes, "pruned", pruned)
-	_ = st.PutAppSetting(ctx, "db_backup_last", strconv.FormatInt(time.Now().Unix(), 10))
+	_ = st.PutAppSetting(ctx, "db_backup_last", strconv.FormatInt(now.Unix(), 10))
 }
 
 // runRetentionPrune removes articles past the fixed RetentionHours window.
 // Delete-only (no VACUUM) so it's cheap enough to run daily; disk compaction
 // is the optional admin Cleanup's job.
-func runRetentionPrune(ctx context.Context, st *store.Store, lg *slog.Logger) {
+func runRetentionPrune(ctx context.Context, st *store.Store, lg *slog.Logger, now time.Time) {
 	n, err := st.PruneArticles(ctx, time.Duration(store.RetentionHours)*time.Hour)
 	if err != nil {
 		lg.Warn("retention prune failed", "err", err)
@@ -133,10 +137,10 @@ func runRetentionPrune(ctx context.Context, st *store.Store, lg *slog.Logger) {
 	if n > 0 {
 		lg.Info("retention prune complete", "articles_deleted", n, "retention_hours", store.RetentionHours)
 	}
-	_ = st.PutAppSetting(ctx, "retention_prune_last", strconv.FormatInt(time.Now().Unix(), 10))
+	_ = st.PutAppSetting(ctx, "retention_prune_last", strconv.FormatInt(now.Unix(), 10))
 }
 
-func runCleanup(ctx context.Context, st *store.Store, lg *slog.Logger) {
+func runCleanup(ctx context.Context, st *store.Store, lg *slog.Logger, now time.Time) {
 	days := readIntSetting(ctx, st, "db_cleanup_older_days", 90)
 	stats, err := st.Cleanup(ctx, time.Duration(days)*24*time.Hour)
 	if err != nil {
@@ -144,7 +148,7 @@ func runCleanup(ctx context.Context, st *store.Store, lg *slog.Logger) {
 		return
 	}
 	lg.Info("scheduled cleanup complete", "articles_deleted", stats.ArticlesDeleted, "bytes_reclaimed", stats.BytesReclaimed)
-	_ = st.PutAppSetting(ctx, "db_cleanup_last", strconv.FormatInt(time.Now().Unix(), 10))
+	_ = st.PutAppSetting(ctx, "db_cleanup_last", strconv.FormatInt(now.Unix(), 10))
 }
 
 func dueSince(ctx context.Context, st *store.Store, key string, every time.Duration, now time.Time) bool {

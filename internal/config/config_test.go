@@ -2,6 +2,7 @@ package config
 
 import (
 	"log/slog"
+	"net"
 	"strings"
 	"testing"
 	"time"
@@ -302,6 +303,33 @@ func TestLoad_TrustedProxies(t *testing.T) {
 		"EMBER_TRUSTED_PROXIES": "not-an-ip",
 	}); err == nil {
 		t.Error("expected error for invalid EMBER_TRUSTED_PROXIES")
+	}
+}
+
+// An IPv4-mapped IPv6 literal is an IPv4 address (To4 succeeds), but appending
+// "/32" to its original text produced "::ffff:10.0.0.5/32", which parses as the
+// IPv6 prefix ::/32 — trusting ::1 and the whole of ::/32 while the intended
+// proxy 10.0.0.5 was not trusted at all.
+func TestLoad_TrustedProxiesIPv4Mapped(t *testing.T) {
+	cfg, err := LoadFromMap(map[string]string{
+		"EMBER_SESSION_KEY":     strings.Repeat("a", 32),
+		"EMBER_TRUSTED_PROXIES": "::ffff:10.0.0.5",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cfg.TrustedProxies) != 1 {
+		t.Fatalf("TrustedProxies = %v, want one entry", cfg.TrustedProxies)
+	}
+	_, n, err := net.ParseCIDR(cfg.TrustedProxies[0])
+	if err != nil {
+		t.Fatalf("entry %q does not parse: %v", cfg.TrustedProxies[0], err)
+	}
+	if !n.Contains(net.ParseIP("10.0.0.5")) {
+		t.Errorf("%q does not trust 10.0.0.5", cfg.TrustedProxies[0])
+	}
+	if n.Contains(net.ParseIP("::1")) || n.Contains(net.ParseIP("10.0.0.6")) {
+		t.Errorf("%q trusts more than the one proxy address", cfg.TrustedProxies[0])
 	}
 }
 

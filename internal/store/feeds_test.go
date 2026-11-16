@@ -270,3 +270,26 @@ func TestFeeds_DueAndFetchUpdate(t *testing.T) {
 		t.Errorf("fetch update lost: %+v", got)
 	}
 }
+
+// Same contract as UpdateCategory: an empty patch on a subscription the caller
+// doesn't own is ErrNotFound, not a silent success.
+func TestUpdateSubscription_EmptyPatchChecksOwnership(t *testing.T) {
+	s := NewTest(t)
+	ctx := context.Background()
+	a, _ := s.CreateUser(ctx, models.User{Username: "a", PasswordHash: "h"})
+	b, _ := s.CreateUser(ctx, models.User{Username: "b", PasswordHash: "h"})
+	f, _ := s.UpsertFeed(ctx, models.Feed{URL: "https://x.test/feed", Title: "X"})
+	sub, err := s.Subscribe(ctx, models.Subscription{UserID: a.ID, FeedID: f.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.UpdateSubscription(ctx, a.ID, sub.ID, UpdateSubscriptionPatch{}); err != nil {
+		t.Errorf("own subscription, empty patch = %v, want nil", err)
+	}
+	if err := s.UpdateSubscription(ctx, b.ID, sub.ID, UpdateSubscriptionPatch{}); !errors.Is(err, ErrNotFound) {
+		t.Errorf("foreign subscription, empty patch = %v, want ErrNotFound", err)
+	}
+	if err := s.UpdateSubscription(ctx, a.ID, 999999, UpdateSubscriptionPatch{}); !errors.Is(err, ErrNotFound) {
+		t.Errorf("missing subscription, empty patch = %v, want ErrNotFound", err)
+	}
+}

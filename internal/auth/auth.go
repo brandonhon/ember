@@ -127,6 +127,9 @@ type Auth struct {
 	// main.go can override from EMBER_SESSION_TTL. Access through the lock
 	// (see EffectiveSessionTTL).
 	SessionTTL time.Duration
+	// attempts makes the throttle check, password verify, and failure record
+	// atomic per username (see accountLocks).
+	attempts accountLocks
 }
 
 // EffectiveSessionTTL reads SessionTTL under the read lock. All callers
@@ -518,6 +521,9 @@ func (a *Auth) BootstrapAdmin(ctx context.Context, username, password string) (m
 // run actually attacks. Returns an error matching ErrTooManyAttempts while a
 // username is in backoff.
 func (a *Auth) Login(ctx context.Context, w http.ResponseWriter, r *http.Request, username, password string) (models.User, error) {
+	// Held across check → verify → record so concurrent attempts for one
+	// account can't all slip through the same expired backoff window.
+	defer a.attempts.lock(username)()
 	// Checked before the user lookup and before any argon2 work, so throttled
 	// traffic is rejected for the cost of one indexed read.
 	if err := a.checkThrottle(ctx, username); err != nil {
@@ -564,6 +570,8 @@ func (a *Auth) Login(ctx context.Context, w http.ResponseWriter, r *http.Request
 // lock the real owner out. Returns ErrTooManyAttempts (via
 // TooManyAttemptsError) while throttled and ErrInvalidCredentials on a miss.
 func (a *Auth) Reauthenticate(ctx context.Context, u models.User, password string) error {
+	// Same per-account serialization as Login: re-auth shares its throttle.
+	defer a.attempts.lock(u.Username)()
 	if err := a.checkThrottle(ctx, u.Username); err != nil {
 		return err
 	}
