@@ -145,6 +145,20 @@ func TestSMTP_DeliversToAKnownHandle(t *testing.T) {
 	}
 }
 
+// Handles are generated uppercase, but some mail providers lowercase the local
+// part in transit. Those messages were refused with 550 no such mailbox.
+func TestSMTP_DeliversToLowercasedHandle(t *testing.T) {
+	addr, store := startServer(t, nil)
+	if err := send(t, addr, "sender@example.com", []string{strings.ToLower(handleA) + "@mail.test"},
+		"Subject: hi\r\n\r\nbody\r\n"); err != nil {
+		t.Fatalf("send to lowercased handle: %v", err)
+	}
+	got := store.all()
+	if len(got) != 1 || got[0].userID != 7 {
+		t.Fatalf("ingested %+v, want one message for user 7", got)
+	}
+}
+
 // MaxRecipients is 5, so the server ACCEPTS several recipients in one
 // transaction. Every accepted recipient must actually receive the message —
 // silently dropping all but the last is mail loss.

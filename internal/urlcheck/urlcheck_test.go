@@ -65,6 +65,37 @@ func TestCheck_BlockedPorts(t *testing.T) {
 	}
 }
 
+// The dialer parses ports numerically, so leading zeros reach the same
+// service: ":025" connects to SMTP. The blocked-port check must compare the
+// number, not the literal string, and must hold at dial time too (redirects
+// and any caller that skips Check still go through the guarded dialer).
+func TestCheck_BlockedPortsWithLeadingZeros(t *testing.T) {
+	resolver := fakeResolver(map[string][]string{"example.com": {"93.184.216.34"}})
+	for _, u := range []string{
+		"http://example.com:025/",
+		"https://example.com:00022/",
+		"http://example.com:0006379/",
+		"http://example.com:99999/", // out of range: never a valid port
+	} {
+		for _, allowPrivate := range []bool{false, true} {
+			if err := CheckWith(context.Background(), u, allowPrivate, resolver); !errors.Is(err, ErrPort) {
+				t.Errorf("%s (allowPrivate=%v): expected ErrPort, got %v", u, allowPrivate, err)
+			}
+		}
+	}
+	if err := CheckWith(context.Background(), "http://example.com:08080/", false, resolver); err != nil {
+		t.Errorf("zero-padded web port: expected ok, got %v", err)
+	}
+	for _, allowPrivate := range []bool{false, true} {
+		dial := DialContext(allowPrivate)
+		for _, addr := range []string{"203.0.113.1:025", "203.0.113.1:22", "203.0.113.1:00022"} {
+			if _, err := dial(context.Background(), "tcp", addr); !errors.Is(err, ErrPort) {
+				t.Errorf("dial %s (allowPrivate=%v) = %v, want ErrPort", addr, allowPrivate, err)
+			}
+		}
+	}
+}
+
 func TestCheck_PrivateIPLiteral(t *testing.T) {
 	priv := []string{
 		"http://127.0.0.1/",

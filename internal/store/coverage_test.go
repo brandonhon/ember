@@ -278,11 +278,11 @@ func TestCoverage_MarkAllRead_GlobalAndScoped(t *testing.T) {
 	_, _, _ = s.UpsertArticle(ctx, models.Article{FeedID: f2.ID, GUID: "g2", Title: "T2", ContentHash: "h2", PublishedAt: 2000})
 
 	// Scope by category.
-	if n, _ := s.MarkAllRead(ctx, u.ID, 0, c.ID, 0); n != 1 {
+	if n, _ := s.MarkAllRead(ctx, u.ID, 0, c.ID, 0, false, 0); n != 1 {
 		t.Errorf("category mark-all-read = %d, want 1", n)
 	}
 	// Scope by fresh window.
-	if n, _ := s.MarkAllRead(ctx, u.ID, 0, 0, 1500); n != 1 {
+	if n, _ := s.MarkAllRead(ctx, u.ID, 0, 0, 1500, false, 0); n != 1 {
 		t.Errorf("fresh mark-all-read = %d, want 1 (only published>=1500)", n)
 	}
 }

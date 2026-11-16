@@ -50,12 +50,20 @@
     if (!selected) return;
     if (selected.is_read) return;
     if (lastMarkedRead === selected.id) return;
-    lastMarkedRead = selected.id;
+    const id = selected.id;
+    lastMarkedRead = id;
     // includeSiblings: reading one copy of a syndicated story reads the story,
     // so mark its cross-feed dedup siblings read too. Otherwise the suppressor
     // (which only hides UNREAD copies) would surface the sibling as a "new"
     // unread article on the next poll — a duplicate of the one you just opened.
-    void setRead([selected.id], true, true);
+    //
+    // On failure setRead rolls is_read back; clear the guard so the article is
+    // retried when next (re)selected or refreshed. The rollback's own effect
+    // re-run is flushed in an earlier microtask than this handler, while the
+    // guard is still set, so a persistent failure can't spin a retry loop.
+    setRead([id], true, true).catch(() => {
+      if (lastMarkedRead === id) lastMarkedRead = -1;
+    });
   });
 
   let showShare = $state(false);
@@ -112,11 +120,15 @@
   async function loadTagsForSelected() {
     if (!selected) return;
     if (tagsLoadedFor === selected.id) return;
-    tagsLoadedFor = selected.id;
+    const id = selected.id;
+    tagsLoadedFor = id;
     try {
-      const res = await api.listArticleTags(selected.id);
+      const res = await api.listArticleTags(id);
+      // The user may have opened another article while this was in flight.
+      if (tagsLoadedFor !== id) return;
       articleTags = res.data ?? [];
     } catch {
+      if (tagsLoadedFor !== id) return;
       articleTags = [];
     }
   }

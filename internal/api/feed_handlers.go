@@ -186,6 +186,14 @@ func (d *Dependencies) handleUpdateFeed(w http.ResponseWriter, r *http.Request) 
 		!checkEnum(w, "summarize_mode", *req.SummarizeMode, store.ModeInherit, store.ModeAll, store.ModeOnDemand) {
 		return
 	}
+	// UpdateSubscription checks folder ownership too, but only after the URL
+	// repoint below has committed; checking here keeps a 404 from leaving the
+	// subscription half-moved.
+	if req.CategoryID != nil {
+		if _, err := d.Store.GetCategory(r.Context(), u.ID, *req.CategoryID); mapStoreError(w, err) {
+			return
+		}
+	}
 	// Source-URL change: resolve + validate the new URL, then re-point this
 	// subscription at it. Done before the metadata patch so a bad URL fails
 	// without half-applying.

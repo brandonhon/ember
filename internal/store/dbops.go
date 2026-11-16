@@ -203,6 +203,12 @@ type CleanupStats struct {
 // or in a user's "read later" list. After deletion runs VACUUM to compact
 // the file. Returns the count + bytes reclaimed.
 func (s *Store) Cleanup(ctx context.Context, olderThan time.Duration) (CleanupStats, error) {
+	// A non-positive olderThan (e.g. an overflowed day count from a caller)
+	// puts the cutoff at or after now, which would delete every unprotected
+	// article. Refuse it here so no caller can turn cleanup into a wipe.
+	if olderThan <= 0 {
+		return CleanupStats{}, fmt.Errorf("cleanup: olderThan must be > 0")
+	}
 	cutoff := s.nowUnix() - int64(olderThan.Seconds())
 	if cutoff <= 0 {
 		return CleanupStats{}, fmt.Errorf("cleanup: olderThan must be > 0")

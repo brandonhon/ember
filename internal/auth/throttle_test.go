@@ -269,3 +269,69 @@ func TestReauthenticate_SharesLoginThrottle(t *testing.T) {
 		t.Fatalf("fails after successful re-auth = %d, want 0 (cleared)", lf.Fails)
 	}
 }
+
+// Check, verify, and record must be one step per account. When they weren't,
+// every request that arrived while the backoff window had just lapsed read the
+// same stale failure count, passed checkThrottle, and got a real password
+// check before any of them recorded its failure — N concurrent guesses per
+// window instead of one.
+func TestLogin_ConcurrentAttemptsAfterBackoffGetOneCheck(t *testing.T) {
+	a := newAuth(t)
+	ctx := context.Background()
+	hash, _ := a.HashPassword("hunter2")
+	if _, err := a.Store.CreateUser(ctx, models.User{Username: "alice", PasswordHash: hash}); err != nil {
+		t.Fatal(err)
+	}
+	// Exhaust the free allowance well in the past, then move the clock to a
+	// point where the resulting backoff has expired.
+	base := time.Unix(1700000000, 0)
+	a.Store.Now = func() time.Time { return base }
+	a.Now = func() time.Time { return base }
+	if accepted, _ := loginUntilThrottled(t, a, "alice"); accepted != LoginFreeAttempts {
+		t.Fatalf("precondition: %d attempts accepted, want %d", accepted, LoginFreeAttempts)
+	}
+	later := base.Add(time.Hour)
+	a.Store.Now = func() time.Time { return later }
+	a.Now = func() time.Time { return later }
+
+	const n = 50
+	var checked, throttled atomic.Int64
+	var wg sync.WaitGroup
+	start := make(chan struct{})
+	for range n {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			_, err := a.Login(ctx, httptest.NewRecorder(),
+				httptest.NewRequest(http.MethodPost, "/login", nil), "alice", "wrong-password")
+			switch {
+			case errors.Is(err, ErrInvalidCredentials):
+				checked.Add(1)
+			case errors.Is(err, ErrTooManyAttempts):
+				throttled.Add(1)
+			default:
+				t.Errorf("unexpected login error: %v", err)
+			}
+		}()
+	}
+	close(start)
+	wg.Wait()
+	if got := checked.Load(); got != 1 {
+		t.Errorf("%d of %d concurrent attempts reached the password check, want exactly 1 (throttled %d)",
+			got, n, throttled.Load())
+	}
+}
+
+// The per-account serialization must not leak memory: once no attempt for a
+// username is in flight its lock entry is gone.
+func TestAccountLocks_ReleasedEntriesAreRemoved(t *testing.T) {
+	var l accountLocks
+	unlockA := l.lock("alice")
+	unlockB := l.lock("bob") // different account: must not block
+	unlockA()
+	unlockB()
+	if len(l.m) != 0 {
+		t.Errorf("%d lock entries left after release, want 0", len(l.m))
+	}
+}

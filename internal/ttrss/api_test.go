@@ -34,6 +34,7 @@ func headlineItem(n int) map[string]any {
 // archived (feed 0) has 1, each on a single page. It asserts show_content.
 // getCategories/getFeeds describe 3 real feeds across 2 folders + uncategorized
 // plus one virtual feed (no feed_url) so the migrate path has data to exercise.
+// Like real TT-RSS (cat_id=-4), the virtual rows come back on EVERY page.
 // Category ids are returned mixed string/number to exercise flexInt decoding.
 func fakeTTRSS(t *testing.T) *httptest.Server {
 	t.Helper()
@@ -59,9 +60,9 @@ func fakeTTRSS(t *testing.T) *httptest.Server {
 					{"id": 10, "title": "Feed A", "feed_url": "https://a.example.com/rss", "cat_id": 2},
 					{"id": 11, "title": "Feed B", "feed_url": "https://b.example.com/rss", "cat_id": 3},
 					{"id": 12, "title": "Feed C", "feed_url": "https://c.example.com/rss", "cat_id": 0},
-					{"id": -1, "title": "Starred articles", "feed_url": "", "cat_id": -1}, // virtual
 				}
 			}
+			items = append(items, map[string]any{"id": -1, "title": "Starred articles", "feed_url": "", "cat_id": -1}) // virtual
 			writeEnv(w, 0, items)
 		case "getHeadlines":
 			if req["show_content"] != true {
@@ -210,6 +211,59 @@ func TestImportFromAPI_Paginates(t *testing.T) {
 	}
 	if res.Imported != headlineLimit+2 {
 		t.Errorf("Imported = %d, want %d (two pages)", res.Imported, headlineLimit+2)
+	}
+}
+
+// TT-RSS getFeeds(cat_id=-4) pages over REAL feeds (limit/offset apply to
+// them) but prepends the special/virtual rows (id <= 0) to every page. Counting
+// those toward the offset skips real feeds at each page boundary, and counting
+// them toward "page full" mis-detects the last page.
+func TestImportFromAPI_MigrateFeedsPaginatesPastSpecials(t *testing.T) {
+	const realFeeds = 450
+	specials := []map[string]any{
+		{"id": -1, "title": "Starred articles", "feed_url": "", "cat_id": -1},
+		{"id": -2, "title": "Published articles", "feed_url": "", "cat_id": -1},
+		{"id": -3, "title": "Fresh articles", "feed_url": "", "cat_id": -1},
+		{"id": -4, "title": "All articles", "feed_url": "", "cat_id": -1},
+		{"id": -6, "title": "Recently read", "feed_url": "", "cat_id": -1},
+		{"id": 0, "title": "Archived articles", "feed_url": "", "cat_id": -1},
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
+		var req map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		switch req["op"] {
+		case "login":
+			writeEnv(w, 0, map[string]any{"session_id": "s"})
+		case "getCategories":
+			writeEnv(w, 0, []map[string]any{})
+		case "getFeeds":
+			offset := int(req["offset"].(float64))
+			limit := int(req["limit"].(float64))
+			items := append([]map[string]any{}, specials...)
+			for i := offset; i < offset+limit && i < realFeeds; i++ {
+				items = append(items, map[string]any{
+					"id": i + 1, "title": fmt.Sprintf("Feed %d", i),
+					"feed_url": fmt.Sprintf("https://f%d.example.com/rss", i), "cat_id": 0,
+				})
+			}
+			writeEnv(w, 0, items)
+		default:
+			writeEnv(w, 0, map[string]any{})
+		}
+	})
+	srv := httptest.NewTLSServer(mux)
+	defer srv.Close()
+	svc, u := newAPISvc(t, srv)
+
+	res, err := svc.ImportFromAPI(context.Background(), u.ID, APIOptions{
+		BaseURL: srv.URL, Username: "a", Password: "p", ImportFeeds: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Feeds != realFeeds {
+		t.Errorf("Feeds = %d, want %d (real feeds skipped at page boundaries)", res.Feeds, realFeeds)
 	}
 }
 

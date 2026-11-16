@@ -3,10 +3,12 @@ package digest
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"mime"
 	"mime/multipart"
 	"net/mail"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -155,17 +157,17 @@ func TestSendForUser_Guards(t *testing.T) {
 	ctx := context.Background()
 
 	unconfigured := &Sender{Store: st}
-	if _, err := unconfigured.SendForUser(ctx, models.User{ID: 1}, models.UserDigest{UserID: 1}); err == nil {
+	if _, err := unconfigured.SendForUser(ctx, models.User{ID: 1}, models.UserDigest{UserID: 1}, time.Now()); err == nil {
 		t.Error("expected an error when SMTP is unconfigured")
 	}
 
 	s := &Sender{Store: st, SMTP: SMTPConfig{Host: "mail.test", Port: 587, From: "d@b.test"}}
-	if _, err := s.SendForUser(ctx, models.User{ID: 1}, models.UserDigest{UserID: 1}); err == nil {
+	if _, err := s.SendForUser(ctx, models.User{ID: 1}, models.UserDigest{UserID: 1}, time.Now()); err == nil {
 		t.Error("expected an error when the user has no email and no override")
 	}
 	// A malformed override is rejected before any send is attempted.
 	_, err := s.SendForUser(ctx, models.User{ID: 1, Email: "ok@b.test"},
-		models.UserDigest{UserID: 1, EmailOverride: "bad\r\nBcc: evil@x.test"})
+		models.UserDigest{UserID: 1, EmailOverride: "bad\r\nBcc: evil@x.test"}, time.Now())
 	if err == nil {
 		t.Error("expected CRLF in the override to be rejected")
 	}
@@ -183,7 +185,7 @@ func TestSendForUser_NoArticlesSendsNothing(t *testing.T) {
 	// Host is deliberately unroutable: if this ever tried to send, the test
 	// would fail with a dial error instead of passing.
 	s := &Sender{Store: st, SMTP: SMTPConfig{Host: "unroutable.invalid", Port: 587, From: "d@b.test", StartTLS: true}}
-	n, err := s.SendForUser(ctx, u, models.UserDigest{UserID: u.ID, ViewKind: "smart", ViewValue: "fresh"})
+	n, err := s.SendForUser(ctx, u, models.UserDigest{UserID: u.ID, ViewKind: "smart", ViewValue: "fresh"}, time.Now())
 	if err != nil {
 		t.Fatalf("SendForUser with no articles: %v", err)
 	}
@@ -212,6 +214,8 @@ func TestFetchArticles_ViewKindsAndSinceFilter(t *testing.T) {
 	for i := range 3 {
 		if _, _, err := st.UpsertArticle(ctx, models.Article{
 			FeedID: f.ID, GUID: string(rune('a' + i)), Title: "T", ContentHash: string(rune('h' + i)),
+			// Fetched before the digest window's trailing summary lag.
+			FetchedAt:   now - 2*3600,
 			PublishedAt: now - int64(i*60), SummaryModel: "noop", Summary: "Lead.",
 		}); err != nil {
 			t.Fatal(err)
@@ -219,7 +223,7 @@ func TestFetchArticles_ViewKindsAndSinceFilter(t *testing.T) {
 	}
 	s := &Sender{Store: st}
 
-	got, err := s.fetchArticles(ctx, models.UserDigest{UserID: u.ID, ViewKind: "feed", ViewValue: "999999"})
+	got, err := s.fetchArticles(ctx, models.UserDigest{UserID: u.ID, ViewKind: "feed", ViewValue: "999999"}, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -227,7 +231,7 @@ func TestFetchArticles_ViewKindsAndSinceFilter(t *testing.T) {
 		t.Errorf("unknown feed id returned %d articles, want 0", len(got))
 	}
 
-	got, err = s.fetchArticles(ctx, models.UserDigest{UserID: u.ID, ViewKind: "smart", ViewValue: "today"})
+	got, err = s.fetchArticles(ctx, models.UserDigest{UserID: u.ID, ViewKind: "smart", ViewValue: "today"}, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -238,12 +242,102 @@ func TestFetchArticles_ViewKindsAndSinceFilter(t *testing.T) {
 	// LastSentAt in the future filters everything out.
 	got, err = s.fetchArticles(ctx, models.UserDigest{
 		UserID: u.ID, ViewKind: "smart", ViewValue: "today", LastSentAt: now + 3600,
-	})
+	}, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(got) != 0 {
 		t.Errorf("since-filter returned %d, want 0", len(got))
+	}
+}
+
+// Consecutive digests must cover every article exactly once. Two ways this
+// used to lose articles for good:
+//   - an article fetched shortly before a send but not yet summarized was
+//     gated out of that digest, and the next one only kept articles fetched
+//     after the send;
+//   - LIMIT 50 ORDER BY published_at DESC ran before the since-last-send
+//     cutoff, so a newly fetched article with an old publish date lost out to
+//     50 already-sent, newer-dated ones and was filtered away afterwards.
+func TestFetchArticles_ConsecutiveSendsLoseNothing(t *testing.T) {
+	st := store.NewTest(t)
+	ctx := context.Background()
+	u, err := st.CreateUser(ctx, models.User{Username: "alice", PasswordHash: "x"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, err := st.UpsertFeed(ctx, models.Feed{URL: "https://f.test/rss", Title: "F"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.Subscribe(ctx, models.Subscription{UserID: u.ID, FeedID: f.ID}); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().Truncate(time.Second)
+	prevSend := now.Add(-24 * time.Hour)
+	add := func(guid string, fetched, published time.Time, summarized bool) {
+		t.Helper()
+		a := models.Article{
+			FeedID: f.ID, GUID: guid, Title: "T", ContentHash: "h-" + guid,
+			FetchedAt: fetched.Unix(), PublishedAt: published.Unix(),
+		}
+		if summarized {
+			a.SummaryModel, a.Summary = "noop", "Lead."
+		}
+		if _, _, err := st.UpsertArticle(ctx, a); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Already delivered by the previous digest.
+	add("sent-before", prevSend.Add(-2*time.Hour), prevSend.Add(-2*time.Hour), true)
+	// Fetched ten minutes before the previous send, summary not in yet.
+	add("late-summary", prevSend.Add(-10*time.Minute), prevSend.Add(-10*time.Minute), false)
+	// Fetched since the previous send but published a month ago, behind 55
+	// older-fetched articles with newer publish dates.
+	add("old-dated", now.Add(-3*time.Hour), now.Add(-30*24*time.Hour), true)
+	for i := range 55 {
+		add(fmt.Sprintf("filler-%d", i), prevSend.Add(-5*time.Hour), now.Add(-time.Duration(i)*time.Minute), true)
+	}
+	// Fetched moments before this send.
+	add("just-fetched", now.Add(-10*time.Minute), now.Add(-10*time.Minute), true)
+
+	s := &Sender{Store: st}
+	send := func(lastSent, at time.Time) map[string]bool {
+		t.Helper()
+		got, err := s.fetchArticles(ctx, models.UserDigest{
+			UserID: u.ID, ViewKind: "feed", ViewValue: strconv.FormatInt(f.ID, 10), LastSentAt: lastSent.Unix(),
+		}, at)
+		if err != nil {
+			t.Fatal(err)
+		}
+		out := map[string]bool{}
+		for _, a := range got {
+			out[a.GUID] = true
+		}
+		return out
+	}
+
+	got := send(prevSend, now)
+	for _, want := range []string{"late-summary", "old-dated"} {
+		if !got[want] {
+			t.Errorf("digest at %v is missing %q (got %v)", now, want, got)
+		}
+	}
+	if got["sent-before"] {
+		t.Error("digest re-sent an article the previous digest already delivered")
+	}
+
+	// The article held back from this send arrives in the next one, and
+	// nothing from this send repeats.
+	next := now.Add(24 * time.Hour)
+	got2 := send(now, next)
+	if !got2["just-fetched"] {
+		t.Errorf("next digest is missing the article fetched just before the previous send (got %v)", got2)
+	}
+	for guid := range got {
+		if got2[guid] {
+			t.Errorf("%q delivered by two consecutive digests", guid)
+		}
 	}
 }
 

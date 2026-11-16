@@ -111,7 +111,7 @@ func ParseResult(s string) (Result, error) {
 func parseLabeled(s string) (Result, bool) {
 	// Strip any markdown code fences the model may have added.
 	s = strings.TrimSpace(strings.Trim(s, "`"))
-	upper := strings.ToUpper(s)
+	upper := asciiUpper(s)
 	sumIdx := strings.Index(upper, "SUMMARY:")
 	ptsIdx := strings.Index(upper, "POINTS:")
 	cleanIdx := strings.Index(upper, "CLEANED:")
@@ -148,6 +148,23 @@ func parseLabeled(s string) (Result, bool) {
 		return Result{}, false
 	}
 	return Result{Paragraph: paragraph, Bullets: bullets, Cleaned: cleaned}, true
+}
+
+// asciiUpper upper-cases only ASCII letters, byte for byte. parseLabeled finds
+// label offsets in the upper-cased copy and slices the ORIGINAL string with
+// them, so the two must have identical byte layouts. strings.ToUpper does not
+// guarantee that — some runes change encoded length (ȿ U+023F grows 2→3
+// bytes, Turkish ı shrinks 2→1) and invalid UTF-8 becomes U+FFFD — which
+// shifted the offsets and could panic the summary worker. The labels are
+// ASCII, so ASCII-only folding loses nothing.
+func asciiUpper(s string) string {
+	b := []byte(s)
+	for i, c := range b {
+		if 'a' <= c && c <= 'z' {
+			b[i] = c - ('a' - 'A')
+		}
+	}
+	return string(b)
 }
 
 // Inline markdown emphasis patterns. Go's RE2 has no backreferences, so each

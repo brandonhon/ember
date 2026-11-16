@@ -64,16 +64,23 @@
     }
     previewBusy = true;
     previewErr = "";
+    const match: FilterMatch = {
+      field: draft.field,
+      op: draft.op,
+      value: draft.value,
+      case_sensitive: draft.case_sensitive,
+    };
+    const key = JSON.stringify(match);
+    // The draft may change while the request is in flight; a result for the
+    // old match must not be shown against the new one.
+    const stale = () =>
+      key !== JSON.stringify({ field: draft.field, op: draft.op, value: draft.value, case_sensitive: draft.case_sensitive });
     try {
-      const match: FilterMatch = {
-        field: draft.field,
-        op: draft.op,
-        value: draft.value,
-        case_sensitive: draft.case_sensitive,
-      };
-      const res = await api.previewFilter(JSON.stringify(match), 7);
+      const res = await api.previewFilter(key, 7);
+      if (stale()) return;
       previewCount = res.data?.count ?? 0;
     } catch (e) {
+      if (stale()) return;
       previewErr = e instanceof ApiError ? e.message : String(e);
     } finally {
       previewBusy = false;

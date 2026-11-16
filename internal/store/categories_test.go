@@ -98,3 +98,25 @@ func TestCategories_DeleteNullsSubscription(t *testing.T) {
 		t.Errorf("subscription category should be nil after delete, got %v", *got.CategoryID)
 	}
 }
+
+// An empty patch writes nothing, but it must still answer "no such category"
+// for an id the caller doesn't own — otherwise PATCH {} is a 200 for any id.
+func TestUpdateCategory_EmptyPatchChecksOwnership(t *testing.T) {
+	s := NewTest(t)
+	ctx := context.Background()
+	a, _ := s.CreateUser(ctx, models.User{Username: "a", PasswordHash: "h"})
+	b, _ := s.CreateUser(ctx, models.User{Username: "b", PasswordHash: "h"})
+	c, err := s.CreateCategory(ctx, models.Category{UserID: a.ID, Name: "Tech"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.UpdateCategory(ctx, a.ID, c.ID, UpdateCategoryPatch{}); err != nil {
+		t.Errorf("own category, empty patch = %v, want nil", err)
+	}
+	if err := s.UpdateCategory(ctx, b.ID, c.ID, UpdateCategoryPatch{}); !errors.Is(err, ErrNotFound) {
+		t.Errorf("foreign category, empty patch = %v, want ErrNotFound", err)
+	}
+	if err := s.UpdateCategory(ctx, a.ID, 999999, UpdateCategoryPatch{}); !errors.Is(err, ErrNotFound) {
+		t.Errorf("missing category, empty patch = %v, want ErrNotFound", err)
+	}
+}

@@ -18,6 +18,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -38,7 +39,7 @@ var ErrPort = errors.New("urlcheck: URL port is not allowed")
 
 // blockedPorts is a curated subset of the WHATWG "bad ports" list, limited to
 // the non-web service ports that are useful SSRF-probe targets. Keyed by the
-// decimal string url.URL.Port() returns.
+// canonical decimal string (no leading zeros) checkPort normalizes to.
 var blockedPorts = map[string]struct{}{
 	"22": {}, "23": {}, "25": {}, "43": {}, "69": {}, "110": {}, "115": {},
 	"119": {}, "135": {}, "137": {}, "139": {}, "143": {}, "161": {}, "179": {},
@@ -108,8 +109,8 @@ func CheckWith(ctx context.Context, raw string, allowPrivate bool, resolve Resol
 		return errors.New("urlcheck: missing host")
 	}
 	if p := u.Port(); p != "" {
-		if _, bad := blockedPorts[p]; bad {
-			return fmt.Errorf("%w: %s", ErrPort, p)
+		if err := checkPort(p); err != nil {
+			return err
 		}
 	}
 	if allowPrivate {
@@ -147,6 +148,11 @@ func DialContext(allowPrivate bool) func(ctx context.Context, network, addr stri
 	return func(ctx context.Context, network, addr string) (net.Conn, error) {
 		host, port, err := net.SplitHostPort(addr)
 		if err != nil {
+			return nil, err
+		}
+		// Re-checked here because this is the port actually connected to:
+		// redirects and callers that never ran Check still land in this dialer.
+		if err := checkPort(port); err != nil {
 			return nil, err
 		}
 		if allowPrivate {
@@ -187,6 +193,21 @@ func GuardedTransport(allowPrivate bool) *http.Transport {
 	tr := http.DefaultTransport.(*http.Transport).Clone()
 	tr.DialContext = DialContext(allowPrivate)
 	return tr
+}
+
+// checkPort rejects a blocked or unusable port. The port is compared as a
+// number, not as the literal string: the dialer parses it numerically, so
+// "025" or "00022" reach SMTP/SSH while missing a string-keyed lookup.
+// Anything that isn't a decimal in 0-65535 is rejected outright.
+func checkPort(p string) error {
+	n, err := strconv.ParseUint(p, 10, 16)
+	if err != nil {
+		return fmt.Errorf("%w: %s", ErrPort, p)
+	}
+	if _, bad := blockedPorts[strconv.FormatUint(n, 10)]; bad {
+		return fmt.Errorf("%w: %s", ErrPort, p)
+	}
+	return nil
 }
 
 func isPrivate(ip net.IP) bool {

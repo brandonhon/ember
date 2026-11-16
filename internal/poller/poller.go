@@ -354,14 +354,17 @@ func (p *Poller) fetchAndStore(ctx context.Context, f models.Feed) {
 
 	// 304 — nothing new.
 	if !res.Changed {
-		next := now.Add(AdaptiveInterval(IntervalInputs{
+		iv := AdaptiveInterval(IntervalInputs{
 			NewArticles: 0,
 			Current:     time.Duration(f.FetchInterval) * time.Second,
-		}, minIv, maxIv))
+		}, minIv, maxIv)
 		_ = p.Store.UpdateFeedFetch(ctx, f.ID, store.UpdateFeedFetchPatch{
 			LastFetched: now.Unix(),
-			NextFetch:   next.Unix(),
+			NextFetch:   now.Add(iv).Unix(),
 			ErrorCount:  0,
+			// Persisted so the next computation starts from it; without this
+			// every feed stays at its creation-time interval.
+			FetchInterval: int64(iv / time.Second),
 		})
 		return
 	}
@@ -382,23 +385,44 @@ func (p *Poller) fetchAndStore(ctx context.Context, f models.Feed) {
 		p.Logger.Warn("poller: list subscribers", "feed_id", f.ID, "err", subErr)
 	}
 
-	// Initial-backlog gate: on a feed's first-ever ingest (LastFetched == 0)
-	// drop entries published more than N hours ago so adding a long-lived feed
-	// doesn't dump months of history into the reader. Subsequent polls of the
-	// same feed never apply the gate. Articles missing published_at are kept
-	// (a feed that doesn't date its entries is more often "new dropped on us"
-	// than "ancient archive"). 0 hours disables the gate entirely.
+	// Initial-backlog gate: on a feed's first-ever ingest drop entries
+	// published more than N hours ago so adding a long-lived feed doesn't dump
+	// months of history into the reader. Subsequent polls of the same feed
+	// never apply the gate. Articles missing published_at are kept (a feed
+	// that doesn't date its entries is more often "new dropped on us" than
+	// "ancient archive"). 0 hours disables the gate entirely.
+	//
+	// "First ingest" can't be LastFetched == 0 alone: recordFetchFailure
+	// stamps last_fetched too, so a new feed whose first fetch failed would
+	// skip the gate. Having no stored articles is the success-only signal.
+	firstIngest := f.LastFetched == 0
+	if !firstIngest {
+		has, err := p.Store.FeedHasArticles(ctx, f.ID)
+		if err != nil {
+			p.Logger.Warn("poller: check feed has articles", "feed_id", f.ID, "err", err)
+		}
+		firstIngest = err == nil && !has
+	}
 	var backlogCutoff int64
-	if f.LastFetched == 0 {
+	if firstIngest {
 		hours := p.Store.ResolveBacklogHours(ctx, p.Config.InitialBacklogHoursFallback)
 		if hours > 0 {
 			backlogCutoff = now.Add(-time.Duration(hours) * time.Hour).Unix()
 		}
 	}
 
+	// Entries past the retention window would be deleted by the next daily
+	// PruneArticles sweep (same RetentionHours cutoff). Re-inserting them each
+	// poll only to prune them again re-runs filters and summaries and resets
+	// read state, so skip them on every poll, not just the first.
+	retentionCutoff := now.Add(-time.Duration(store.RetentionHours) * time.Hour).Unix()
+
 	var newCount int
 	for _, a := range parsed.Articles {
 		if backlogCutoff > 0 && a.PublishedAt > 0 && a.PublishedAt < backlogCutoff {
+			continue
+		}
+		if a.PublishedAt > 0 && a.PublishedAt < retentionCutoff {
 			continue
 		}
 		// If the feed's body is just a link list (HN-style) or too short to
@@ -449,14 +473,16 @@ func (p *Poller) fetchAndStore(ctx context.Context, f models.Feed) {
 	}
 	p.Metrics.NewArticlesTotal.Add(int64(newCount))
 
+	iv := AdaptiveInterval(IntervalInputs{
+		NewArticles: newCount,
+		Current:     time.Duration(f.FetchInterval) * time.Second,
+	}, minIv, maxIv)
 	// Title/site_url enrichment on first successful fetch.
 	patch := store.UpdateFeedFetchPatch{
-		LastFetched: now.Unix(),
-		NextFetch: now.Add(AdaptiveInterval(IntervalInputs{
-			NewArticles: newCount,
-			Current:     time.Duration(f.FetchInterval) * time.Second,
-		}, minIv, maxIv)).Unix(),
-		ErrorCount: 0,
+		LastFetched:   now.Unix(),
+		NextFetch:     now.Add(iv).Unix(),
+		ErrorCount:    0,
+		FetchInterval: int64(iv / time.Second),
 	}
 	if res.ETag != "" {
 		patch.ETag = ptr(res.ETag)
@@ -485,6 +511,9 @@ func (p *Poller) recordFetchFailure(ctx context.Context, f models.Feed, now time
 		HadError: true, ErrorCount: errCount,
 		Current: time.Duration(f.FetchInterval) * time.Second,
 	}, minIv, maxIv))
+	// FetchInterval is deliberately left unset: the backoff above is derived
+	// from the stored base shifted by errCount, so persisting the shifted
+	// value would compound it and strand a recovered feed at the ceiling.
 	_ = p.Store.UpdateFeedFetch(ctx, f.ID, store.UpdateFeedFetchPatch{
 		LastFetched: now.Unix(),
 		NextFetch:   next.Unix(),

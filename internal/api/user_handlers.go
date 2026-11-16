@@ -133,12 +133,19 @@ func (d *Dependencies) handleUpdateUser(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	// If the admin changed this user's password, invalidate any sessions
-	// they have open. The admin's own session is unaffected (different
-	// user_id).
+	// they have open. When the admin changed their OWN password, that sweep
+	// includes the session making this request, so re-issue one for this
+	// browser the way handleChangePassword does.
 	if req.Password != nil {
 		if err := d.Auth.DeleteUserSessions(r.Context(), id); err != nil {
 			internalError(w, "admin-password-change/delete-sessions", err)
 			return
+		}
+		if id == caller.ID {
+			if _, err := d.Auth.CreateSession(r.Context(), w, r, id); err != nil {
+				internalError(w, "admin-password-change/recreate-session", err)
+				return
+			}
 		}
 	}
 	writeOK(w)

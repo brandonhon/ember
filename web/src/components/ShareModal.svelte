@@ -109,7 +109,7 @@
     <div class="tabs" role="tablist">
       <button role="tab" aria-selected={mode === "user"} class:on={mode === "user"} on:click={() => (mode = "user")} data-testid="share-tab-user">User</button>
       <button role="tab" aria-selected={mode === "email"} class:on={mode === "email"} on:click={() => (mode = "email")} data-testid="share-tab-email">Email</button>
-      <button role="tab" aria-selected={mode === "link"} class:on={mode === "link"} on:click={() => (mode = "link")} data-testid="share-tab-link">Copy link</button>
+      <button role="tab" aria-selected={mode === "link"} class:on={mode === "link"} on:click={() => { mode = "link"; void copyLink(); }} data-testid="share-tab-link">Copy link</button>
     </div>
 
     {#if error}
@@ -164,7 +164,6 @@
       {#if copyMsg}<p class="ok" data-testid="share-link-msg">{copyMsg}</p>{/if}
       <div class="actions">
         <button class="ghost" on:click={onClose}>Close</button>
-        <button on:click={copyLink} disabled={!articleURL} data-testid="share-link-copy">Copy link</button>
       </div>
     {/if}
   </div>

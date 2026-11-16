@@ -110,6 +110,9 @@ type UpdateFeedFetchPatch struct {
 	Title        *string
 	SiteURL      *string
 	FaviconURL   *string
+	// FetchInterval is the adaptive interval (seconds) to persist as the base
+	// for the next computation. 0 leaves the stored value unchanged.
+	FetchInterval int64
 }
 
 // UpdateFeedFetch updates fetch bookkeeping fields for a feed.
@@ -138,6 +141,10 @@ func (s *Store) UpdateFeedFetch(ctx context.Context, feedID int64, p UpdateFeedF
 		sets = append(sets, "favicon_url = ?")
 		args = append(args, nullable(*p.FaviconURL))
 	}
+	if p.FetchInterval > 0 {
+		sets = append(sets, "fetch_interval = ?")
+		args = append(args, p.FetchInterval)
+	}
 	args = append(args, feedID)
 	res, err := s.DB.ExecContext(ctx,
 		"UPDATE feeds SET "+strings.Join(sets, ", ")+" WHERE id = ?", args...)
@@ -149,6 +156,16 @@ func (s *Store) UpdateFeedFetch(ctx context.Context, feedID int64, p UpdateFeedF
 		return ErrNotFound
 	}
 	return nil
+}
+
+// FeedHasArticles reports whether any article row exists for the feed. The
+// poller uses it as the "ingested before" signal for the first-ingest backlog
+// gate, because last_fetched is also stamped by failed fetches.
+func (s *Store) FeedHasArticles(ctx context.Context, feedID int64) (bool, error) {
+	var has bool
+	err := s.DB.QueryRowContext(ctx,
+		`SELECT EXISTS(SELECT 1 FROM articles WHERE feed_id = ?)`, feedID).Scan(&has)
+	return has, err
 }
 
 // Subscribe adds a subscription for the user. If the user is already
@@ -314,7 +331,9 @@ func (s *Store) UpdateSubscription(ctx context.Context, userID, subID int64, p U
 		args = append(args, *p.SummarizeMode)
 	}
 	if len(sets) == 0 {
-		return nil
+		// Nothing to write, but an unknown or foreign id is still not found.
+		_, err := s.GetSubscriptionByID(ctx, userID, subID)
+		return err
 	}
 	args = append(args, subID, userID)
 	res, err := s.DB.ExecContext(ctx,

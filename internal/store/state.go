@@ -92,7 +92,14 @@ WHERE article_state.is_read = 0`
 // scope filter to omit it (e.g. category=0, feed=0 means mark-all-read globally).
 // freshAfter limits to articles published at or after that time (used for the
 // "fresh"/"today" view).
-func (s *Store) MarkAllRead(ctx context.Context, userID, feedID, categoryID, freshAfter int64) (int64, error) {
+//
+// It must only touch what the list it clears actually shows, or an article the
+// user never saw unread is silently marked read. So it applies the same
+// muted-feed rule and summary gate as buildArticleFilter, and callers pass the
+// same onlySummarized/summaryGraceBefore the list handler resolves. Dedup is
+// deliberately NOT applied: a hidden duplicate left unread would resurface
+// the moment its visible copy is read.
+func (s *Store) MarkAllRead(ctx context.Context, userID, feedID, categoryID, freshAfter int64, onlySummarized bool, summaryGraceBefore int64) (int64, error) {
 	// Insert/update state rows for every article in scope that isn't already
 	// marked read. UPSERT.
 	q := `
@@ -115,6 +122,15 @@ WHERE IFNULL(st.is_read,0) = 0`
 	if freshAfter > 0 {
 		q += " AND IFNULL(a.published_at,0) >= ?"
 		args = append(args, freshAfter)
+	}
+	if onlySummarized {
+		gate, gateArgs := summaryGate("a", summaryGraceBefore)
+		q += " AND " + gate
+		args = append(args, gateArgs...)
+	}
+	// Muted feeds are hidden from every list except their own feed view.
+	if feedID == 0 {
+		q += " AND s.muted = 0"
 	}
 	q += `
 ON CONFLICT(user_id, article_id) DO UPDATE SET is_read = 1, read_at = excluded.read_at
@@ -185,9 +201,11 @@ func (s *Store) setStateFlag(ctx context.Context, userID int64, articleIDs []int
 	}
 
 	// Authorization gate: only write state for articles the user is actually
-	// subscribed to. Without the EXISTS check a user could write article_state
-	// rows for any article ID (existence oracle + count pollution). Mirror the
-	// subscription join used by the read paths (GetArticleForUser, MarkAllRead).
+	// subscribed to, or that were shared to them (the Shared view lists those
+	// even from feeds they don't follow, so read/star must work there too).
+	// Without the EXISTS check a user could write article_state rows for any
+	// article ID (existence oracle + count pollution). Mirror the access rule
+	// in GetArticleForUser.
 	// The column-list still names a timestamp column even for is_later (timeCol
 	// == ""); read_at is the harmless filler there.
 	// SQLite auto-names VALUES columns column1..columnN; it does not support
@@ -201,6 +219,9 @@ WHERE EXISTS (
 	SELECT 1 FROM subscriptions sub
 	JOIN articles a ON a.feed_id = sub.feed_id
 	WHERE a.id = v.column2 AND sub.user_id = v.column1
+) OR EXISTS (
+	SELECT 1 FROM shares sh
+	WHERE sh.article_id = v.column2 AND sh.to_user = v.column1
 )
 ON CONFLICT(user_id, article_id) DO UPDATE SET %s`,
 		flagCol, ifEmpty(timeCol, "read_at"), strings.Join(placeholders, ","), setExpr)

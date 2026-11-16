@@ -91,3 +91,46 @@ func TestOllama_Summarize_DefaultsZeroMaxInput(t *testing.T) {
 		t.Errorf("expected exactly %d x's (truncated at DefaultMaxInput), got %d", DefaultMaxInput, got)
 	}
 }
+
+// strings.ToUpper changes the byte length of some runes (ȿ U+023F grows 2→3
+// bytes, Turkish dotless ı shrinks 2→1), so label offsets found in an
+// upper-cased copy don't line up with the original string. Slicing the
+// original at those offsets returned the wrong text or panicked with a slice
+// out of range in the summary worker — a crash that recurs on every restart
+// because the article is re-queued.
+func TestParseResult_LabelOffsetsSurviveCaseMappingLengthChanges(t *testing.T) {
+	cases := map[string]struct {
+		in        string
+		paragraph string
+		bullets   []string
+	}{
+		"growing rune before labels": {
+			in:        strings.Repeat("ȿ", 40) + "\nSUMMARY: Lead sentence.\nPOINTS:\n- one\n- two",
+			paragraph: "Lead sentence.",
+			bullets:   []string{"one", "two"},
+		},
+		"shrinking rune before labels": {
+			in:        "ılık ırmak ışık\nsummary: Kısa özet.\npoints:\n- bir\n- iki",
+			paragraph: "Kısa özet.",
+			bullets:   []string{"bir", "iki"},
+		},
+		"growing rune at the end": {
+			in:        "SUMMARY: Lead.\nCLEANED:\n" + strings.Repeat("ȿ", 40),
+			paragraph: "Lead.",
+		},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			r, err := ParseResult(tc.in)
+			if err != nil {
+				t.Fatalf("ParseResult: %v", err)
+			}
+			if r.Paragraph != tc.paragraph {
+				t.Errorf("paragraph = %q, want %q", r.Paragraph, tc.paragraph)
+			}
+			if strings.Join(r.Bullets, "|") != strings.Join(tc.bullets, "|") {
+				t.Errorf("bullets = %q, want %q", r.Bullets, tc.bullets)
+			}
+		})
+	}
+}

@@ -138,9 +138,11 @@ func (s *Service) Import(ctx context.Context, userID int64, body io.Reader) (int
 	}
 
 	for _, ol := range doc.Body.Outlines {
-		// Folder = outline with no xmlUrl that has children.
+		// Folder = top-level outline with no xmlUrl and a name. Children are
+		// not required: Export writes an empty folder as a childless outline,
+		// and requiring children dropped it on every round trip.
 		var categoryID *int64
-		if ol.XMLURL == "" && len(ol.Outlines) > 0 && (ol.Title != "" || ol.Text != "") {
+		if ol.XMLURL == "" && (ol.Title != "" || ol.Text != "") {
 			name := ol.Title
 			if name == "" {
 				name = ol.Text
@@ -217,12 +219,17 @@ func (s *Service) WriteExport(ctx context.Context, userID int64, dir string) (st
 }
 
 // feedOutline renders one subscription as an OPML leaf. Title and Text carry
-// the same value: readers disagree on which one they honor.
+// the same value: readers disagree on which one they honor. The user's rename
+// (title_override) wins over the upstream title: it is the name they see.
 func feedOutline(f models.FeedWithCounts) outline {
+	title := f.Title
+	if f.TitleOverride != "" {
+		title = f.TitleOverride
+	}
 	return outline{
 		Type:    "rss",
-		Title:   f.Title,
-		Text:    f.Title,
+		Title:   title,
+		Text:    title,
 		XMLURL:  f.URL,
 		HTMLURL: f.SiteURL,
 	}

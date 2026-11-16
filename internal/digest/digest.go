@@ -150,8 +150,10 @@ type Sender struct {
 
 // SendForUser builds and sends the digest for a single user. Returns the
 // number of articles included; 0 means nothing new since last_sent_at and
-// no email was sent.
-func (s *Sender) SendForUser(ctx context.Context, u models.User, d models.UserDigest) (int, error) {
+// no email was sent. now must be the same instant the caller records as
+// last_sent_at: it ends this send's article window, and the next send's
+// window starts from the recorded value.
+func (s *Sender) SendForUser(ctx context.Context, u models.User, d models.UserDigest, now time.Time) (int, error) {
 	if !s.SMTP.Configured() {
 		return 0, errors.New("digest: SMTP not configured")
 	}
@@ -167,7 +169,7 @@ func (s *Sender) SendForUser(ctx context.Context, u models.User, d models.UserDi
 		return 0, err
 	}
 
-	articles, err := s.fetchArticles(ctx, d)
+	articles, err := s.fetchArticles(ctx, d, now)
 	if err != nil {
 		return 0, fmt.Errorf("digest: fetch articles: %w", err)
 	}
@@ -189,10 +191,34 @@ func (s *Sender) SendForUser(ctx context.Context, u models.User, d models.UserDi
 	return len(articles), nil
 }
 
-// fetchArticles pulls the articles in the user's chosen view that landed
-// since their last send. Capped at 50 to keep emails reasonable.
-func (s *Sender) fetchArticles(ctx context.Context, d models.UserDigest) ([]models.ArticleView, error) {
-	q := store.ListArticlesQuery{Limit: 50, OnlySummarized: true}
+// summaryLag is how far behind the send time each digest's window ends. It is
+// the longest the summary gate can ever hold an article back
+// (store.SummaryGraceSecondsCeil), so by the time an article enters a window
+// it has either been summarized or would be shown unsummarized in the app
+// anyway. It must stay a constant: windows of consecutive sends only tile
+// exactly when every send shifts by the same lag.
+const summaryLag = store.SummaryGraceSecondsCeil * time.Second
+
+// fetchArticles pulls the articles in the user's chosen view for the send at
+// now. Capped at 50 to keep emails reasonable.
+//
+// The window is fetched_at in [LastSentAt-summaryLag, now-summaryLag). The
+// previous send (at LastSentAt) covered everything before LastSentAt-
+// summaryLag, so consecutive windows tile with no gap or overlap. There is no
+// per-article "summarized at" timestamp to cut on, so instead of gating on
+// summary state (which dropped an article fetched just before a send but not
+// yet summarized: excluded then, and before the next cutoff after) the window
+// trails the clock by the summary lag and includes whatever it holds. The
+// cost is that articles from the last summaryLag before a send arrive in the
+// following digest instead.
+func (s *Sender) fetchArticles(ctx context.Context, d models.UserDigest, now time.Time) ([]models.ArticleView, error) {
+	q := store.ListArticlesQuery{Limit: 50, FetchedBefore: now.Add(-summaryLag).Unix()}
+	// A user who turned digest on yesterday shouldn't receive a wall of
+	// week-old content: only what arrived since the last send's window.
+	// Cut in SQL so it applies before LIMIT, not to the 50 already chosen.
+	if d.LastSentAt > 0 {
+		q.FetchedFrom = d.LastSentAt - int64(summaryLag/time.Second)
+	}
 	switch d.ViewKind {
 	case "smart":
 		q.View = d.ViewValue
@@ -200,7 +226,7 @@ func (s *Sender) fetchArticles(ctx context.Context, d models.UserDigest) ([]mode
 		// the digest doesn't redeliver yesterday's items when the user's
 		// inbox skipped a day.
 		if d.ViewValue == "fresh" {
-			q.FreshAfter = time.Now().Add(-24 * time.Hour).Unix()
+			q.FreshAfter = now.Add(-24 * time.Hour).Unix()
 		}
 	case "feed", "category", "board":
 		// All three address a scope by numeric id; an unparseable value yields
@@ -215,22 +241,7 @@ func (s *Sender) fetchArticles(ctx context.Context, d models.UserDigest) ([]mode
 			q.BoardID = id
 		}
 	}
-	articles, err := s.Store.ListArticles(ctx, d.UserID, q)
-	if err != nil {
-		return nil, err
-	}
-	// Filter to "since last send" so a user who turned digest on yesterday
-	// doesn't receive a wall of week-old content tomorrow.
-	if d.LastSentAt > 0 {
-		out := articles[:0]
-		for _, a := range articles {
-			if a.FetchedAt >= d.LastSentAt {
-				out = append(out, a)
-			}
-		}
-		articles = out
-	}
-	return articles, nil
+	return s.Store.ListArticles(ctx, d.UserID, q)
 }
 
 // send delivers msg. from/to must already be sanitized (newEnvelope does it) —

@@ -42,8 +42,8 @@ func Parse(_ context.Context, feedID int64, body []byte, sourceURL string) (Pars
 	out := ParseResult{
 		// Titles can carry HTML entities/markup (Atom type="html", entity-encoded
 		// RSS) but render as plain text in the UI, not {@html} — decode here so
-		// "&#8217;" doesn't surface literally. htmlToText handles entities + tags.
-		Title:   HTMLToText(parsed.Title),
+		// "&#8217;" doesn't surface literally. titleText handles entities + tags.
+		Title:   titleText(parsed.Title),
 		SiteURL: strings.TrimSpace(parsed.Link),
 	}
 	if base != nil && out.SiteURL != "" {
@@ -66,7 +66,7 @@ func normalizeItem(it *gofeed.Item, feedID int64, base *url.URL) models.Article 
 		a.GUID = strings.TrimSpace(it.Link)
 	}
 	// Decode entities/markup so titles read as plain text (see Parse above).
-	a.Title = HTMLToText(it.Title)
+	a.Title = titleText(it.Title)
 	// Guard the article link: it is rendered as an href ("Original" button), so
 	// drop javascript:/data: and other non-web schemes. GUID fell back to the
 	// raw link above, so dedup is unaffected when this clears a bad URL.
@@ -175,6 +175,34 @@ func resolveLink(base *url.URL, ref string) string {
 		return ref
 	}
 	return base.ResolveReference(u).String()
+}
+
+// titleText renders a feed or item title as plain text. gofeed has already
+// decoded entities, so a title like "Vec&lt;T&gt;" arrives as "Vec<T>" and
+// HTMLToText would drop "<T>" as a tag. Real markup in titles (<b>, <code>,
+// <em>) uses known HTML elements, so any unknown element means the angle
+// brackets are literal text and the title is kept verbatim.
+func titleText(s string) string {
+	doc, err := html.Parse(strings.NewReader(s))
+	if err != nil {
+		return HTMLToText(s)
+	}
+	var unknown bool
+	var walk func(*html.Node)
+	walk = func(n *html.Node) {
+		if n.Type == html.ElementNode && n.DataAtom == 0 {
+			unknown = true
+			return
+		}
+		for c := n.FirstChild; c != nil && !unknown; c = c.NextSibling {
+			walk(c)
+		}
+	}
+	walk(doc)
+	if unknown {
+		return collapseWS(s)
+	}
+	return HTMLToText(s)
 }
 
 // HTMLToText returns a plain-text representation of an HTML fragment by

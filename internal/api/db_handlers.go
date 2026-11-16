@@ -165,6 +165,11 @@ func (d *Dependencies) handleDeleteExport(w http.ResponseWriter, r *http.Request
 	writeOK(w)
 }
 
+// maxCleanupOlderDays caps the cleanup age. Far below where
+// time.Duration(days)*24*time.Hour overflows into a negative duration — which
+// would put the cutoff in the future and delete every unprotected article.
+const maxCleanupOlderDays = 3650
+
 type cleanupReq struct {
 	OlderDays int `json:"older_days"`
 }
@@ -176,6 +181,9 @@ func (d *Dependencies) handleDBCleanup(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.OlderDays <= 0 {
 		req.OlderDays = 90
+	}
+	if !checkIntBounds(w, "older_days", req.OlderDays, 1, maxCleanupOlderDays) {
+		return
 	}
 	stats, err := d.Store.Cleanup(r.Context(), time.Duration(req.OlderDays)*24*time.Hour)
 	if err != nil {
@@ -218,6 +226,9 @@ func (d *Dependencies) handleDBSchedule(w http.ResponseWriter, r *http.Request) 
 	}
 	if req.CleanupOlderDays < 7 {
 		req.CleanupOlderDays = 7
+	}
+	if !checkIntBounds(w, "cleanup_older_days", req.CleanupOlderDays, 7, maxCleanupOlderDays) {
+		return
 	}
 	if req.OPMLKeepCount < 1 {
 		req.OPMLKeepCount = 12

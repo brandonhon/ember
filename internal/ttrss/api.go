@@ -145,7 +145,14 @@ func (s *Service) importSubscriptions(ctx context.Context, client *http.Client, 
 		if len(feeds) == 0 {
 			break
 		}
+		// getFeeds(cat_id=-4) applies limit/offset to real feeds only and
+		// prepends the special/virtual rows (id <= 0) to every page, so only
+		// real rows may advance the offset or count toward a full page.
+		realRows := 0
 		for _, f := range feeds {
+			if f.ID > 0 {
+				realRows++
+			}
 			url := strings.TrimSpace(f.FeedURL)
 			if url == "" {
 				continue // virtual/special feed (no real source URL)
@@ -179,8 +186,8 @@ func (s *Service) importSubscriptions(ctx context.Context, client *http.Client, 
 			have[url] = true // guard against duplicate URLs across pages
 			res.Feeds++
 		}
-		offset += len(feeds)
-		if len(feeds) < feedsLimit {
+		offset += realRows
+		if realRows < feedsLimit {
 			break // last page
 		}
 	}

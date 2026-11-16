@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"regexp"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -58,6 +59,19 @@ func mkPoller(t *testing.T, ff Fetcher) *Poller {
 	}, lg)
 }
 
+// readSampleRSS returns ../feed/testdata/sample.rss with its pubDates moved to
+// an hour ago. The fixture's fixed dates eventually fall past
+// store.RetentionHours, and the poller skips entries the pruner would delete.
+func readSampleRSS(t *testing.T) []byte {
+	t.Helper()
+	body, err := os.ReadFile("../feed/testdata/sample.rss")
+	if err != nil {
+		t.Fatal(err)
+	}
+	recent := "<pubDate>" + time.Now().Add(-time.Hour).UTC().Format(time.RFC1123) + "</pubDate>"
+	return regexp.MustCompile(`<pubDate>[^<]*</pubDate>`).ReplaceAll(body, []byte(recent))
+}
+
 func seedFeed(t *testing.T, st *store.Store) models.Feed {
 	t.Helper()
 	f, err := st.UpsertFeed(context.Background(), models.Feed{
@@ -70,10 +84,7 @@ func seedFeed(t *testing.T, st *store.Store) models.Feed {
 }
 
 func TestPoller_TickInsertsArticles(t *testing.T) {
-	body, err := os.ReadFile("../feed/testdata/sample.rss")
-	if err != nil {
-		t.Fatal(err)
-	}
+	body := readSampleRSS(t)
 	ff := &fakeFetcher{body: body, etag: `"v1"`, lastModified: "now"}
 	p := mkPoller(t, ff)
 	f := seedFeed(t, p.Store)
@@ -158,7 +169,8 @@ func TestPoller_InitialBacklogGate(t *testing.T) {
 	// item is already known via dedup, so the count shouldn't bump. Verify
 	// that bypassing the gate is the path by adding a NEW old item.
 	freshTime2 := time.Now().Add(-30 * time.Minute).UTC().Format(time.RFC1123)
-	oldTime2 := time.Now().Add(-30 * 24 * time.Hour).UTC().Format(time.RFC1123)
+	// Outside the 48h gate but inside retention, so only the gate could drop it.
+	oldTime2 := time.Now().Add(-3 * 24 * time.Hour).UTC().Format(time.RFC1123)
 	ff.body = []byte(`<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0"><channel>
 <title>Backlog Test</title>
@@ -192,7 +204,8 @@ func TestPoller_InitialBacklogGate(t *testing.T) {
 // TestPoller_BacklogGateZeroDisables: when the resolved window is 0, the
 // gate is off even on first ingest.
 func TestPoller_BacklogGateZeroDisables(t *testing.T) {
-	oldTime := time.Now().Add(-30 * 24 * time.Hour).UTC().Format(time.RFC1123)
+	// Older than the default gate window but inside retention.
+	oldTime := time.Now().Add(-3 * 24 * time.Hour).UTC().Format(time.RFC1123)
 	body := []byte(`<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0"><channel>
 <title>Backlog Off</title>
@@ -273,7 +286,7 @@ func TestPoller_RefreshFeedNotFound(t *testing.T) {
 }
 
 func TestPoller_RunGracefulShutdown(t *testing.T) {
-	body, _ := os.ReadFile("../feed/testdata/sample.rss")
+	body := readSampleRSS(t)
 	ff := &fakeFetcher{body: body, etag: `"v1"`}
 	p := mkPoller(t, ff)
 	p.Config.SummaryWorker = true
@@ -516,10 +529,7 @@ func TestPoller_ShouldEnrich(t *testing.T) {
 }
 
 func TestPoller_FiltersApplyAtIngest(t *testing.T) {
-	body, err := os.ReadFile("../feed/testdata/sample.rss")
-	if err != nil {
-		t.Fatal(err)
-	}
+	body := readSampleRSS(t)
 	ff := &fakeFetcher{body: body}
 	p := mkPoller(t, ff)
 
@@ -531,7 +541,7 @@ func TestPoller_FiltersApplyAtIngest(t *testing.T) {
 	_, _ = p.Store.Subscribe(context.Background(), models.Subscription{UserID: alice.ID, FeedID: f.ID})
 	_, _ = p.Store.Subscribe(context.Background(), models.Subscription{UserID: bob.ID, FeedID: f.ID})
 
-	_, err = p.Store.CreateFilter(context.Background(), models.Filter{
+	_, err := p.Store.CreateFilter(context.Background(), models.Filter{
 		UserID: alice.ID, Name: "mark Hello read", Action: "mark_read",
 		MatchJSON: `{"field":"title","op":"contains","value":"Hello"}`,
 		Enabled:   true,
@@ -553,7 +563,7 @@ func TestPoller_FiltersApplyAtIngest(t *testing.T) {
 }
 
 func TestPoller_SummaryWorkerPersistsSummary(t *testing.T) {
-	body, _ := os.ReadFile("../feed/testdata/sample.rss")
+	body := readSampleRSS(t)
 	ff := &fakeFetcher{body: body}
 	p := mkPoller(t, ff)
 	p.Config.SummaryWorker = true
@@ -630,5 +640,62 @@ func TestPoller_RunHealsStrandedArticlesWhenSummariesDisabled(t *testing.T) {
 
 	if got != "disabled" {
 		t.Errorf("summary_model = %q, want %q", got, "disabled")
+	}
+}
+
+// A new feed whose first fetch fails still has last_fetched stamped by the
+// failure path, so last_fetched can't tell "never ingested" apart from
+// "ingested before". The backlog gate must still apply on the first
+// SUCCESSFUL ingest, or the whole upstream history lands in the reader.
+func TestPoller_BacklogGateSurvivesFailedFirstFetch(t *testing.T) {
+	fresh := time.Now().Add(-1 * time.Hour).UTC().Format(time.RFC1123)
+	old := time.Now().Add(-3 * 24 * time.Hour).UTC().Format(time.RFC1123)
+	body := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel><title>Gate</title><link>https://test.local/</link><description>x</description>
+<item><title>Fresh</title><link>https://test.local/f</link><guid isPermaLink="false">gate-fresh</guid><pubDate>` + fresh + `</pubDate><description>f</description></item>
+<item><title>Old</title><link>https://test.local/o</link><guid isPermaLink="false">gate-old</guid><pubDate>` + old + `</pubDate><description>o</description></item>
+</channel></rss>`)
+	ff := &fakeFetcher{fail: true}
+	lg := slog.New(slog.NewTextHandler(io.Discard, nil))
+	p := New(store.NewTest(t), ff, summarize.Noop{}, Config{
+		Tick: time.Millisecond, Concurrency: 1, InitialBacklogHoursFallback: 48,
+	}, lg)
+	f := seedFeed(t, p.Store)
+
+	if err := p.RefreshFeed(context.Background(), f.ID); err != nil {
+		t.Fatal(err)
+	}
+	ff.fail, ff.body = false, body
+	if err := p.RefreshFeed(context.Background(), f.ID); err != nil {
+		t.Fatal(err)
+	}
+	if got := p.Metrics.NewArticlesTotal.Load(); got != 1 {
+		t.Errorf("first successful ingest after a failed fetch: NewArticlesTotal=%d, want 1 (3-day-old item gated)", got)
+	}
+}
+
+// The daily retention prune deletes articles whose published_at is past
+// store.RetentionHours. If the upstream feed still carries such an item, the
+// next poll must not re-insert it as new (re-summarize, re-filter, lose read
+// state) only for it to be pruned again. Undated items are unaffected.
+func TestPoller_SkipsEntriesPastRetention(t *testing.T) {
+	fresh := time.Now().Add(-1 * time.Hour).UTC().Format(time.RFC1123)
+	pruned := time.Now().Add(-time.Duration(store.RetentionHours+24) * time.Hour).UTC().Format(time.RFC1123)
+	body := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel><title>Ret</title><link>https://test.local/</link><description>x</description>
+<item><title>Fresh</title><link>https://test.local/f</link><guid isPermaLink="false">ret-fresh</guid><pubDate>` + fresh + `</pubDate><description>f</description></item>
+<item><title>Pruned</title><link>https://test.local/p</link><guid isPermaLink="false">ret-pruned</guid><pubDate>` + pruned + `</pubDate><description>p</description></item>
+<item><title>Undated</title><link>https://test.local/u</link><guid isPermaLink="false">ret-undated</guid><description>u</description></item>
+</channel></rss>`)
+	lg := slog.New(slog.NewTextHandler(io.Discard, nil))
+	p := New(store.NewTest(t), &fakeFetcher{body: body}, summarize.Noop{}, Config{
+		Tick: time.Millisecond, Concurrency: 1, InitialBacklogHoursFallback: 0, // gate off: retention alone must skip
+	}, lg)
+	f := seedFeed(t, p.Store)
+	if err := p.RefreshFeed(context.Background(), f.ID); err != nil {
+		t.Fatal(err)
+	}
+	if got := p.Metrics.NewArticlesTotal.Load(); got != 2 {
+		t.Errorf("NewArticlesTotal=%d, want 2 (fresh + undated; past-retention item skipped)", got)
 	}
 }
