@@ -29,7 +29,8 @@ them.
 - The website now has a sitemap, a `robots.txt`, a canonical URL and its own
   description and link-preview tags on every page, and schema.org structured
   data on the home page. Home-page screenshots are served as WebP
-  (the largest drops from 1.4 MB to 127 KB). Website only — nothing here
+  (the largest drops from 1.4 MB to 127 KB), and the link-preview image was
+  redrawn to match the new home page. Website only — nothing here
   reaches the Ember binary or container image.
 - **The public live demo is no longer indexed by search engines.** Its build
   now carries `noindex`; the app you self-host is unchanged.
