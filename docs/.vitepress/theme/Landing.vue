@@ -13,7 +13,9 @@ import { computed, ref } from 'vue';
 import { withBase } from 'vitepress';
 
 const DEMO = '/demo/';
-const shot = (name: string) => withBase(`/screenshots/${name}`);
+// Screenshots are listed by their PNG name (the source of truth) but served
+// as the WebP that docs/scripts/webp.mjs derives before every dev/build run.
+const shot = (name: string) => withBase(`/screenshots/${name.replace(/\.png$/, '.webp')}`);
 
 type Tab = {
   id: string;
