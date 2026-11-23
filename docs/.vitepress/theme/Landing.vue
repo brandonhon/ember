@@ -134,12 +134,12 @@ async function copyInstall() {
           <span class="dot" /><span class="dot" /><span class="dot" />
           <span class="url">ember.your-homelab.net</span>
         </div>
-        <img class="light-only" :src="shot('hero-2-threepane-summary-dark.png')" alt="Ember three-pane reader with an AI summary card above the article" />
-        <img class="dark-only" :src="shot('hero-2-threepane-summary-light.png')" alt="Ember three-pane reader with an AI summary card above the article" />
+        <img class="light-only" :src="shot('hero-2-threepane-summary-dark.png')" alt="Ember three-pane reader with an AI summary card above the article" width="2880" height="1800" loading="lazy" decoding="async" />
+        <img class="dark-only" :src="shot('hero-2-threepane-summary-light.png')" alt="Ember three-pane reader with an AI summary card above the article" width="2880" height="1800" loading="lazy" decoding="async" />
       </div>
       <div class="phone">
-        <img class="light-only" :src="shot('reader-mobile-dark.png')" alt="The same reader on a phone" />
-        <img class="dark-only" :src="shot('reader-mobile-light.png')" alt="The same reader on a phone" />
+        <img class="light-only" :src="shot('reader-mobile-dark.png')" alt="The same reader on a phone" width="780" height="1688" loading="lazy" decoding="async" />
+        <img class="dark-only" :src="shot('reader-mobile-light.png')" alt="The same reader on a phone" width="780" height="1688" loading="lazy" decoding="async" />
       </div>
     </div>
 
@@ -206,8 +206,8 @@ async function copyInstall() {
             <!-- v-show, not v-if/v-else: swapping branches after SSR hydration
                  rendered the rule card's static children empty. -->
             <div v-show="current.img" class="media-imgs">
-              <img class="light-only" :src="shot(mediaImg[0])" :alt="current.alt" />
-              <img class="dark-only" :src="shot(mediaImg[1])" :alt="current.alt" />
+              <img class="light-only" :src="shot(mediaImg[0])" :alt="current.alt" loading="lazy" decoding="async" />
+              <img class="dark-only" :src="shot(mediaImg[1])" :alt="current.alt" loading="lazy" decoding="async" />
             </div>
             <div v-show="!current.img" class="rule">
               <div class="rule-head"><strong>Rule · Hide sponsored posts</strong><span>Priority 1</span></div>
@@ -338,7 +338,8 @@ a.more:hover, .trust a:hover, .install a:hover { text-decoration: underline; }
 .panel-copy p { margin: 0; font-size: 18px; line-height: 1.6; color: var(--vp-c-text-2); }
 .panel-media { border-radius: 12px; overflow: hidden; border: 1px solid var(--vp-c-border); background: var(--vp-c-bg); min-height: 280px; display: flex; align-items: center; justify-content: center; }
 .media-imgs { width: 100%; display: flex; justify-content: center; }
-.panel-media img { display: block; width: 100%; height: auto; }
+/* The settings screenshot is ~1:1.7; show its top, not a 1000px-tall panel. */
+.panel-media img { display: block; width: 100%; height: auto; max-height: 520px; object-fit: cover; object-position: top; }
 .panel-media.narrow { padding: 24px 0; }
 .panel-media.narrow img { width: auto; max-width: 60%; max-height: 520px; border-radius: 20px; }
 .rule { width: 100%; box-sizing: border-box; padding: 32px; display: flex; flex-direction: column; gap: 14px; font-size: 15px; }

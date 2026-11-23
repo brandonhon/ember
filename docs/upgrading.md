@@ -1,3 +1,7 @@
+---
+description: "Upgrade a self-hosted Ember install safely: back up, pull the new release with Docker Compose or the binary, let migrations run, verify and roll back if needed."
+---
+
 # Upgrading
 
 Ember ships as tagged releases (`vX.Y.Z`). Upgrading means running the newer build — there is no separate migration step to run by hand: schema migrations are embedded in the binary and applied automatically at startup.

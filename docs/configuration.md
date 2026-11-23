@@ -1,3 +1,7 @@
+---
+description: "Reference for Ember's environment variables and runtime admin settings: required and optional vars, summarization backends, Docker Compose and reverse proxy."
+---
+
 # Configuration
 
 Ember reads configuration from environment variables at startup. A handful of settings can also be changed at runtime via the admin UI and persist in the `app_settings` table.

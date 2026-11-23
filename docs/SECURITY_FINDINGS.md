@@ -1,3 +1,12 @@
+---
+# Internal audit tracker, linked from CHANGELOG.md. Reachable, but kept
+# out of search results and the sitemap.
+head:
+  - - meta
+    - name: robots
+      content: noindex, follow
+---
+
 # Ember Security Findings Tracker
 
 **Audit date:** 2026-06-06  

@@ -1,3 +1,7 @@
+---
+description: "How Ember is built: process layout, Go package map, SQLite schema, request lifecycle, feed poller, summarizer pipeline, cross-feed dedup and the Svelte SPA."
+---
+
 # Architecture
 
 A reference for contributors. Covers process layout, request lifecycle, and how the major subsystems hand data off.
