@@ -36,9 +36,11 @@ them.
   now carries `noindex`; the app you self-host is unchanged.
 - Bumped runtime dependencies: `modernc.org/sqlite` 1.61.1 → 1.62.0,
   `pressly/goose` 3.29.0 → 3.30.1 (the schema-migration runner),
-  `emersion/go-smtp` 0.25.1 → 0.26.0, `golang.org/x/crypto` 0.58.0 → 0.59.0
-  and `golang.org/x/mod` 0.42.0 → 0.43.0. Web tooling moved to Vite 8.3.8,
-  jsdom 31.0.1 and Playwright 1.65.1 (dev-only, not bundled into the Ember
+  `emersion/go-smtp` 0.25.1 → 0.26.0, `golang.org/x/crypto` 0.58.0 → 0.59.0,
+  `golang.org/x/mod` 0.42.0 → 0.43.0 and `golang.org/x/net` 0.62.0 → 0.63.0
+  (HTTP/2 fixes). The web UI moved to Svelte 5.59.1. Web tooling moved to
+  Vite 8.3.8, jsdom 31.0.1, Playwright 1.65.1, Vitest 5.1.1 and
+  `@testing-library/jest-dom` 8.0.0 (dev-only, not bundled into the Ember
   binary).
 - The `node:26-alpine` base image (the stage that builds the web UI) moved to
   its current digest, still a multi-arch index covering amd64 and arm64.
