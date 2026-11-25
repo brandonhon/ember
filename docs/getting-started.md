@@ -1,3 +1,7 @@
+---
+description: "Install Ember, the self-hosted RSS reader, with Docker Compose or as a single Go binary — set two values, start the stack and read your first feeds in minutes."
+---
+
 # Getting started
 
 Ember runs as a Docker stack (`ember` + `caddy` + `ollama`) or as a standalone Go binary if you'd rather host Ollama elsewhere.

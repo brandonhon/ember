@@ -1,3 +1,7 @@
+---
+description: "Ember's email newsletter inbox: a per-user address whose mail lands as a Newsletters feed — operator setup, env vars, security and address rotation."
+---
+
 # Email newsletter inbox
 
 Each Ember user gets a unique address (e.g. `01234ABCDEFG@mail.example.com`).

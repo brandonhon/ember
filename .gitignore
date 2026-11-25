@@ -33,6 +33,8 @@ internal/web/dist/
 docs/node_modules/
 docs/.vitepress/dist/
 docs/.vitepress/cache/
+# Derived from the PNGs by docs/scripts/webp.mjs on every dev/build run.
+docs/public/screenshots/*.webp
 
 # Env
 .env

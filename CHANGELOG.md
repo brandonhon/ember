@@ -15,6 +15,36 @@ them.
 
 ## [Unreleased]
 
+## [0.9.10] - 2026-11-30
+
+### Changed
+
+- **New home page for the project website.** ember-rss.com now opens on a
+  demo-first landing page: the live demo is the primary call to action,
+  followed by a short tour of the reader, AI summaries, rules and themes, a
+  reader-vs-self-hoster split and the install commands. It follows the site's
+  light/dark toggle and has its own phone layout. The site went live from
+  `develop` on 2026-11-23; this release brings `main` in line so a later
+  deploy from `main` doesn't roll it back.
+- The website now has a sitemap, a `robots.txt`, a canonical URL and its own
+  description and link-preview tags on every page, and schema.org structured
+  data on the home page. Home-page screenshots are served as WebP
+  (the largest drops from 1.4 MB to 127 KB), and the link-preview image was
+  redrawn to match the new home page. Website only — nothing here
+  reaches the Ember binary or container image.
+- **The public live demo is no longer indexed by search engines.** Its build
+  now carries `noindex`; the app you self-host is unchanged.
+- Bumped runtime dependencies: `modernc.org/sqlite` 1.61.1 → 1.62.0,
+  `pressly/goose` 3.29.0 → 3.30.1 (the schema-migration runner),
+  `emersion/go-smtp` 0.25.1 → 0.26.0, `golang.org/x/crypto` 0.58.0 → 0.59.0,
+  `golang.org/x/mod` 0.42.0 → 0.43.0 and `golang.org/x/net` 0.62.0 → 0.63.0
+  (HTTP/2 fixes). The web UI moved to Svelte 5.59.1. Web tooling moved to
+  Vite 8.3.8, jsdom 31.0.1, Playwright 1.65.1, Vitest 5.1.1 and
+  `@testing-library/jest-dom` 8.0.0 (dev-only, not bundled into the Ember
+  binary).
+- The `node:26-alpine` base image (the stage that builds the web UI) moved to
+  its current digest, still a multi-arch index covering amd64 and arm64.
+
 ## [0.9.9] - 2026-11-16
 
 ### Changed
@@ -1024,7 +1054,8 @@ TT-RSS full migration (subscriptions, folders, starred/archived) and fail-fast
 admin bootstrap. See the
 [v0.8.7 release](https://github.com/brandonhon/ember/releases/tag/v0.8.7).
 
-[Unreleased]: https://github.com/brandonhon/ember/compare/v0.9.9...develop
+[Unreleased]: https://github.com/brandonhon/ember/compare/v0.9.10...develop
+[0.9.10]: https://github.com/brandonhon/ember/compare/v0.9.9...v0.9.10
 [0.9.9]: https://github.com/brandonhon/ember/compare/v0.9.8...v0.9.9
 [0.9.8]: https://github.com/brandonhon/ember/compare/v0.9.7...v0.9.8
 [0.9.7]: https://github.com/brandonhon/ember/compare/v0.9.6...v0.9.7

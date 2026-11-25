@@ -1,3 +1,7 @@
+---
+description: "How Ember's optional AI article summaries work: local Ollama models by default, or any OpenAI-compatible endpoint or Claude — and how to switch them off."
+---
+
 # Summarization
 
 Ember can generate a short AI summary for every article. By default it uses a local

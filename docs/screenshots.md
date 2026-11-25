@@ -1,3 +1,7 @@
+---
+description: "Screenshots of Ember, the self-hosted RSS reader: three-pane reader, article view, AI summaries, settings and mobile layouts in light and dark themes."
+---
+
 # Screenshots
 
 Captured against the test-mode binary via `web/scripts/screenshots-dual-theme.mjs`. Each scene is captured twice — once in the app's light theme, once in dark — at both desktop (1440×900 @ 2x) and mobile (390×844 @ 2x) viewports. Desktop settings panes are the exception: the modal's height cap is lifted at capture time and the viewport grown to fit, so each pane is shown whole instead of cut off at its first card. The docs site shows the **opposite** variant — a light page displays the dark-theme capture and a dark page the light-theme capture (via the `.light-only` / `.dark-only` classes in the theme stylesheet) — so the screenshot contrasts the page background instead of blending into it.

@@ -3,7 +3,8 @@
   Source for docs/public/social-preview.png — the 1280×640 OG card that
   shows when github.com/brandonhon/ember is shared on Twitter, Slack,
   Discord, etc. Rendered by web/scripts/social-preview.mjs (Playwright).
-  Brand colors match the dark theme in web/src/App.svelte.
+  Brand colors match the dark theme in web/src/App.svelte; copy and
+  screenshots mirror the docs landing page (docs/.vitepress/theme/Landing.vue).
 -->
 <html lang="en">
 <head>
@@ -30,16 +31,16 @@
     color: var(--ink);
     font-family: "Bricolage Grotesque", system-ui, sans-serif;
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 500px 1fr;
     align-items: center;
-    padding: 64px 72px;
+    padding: 64px 0 64px 72px;
   }
   .left { display: flex; flex-direction: column; gap: 24px; }
   .brand { display: flex; align-items: center; gap: 24px; }
   .logo { width: 96px; height: 96px; }
   .wordmark {
     font-family: "Fraunces", "Times New Roman", serif;
-    font-size: 128px;
+    font-size: 112px;
     font-weight: 600;
     line-height: 0.95;
     letter-spacing: -0.03em;
@@ -48,7 +49,7 @@
   .tagline {
     font-family: "Fraunces", "Times New Roman", serif;
     font-size: 40px;
-    font-weight: 400;
+    font-weight: 500;
     font-style: italic;
     line-height: 1.15;
     color: var(--ink);
@@ -76,44 +77,20 @@
     font-weight: 600;
   }
   .footer .accent { color: var(--ember); }
+  .tagline .accent { color: var(--ember); }
 
-  /* Right column: stylized "feed cards" abstracting the reader UI without
-     needing a real screenshot. Three stacked cards with offset perspective
-     so the eye reads them as "list of articles". */
-  .right { position: relative; height: 480px; }
-  .card {
+  /* Right column: real screenshots (dark captures) — the desktop
+     three-pane reader with the phone view overlapping its corner, the same
+     composition as the landing-page hero. */
+  .right { position: relative; height: 512px; }
+  .shot {
     position: absolute;
-    width: 520px;
-    background: var(--paper-2);
-    border: 1px solid rgba(240, 233, 218, 0.08);
-    border-radius: 18px;
-    padding: 28px 32px;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(240, 233, 218, 0.12);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
+    display: block;
   }
-  .card .meta {
-    font-size: 14px;
-    color: var(--ember);
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    margin-bottom: 12px;
-  }
-  .card .title {
-    font-family: "Fraunces", serif;
-    font-size: 26px;
-    font-weight: 600;
-    line-height: 1.2;
-    color: var(--ink);
-    margin-bottom: 12px;
-  }
-  .card .summary {
-    font-size: 15px;
-    line-height: 1.45;
-    color: var(--muted);
-  }
-  .card.c1 { top: 0;   right: -20px; transform: rotate(2.5deg); }
-  .card.c2 { top: 150px; right: 30px;  transform: rotate(-1.5deg); z-index: 2; }
-  .card.c3 { top: 300px; right: -10px; transform: rotate(1.5deg); opacity: 0.85; }
+  .desktop { width: 640px; top: 40px; left: 24px; border-radius: 12px; }
+  .phone { width: 168px; height: 340px; object-fit: cover; object-position: top; top: 150px; left: 8px; border-radius: 22px; border-width: 4px; border-color: #2a261f; }
 </style>
 </head>
 <body>
@@ -133,31 +110,17 @@
       </svg>
       <div class="wordmark">Ember</div>
     </div>
-    <div class="tagline">A reader for people who read.</div>
+    <div class="tagline">Your feeds. Your server.<br /><span class="accent">Your summaries.</span></div>
     <div class="subline">
-      Self-hosted RSS <span class="dot">·</span>
-      On-device AI summaries <span class="dot">·</span>
-      Single Go binary
+      Self-hosted RSS <span class="dot">·</span> Optional AI summaries<br />
+      Open source <span class="dot">·</span> Live demo, no install
     </div>
-    <div class="footer">github.com/brandonhon/<span class="accent">ember</span></div>
+    <div class="footer"><span class="accent">ember-rss.com</span></div>
   </div>
 
   <div class="right">
-    <div class="card c1">
-      <div class="meta">Hacker News · 4 min ago</div>
-      <div class="title">Show HN: A new approach to per-feed dedup in FTS5</div>
-      <div class="summary">SQLite full-text search at scale. The poller picks the canonical article when the same item shows up in multiple feeds…</div>
-    </div>
-    <div class="card c2">
-      <div class="meta">Verge · 12 min ago</div>
-      <div class="title">The case for self-hosting your reading life</div>
-      <div class="summary">Cloud RSS readers used to be the default. With a single binary and Docker, hosting your own feed reader is now a Sunday-afternoon project…</div>
-    </div>
-    <div class="card c3">
-      <div class="meta">LWN · 1 h ago</div>
-      <div class="title">Go 1.26 lands modernc.org/sqlite improvements</div>
-      <div class="summary">Pure-Go SQLite gets meaningful FTS5 wins. We benchmark against the cgo build under realistic mixed read/write workloads…</div>
-    </div>
+    <img class="shot desktop" src="../../docs/public/screenshots/hero-2-threepane-summary-dark.png" alt="" />
+    <img class="shot phone" src="../../docs/public/screenshots/reader-mobile-dark.png" alt="" />
   </div>
 </body>
 </html>
