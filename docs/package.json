@@ -5,11 +5,14 @@
   "type": "module",
   "description": "Documentation site for Ember, built with VitePress.",
   "scripts": {
+    "predocs:dev": "node scripts/webp.mjs",
     "docs:dev": "vitepress dev .",
+    "predocs:build": "node scripts/webp.mjs",
     "docs:build": "vitepress build .",
     "docs:preview": "vitepress preview ."
   },
   "devDependencies": {
+    "sharp": "^0.34.5",
     "vitepress": "^1.5.0"
   }
 }

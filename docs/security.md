@@ -1,3 +1,7 @@
+---
+description: "Ember's security model: authentication and passkeys, authorization, CSRF, SSRF protection, body limits, image proxy, database and reverse-proxy expectations."
+---
+
 # Security
 
 Ember has been written with the assumption that it will be exposed to the public internet behind a reverse proxy. This page lists the defenses in place and the deployment expectations.

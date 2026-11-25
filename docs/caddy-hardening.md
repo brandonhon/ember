@@ -1,3 +1,7 @@
+---
+description: "Harden the Caddy reverse proxy in front of Ember: trusted proxies, admin API lockdown, TLS, request limits, logging, container hardening and digest pinning."
+---
+
 # Hardening Caddy
 
 Ember ships with a working [`deploy/Caddyfile`](https://github.com/brandonhon/ember/blob/main/deploy/Caddyfile)

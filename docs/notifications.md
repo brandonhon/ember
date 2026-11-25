@@ -1,3 +1,7 @@
+---
+description: "Web Push notifications in Ember: enrol a browser, manage devices and send a test notification — what works today, requirements and operator notes."
+---
+
 # Web Push notifications
 
 ::: warning Enrollment ships; automatic notifications don't yet
